@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardIconClass = sectionData.icon || 'fas fa-file-alt'; // Fallback icon
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
-                <div class="flex items-start mb-3"> {/* items-start for better alignment if title wraps */}
+                <div class="flex items-start mb-3">
                     <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
                          <i class="${cardIconClass} text-xl ${theme.icon}"></i>
                     </div>
