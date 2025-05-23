@@ -1,3 +1,4 @@
+```javascript
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
@@ -8,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
@@ -116,6 +117,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadTheme();
 
+    // --- Initialize TinyMCE ---
+    if (document.getElementById('caseEditor')) {
+        tinymce.init({
+            selector: '#caseEditor',
+            plugins: 'image link table lists code',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | image link table | bullist numlist',
+            image_uploadtab: true,
+            file_picker_types: 'image',
+            file_picker_callback: function (cb, value, meta) {
+                let input = document.createElement('input');
+                input.setAttribute('type', 'file');
+                input.setAttribute('accept', 'image/*');
+                input.onchange = function () {
+                    let file = this.files[0];
+                    let reader = new FileReader();
+                    reader.onload = function () {
+                        let id = 'blobid' + (new Date()).getTime();
+                        let blobCache = tinymce.activeEditor.editorUpload.blobCache;
+                        let base64 = reader.result.split(',')[1];
+                        let blobInfo = blobCache.create(id, file, base64);
+                        blobCache.add(blobInfo);
+                        cb(blobInfo.blobUri(), { title: file.name });
+                    };
+                    reader.readAsDataURL(file);
+                };
+                input.click();
+            },
+            setup: function (editor) {
+                editor.on('init', function () {
+                    applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+                });
+            }
+        });
+    }
+
     // --- Logout Button ---
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton && typeof Auth !== 'undefined' && Auth.logout) {
@@ -173,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400' },
             purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-400', iconContainer: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', cta: 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300', border: 'border-purple-500', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300', statusBg: 'bg-purple-100 dark:bg-purple-500/20', statusText: 'text-purple-700 dark:text-purple-400' },
             slate: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-700/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-200 dark:bg-slate-700', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-200 dark:bg-slate-600', statusText: 'text-slate-700 dark:text-slate-300' },
+            orange: { bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-600 dark:text-orange-400', iconContainer: 'bg-orange-100 dark:bg-orange-800/50', icon: 'text-orange-500 dark:text-orange-400', cta: 'text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300', border: 'border-orange-500', tagBg: 'bg-orange-100 dark:bg-orange-500/20', tagText: 'text-orange-700 dark:text-orange-300', statusBg: 'bg-orange-100 dark:bg-orange-500/20', statusText: 'text-orange-700 dark:text-orange-400' },
             gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }
         };
         return colorMap[color] || colorMap.gray;
@@ -185,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
                 <div class="flex items-center mb-3">
                     <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                        <i class="${cardIconClass} text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${article.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
@@ -213,9 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
-                 <div class="flex items-center mb-3">
+                <div class="flex items-center mb-3">
                     <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                        <i class="${cardIconClass} text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${item.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
@@ -240,10 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
                 <div class="flex items-center mb-3">
                     <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${caseIcon} text-xl ${theme.icon}"></i>
+                        <i class="${caseIcon} text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
-                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
                         <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
                     </a>
                 </div>
@@ -252,13 +289,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
-                    ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
+                    <div class="flex items-center space-x-2">
+                        <button class="edit-case-btn text-indigo-600 hover:text-indigo-700" data-section-id="${sectionData.id}" data-case-id="${caseItem.id}">Edit</button>
+                        <button class="delete-case-btn text-red-600 hover:text-red-700" data-section-id="${sectionData.id}" data-case-id="${caseItem.id}">Delete</button>
+                        ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
+                    </div>
                 </div>
             </div>
         `;
     }
 
-    function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
+    function renderSubsectionCard(subsection, sectionData) {
+        const theme = getThemeColors(sectionData.themeColor);
+        const subsectionIcon = 'fas fa-folder-open';
+        return `
+            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${subsection.id}" data-item-type="subsection">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                        <i class="${subsectionIcon} text-xl ${theme.icon}"></i>
+                    </div>
+                    <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(subsection.name)}</h3>
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${subsection.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this subsection">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    </a>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(subsection.description) || 'No description.'}</p>
+                ${subsection.files && subsection.files.length > 0 ? `
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Files</h4>
+                        ${subsection.files.map(file => `<a href="${file.url}" target="_blank" class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(file.name)}</a>`).join('')}
+                    </div>` : ''}
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold tracking-wide">Subsection</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="edit-subsection-btn text-indigo-600 hover:text-indigo-700" data-section-id="${sectionData.id}" data-subsection-id="${subsection.id}">Edit</button>
+                        <button class="delete-subsection-btn text-red-600 hover:text-red-700" data-section-id="${sectionData.id}" data-subsection-id="${subsection.id}">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null, editMode = false) {
         console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
             console.error('[app.js - FIX] pageContent is NULL.');
@@ -290,6 +362,11 @@ document.addEventListener('DOMContentLoaded', () => {
             initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
             console.log('[app.js - FIX] Home page loaded.');
+            return;
+        }
+
+        if (sectionId === 'case_management') {
+            displayCaseManagement();
             return;
         }
 
@@ -328,292 +405,531 @@ document.addEventListener('DOMContentLoaded', () => {
             contentHTML += `</div>`;
             hasContent = true;
         }
-        if (sectionData.subCategories && sectionData.subCategories.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
-            sectionData.subCategories.forEach(subCat => contentHTML += `<a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center"><i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i><h4 class="font-medium">${escapeHTML(subCat.name)}</h4></a>`);
-            contentHTML += `</div>`;
-        }
-        if (sectionData.glossary && sectionData.glossary.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
-            sectionData.glossary.forEach(entry => contentHTML += `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}"><strong class="${theme.text}">${escapeHTML(entry.term)}:</strong> ${escapeHTML(entry.definition)}</div>`);
+        if (sectionData.subsections && sectionData.subsections.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-folder-open mr-3 ${theme.text}"></i> Subsections</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.subsections.forEach(subsection => contentHTML += renderSubsectionCard(subsection, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
         }
-        if (!hasContent && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
-            contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl mb-4"></i><h3 class="text-xl font-semibold">No content yet</h3><p>Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
+        if (sectionData.subCategories && sectionData.subCategories.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="flex flex-wrap gap-4">`;
+            sectionData.subCategories.forEach(subCat => {
+                contentHTML += `
+                    <a href="#" data-subcat-trigger="${sectionData.id}.${subCat.id}" class="px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all ${theme.cta}">
+                        ${escapeHTML(subCat.name)}
+                    </a>`;
+            });
+            contentHTML += `</div>`;
+            hasContent = true;
+        }
+        if (sectionData.glossary && sectionData.glossary.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
+            sectionData.glossary.forEach(term => {
+                contentHTML += `
+                    <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow card-animate">
+                        <h4 class="font-semibold text-gray-800 dark:text-white">${escapeHTML(term.term)}</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">${escapeHTML(term.definition)}</p>
+                    </div>`;
+            });
+            contentHTML += `</div>`;
+            hasContent = true;
+        }
+        if (!hasContent) {
+            contentHTML += `<div class="p-6 text-center"><p class="text-gray-500 dark:text-gray-400">No content available for this section yet.</p></div>`;
         }
         contentHTML += `</div>`;
 
         pageContent.innerHTML = contentHTML;
-        console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
-
-        pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
-
+        highlightSidebarLink(sectionId);
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
-            let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
-            if (subCategoryFilter && sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)) {
-                bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.subCategories.find(sc => sc.id === subCategoryFilter).name)}</span>`;
-            }
-            breadcrumbsContainer.innerHTML = bcHTML;
+            breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span>${escapeHTML(sectionData.name)}</span>`;
             breadcrumbsContainer.classList.remove('hidden');
-            const homeBreadcrumbLink = breadcrumbsContainer.querySelector('[data-section-trigger="home"]');
-            if (homeBreadcrumbLink) {
-                homeBreadcrumbLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleSectionTrigger('home');
-                });
+        }
+
+        const allCards = pageContent.querySelectorAll('.card-animate');
+        allCards.forEach((card, index) => {
+            card.style.animationDelay = `${(index % 10 + 1) * 0.05}s`;
+        });
+
+        if (itemIdToFocus) {
+            const targetItem = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
+            if (targetItem) {
+                targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetItem.classList.add('animate-pulse');
+                setTimeout(() => targetItem.classList.remove('animate-pulse'), 2000);
             }
         }
-        if (itemIdToFocus) {
-            setTimeout(() => {
-                const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
-                if (targetCard) {
-                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
-                    setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
-                } else {
-                    console.warn(`[app.js - FIX] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
-                }
-            }, 200);
-        }
+
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
-    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
-        if (typeof kbSystemData === 'undefined') {
-            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger!');
-            return;
-        }
-        highlightSidebarLink(sectionId);
-        displaySectionContent(sectionId, itemId, subCategoryFilter);
-        // Update URL hash
-        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
-        window.history.replaceState(null, '', `#${hash}`);
-        console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
-    }
+    function displayCaseManagement() {
+        document.getElementById('caseManagement').classList.remove('hidden');
+        document.getElementById('subsectionManagement').classList.add('hidden');
+        pageContent.querySelectorAll('div:not(#caseManagement)').forEach(el => el.classList.add('hidden'));
 
-    // Parse URL hash
-    function parseHash() {
-        const hash = window.location.hash.replace('#', '');
-        if (!hash) return { sectionId: 'home' };
-        const [sectionId, itemId, subCategoryFilter] = hash.split('/');
-        return { sectionId, itemId, subCategoryFilter };
-    }
-
-    // Sidebar links
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sectionId = this.dataset.section;
-            console.log(`[app.js - FIX] Sidebar link click, data-section: "${sectionId}"`);
-            if (sectionId) {
-                handleSectionTrigger(sectionId);
-            } else {
-                console.error('[app.js - FIX] No data-section attribute found on sidebar link:', this);
+        const caseList = document.getElementById('caseList');
+        let casesHTML = '';
+        kbSystemData.sections.forEach(section => {
+            if (section.cases && section.cases.length > 0) {
+                section.cases.forEach(caseItem => {
+                    casesHTML += renderCaseCard_enhanced(caseItem, section);
+                });
             }
         });
+        caseList.innerHTML = casesHTML || '<p class="text-gray-500 dark:text-gray-400">No cases available.</p>';
+
+        if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Case Management';
+        if (breadcrumbsContainer) {
+            breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span>Case Management</span>`;
+            breadcrumbsContainer.classList.remove('hidden');
+        }
+
+        const caseSectionSelect = document.getElementById('caseSection');
+        if (caseSectionSelect) {
+            caseSectionSelect.innerHTML = kbSystemData.sections
+                .filter(section => section.id !== 'case_management')
+                .map(section => `<option value="${section.id}">${escapeHTML(section.name)}</option>`)
+                .join('');
+        }
+    }
+
+    function displaySubsectionManagement() {
+        document.getElementById('subsectionManagement').classList.remove('hidden');
+        document.getElementById('caseManagement').classList.add('hidden');
+        pageContent.querySelectorAll('div:not(#subsectionManagement)').forEach(el => el.classList.add('hidden'));
+
+        const subsectionList = document.getElementById('subsectionList');
+        let subsectionsHTML = '';
+        kbSystemData.sections.forEach(section => {
+            if (section.subsections && section.subsections.length > 0) {
+                section.subsections.forEach(subsection => {
+                    subsectionsHTML += renderSubsectionCard(subsection, section);
+                });
+            }
+        });
+        subsectionList.innerHTML = subsectionsHTML || '<p class="text-gray-500 dark:text-gray-400">No subsections available.</p>';
+
+        if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Subsection Management';
+        if (breadcrumbsContainer) {
+            breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span>Subsection Management</span>`;
+            breadcrumbsContainer.classList.remove('hidden');
+        }
+
+        const subsectionSectionSelect = document.getElementById('subsectionSection');
+        if (subsectionSectionSelect) {
+            subsectionSectionSelect.innerHTML = kbSystemData.sections
+                .filter(section => section.id !== 'case_management')
+                .map(section => `<option value="${section.id}">${escapeHTML(section.name)}</option>`)
+                .join('');
+        }
+    }
+
+    function showCaseEditor(sectionId = null, caseId = null) {
+        const editorContainer = document.getElementById('caseEditorContainer');
+        const editorTitle = document.getElementById('caseEditorTitle');
+        const caseSectionSelect = document.getElementById('caseSection');
+        const caseTitleInput = document.getElementById('caseTitle');
+        const caseTagsInput = document.getElementById('caseTags');
+
+        editorContainer.classList.remove('hidden');
+        editorTitle.textContent = caseId ? 'Edit Case' : 'Create Case';
+
+        if (caseId && sectionId) {
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            const caseItem = section?.cases?.find(c => c.id === caseId);
+            if (caseItem) {
+                caseSectionSelect.value = sectionId;
+                caseTitleInput.value = caseItem.title;
+                caseTagsInput.value = caseItem.tags ? caseItem.tags.join(', ') : '';
+                tinymce.get('caseEditor').setContent(caseItem.content || '');
+            }
+        } else {
+            caseSectionSelect.value = sectionId || '';
+            caseTitleInput.value = '';
+            caseTagsInput.value = '';
+            tinymce.get('caseEditor').setContent('');
+        }
+
+        caseSectionSelect.disabled = !!caseId;
+    }
+
+    function hideCaseEditor() {
+        document.getElementById('caseEditorContainer').classList.add('hidden');
+    }
+
+    function showSubsectionEditor(sectionId = null, subsectionId = null) {
+        const editorContainer = document.getElementById('subsectionEditorContainer');
+        const editorTitle = document.getElementById('subsectionEditorTitle');
+        const subsectionSectionSelect = document.getElementById('subsectionSection');
+        const subsectionNameInput = document.getElementById('subsectionName');
+        const subsectionDescriptionInput = document.getElementById('subsectionDescription');
+        const subsectionFilesInput = document.getElementById('subsectionFiles');
+
+        editorContainer.classList.remove('hidden');
+        editorTitle.textContent = subsectionId ? 'Edit Subsection' : 'Create Subsection';
+
+        if (subsectionId && sectionId) {
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            const subsection = section?.subsections?.find(s => s.id === subsectionId);
+            if (subsection) {
+                subsectionSectionSelect.value = sectionId;
+                subsectionNameInput.value = subsection.name;
+                subsectionDescriptionInput.value = subsection.description || '';
+                subsectionFilesInput.value = ''; // Files cannot be pre-filled
+            }
+        } else {
+            subsectionSectionSelect.value = sectionId || '';
+            subsectionNameInput.value = '';
+            subsectionDescriptionInput.value = '';
+            subsectionFilesInput.value = '';
+        }
+
+        subsectionSectionSelect.disabled = !!subsectionId;
+    }
+
+    function hideSubsectionEditor() {
+        document.getElementById('subsectionEditorContainer').classList.add('hidden');
+    }
+
+    document.getElementById('createCaseBtn')?.addEventListener('click', () => {
+        showCaseEditor();
     });
 
-    // Body click listener for dynamic links
-    document.body.addEventListener('click', function(e) {
-        const target = e.target.closest('[data-section-trigger]');
-        if (target) {
-            e.preventDefault();
-            const sectionId = target.dataset.sectionTrigger;
-            const itemId = target.dataset.itemId;
-            const subCatFilter = target.dataset.subcatFilter;
-            console.log(`[app.js - FIX] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
-            if (sectionId) {
-                handleSectionTrigger(sectionId, itemId, subCatFilter);
-                if (target.closest('#searchResultsContainer')) {
-                    if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                    if (globalSearchInput) globalSearchInput.value = '';
-                }
-            } else {
-                console.error('[app.js - FIX] No data-section-trigger attribute found:', target);
+    document.getElementById('cancelCaseBtn')?.addEventListener('click', () => {
+        hideCaseEditor();
+    });
+
+    document.getElementById('caseForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const sectionId = document.getElementById('caseSection').value;
+        const caseTitle = document.getElementById('caseTitle').value;
+        const caseTags = document.getElementById('caseTags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        const caseContent = tinymce.get('caseEditor').getContent();
+        const caseData = {
+            title: caseTitle,
+            tags: caseTags,
+            summary: truncateText(caseContent.replace(/<[^>]+>/g, ''), 100),
+            content: caseContent,
+            status: 'Open',
+            assignedTo: currentUser?.email || 'Unassigned'
+        };
+
+        const editingCaseId = document.querySelector('.edit-case-btn[data-case-id][data-section-id="' + sectionId + '"]')?.dataset.caseId;
+        if (editingCaseId) {
+            updateCase(sectionId, editingCaseId, caseData);
+            alert('Case updated successfully!');
+        } else {
+            addCase(sectionId, caseData);
+            alert('Case created successfully!');
+        }
+        hideCaseEditor();
+        displayCaseManagement();
+    });
+
+    document.getElementById('createSubsectionBtn')?.addEventListener('click', () => {
+        showSubsectionEditor();
+    });
+
+    document.getElementById('cancelSubsectionBtn')?.addEventListener('click', () => {
+        hideSubsectionEditor();
+    });
+
+    document.getElementById('subsectionForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const sectionId = document.getElementById('subsectionSection').value;
+        const subsectionName = document.getElementById('subsectionName').value;
+        const subsectionDescription = document.getElementById('subsectionDescription').value;
+        const subsectionFiles = document.getElementById('subsectionFiles').files;
+
+        const files = Array.from(subsectionFiles).map(file => ({
+            name: file.name,
+            url: URL.createObjectURL(file) // Placeholder URL for local files
+        }));
+
+        const subsectionData = {
+            name: subsectionName,
+            description: subsectionDescription,
+            files: files
+        };
+
+        const editingSubsectionId = document.querySelector('.edit-subsection-btn[data-subsection-id][data-section-id="' + sectionId + '"]')?.dataset.subsectionId;
+        if (editingSubsectionId) {
+            updateSubsection(sectionId, editingSubsectionId, subsectionData);
+            alert('Subsection updated successfully!');
+        } else {
+            addSubsection(sectionId, subsectionData);
+            alert('Subsection created successfully!');
+        }
+        hideSubsectionEditor();
+        displaySubsectionManagement();
+    });
+
+    document.addEventListener('click', (e) => {
+        const editCaseBtn = e.target.closest('.edit-case-btn');
+        const deleteCaseBtn = e.target.closest('.delete-case-btn');
+        const editSubsectionBtn = e.target.closest('.edit-subsection-btn');
+        const deleteSubsectionBtn = e.target.closest('.delete-subsection-btn');
+
+        if (editCaseBtn) {
+            const sectionId = editCaseBtn.dataset.sectionId;
+            const caseId = editCaseBtn.dataset.caseId;
+            displayCaseManagement();
+            showCaseEditor(sectionId, caseId);
+        }
+
+        if (deleteCaseBtn) {
+            const sectionId = deleteCaseBtn.dataset.sectionId;
+            const caseId = deleteCaseBtn.dataset.caseId;
+            if (confirm('Are you sure you want to delete this case?')) {
+                deleteCase(sectionId, caseId);
+                alert('Case deleted successfully!');
+                displayCaseManagement();
             }
         }
 
-        const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent.querySelector('#welcomeUserName')) {
-            e.preventDefault();
-            const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
-            if (triggerValue && triggerValue.includes('.')) {
-                const [sectionId, subId] = triggerValue.split('.');
-                console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
-                handleSectionTrigger(sectionId, null, subId);
-                if (sectionId === 'support' && subId === 'tools') {
-                    setTimeout(() => {
-                        const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
-                        if (zendeskCard?.closest('.card')) {
-                            zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            console.log('[app.js - FIX] Scrolled to Zendesk card.');
-                        } else {
-                            console.warn('[app.js - FIX] Zendesk card not found.');
-                        }
-                    }, 300);
-                }
-            } else {
-                console.error('[app.js - FIX] Invalid data-subcat-trigger value:', triggerValue);
+        if (editSubsectionBtn) {
+            const sectionId = editSubsectionBtn.dataset.sectionId;
+            const subsectionId = editSubsectionBtn.dataset.subsectionId;
+            displaySubsectionManagement();
+            showSubsectionEditor(sectionId, subsectionId);
+        }
+
+        if (deleteSubsectionBtn) {
+            const sectionId = deleteSubsectionBtn.dataset.sectionId;
+            const subsectionId = deleteSubsectionBtn.dataset.subsectionId;
+            if (confirm('Are you sure you want to delete this subsection?')) {
+                deleteSubsection(sectionId, subsectionId);
+                alert('Subsection deleted successfully!');
+                displaySubsectionManagement();
             }
         }
     });
 
-    // Global Search
+    // --- Search Functionality ---
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
-    let searchDebounceTimer;
 
-    if (globalSearchInput && searchResultsContainer) {
-        globalSearchInput.addEventListener('input', () => {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
-                const query = globalSearchInput.value.trim();
-                if (query.length > 1 && typeof searchKb === 'function') {
-                    renderGlobalSearchResults_enhanced(searchKb(query), query);
-                } else {
-                    searchResultsContainer.innerHTML = '';
-                    searchResultsContainer.classList.add('hidden');
-                }
-            }, 300);
-        });
-        document.addEventListener('click', (event) => {
-            if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
-                searchResultsContainer.classList.add('hidden');
-            }
-        });
-        globalSearchInput.addEventListener('focus', () => {
-            if (globalSearchInput.value.trim().length > 1 && searchResultsContainer.children.length > 0) {
-                searchResultsContainer.classList.remove('hidden');
-            }
-        });
-    } else {
-        console.warn('[app.js - FIX] Global search elements missing:', { globalSearchInput, searchResultsContainer });
-    }
-
-    function renderGlobalSearchResults_enhanced(results, query) {
+    function displaySearchResults(results, query) {
         if (!searchResultsContainer) return;
-        searchResultsContainer.innerHTML = '';
         if (results.length === 0) {
-            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results for "${escapeHTML(query)}".</div>`;
+            searchResultsContainer.innerHTML = '<div class="p-4 text-gray-500 dark:text-gray-400">No results found.</div>';
             searchResultsContainer.classList.remove('hidden');
             return;
         }
-        const ul = document.createElement('ul');
-        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
-        results.slice(0, 10).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
-            a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
-            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
 
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'font-semibold';
-            titleDiv.innerHTML = highlightText(result.title, query);
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
-            const sectionDiv = document.createElement('div');
-            const theme = getThemeColors(result.themeColor || 'gray');
-            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
-            a.appendChild(titleDiv);
-            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
-            a.appendChild(sectionDiv);
-            li.appendChild(a);
-            ul.appendChild(li);
+        let resultsHTML = '';
+        results.forEach(result => {
+            const theme = getThemeColors(result.themeColor);
+            let iconClass = 'fas fa-file-alt';
+            let itemType = result.type;
+            if (result.type === 'case') iconClass = 'fas fa-briefcase';
+            else if (result.type === 'item') iconClass = 'fas fa-archive';
+            else if (result.type === 'subsection') iconClass = 'fas fa-folder-open';
+            else if (result.type === 'section_match') iconClass = 'fas fa-folder';
+            else if (result.type === 'glossary_term') iconClass = 'fas fa-book';
+
+            resultsHTML += `
+                <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-start search-result-item" data-section-id="${result.sectionId}" data-item-id="${result.id}" data-item-type="${result.type}">
+                    <div class="p-2 rounded-full ${theme.iconContainer} mr-3 flex-shrink-0">
+                        <i class="${iconClass} ${theme.icon}"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white">${highlightText(result.title, query)}</h4>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(result.summary || result.description, 100), query)}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"><span class="font-medium ${theme.text}">${escapeHTML(result.sectionName)}</span> > ${itemType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
+                    </div>
+                </div>`;
         });
-        searchResultsContainer.appendChild(ul);
+        searchResultsContainer.innerHTML = resultsHTML;
         searchResultsContainer.classList.remove('hidden');
+
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
-    function renderSectionSearchResults(results, query, container, themeColor) {
-        if (!container) return;
-        container.innerHTML = '';
-        if (results.length === 0) {
-            container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results found for "${escapeHTML(query)}".</p>`;
-            return;
+    if (globalSearchInput && searchResultsContainer) {
+        globalSearchInput.addEventListener('input', () => {
+            const query = globalSearchInput.value.trim();
+            if (query.length < 2) {
+                searchResultsContainer.classList.add('hidden');
+                return;
+            }
+            const results = searchKb(query);
+            displaySearchResults(results, query);
+        });
+
+        globalSearchInput.addEventListener('blur', () => {
+            setTimeout(() => searchResultsContainer.classList.add('hidden'), 200);
+        });
+
+        globalSearchInput.addEventListener('focus', () => {
+            if (globalSearchInput.value.trim().length >= 2) {
+                displaySearchResults(searchKb(globalSearchInput.value.trim()), globalSearchInput.value.trim());
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const searchResultItem = e.target.closest('.search-result-item');
+        if (searchResultItem) {
+            const sectionId = searchResultItem.dataset.sectionId;
+            const itemId = searchResultItem.dataset.itemId;
+            const itemType = searchResultItem.dataset.itemType;
+
+            if (itemType === 'section_match') {
+                displaySectionContent(sectionId);
+            } else {
+                displaySectionContent(sectionId, itemId);
+            }
+            searchResultsContainer.classList.add('hidden');
+            globalSearchInput.value = '';
         }
-        const ul = document.createElement('ul');
-        ul.className = 'space-y-2';
-        const theme = getThemeColors(themeColor);
-        results.slice(0, 5).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
-            a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
-            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
-
-            const titleDiv = document.createElement('div');
-            titleDiv.className = `font-semibold ${theme.text}`;
-            titleDiv.innerHTML = highlightText(result.title, query);
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
-            const typeBadge = document.createElement('span');
-            typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
-            typeBadge.textContent = result.type.replace(/_/g, ' ');
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'flex items-center justify-between mb-1';
-            headerDiv.appendChild(titleDiv);
-            headerDiv.appendChild(typeBadge);
-            a.appendChild(headerDiv);
-            a.appendChild(summaryDiv);
-            li.appendChild(a);
-            ul.appendChild(li);
-        });
-        container.appendChild(ul);
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-    }
-
-    if (pageContent) {
-        pageContent.addEventListener('click', (e) => {
-            const ratingTarget = e.target.closest('.rating-btn');
-            if (ratingTarget) {
-                e.preventDefault();
-                const ratingContainer = ratingTarget.closest('.rating-container');
-                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks!</span>`;
-                return;
-            }
-            const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
-            if (sectionSearchBtn) {
-                e.preventDefault();
-                const input = pageContent.querySelector('#sectionSearchInput');
-                const currentSectionId = input?.dataset.sectionId;
-                const query = input?.value.trim();
-                if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                    const results = searchKb(query);
-                    const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
-                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                    if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
-                } else if (input) {
-                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                    if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Please enter a query with at least 2 characters.</p>`;
-                }
-                return;
-            }
-        });
-    } else {
-        console.error('[app.js - FIX] pageContent element not found on initialization.');
-    }
-
-    // Handle URL hash on page load and hash change
-    window.addEventListener('hashchange', () => {
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        console.log('[app.js - FIX] Hash changed:', { sectionId, itemId, subCategoryFilter });
-        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
     });
 
-    // Initial load with hash support
-    const { sectionId, itemId, subCategoryFilter } = parseHash();
-    console.log('[app.js - FIX] Initial hash load:', { sectionId, itemId, subCategoryFilter });
-    handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+    // --- Section Search ---
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#sectionSearchBtn')) {
+            const sectionSearchInput = document.getElementById('sectionSearchInput');
+            const sectionId = sectionSearchInput.dataset.sectionId;
+            const query = sectionSearchInput.value.trim();
+            const sectionSearchResults = document.getElementById('sectionSearchResults');
 
-    console.log('[app.js - FIX] All initializations complete.');
+            if (!query || query.length < 2) {
+                sectionSearchResults.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Please enter a query with at least 2 characters.</p>';
+                return;
+            }
+
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!sectionData) return;
+
+            const results = [];
+            if (sectionData.articles) {
+                sectionData.articles.forEach(article => {
+                    if (article.title.toLowerCase().includes(query.toLowerCase()) ||
+                        (article.tags && article.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))) ||
+                        (article.summary && article.summary.toLowerCase().includes(query.toLowerCase()))) {
+                        results.push({ ...article, sectionName: sectionData.name, sectionId: sectionData.id, type: 'article', themeColor: sectionData.themeColor });
+                    }
+                });
+            }
+            if (sectionData.cases) {
+                sectionData.cases.forEach(caseItem => {
+                    if (caseItem.title.toLowerCase().includes(query.toLowerCase()) ||
+                        (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))) ||
+                        (caseItem.summary && caseItem.summary.toLowerCase().includes(query.toLowerCase()))) {
+                        results.push({ ...caseItem, sectionName: sectionData.name, sectionId: sectionData.id, type: 'case', themeColor: sectionData.themeColor });
+                    }
+                });
+            }
+            if (sectionData.items) {
+                sectionData.items.forEach(item => {
+                    if (item.title.toLowerCase().includes(query.toLowerCase()) ||
+                        (item.description && item.description.toLowerCase().includes(query.toLowerCase()))) {
+                        results.push({ ...item, sectionName: sectionData.name, sectionId: sectionData.id, type: 'item', themeColor: sectionData.themeColor });
+                    }
+                });
+            }
+            if (sectionData.subsections) {
+                sectionData.subsections.forEach(subsection => {
+                    if (subsection.name.toLowerCase().includes(query.toLowerCase()) ||
+                        (subsection.description && subsection.description.toLowerCase().includes(query.toLowerCase()))) {
+                        results.push({ ...subsection, sectionName: sectionData.name, sectionId: sectionData.id, type: 'subsection', themeColor: sectionData.themeColor });
+                    }
+                });
+            }
+            if (sectionData.glossary) {
+                sectionData.glossary.forEach(term => {
+                    if (term.term.toLowerCase().includes(query.toLowerCase()) || term.definition.toLowerCase().includes(query.toLowerCase())) {
+                        results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: sectionData.name, sectionId: sectionData.id, type: 'glossary_term', themeColor: sectionData.themeColor });
+                    }
+                });
+            }
+
+            if (results.length === 0) {
+                sectionSearchResults.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No results found in this section.</p>';
+                return;
+            }
+
+            let resultsHTML = '';
+            results.forEach(result => {
+                const theme = getThemeColors(result.themeColor);
+                let iconClass = 'fas fa-file-alt';
+                if (result.type === 'case') iconClass = 'fas fa-briefcase';
+                else if (result.type === 'item') iconClass = 'fas fa-archive';
+                else if (result.type === 'subsection') iconClass = 'fas fa-folder-open';
+                else if (result.type === 'glossary_term') iconClass = 'fas fa-book';
+
+                resultsHTML += `
+                    <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-start section-search-result-item" data-section-id="${result.sectionId}" data-item-id="${result.id}" data-item-type="${result.type}">
+                        <div class="p-2 rounded-full ${theme.iconContainer} mr-3 flex-shrink-0">
+                            <i class="${iconClass} ${theme.icon}"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-semibold text-gray-800 dark:text-white">${highlightText(result.title, query)}</h4>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(result.summary || result.description, 100), query)}</p>
+                        </div>
+                    </div>`;
+            });
+            sectionSearchResults.innerHTML = resultsHTML;
+
+            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        const sectionSearchResultItem = e.target.closest('.section-search-result-item');
+        if (sectionSearchResultItem) {
+            const sectionId = sectionSearchResultItem.dataset.sectionId;
+            const itemId = sectionSearchResultItem.dataset.itemId;
+            displaySectionContent(sectionId, itemId);
+            document.getElementById('sectionSearchResults').innerHTML = '';
+            document.getElementById('sectionSearchInput').value = '';
+        }
+    });
+
+    // --- Sidebar Triggers ---
+    document.addEventListener('click', (e) => {
+        const sectionTrigger = e.target.closest('[data-section-trigger]');
+        const subCatTrigger = e.target.closest('[data-subcat-trigger]');
+
+        if (sectionTrigger) {
+            e.preventDefault();
+            const sectionId = sectionTrigger.dataset.sectionTrigger;
+            console.log(`[app.js - FIX] Section trigger clicked: "${sectionId}"`);
+            displaySectionContent(sectionId);
+        }
+
+        if (subCatTrigger) {
+            e.preventDefault();
+            const [sectionId, subCategoryId] = subCatTrigger.dataset.subcatTrigger.split('.');
+            console.log(`[app.js - FIX] Subcategory trigger clicked: "${sectionId}.${subCategoryId}"`);
+            displaySectionContent(sectionId, null, subCategoryId);
+        }
+    });
+
+    // --- Rating Buttons ---
+    document.addEventListener('click', (e) => {
+        const ratingBtn = e.target.closest('.rating-btn');
+        if (ratingBtn) {
+            const itemId = ratingBtn.dataset.itemId;
+            const itemType = ratingBtn.dataset.itemType;
+            const rating = ratingBtn.dataset.rating;
+            console.log(`[app.js] Rating recorded: ${rating} for ${itemType} ID ${itemId}`);
+            alert(`Thank you for your feedback! (${rating === 'up' ? 'Helpful' : 'Not helpful'} for ${itemType} ID ${itemId})`);
+        }
+    });
+
+    // --- Initial Load ---
+    const urlHash = window.location.hash;
+    if (urlHash) {
+        const [sectionId, itemId] = urlHash.slice(1).split('/');
+        if (sectionId) {
+            console.log(`[app.js - FIX] Initial load with hash: section="${sectionId}", item="${itemId || ''}"`);
+            displaySectionContent(sectionId, itemId);
+        }
+    } else {
+        displaySectionContent('home');
+    }
+
+    console.log('[app.js - FIX] Initialization complete.');
 });
+```
