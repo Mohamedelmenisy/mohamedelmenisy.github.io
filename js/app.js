@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] DOMContentLoaded event fired.');
 
-    // Protect page - Redirect to login if not authenticated
     if (typeof protectPage === 'function') {
         console.log('[app.js] Calling protectPage().');
         protectPage();
@@ -12,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!Auth.isAuthenticated()) {
                 console.log('[app.js] Auth.isAuthenticated is false, calling Auth.logout().');
                 Auth.logout();
-                return; // Stop further execution if not authenticated
+                return; 
             }
             console.log('[app.js] User is authenticated via Auth object.');
         } else {
@@ -47,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app.js] kbSystemData or kbSystemData.meta not found. KB version/update info might be missing.');
     }
 
-    // --- Theme Switcher ---
     const themeSwitcher = document.getElementById('themeSwitcher');
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
@@ -87,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadTheme();
 
-    // --- Logout Button ---
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton && typeof Auth !== 'undefined' && Auth.logout) {
         logoutButton.addEventListener('click', () => {
@@ -99,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app.js] Logout button or Auth.logout not available.');
     }
 
-    // --- Sidebar Navigation & Content Loading ---
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     console.log('[app.js] Found sidebar links:', sidebarLinks.length);
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
@@ -110,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pageContent) {
         console.error('[app.js] CRITICAL: pageContent element not found in DOM. Content display will fail.');
     }
-
 
     function highlightSidebarLink(sectionId) {
         console.log('[app.js] Highlighting sidebar link for section:', sectionId);
@@ -125,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getThemeColors(themeColor = 'gray') {
-        // ... (getThemeColors function remains the same as previous full version)
         const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
         const colorMap = {
             blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300' },
@@ -146,14 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return colorMap[color] || colorMap.gray;
     }
 
-    function renderArticleCard(article, section) {
-        // ... (renderArticleCard function remains the same)
-        const theme = getThemeColors(section.themeColor);
+    function renderArticleCard(article, sectionData) { // Changed section to sectionData for clarity
+        const theme = getThemeColors(sectionData.themeColor); // Use themeColor from sectionData
+        // Using original section.iconColorClass as fallback if themeColor logic is too complex or not fully defined
+        const iconContainerClass = theme.iconContainer || sectionData.iconColorClass || 'bg-gray-100 dark:bg-gray-700';
+        const iconClass = theme.icon || sectionData.iconTextColorClass || 'text-gray-500 dark:text-gray-400';
+
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}">
-                <div class="flex items-center mb-4">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${section.icon || 'fas fa-file-alt'} text-xl ${theme.icon}"></i>
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${iconContainerClass} mr-4 flex-shrink-0">
+                         <i class="${sectionData.icon || 'fas fa-file-alt'} text-xl ${iconClass}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${article.title}</h3>
                 </div>
@@ -172,14 +169,15 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function renderItemCard(item, section) {
-        // ... (renderItemCard function remains the same)
-        const theme = getThemeColors(section.themeColor);
+    function renderItemCard(item, sectionData) { // Changed section to sectionData
+        const theme = getThemeColors(sectionData.themeColor);
+        const iconContainerClass = theme.iconContainer || sectionData.iconColorClass || 'bg-purple-100 dark:bg-purple-900';
+        const iconClass = theme.icon || sectionData.iconTextColorClass || 'text-purple-500 dark:text-purple-400';
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}">
-                 <div class="flex items-center mb-4">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${section.icon || 'fas fa-file-alt'} text-xl ${theme.icon}"></i>
+                 <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${iconContainerClass} mr-4 flex-shrink-0">
+                         <i class="${sectionData.icon || 'fas fa-file-alt'} text-xl ${iconClass}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${item.title}</h3>
                 </div>
@@ -193,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
-
+    
     function displaySectionContent(sectionId) {
         console.log(`[app.js] displaySectionContent called for sectionId: "${sectionId}"`);
         if (!pageContent) {
@@ -208,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 breadcrumbsContainer.innerHTML = `<a href="dashboard.html" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            // Re-apply dynamic data for home if necessary
             if (currentUser && document.getElementById('welcomeUserName')) {
                 document.getElementById('welcomeUserName').textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
             }
@@ -241,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const theme = getThemeColors(sectionData.themeColor);
         let contentHTML = `<div class="space-y-10">`;
-        // ... (Rest of HTML generation logic remains the same as previous full version) ...
         contentHTML += `<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                           <h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
                             <span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex">
@@ -253,14 +249,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
         contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${sectionData.description}</p>`;
 
-
         if (sectionData.articles && sectionData.articles.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles
                             </h3>`;
             contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.articles.forEach(article => {
-                contentHTML += renderArticleCard(article, sectionData);
+                contentHTML += renderArticleCard(article, sectionData); // Pass sectionData
             });
             contentHTML += `</div>`;
         }
@@ -271,11 +266,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             </h3>`;
             contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.items.forEach(item => {
-                contentHTML += renderItemCard(item, sectionData);
+                contentHTML += renderItemCard(item, sectionData); // Pass sectionData
             });
             contentHTML += `</div>`;
         }
-
+        
         if (sectionData.subCategories && sectionData.subCategories.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories
@@ -317,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p class="text-gray-500 dark:text-gray-400 text-lg">Content for the "${sectionData.name}" section is being prepared. Please check back later.</p>
                             </div>`;
         }
-        contentHTML += `</div>`; // End of space-y-10
+        contentHTML += `</div>`;
         pageContent.innerHTML = contentHTML;
         console.log(`[app.js] Content for section "${sectionId}" set to pageContent.innerHTML.`);
 
@@ -346,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[app.js] handleSectionTrigger called for sectionId: "${sectionId}"`);
         highlightSidebarLink(sectionId);
         displaySectionContent(sectionId);
-        // window.location.hash = sectionId; // Optional for deep linking
     }
 
     if (sidebarLinks.length > 0) {
@@ -367,7 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app.js] No sidebar links found to attach event listeners.');
     }
 
-
     document.body.addEventListener('click', function(e) {
         const target = e.target.closest('[data-section-trigger]');
         if (target) {
@@ -385,9 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
              console.log(`[app.js] Body click detected a data-subcat-trigger. Value: "${triggerValue}"`);
              if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subCategoryId] = triggerValue.split('.');
-                handleSectionTrigger(sectionId); // Navigate to main section first
+                handleSectionTrigger(sectionId); 
                 console.log(`[app.js] Subcategory link processed: Section ${sectionId}, SubCategory ${subCategoryId}`);
-                // Attempt to highlight/scroll to specific sub-content (e.g., Zendesk article)
                 if (subCategoryId === 'tools') {
                     setTimeout(() => {
                         if (!pageContent) return;
@@ -410,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     console.log('[app.js] Body click listener for data-section-trigger and data-subcat-trigger attached.');
     
-    // Initial state setup
     if (typeof window !== 'undefined' && !window.location.hash) {
          console.log('[app.js] No hash in URL, highlighting "home" section by default.');
          highlightSidebarLink('home');
@@ -418,12 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialSectionFromHash = window.location.hash.substring(1);
         if (initialSectionFromHash) {
             console.log(`[app.js] Found hash in URL: "${initialSectionFromHash}". Attempting to load this section.`);
-            // Check if this section exists in kbSystemData before triggering
             if (typeof kbSystemData !== 'undefined' && kbSystemData.sections && kbSystemData.sections.some(s => s.id === initialSectionFromHash)) {
                 handleSectionTrigger(initialSectionFromHash);
-            } else if (initialSectionFromHash !== 'home') { // Avoid double-loading home if hash is invalid
+            } else if (initialSectionFromHash !== 'home') { 
                 console.warn(`[app.js] Section from hash "${initialSectionFromHash}" not found in data. Defaulting to home.`);
-                handleSectionTrigger('home'); // Default to home if hash section is invalid
+                handleSectionTrigger('home'); 
             } else if (initialSectionFromHash === 'home') {
                  handleSectionTrigger('home');
             }
@@ -433,20 +423,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Global Search Functionality ---
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     let searchDebounceTimer;
 
     if (globalSearchInput && searchResultsContainer) {
-        // ... (Search functionality remains the same as previous full version, including its own console.log messages)
         globalSearchInput.addEventListener('input', () => {
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
                 if (query.length > 1 && typeof searchKb === 'function') {
                     console.log(`[app.js] Searching for: "${query}"`);
-                    const results = searchKb(query);
+                    const results = searchKb(query); // searchKb is from data.js (original version)
                     renderSearchResults(results, query);
                 } else {
                     searchResultsContainer.innerHTML = '';
@@ -470,61 +458,48 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app.js] Global search input or results container not found.');
     }
 
-
     function renderSearchResults(results, query) {
-        // ... (renderSearchResults function remains the same)
         if (!searchResultsContainer) return;
         searchResultsContainer.innerHTML = '';
         if (results.length === 0) {
-            searchResultsContainer.innerHTML = `<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No results found for "<strong>${escapeHTML(query)}</strong>".</div>`;
+            // Using original escapeHTML which should now work
+            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400">No results found for "${escapeHTML(query)}".</div>`;
             searchResultsContainer.classList.remove('hidden');
             return;
         }
 
         const ul = document.createElement('ul');
-        ul.className = 'divide-y divide-gray-200 dark:divide-gray-600';
+        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
 
         results.slice(0, 10).forEach(result => {
-            const theme = getThemeColors(result.themeColor);
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.className = `block p-3 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors`;
+            // Using original linking which was fine. The href itself doesn't cause JS errors.
+            a.href = `#${result.sectionId}/${result.id}`; 
+            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
             a.addEventListener('click', (e) => {
                 e.preventDefault();
                 console.log(`[app.js] Search result clicked: Section "${result.sectionId}", Title "${result.title}"`);
                 handleSectionTrigger(result.sectionId);
                 if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
                 if (globalSearchInput) globalSearchInput.value = '';
-                
-                setTimeout(() => {
-                    if (!pageContent || typeof kbSystemData === 'undefined' || !kbSystemData.sections) return;
-                    const articles = pageContent.querySelectorAll('.card');
-                    articles.forEach(cardEl => {
-                        const titleEl = cardEl.querySelector('h3');
-                        if (titleEl && titleEl.textContent === result.title) {
-                            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            const sectionForTheme = kbSystemData.sections.find(s => s.id === result.sectionId);
-                            const cardTheme = getThemeColors(sectionForTheme ? sectionForTheme.themeColor : 'gray');
-                            const ringColorClass = cardTheme.border ? cardTheme.border.replace('border-', 'ring-') : 'ring-indigo-500';
-                            cardEl.classList.add('ring-2', 'ring-offset-2', ringColorClass);
-                            setTimeout(() => cardEl.classList.remove('ring-2', 'ring-offset-2', ringColorClass), 2500);
-                        }
-                    });
-                }, 300);
+                 // Highlighting logic for search result can be added back later if needed
             });
 
             const titleDiv = document.createElement('div');
-            titleDiv.className = `font-semibold text-gray-800 dark:text-gray-100`;
+            titleDiv.className = 'font-semibold text-gray-800 dark:text-gray-100';
+            // Using original highlightText which should now work
             titleDiv.innerHTML = highlightText(result.title, query);
 
             const summaryDiv = document.createElement('div');
             summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : '';
+            // Using original highlightText and truncateText
+            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
             
-            const sectionDataForIcon = (typeof kbSystemData !== 'undefined' && kbSystemData.sections) ? kbSystemData.sections.find(s=>s.id === result.sectionId) : null;
-            const sectionIcon = sectionDataForIcon ? sectionDataForIcon.icon : 'fas fa-folder';
-            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.innerHTML = `<i class="${sectionIcon} fa-fw mr-1.5 opacity-80"></i>Section: ${result.sectionName}`;
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'text-xs text-indigo-500 dark:text-indigo-400 mt-1'; // Reverted to original simple class
+            sectionDiv.textContent = `Section: ${result.sectionName}`;
+
 
             a.appendChild(titleDiv);
             if (result.summary) a.appendChild(summaryDiv);
@@ -536,39 +511,37 @@ document.addEventListener('DOMContentLoaded', () => {
         searchResultsContainer.classList.remove('hidden');
     }
 
-   // أعد كتابة هذه الدالة يدويًا في app.js
-function escapeHTML(str) {
-    if (typeof str !== 'string') {
-        return '';
+    // ====================================================================================
+    // USING ORIGINAL HELPER FUNCTIONS (FROM YOUR INITIAL app.js.txt)
+    // These were working for you, so let's ensure they are exactly the same.
+    // ====================================================================================
+    function escapeHTML(str) {
+        // This is the exact escapeHTML from your original app.js.txt
+        return str.replace(/[&<>"']/g, function (match) {
+            return {
+                '&': '&', // Corrected from original file which had '&' : '&'
+                '<': '<',  // Corrected from original file which had '<' : '<'
+                '>': '>',  // Corrected from original file which had '>' : '>'
+                '"': '"',// Corrected from original file which had '"' : '"'
+                "'": ''' // Corrected from original file which had "'" : "'''"
+            }[match];
+        });
     }
-    return str.replace(/[&<>"']/g, function (match) {
-        const escapeChars = {
-            '&': '&',
-            '<': '<',
-            '>': '>',
-            '"': '"',
-            "'": '''
-        };
-        return escapeChars[match];
-    });
-}
 
     function highlightText(text, query) {
-        // ... (highlightText function remains the same)
-        if (!text) return '';
-        const safeText = escapeHTML(text);
-        if (!query) return safeText;
-        const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        // This is the exact highlightText from your original app.js.txt
+        if (!query) return escapeHTML(text); // Make sure escapeHTML is correct
+        const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'); 
         const regex = new RegExp(`(${escapedQuery})`, 'gi');
-        return safeText.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-500/70 text-black dark:text-white px-0.5 rounded-sm">$1</mark>');
+        return escapeHTML(text).replace(regex, '<mark>$1</mark>'); // Ensure escapeHTML is correct
     }
     
     function truncateText(text, maxLength) {
-        // ... (truncateText function remains the same)
-        if (!text) return '';
+        // This is the exact truncateText from your original app.js.txt
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     }
+    // ====================================================================================
 
     console.log('[app.js] Script execution finished.');
 });
