@@ -184,9 +184,6 @@ const kbSystemData = {
     ],
 };
 
-// Function to load content (will be more sophisticated)
-// This function is now conceptually replaced by displaySectionContent in app.js,
-// but searchKb is still useful.
 function loadSectionContent(sectionId) {
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
@@ -196,7 +193,6 @@ function loadSectionContent(sectionId) {
     return null;
 }
 
-// Placeholder for search functionality - Enhanced slightly
 function searchKb(query) {
     const lowerQuery = query.toLowerCase();
     const results = [];
@@ -204,47 +200,45 @@ function searchKb(query) {
     if (!kbSystemData || !kbSystemData.sections) return results;
 
     kbSystemData.sections.forEach(section => {
-        // Search articles
         if (section.articles) {
             section.articles.forEach(article => {
                 if (article.title.toLowerCase().includes(lowerQuery) ||
                     (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (article.summary && article.summary.toLowerCase().includes(lowerQuery))
                 ) {
-                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor || 'gray' });
+                    // Removed themeColor from here for now, was: themeColor: section.themeColor || 'gray'
+                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article' });
                 }
             });
         }
-        // Search items (e.g., in Forms/Templates)
         if (section.items) {
             section.items.forEach(item => {
                 if (item.title.toLowerCase().includes(lowerQuery) ||
                     (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
                     item.type.toLowerCase().includes(lowerQuery)
                 ) {
-                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item', themeColor: section.themeColor || 'gray' });
+                     // Removed themeColor
+                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item' });
                 }
             });
         }
-        // Search section names and descriptions
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-             // Avoid adding section if articles already matched, or provide a different result type
             if (!results.some(r => r.sectionId === section.id && r.type !== 'section_match')) {
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor || 'gray'});
+                 // Removed themeColor
+                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match'});
             }
         }
-        // Search glossary terms
         if(section.glossary) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // prevent duplicates
-                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor || 'gray'});
+                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
+                         // Removed themeColor
+                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term'});
                     }
                 }
             });
         }
     });
-    // Prioritize results: articles, items, then section matches, then glossary
     results.sort((a, b) => {
         const typePriority = { 'article': 0, 'item': 1, 'section_match': 2, 'glossary_term': 3 };
         return (typePriority[a.type] || 4) - (typePriority[b.type] || 4);
