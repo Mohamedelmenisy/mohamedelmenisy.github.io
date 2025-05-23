@@ -1,284 +1,112 @@
 <!DOCTYPE html>
-<html lang="en" class=""> <!-- 'dark' class will be added here by JS -->
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - InfiniBase</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Removed style.css link as per your provided dash.txt. If you have it, keep it. -->
-    <!-- <link rel="stylesheet" href="css/style.css"> -->
+    <link rel="stylesheet" href="styles.css">
     <style>
-        /* Styles from your provided dash.txt - kept as is */
-        body, #sidebar, #mainContent, .card, input, button, a {
-            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        .table-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
         }
-        .sidebar-link.active {
-            background-color: #4A5568; /* gray-700 */
-            color: white !important; 
-            font-weight: 600;
+        .table-card:hover {
+            transform: translateY(-5px);
         }
-        .dark .sidebar-link.active {
-            background-color: #2D3748; /* darker gray for dark mode active */
+        .chart-container {
+            height: 300px;
+            width: 100%;
+            margin-top: 1rem;
         }
-        .sidebar-link i {
-            transition: color 0.2s ease-in-out;
-        }
-        .sidebar-link.active i {
-            color: white !important; 
-        }
-        .card-animate {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.5s ease-out forwards;
-        }
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        #pageContent .grid > .card-animate:nth-child(1) { animation-delay: 0.1s; }
-        #pageContent .grid > .card-animate:nth-child(2) { animation-delay: 0.2s; }
-        #pageContent .grid > .card-animate:nth-child(3) { animation-delay: 0.3s; }
-        #pageContent .grid > .card-animate:nth-child(4) { animation-delay: 0.4s; }
-        #pageContent .grid > .card-animate:nth-child(5) { animation-delay: 0.5s; }
-        #pageContent .grid > .card-animate:nth-child(6) { animation-delay: 0.6s; }
-
-        /* Search results highlighting - from your file */
-        #searchResultsContainer mark, #sectionSearchResults mark { /* Added #sectionSearchResults */
-            background-color: #fde047; 
-            color: #1f2937; 
-            padding: 0.1em 0.2em;
-            border-radius: 0.2em;
-            font-weight: bold;
-        }
-        .dark #searchResultsContainer mark, .dark #sectionSearchResults mark { /* Added #sectionSearchResults */
-            background-color: #78350f; 
-            color: #f3f4f6; 
-        }
-
-        /* Custom scrollbar for search results - from your file */
-        #searchResultsContainer::-webkit-scrollbar, #sectionSearchResults::-webkit-scrollbar { /* Added #sectionSearchResults */
-            width: 8px;
-        }
-        #searchResultsContainer::-webkit-scrollbar-track, #sectionSearchResults::-webkit-scrollbar-track { /* Added #sectionSearchResults */
-            background: transparent;
-        }
-        #searchResultsContainer::-webkit-scrollbar-thumb, #sectionSearchResults::-webkit-scrollbar-thumb { /* Added #sectionSearchResults */
-            background-color: #9ca3af; 
-            border-radius: 4px;
-        }
-        .dark #searchResultsContainer::-webkit-scrollbar-thumb, .dark #sectionSearchResults::-webkit-scrollbar-thumb { /* Added #sectionSearchResults */
-            background-color: #4b5563; 
-        }
-
-        /* ADDED: Ring highlight for focused items (from our previous iterations) */
-        .focused-item {
-            transition: box-shadow 0.3s ease-in-out;
-            /* ring-4 ring-offset-2 ring-indigo-500 dark:ring-indigo-400 -- classes to be added by JS */
-        }
-         /* ADDED: Styles for rating buttons to make them a bit smaller and aligned */
-        .rating-container button i {
-            font-size: 0.95rem; /* Slightly smaller thumbs */
-        }
-        .rating-container button {
-            padding: 0.25rem 0.35rem; /* Adjust padding */
-        }
-
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans antialiased">
-
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="w-72 bg-gray-800 dark:bg-black text-gray-200 dark:text-gray-300 p-6 space-y-1 fixed h-full overflow-y-auto shadow-xl z-30">
-            <div class="text-3xl font-bold text-white mb-8 pb-4 border-b border-gray-700 dark:border-gray-600 flex items-center">
-                <i class="fas fa-database mr-3 text-indigo-400"></i> InfiniBase
-            </div>
-            <nav id="navigationMenu">
-                <div class="mt-3 mb-2">
-                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Main</span>
-                </div>
-                <!-- MODIFIED: dashboard.html -> # for JS handling, kept data-section -->
-                <a href="#" data-section="home" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-home mr-3 w-5 text-center text-gray-400 dark:text-gray-500 group-hover:text-white transition-colors"></i> Home
-                </a>
-
-                <div class="mt-6 mb-2">
-                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Knowledge Areas</span>
-                </div>
-                <!-- All other sidebar links kept as href="#" with data-section -->
-                <a href="#" data-section="support" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-headset mr-3 w-5 text-center text-blue-400 dark:text-blue-500 group-hover:text-white transition-colors"></i> Support
-                </a>
-                <a href="#" data-section="partner_care" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-handshake mr-3 w-5 text-center text-teal-400 dark:text-teal-500 group-hover:text-white transition-colors"></i> Partner Care
-                </a>
-                <a href="#" data-section="logistics" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-truck mr-3 w-5 text-center text-green-400 dark:text-green-500 group-hover:text-white transition-colors"></i> Logistics
-                </a>
-                 <a href="#" data-section="customer_care" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-users mr-3 w-5 text-center text-indigo-400 dark:text-indigo-500 group-hover:text-white transition-colors"></i> Customer Care
-                </a>
-                <a href="#" data-section="dist_follow_up" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-people-carry mr-3 w-5 text-center text-cyan-400 dark:text-cyan-500 group-hover:text-white transition-colors"></i> Distribution & Follow up
-                </a>
-                 <a href="#" data-section="logistics_driver" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-shipping-fast mr-3 w-5 text-center text-lime-400 dark:text-lime-500 group-hover:text-white transition-colors"></i> Logistics (Driver Complaints)
-                </a>
-                 <a href="#" data-section="logistics_3pl" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-boxes mr-3 w-5 text-center text-yellow-400 dark:text-yellow-500 group-hover:text-white transition-colors"></i> Logistics-3PL
-                </a>
-                <a href="#" data-section="order_at_store" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-store mr-3 w-5 text-center text-pink-400 dark:text-pink-500 group-hover:text-white transition-colors"></i> Order at store (Mac)
-                </a>
-                 <a href="#" data-section="logistics_admin" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-user-shield mr-3 w-5 text-center text-red-400 dark:text-red-500 group-hover:text-white transition-colors"></i> Logistics-Admin
-                </a>
-                 <a href="#" data-section="os" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fab fa-windows mr-3 w-5 text-center text-sky-400 dark:text-sky-500 group-hover:text-white transition-colors"></i> Operating Systems
-                </a>
-
-                <div class="mt-6 mb-2">
-                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Resources & Policies</span>
-                </div>
-                <a href="#" data-section="compensation" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-hand-holding-usd mr-3 w-5 text-center text-amber-400 dark:text-amber-500 group-hover:text-white transition-colors"></i> Compensation Policies
-                </a>
-                <a href="#" data-section="op_instructions" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-clipboard-list mr-3 w-5 text-center text-gray-400 dark:text-gray-500 group-hover:text-white transition-colors"></i> Operational Instructions
-                </a>
-                <a href="#" data-section="forms_templates" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
-                    <i class="fas fa-file-alt mr-3 w-5 text-center text-purple-400 dark:text-purple-500 group-hover:text-white transition-colors"></i> Forms/Templates
-                </a>
-            </nav>
-
-            <div class="absolute bottom-6 left-6 right-6">
-                 <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors shadow-sm hover:shadow-md">
-                    <i id="themeIcon" class="fas fa-moon mr-2.5"></i> <span id="themeText">Dark Mode</span>
-                </button>
-                <button id="logoutButton" class="w-full mt-3 flex items-center justify-center py-2.5 px-4 text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors shadow-sm hover:shadow-md">
-                    <i class="fas fa-sign-out-alt mr-2.5"></i> Logout
-                </button>
-            </div>
-        </aside>
-
-        <main id="mainContent" class="flex-1 ml-72 p-6 md:p-10 overflow-y-auto">
-            <header class="sticky top-0 bg-gray-100 dark:bg-gray-900 bg-opacity-80 dark:bg-opacity-80 backdrop-filter backdrop-blur-lg py-5 mb-8 z-20 -mx-6 md:-mx-10 px-6 md:px-10 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-                <div class="flex justify-between items-center">
-                    <div class="flex-shrink-0">
-                        <h1 id="currentSectionTitle" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Welcome</h1>
-                        <div id="breadcrumbs" class="ml-0.5 mt-1 text-xs md:text-sm text-gray-500 dark:text-gray-400 hidden md:block">
-                           {/* Home > Section - Will be updated by JS */}
-                        </div>
+<body class="dark:bg-gray-900">
+    <div id="dashboardSection" class="dashboard-container hidden">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Dashboard Overview - InfiniBase</h2>
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="dashboard-card p-6 flex items-center space-x-4">
+                    <div class="p-4 rounded-full bg-blue-100 dark:bg-blue-900">
+                        <i class="fas fa-ticket-alt text-3xl text-blue-500 dark:text-blue-400 stat-icon"></i>
                     </div>
-
-                    <div class="flex-grow px-4 lg:px-8 flex justify-center">
-                        <div class="relative w-full max-w-lg xl:max-w-2xl">
-                            <input type="search" id="globalSearchInput" placeholder="Search KB articles, forms, anything..."
-                                   class="w-full py-3 pl-12 pr-4 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent shadow-md">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-4">
-                                <i class="fas fa-search text-gray-400 dark:text-gray-500"></i>
-                            </span>
-                             <div id="searchResultsContainer" class="absolute mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl z-50 hidden">
-                                {/* Live search results will be injected here by app.js */}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex-shrink-0">
-                        <div class="flex items-center space-x-3 md:space-x-4">
-                            <div class="relative">
-                                 <button id="userProfileButton" class="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                    <!-- MODIFIED: Using ui-avatars for dynamic avatar based on name -->
-                                    <img src="https://ui-avatars.com/api/?name=User+Name&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true" alt="User Avatar" class="w-9 h-9 rounded-full border-2 border-gray-300 dark:border-gray-600">
-                                    <span id="userNameDisplay" class="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">User Name</span>
-                                    <i class="fas fa-chevron-down text-xs text-gray-500 dark:text-gray-400 hidden lg:inline"></i>
-                                 </button>
-                            </div>
-                        </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Open Cases</p>
+                        <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="openCases">5</p>
                     </div>
                 </div>
-            </header>
-
-            <div id="pageContent" class="space-y-8">
-                <!-- Initial Welcome Content from your dash.txt -->
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-700 dark:to-purple-700 p-8 rounded-xl shadow-2xl text-white card-animate">
-                    <h2 class="text-3xl font-bold mb-3" id="welcomeUserName">Welcome, User!</h2>
-                    <p class="text-indigo-100 dark:text-indigo-200 text-lg">Select a section from the sidebar or use the search bar to find what you need.</p>
-                    <p class="text-indigo-200 dark:text-indigo-300 mt-1 text-sm">InfiniBase v<span id="kbVersion">0.1.0</span> - Last Updated: <span id="lastKbUpdate">2023-10-28</span></p>
+                <div class="dashboard-card p-6 flex items-center space-x-4">
+                    <div class="p-4 rounded-full bg-green-100 dark:bg-green-900">
+                        <i class="fas fa-check-circle text-3xl text-green-500 dark:text-green-400 stat-icon"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Resolved Cases</p>
+                        <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="resolvedCases">10</p>
+                    </div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.1s;">
-                        <div class="flex items-center mb-4">
-                            <div class="p-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md mr-4">
-                                <i class="fas fa-headset text-xl"></i>
-                            </div>
-                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Support Center</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Access high-priority ticket guides, escalation procedures, and tool documentation.</p>
-                        <div class="mt-auto">
-                            <a href="#" data-section-trigger="support" class="quick-link-button text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline group">
-                                Go to Support <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
-                            </a>
-                        </div>
+                <div class="dashboard-card p-6 flex items-center space-x-4">
+                    <div class="p-4 rounded-full bg-red-100 dark:bg-red-900">
+                        <i class="fas fa-exclamation-triangle text-3xl text-red-500 dark:text-red-400 stat-icon"></i>
                     </div>
-
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.2s;">
-                        <div class="flex items-center mb-4">
-                            <div class="p-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white shadow-md mr-4">
-                                <i class="fas fa-file-alt text-xl"></i>
-                            </div>
-                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Forms & Templates</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Find client onboarding checklists, standard procedure documents, and other templates.</p>
-                         <div class="mt-auto">
-                            <a href="#" data-section-trigger="forms_templates" class="quick-link-button text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline group">
-                                View Forms <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.3s;">
-                        <div class="flex items-center mb-4">
-                            <div class="p-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white shadow-md mr-4">
-                                <i class="fas fa-tools text-xl"></i>
-                            </div>
-                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Support Tools</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Explore available tools for the Support team and their usage guides.</p>
-                         <div class="mt-auto">
-                            <a href="#" data-subcat-trigger="support.tools" class="quick-link-button text-sm font-medium text-green-600 dark:text-green-400 hover:underline group">
-                                Explore Tools <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
-                            </a>
-                        </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Critical Issues</p>
+                        <p class="text-2xl font-semibold text-gray-800 dark:text-white" id="criticalIssues">2</p>
                     </div>
                 </div>
             </div>
-
-            <footer class="mt-12 text-center text-sm text-gray-500 dark:text-gray-400 py-4 border-t border-gray-200 dark:border-gray-700">
-                © <script>document.write(new Date().getFullYear())</script> InfiniBase. All rights reserved. Version <span id="footerKbVersion">0.1.0</span>.
-                <!-- ADDED: Report an error button -->
-                <button id="reportErrorBtn" class="ml-4 text-xs text-red-500 hover:text-red-400 hover:underline focus:outline-none">Report an issue</button>
-            </footer>
-        </main>
+            <!-- Recent Cases Table -->
+            <div class="table-card p-6 mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Recent Cases</h3>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-gray-100 dark:bg-gray-700">
+                            <th class="p-2">Case ID</th>
+                            <th class="p-2">Title</th>
+                            <th class="p-2">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentCasesTable">
+                        <tr class="border-t dark:border-gray-600">
+                            <td class="p-2">case001</td>
+                            <td class="p-2">Frequent System Disconnects</td>
+                            <td class="p-2 text-yellow-500">Pending</td>
+                        </tr>
+                        <tr class="border-t dark:border-gray-600">
+                            <td class="p-2">case002</td>
+                            <td class="p-2">Payment Gateway Error</td>
+                            <td class="p-2 text-red-500">Escalated</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Action Buttons -->
+            <div class="mt-6 flex space-x-4">
+                <button id="addNewCaseBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg shadow-md transition duration-200">Add New Case</button>
+                <button id="refreshStatsBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-md transition duration-200">Refresh Stats</button>
+            </div>
+            <!-- Placeholder for Chart (if needed) -->
+            <div class="chart-container" id="dashboardChart"></div>
+        </div>
     </div>
 
-    <script src="js/auth.js"></script> 
-    <script src="js/data.js"></script>   
     <script src="js/app.js"></script>
-    <!-- ADDED: Script to update avatar based on auth user -->
     <script>
-        const authUser = Auth.getCurrentUser();
-        if (authUser) {
-            const userDisplayName = authUser.fullName || authUser.email || 'User Name';
-            const avatarImg = document.querySelector('#userProfileButton img');
-            if (avatarImg) {
-                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
-            }
-        }
+        // Basic initialization to update stats dynamically (will be handled by app.js)
+        document.addEventListener('DOMContentLoaded', () => {
+            const stats = {
+                openCases: 5,
+                resolvedCases: 10,
+                criticalIssues: 2
+            };
+            document.getElementById('openCases').textContent = stats.openCases;
+            document.getElementById('resolvedCases').textContent = stats.resolvedCases;
+            document.getElementById('criticalIssues').textContent = stats.criticalIssues;
+        });
     </script>
 </body>
 </html>
