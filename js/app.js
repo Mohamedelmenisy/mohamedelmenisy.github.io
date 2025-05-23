@@ -1,6 +1,6 @@
 // js/app.js
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[app.js] DOMContentLoaded event fired.');
+    console.log('[app.js] DOMContentLoaded event fired. USING SIMPLIFIED NAVIGATION.');
 
     // --- Authentication & Page Protection ---
     if (typeof protectPage === 'function') {
@@ -44,25 +44,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!pageContent) {
         console.error('[app.js] CRITICAL: pageContent element not found in DOM. Content display will fail.');
-        return; // Stop further execution if critical element is missing
+        return; 
     }
-    const initialPageContentHTML = pageContent.innerHTML; // Store initial home content
+    const initialPageContentHTML = pageContent.innerHTML; 
 
 
     // --- User and KB Meta Info Update ---
     if (currentUser) {
         const userDisplayName = currentUser.fullName || currentUser.email || "User";
         if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
-        if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
-        console.log('[app.js] User display name set to:', userDisplayName);
+        // Ensure welcomeUserName element exists on the initial page before trying to set its content
+        const welcomeUserElInitial = document.getElementById('welcomeUserName');
+        if (welcomeUserElInitial) welcomeUserElInitial.textContent = `Welcome, ${userDisplayName}!`;
     }
     if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) {
         const version = kbSystemData.meta.version;
         const lastUpdate = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-        if (kbVersionSpan) kbVersionSpan.textContent = version;
+        // Ensure these elements exist on the initial page
+        const kbVersionElInitial = document.getElementById('kbVersion');
+        const lastKbUpdateElInitial = document.getElementById('lastKbUpdate');
+        if (kbVersionElInitial) kbVersionElInitial.textContent = version;
         if (footerKbVersionSpan) footerKbVersionSpan.textContent = version;
-        if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = lastUpdate;
-        console.log('[app.js] KB Meta data applied.');
+        if (lastKbUpdateElInitial) lastKbUpdateElInitial.textContent = lastUpdate;
     }
 
     // --- Theme Management ---
@@ -76,15 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
             if (themeText) themeText.textContent = 'Dark Mode';
         }
-        // Update mark colors based on theme
         const isDark = htmlElement.classList.contains('dark');
         document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark').forEach(mark => {
             if (isDark) {
-                mark.style.backgroundColor = '#d97706'; // amber-600
-                mark.style.color = '#f9fafb'; // gray-50
+                mark.style.backgroundColor = '#d97706'; mark.style.color = '#f9fafb';
             } else {
-                mark.style.backgroundColor = '#fde047'; // yellow-400
-                mark.style.color = '#1f2937'; // gray-800
+                mark.style.backgroundColor = '#fde047'; mark.style.color = '#1f2937';
             }
         });
     }
@@ -102,36 +102,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadTheme();
 
-
     // --- Logout ---
     if (logoutButton && typeof Auth !== 'undefined' && Auth.logout) {
         logoutButton.addEventListener('click', () => { Auth.logout(); });
     }
     
-    // --- Report Error Button ---
     if (reportErrorBtn) {
         reportErrorBtn.addEventListener('click', () => {
             const sectionTitleText = currentSectionTitleEl ? currentSectionTitleEl.textContent : 'Current Page';
-            const pageUrl = window.location.href;
-            console.log(`"Report an issue" clicked for section: ${sectionTitleText}, URL: ${pageUrl}`);
-            alert(`Thank you for helping improve InfiniBase!\n\nSection: ${sectionTitleText}\nURL: ${pageUrl}\n\n(This is a placeholder. A reporting form will be implemented here.)`);
+            const pageUrl = window.location.href; // This will show the base URL without hash now
+            alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}\n(Placeholder)`);
         });
     }
 
-    // --- Helper Functions ---
+    // --- Helper Functions (escapeHTML, highlightText, truncateText, getThemeColors) ---
+    // These functions (renderArticleCard, renderItemCard, renderCaseCard)
+    // and their helpers (escapeHTML, etc.) are assumed to be the same as the
+    // ones from the previous "full file" response.
+    // For brevity, I'm not re-pasting them here but they NEED to be present.
+    // Make sure these are correctly defined:
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return {
-                '&': '&',
-                '<': '<',
-                '>': '>',
-                '"': '"',
-                "'": '''
-            }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
-
     function highlightText(text, query) {
         if (!text) return '';
         const safeText = escapeHTML(text);
@@ -140,21 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedQuery})`, 'gi');
             return safeText.replace(regex, '<mark>$1</mark>');
-        } catch (e) {
-            console.error("Error in highlightText regex:", e);
-            return safeText; // Fallback to unhighlighted text
-        }
+        } catch (e) { console.error("Error in highlightText regex:", e); return safeText; }
     }
-    
     function truncateText(text, maxLength) {
         if (!text || text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     }
-
     function getThemeColors(themeColor = 'gray') {
         const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
-        // Tailwind JIT needs full class names. This map helps centralize color logic.
-        const colorMap = {
+        const colorMap = { /* ... Full map from previous correct version ... */ 
             blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' },
             teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' },
             green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' },
@@ -172,10 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         return colorMap[color] || colorMap.gray;
     }
-
-    // --- Content Rendering Functions ---
-    function renderArticleCard(article, sectionData) {
-        const theme = getThemeColors(sectionData.themeColor);
+    function renderArticleCard(article, sectionData) { /* ... Full function from previous ... */
+        const theme = getThemeColors(sectionData.themeColor); // sectionData here is the main section object
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
                 <div class="flex items-center mb-3">
@@ -183,8 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
                          <i class="${sectionData.icon || 'fas fa-file-alt'} text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
-                    <a href="#${sectionData.id}/${article.id}" class="bookmark-link ml-auto pl-2" title="Link to this article">
-                        <i class="fas fa-bookmark text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${article.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
                     </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(article.summary) || 'No summary available.'}</p>
@@ -204,9 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-    }
-
-    function renderItemCard(item, sectionData) {
+     }
+    function renderItemCard(item, sectionData) { /* ... Full function from previous ... */
         const theme = getThemeColors(sectionData.themeColor);
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
@@ -215,8 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
                          <i class="${sectionData.icon || 'fas fa-file-alt'} text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
-                    <a href="#${sectionData.id}/${item.id}" class="bookmark-link ml-auto pl-2" title="Link to this item">
-                        <i class="fas fa-bookmark text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${item.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
                     </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(item.description) || 'No description available.'}</p>
@@ -229,8 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
-
-    function renderCaseCard(caseItem, sectionData) {
+    function renderCaseCard(caseItem, sectionData) { /* ... Full function from previous ... */
         const theme = getThemeColors(sectionData.themeColor);
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
@@ -239,8 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
                          <i class="fas fa-briefcase text-xl ${theme.icon}"></i>
                     </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
-                     <a href="#${sectionData.id}/${caseItem.id}" class="bookmark-link ml-auto pl-2" title="Link to this case">
-                        <i class="fas fa-bookmark text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
                     </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
@@ -259,32 +244,31 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
-    
+
+    // --- Content Display Function ---
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        if (!pageContent) return;
+        console.log(`[displaySectionContent] Called with sectionId: "${sectionId}", itemIdToFocus: "${itemIdToFocus}", subCategoryFilter: "${subCategoryFilter}"`);
+
+        if (!pageContent) {
+            console.error("[displaySectionContent] CRITICAL: pageContent element is NULL. Cannot render.");
+            return;
+        }
+        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+            console.error("[displaySectionContent] CRITICAL: kbSystemData or kbSystemData.sections is UNDEFINED. Aborting content rendering.");
+            pageContent.innerHTML = `<div class="p-6 bg-red-100 text-red-700 rounded-md shadow">Error: Core data (kbSystemData) is missing.</div>`;
+            if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Data Error";
+            return;
+        }
 
         if (sectionId === 'home') {
-            // Only redraw home content if it's not already showing or if forced (e.g. explicit #home click)
-            // This check can be subtle. A simple check might be:
-            // if (pageContent.querySelector('#welcomeUserName') && !itemIdToFocus && !subCategoryFilter) {
-            //    console.log('[app.js] Home content likely already displayed. Skipping full redraw unless forced.');
-            //    // Still need to ensure correct sidebar highlight and breadcrumbs for home
-            //    if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Welcome";
-            //    if (breadcrumbsContainer) {
-            //        breadcrumbsContainer.innerHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
-            //        breadcrumbsContainer.classList.remove('hidden', 'md:hidden');
-            //    }
-            //    return;
-            // }
-            // For simplicity and to ensure state consistency after other navigations, we redraw home.
-            // More sophisticated state management (like virtual DOM) would handle this better.
-            
-            pageContent.innerHTML = initialPageContentHTML;
+            console.log("[displaySectionContent] Rendering 'home' section.");
+            pageContent.innerHTML = initialPageContentHTML; // Use the stored initial HTML
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Welcome";
             if (breadcrumbsContainer) {
-                breadcrumbsContainer.innerHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
-                breadcrumbsContainer.classList.remove('hidden', 'md:hidden');
+                breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
+                breadcrumbsContainer.classList.remove('hidden');
             }
+            // Re-apply user/meta info as initialPageContentHTML might be stale or not have dynamic parts
             const welcomeUserEl = document.getElementById('welcomeUserName');
             if (currentUser && welcomeUserEl) welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
             const kbVersionEl = document.getElementById('kbVersion');
@@ -292,24 +276,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (kbSystemData.meta && kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
             if (kbSystemData.meta && lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
             
-            const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
+            const initialCards = pageContent.querySelectorAll('.grid > .card-animate'); // Ensure class exists
             initialCards.forEach((card, index) => {
                 card.style.animationDelay = `${(index + 1) * 0.1}s`;
             });
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+            console.log("[displaySectionContent] 'home' section rendered.");
             return;
         }
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
+            console.warn(`[displaySectionContent] Section data NOT FOUND for sectionId: "${sectionId}"`);
             pageContent.innerHTML = `<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center"><h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-white">Section not found</h2><p class="text-gray-600 dark:text-gray-400">The requested section "${escapeHTML(sectionId)}" does not exist.</p></div>`;
-            if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Error";
-            if (breadcrumbsContainer) breadcrumbsContainer.innerHTML = `<a href="#home" class="quick-link-button hover:underline">Home</a> > Error`;
+            if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Error: Not Found";
             return;
         }
+        console.log(`[displaySectionContent] Found sectionData for "${sectionId}"`);
 
         const theme = getThemeColors(sectionData.themeColor);
-        let contentHTML = `<div class="space-y-10">`;
+        let contentHTML = `<div class="space-y-10">`; // Main container for section content
+        // Section Header
         contentHTML += `<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                           <h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
                             <span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex">
@@ -319,6 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
                           </h2>
                         </div>`;
         contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
+
+        // Section-specific "Ask" input
         contentHTML += `
             <div class="my-6 p-4 bg-white dark:bg-gray-800/70 dark:border dark:border-gray-700 rounded-lg shadow-md card-animate">
                 <label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask a question about ${escapeHTML(sectionData.name)}:</label>
@@ -329,86 +318,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div>
             </div>
         `;
-
+        
         let contentRendered = false;
         if (sectionData.articles && sectionData.articles.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
-                              <i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles
-                            </h3>`;
+            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3>`;
             contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.articles.forEach(article => { contentHTML += renderArticleCard(article, sectionData); });
             contentHTML += `</div>`;
             contentRendered = true;
         }
         if (sectionData.cases && sectionData.cases.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
-                              <i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases
-                            </h3>`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3>`;
             contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.cases.forEach(caseItem => { contentHTML += renderCaseCard(caseItem, sectionData); });
             contentHTML += `</div>`;
             contentRendered = true;
         }
         if (sectionData.items && sectionData.items.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
-                              <i class="fas fa-archive mr-3 ${theme.text}"></i> Available ${escapeHTML(sectionData.name)}
-                            </h3>`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> Available ${escapeHTML(sectionData.name)}</h3>`;
             contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.items.forEach(item => { contentHTML += renderItemCard(item, sectionData); });
             contentHTML += `</div>`;
             contentRendered = true;
         }
         if (sectionData.subCategories && sectionData.subCategories.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
-                              <i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories
-                            </h3>`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3>`;
             contentHTML += `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
             sectionData.subCategories.forEach(subCat => {
-                 contentHTML += `
-                    <a href="#${sectionData.id}?subcat=${subCat.id}" 
-                       class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-center card-animate group
-                              border-l-4 ${theme.border} hover:bg-gray-50 dark:hover:bg-gray-700/70">
+                 contentHTML += `<a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-center card-animate group border-l-4 ${theme.border} hover:bg-gray-50 dark:hover:bg-gray-700/70">
                         <i class="fas fa-folder-open text-3xl mb-3 ${theme.icon} group-hover:scale-110 transition-transform"></i>
-                        <h4 class="font-medium text-gray-700 dark:text-gray-200">${escapeHTML(subCat.name)}</h4>
-                    </a>`;
+                        <h4 class="font-medium text-gray-700 dark:text-gray-200">${escapeHTML(subCat.name)}</h4></a>`;
             });
             contentHTML += `</div>`;
         }
         if (sectionData.glossary && sectionData.glossary.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
-                              <i class="fas fa-book mr-3 ${theme.text}"></i> Glossary
-                            </h3>`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3>`;
             contentHTML += `<div class="space-y-4">`;
             sectionData.glossary.forEach(entry => {
-                contentHTML += `
-                    <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}">
-                        <strong class="${theme.text} font-semibold">${escapeHTML(entry.term)}:</strong>
-                        <span class="text-gray-700 dark:text-gray-300 ml-2">${escapeHTML(entry.definition)}</span>
-                    </div>
-                `;
+                contentHTML += `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}"><strong class="${theme.text} font-semibold">${escapeHTML(entry.term)}:</strong> <span class="text-gray-700 dark:text-gray-300 ml-2">${escapeHTML(entry.definition)}</span></div>`;
             });
             contentHTML += `</div>`;
             contentRendered = true;
         }
-        if (!contentRendered && !(sectionData.subCategories && sectionData.subCategories.length > 0) ) {
-            const noContentTheme = getThemeColors(sectionData.themeColor || 'gray');
-            contentHTML += `<div class="bg-white dark:bg-gray-800/50 p-10 rounded-xl shadow-lg text-center card-animate border-2 border-dashed border-gray-300 dark:border-gray-700">
-                                <i class="fas fa-info-circle text-5xl ${noContentTheme.icon} mb-6"></i>
-                                <h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No content yet</h3>
-                                <p class="text-gray-500 dark:text-gray-400 text-lg">Content for the "${escapeHTML(sectionData.name)}" section is being prepared. Please check back later.</p>
-                            </div>`;
+        if (!contentRendered && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
+            contentHTML += `<div class="bg-white dark:bg-gray-800/50 p-10 rounded-xl shadow-lg text-center card-animate border-2 border-dashed border-gray-300 dark:border-gray-700"><i class="fas fa-info-circle text-5xl ${getThemeColors(sectionData.themeColor || 'gray').icon} mb-6"></i><h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No content yet</h3><p class="text-gray-500 dark:text-gray-400 text-lg">Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
         }
-        contentHTML += `</div>`;
-        pageContent.innerHTML = contentHTML;
+        contentHTML += `</div>`; // End main space-y-10
+
+        try {
+            pageContent.innerHTML = contentHTML;
+            console.log(`[displaySectionContent] Successfully set innerHTML for pageContent for section "${sectionId}".`);
+        } catch (error) {
+            console.error(`[displaySectionContent] ERROR setting innerHTML for section "${sectionId}":`, error);
+            pageContent.innerHTML = `<div class="p-6 bg-red-100 text-red-700 rounded-md shadow">Error rendering section.</div>`;
+        }
 
         const newCards = pageContent.querySelectorAll('.card-animate');
-        newCards.forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.07}s`;
-        });
+        newCards.forEach((card, index) => { card.style.animationDelay = `${index * 0.07}s`; });
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
-            let breadcrumbHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1.5 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
+            let breadcrumbHTML = `<a href="#" data-section-trigger="home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1.5 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
+            // Add subCategory to breadcrumb if applicable
             if (subCategoryFilter && sectionData.subCategories) {
                 const subCatData = sectionData.subCategories.find(sc => sc.id === subCategoryFilter);
                 if (subCatData) {
@@ -430,163 +401,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 150);
         }
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+        console.log(`[displaySectionContent] Finished rendering for section "${sectionId}".`);
     }
-
-
-    // --- Navigation and Page State Management ---
-    function highlightSidebarLink(sectionId) {
-        sidebarLinks.forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
-        if (activeLink) activeLink.classList.add('active');
-    }
-
-    function handleSectionTrigger(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        console.log(`[app.js] handleSectionTrigger called. Section: "${sectionId}", Item: "${itemIdToFocus}", SubCat: "${subCategoryFilter}"`);
+    
+    // --- Navigation Event Handling (Simplified based on old file's logic) ---
+    function handleSectionTrigger(sectionId, itemId = null, subCatId = null) {
+        console.log(`[handleSectionTrigger] Called for section: "${sectionId}", item: "${itemId}", subCat: "${subCatId}"`);
         if (typeof kbSystemData === 'undefined') {
-            console.error("[app.js] CRITICAL: kbSystemData is not defined when handleSectionTrigger is called. Aborting.");
-            if(pageContent) pageContent.innerHTML = "<p class='text-red-500 p-4'>Error: Knowledge base data could not be loaded. Please try refreshing the page or contact support.</p>";
+            console.error("[handleSectionTrigger] kbSystemData is undefined. Cannot proceed.");
+            if(pageContent) pageContent.innerHTML = "<p class='text-red-500 p-4'>Error: Data not loaded.</p>";
             return;
         }
         highlightSidebarLink(sectionId);
-        displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
+        displaySectionContent(sectionId, itemId, subCatId); 
+        // NO window.location.hash update here to keep it simple like the old file.
+        // Deep linking via hash will NOT work with this simplified approach.
     }
 
-    // MODIFIED Function to parse hash and trigger content loading
-    function processHash() {
-        console.log('[app.js] processHash function TRIGGERED.');
-        let sectionToLoad = 'home';
-        let itemIdToFocus = null;
-        let subCategoryFilter = null;
-
-        const currentHash = window.location.hash.substring(1);
-        console.log(`[app.js] Current hash for processing: "${currentHash}"`);
-
-        if (currentHash) {
-            let pathPart = currentHash;
-            let queryParams = '';
-
-            if (currentHash.includes('?')) {
-                [pathPart, queryParams] = currentHash.split('?', 2);
-            }
-
-            const pathSegments = pathPart.split('/'); 
-            const sectionFromHash = pathSegments[0];
-
-            if (sectionFromHash) {
-                if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-                     console.error("[app.js] processHash: kbSystemData is not available for parsing hash. Defaulting to home.");
-                     sectionToLoad = 'home'; // Default to home if data is missing
-                } else if (kbSystemData.sections.some(s => s.id === sectionFromHash)) {
-                    sectionToLoad = sectionFromHash;
-                    if (pathSegments.length > 1 && pathSegments[1]) {
-                        itemIdToFocus = pathSegments[1];
-                    }
-                    console.log(`[DEBUG] Parsed from hash - Section: ${sectionToLoad}, Item: ${itemIdToFocus}`);
-                } else {
-                    console.warn(`[app.js] Section from hash "${sectionFromHash}" not found in kbSystemData. Defaulting to home.`);
-                    sectionToLoad = 'home';
-                    // window.history.replaceState(null, null, '#home'); // Optionally clear invalid hash
-                }
-            } else { // If hash is just "#" or something invalid after substring(1)
-                 sectionToLoad = 'home';
-            }
-
-            if (queryParams) {
-                const params = new URLSearchParams(queryParams);
-                subCategoryFilter = params.get('subcat');
-                console.log(`[DEBUG] Parsed from hash - SubCategory Filter: ${subCategoryFilter}`);
-            }
-        } else {
-            console.log('[app.js] No hash found, will load "home".');
-            sectionToLoad = 'home';
-        }
-        
-        console.log(`[DEBUG] Forcing handleSectionTrigger for: Section="${sectionToLoad}", Item="${itemIdToFocus}", SubCat="${subCategoryFilter}"`);
-        handleSectionTrigger(sectionToLoad, itemIdToFocus, subCategoryFilter);
-    }
-
-    // Initial page load based on hash
-    if (typeof kbSystemData !== 'undefined') {
-        processHash();
-    } else {
-        console.warn("[app.js] kbSystemData not immediately available on DOMContentLoaded. Initial hash processing might be delayed or use defaults.");
-        setTimeout(() => {
-            if (typeof kbSystemData !== 'undefined') {
-                 console.log("[app.js] Retrying processHash after short delay as data might have loaded late.");
-                 processHash();
-            } else {
-                console.error("[app.js] kbSystemData still not available after delay. Cannot process initial hash. Loading home by default.");
-                handleSectionTrigger('home');
-            }
-        }, 200);
-    }
-    
-    // Listen for hash changes
-    window.addEventListener('hashchange', () => {
-        console.log('[app.js] hashchange event detected.');
-        processHash();
-    });
-
-    // Sidebar link click handlers
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            console.log(`[app.js] Sidebar link clicked: ${this.getAttribute('href')}. Default <a> action will change hash and trigger hashchange listener.`);
+            e.preventDefault(); // Prevent default link behavior (hash change)
+            const sectionId = this.dataset.section;
+            console.log(`[Sidebar Link Click] sectionId: "${sectionId}" from dataset.`);
+            if (sectionId) {
+                handleSectionTrigger(sectionId);
+            } else {
+                console.warn('[Sidebar Link Click] No sectionId found in dataset for clicked link.');
+            }
         });
     });
 
-    // Delegated event listeners for dynamic content within pageContent
-    pageContent.addEventListener('click', (e) => {
-        const ratingTarget = e.target.closest('.rating-btn');
-        if (ratingTarget) {
+    document.body.addEventListener('click', function(e) {
+        const triggerTarget = e.target.closest('[data-section-trigger]');
+        if (triggerTarget) {
             e.preventDefault();
-            const itemId = ratingTarget.dataset.itemId;
-            const itemType = ratingTarget.dataset.itemType;
-            const rating = ratingTarget.dataset.rating;
-            console.log(`Rating for ${itemType} ${itemId}: ${rating}`);
-            const ratingContainer = ratingTarget.closest('.rating-container');
-            if (ratingContainer) {
-                 ratingContainer.innerHTML = `<span class="text-xs text-green-500 dark:text-green-400">Thanks for your feedback!</span>`;
+            const sectionId = triggerTarget.dataset.sectionTrigger;
+            const subCatFilter = triggerTarget.dataset.subcatFilter; // For subcategory links on section page
+            const itemId = triggerTarget.dataset.itemId; // For item specific links if any
+
+            console.log(`[Body Click Trigger] section: "${sectionId}", subCat: "${subCatFilter}", item: "${itemId}"`);
+            if (sectionId) {
+                handleSectionTrigger(sectionId, itemId, subCatFilter);
             }
-            return; 
         }
 
-        const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
-        if (sectionSearchBtn) {
-            const input = pageContent.querySelector('#sectionSearchInput');
-            const currentSectionId = input ? input.dataset.sectionId : null;
-            const query = input ? input.value.trim() : '';
-
-            if (query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                console.log(`[app.js] Section-specific search for: "${query}" in section "${currentSectionId}"`);
-                const results = searchKb(query);
-                const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
-                const themeColor = sectionData ? sectionData.themeColor : 'gray';
-                const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                if (resultsContainerEl) {
-                    renderSectionSearchResults(results, query, resultsContainerEl, themeColor);
-                }
-                if (input) input.focus();
-            } else if (query.length <=1 && input) {
-                 const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                 if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">Please enter at least 2 characters.</p>`;
-            }
-            return; 
-        }
-
-        const quickLinkTarget = e.target.closest('a[href^="#"]');
-        if (quickLinkTarget && quickLinkTarget.closest('#pageContent')) {
-            console.log(`[app.js] Hash link clicked within pageContent: ${quickLinkTarget.getAttribute('href')}. Default action will trigger hashchange.`);
-        }
-        
-        const subCatTriggerHome = e.target.closest('[data-subcat-trigger]');
-         if (subCatTriggerHome && pageContent.querySelector('#welcomeUserName')) {
+        // Special handling for quick links ON THE HOME PAGE (like "Support Tools")
+        // These were originally in dash.html with href="#support?subcat=tools"
+        // and data-subcat-trigger="support.tools"
+        const homeQuickLinkSubcat = e.target.closest('[data-subcat-trigger]');
+        if (homeQuickLinkSubcat && pageContent.querySelector('#welcomeUserName')) { // Ensure it's on home page
              e.preventDefault();
-             const triggerValue = subCatTriggerHome.dataset.subcatTrigger;
+             const triggerValue = homeQuickLinkSubcat.dataset.subcatTrigger;
+             console.log(`[Home Quick Link] data-subcat-trigger: "${triggerValue}"`);
              if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
-                window.location.hash = `${sectionId}?subcat=${subId}`;
-                
-                if (subId === 'tools') {
+                handleSectionTrigger(sectionId, null, subId); 
+                // Special scroll for "tools" subcategory IF it's the zendesk article
+                 if (sectionId === 'support' && subId === 'tools') {
                      setTimeout(() => {
                         if (document.getElementById('pageContent')) {
                             const zendeskArticleCard = Array.from(document.querySelectorAll('#pageContent .card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
@@ -597,73 +468,70 @@ document.addEventListener('DOMContentLoaded', () => {
                                     cardElement.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
                                     setTimeout(() => cardElement.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500'), 2500);
                                 }
-                            } else {
-                                console.log('[app.js] Zendesk card not found after loading support section for tools subcat.');
                             }
                         }
-                     }, 600);
+                     }, 400); 
                  }
              }
-         }
+        }
     });
 
+    // Initial Load: Default to home or load from hash if you re-enable hash logic
+    console.log("[Initial Load] Defaulting to 'home' section.");
+    handleSectionTrigger('home'); // Load home section by default
 
-    // Section-specific search results renderer
-    function renderSectionSearchResults(results, query, container, themeColor) {
-        container.innerHTML = '';
-        if (results.length === 0) {
-            container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results found for "${escapeHTML(query)}".</p>`;
-            return;
-        }
-        const ul = document.createElement('ul');
-        ul.className = 'space-y-2';
-        const theme = getThemeColors(themeColor);
-
-        results.slice(0, 5).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            let itemSpecificId = result.id;
-            if (result.type === 'section_match') {
-                a.href = `#${result.sectionId}`;
-            } else if (result.type === 'glossary_term') {
-                 a.href = `#${result.sectionId}`;
-                 itemSpecificId = result.id; 
-            } else {
-                 a.href = `#${result.sectionId}/${result.id}`;
+    // --- Delegated event listeners for dynamic content (e.g. rating, section search) ---
+    if (pageContent) {
+        pageContent.addEventListener('click', (e) => {
+            const ratingTarget = e.target.closest('.rating-btn');
+            if (ratingTarget) { /* ... rating logic ... */
+                e.preventDefault();
+                const itemId = ratingTarget.dataset.itemId; const itemType = ratingTarget.dataset.itemType; const rating = ratingTarget.dataset.rating;
+                const ratingContainer = ratingTarget.closest('.rating-container');
+                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500 dark:text-green-400">Thanks!</span>`;
+                return;
             }
-
-            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all`;
-            
-            const titleDiv = document.createElement('div');
-            titleDiv.className = `font-semibold ${theme.text}`;
-            titleDiv.innerHTML = highlightText(result.title, query);
-
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view details.';
-            
-            const typeBadge = document.createElement('span');
-            typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
-            typeBadge.textContent = result.type.replace('_', ' ');
-
-
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'flex items-center justify-between mb-1';
-            headerDiv.appendChild(titleDiv);
-            headerDiv.appendChild(typeBadge);
-
-            a.appendChild(headerDiv);
-            a.appendChild(summaryDiv);
-            
-            li.appendChild(a);
-            ul.appendChild(li);
+            const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
+            if (sectionSearchBtn) { /* ... section search logic ... */
+                const input = pageContent.querySelector('#sectionSearchInput'); const currentSectionId = input?.dataset.sectionId; const query = input?.value.trim();
+                if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
+                    const results = searchKb(query); const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
+                    const themeColor = sectionData?.themeColor || 'gray'; const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
+                    if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, themeColor);
+                } else if (input) { const resultsContainerEl = pageContent.querySelector('#sectionSearchResults'); if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">Enter min 2 chars.</p>`;}
+                return;
+            }
         });
-        container.appendChild(ul);
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+    function renderSectionSearchResults(results, query, container, themeColor) { /* ... Full function from previous ... */
+        container.innerHTML = '';
+        if (results.length === 0) { container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results for "${escapeHTML(query)}".</p>`; return; }
+        const ul = document.createElement('ul'); ul.className = 'space-y-2'; const theme = getThemeColors(themeColor);
+        results.slice(0, 5).forEach(result => {
+            const li = document.createElement('li'); const a = document.createElement('a');
+            let itemSpecificId = result.id; let targetSectionForLink = result.sectionId;
+            // For section search, we want to trigger a direct load, not hash change for now
+            a.href = `javascript:void(0);`; 
+            a.dataset.sectionTrigger = targetSectionForLink; // Use section trigger
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                a.dataset.itemId = result.id; // To help focus if needed
+            }
+            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`; // Added quick-link-button
+            
+            const titleDiv = document.createElement('div'); titleDiv.className = `font-semibold ${theme.text}`; titleDiv.innerHTML = highlightText(result.title, query);
+            const summaryDiv = document.createElement('div'); summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5'; summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view details.';
+            const typeBadge = document.createElement('span'); typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`; typeBadge.textContent = result.type.replace('_', ' ');
+            const headerDiv = document.createElement('div'); headerDiv.className = 'flex items-center justify-between mb-1'; headerDiv.appendChild(titleDiv); headerDiv.appendChild(typeBadge);
+            a.appendChild(headerDiv); a.appendChild(summaryDiv);
+            li.appendChild(a); ul.appendChild(li);
+        });
+        container.appendChild(ul); applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
-
     // --- Global Search Functionality ---
+    // This remains largely the same as the working version from previous full file,
+    // but its result links should also use data-section-trigger and e.preventDefault()
+    // to align with the simplified navigation.
     let searchDebounceTimer;
     if (globalSearchInput && searchResultsContainer) {
         globalSearchInput.addEventListener('input', () => {
@@ -671,15 +539,12 @@ document.addEventListener('DOMContentLoaded', () => {
             searchDebounceTimer = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
                 if (query.length > 1 && typeof searchKb === 'function') {
-                    const results = searchKb(query);
-                    renderGlobalSearchResults(results, query);
+                    renderGlobalSearchResults(searchKb(query), query);
                 } else {
-                    searchResultsContainer.innerHTML = '';
-                    searchResultsContainer.classList.add('hidden');
+                    searchResultsContainer.innerHTML = ''; searchResultsContainer.classList.add('hidden');
                 }
             }, 300);
         });
-
         document.addEventListener('click', (event) => {
             if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
                 searchResultsContainer.classList.add('hidden');
@@ -691,60 +556,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    function renderGlobalSearchResults(results, query) {
+    function renderGlobalSearchResults(results, query) { /* ... Full function from previous, but modify 'a.href' and 'a.addEventListener' for global search results */
         if (!searchResultsContainer) return;
         searchResultsContainer.innerHTML = '';
-        if (results.length === 0) {
-            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400">No results found for "${escapeHTML(query)}".</div>`;
-            searchResultsContainer.classList.remove('hidden');
-            return;
-        }
-
-        const ul = document.createElement('ul');
-        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
-
+        if (results.length === 0) { searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400">No results for "${escapeHTML(query)}".</div>`; searchResultsContainer.classList.remove('hidden'); return; }
+        const ul = document.createElement('ul'); ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
         results.slice(0, 10).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            
-            if (result.type === 'section_match') {
-                a.href = `#${result.id}`;
-            } else if (result.type === 'glossary_term') {
-                a.href = `#${result.sectionId}`; 
-            } else { 
-                a.href = `#${result.sectionId}/${result.id}`;
+            const li = document.createElement('li'); const a = document.createElement('a');
+            // Change: Use javascript:void(0) and data attributes for click handling
+            a.href = `javascript:void(0);`; 
+            a.dataset.sectionTrigger = result.sectionId;
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                a.dataset.itemId = result.id; // Pass item ID for potential focusing
             }
-
-            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
-            a.addEventListener('click', (e) => { 
-                if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                if (globalSearchInput) globalSearchInput.value = ''; 
-            });
-
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'font-semibold text-gray-800 dark:text-gray-100';
-            titleDiv.innerHTML = highlightText(result.title, query);
-
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
+            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors quick-link-button'; // Add quick-link-button class
             
+            // NO explicit addEventListener here for global search items,
+            // the BODY click listener for 'data-section-trigger' will handle it.
+            // We just need to ensure the data attributes are set.
+            // This also means the old logic of hiding search & clearing input needs to be in the body click handler if it's from global search.
+            // OR, add a specific class for global search results to handle them slightly differently.
+            // For now, relying on the body click handler.
+
+            const titleDiv = document.createElement('div'); titleDiv.className = 'font-semibold text-gray-800 dark:text-gray-100'; titleDiv.innerHTML = highlightText(result.title, query);
+            const summaryDiv = document.createElement('div'); summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5'; summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
             const sectionDiv = document.createElement('div');
             const sectionDataForTheme = kbSystemData.sections.find(s=>s.id === result.sectionId);
-            const theme = getThemeColors(sectionDataForTheme ? sectionDataForTheme.themeColor : 'gray');
-            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || (result.type === 'section_match' ? result.title : 'Unknown Section'))}`;
-
-
-            a.appendChild(titleDiv);
-            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); 
-            a.appendChild(sectionDiv);
-            li.appendChild(a);
-            ul.appendChild(li);
+            const theme = getThemeColors(sectionDataForTheme?.themeColor || 'gray');
+            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`; sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || (result.type === 'section_match' ? result.title : 'Unknown'))}`;
+            a.appendChild(titleDiv); if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); a.appendChild(sectionDiv);
+            li.appendChild(a); ul.appendChild(li);
         });
-        searchResultsContainer.appendChild(ul);
-        searchResultsContainer.classList.remove('hidden');
+        searchResultsContainer.appendChild(ul); searchResultsContainer.classList.remove('hidden');
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
     
