@@ -1,9 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
-    // Debug: Check if kbSystemData is loaded
-    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
-
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -306,8 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="text-indigo-600 dark:text-indigo-400">Dashboard</span>`;
                     breadcrumbsContainer.classList.remove('hidden');
                 }
+                // Update dashboard stats from kbSystemData.meta
+                const stats = kbSystemData.meta.dashboardStats || { openCases: 0, resolvedCases: 0, criticalIssues: 0 };
+                dashboardSection.querySelectorAll('.dashboard-card p:nth-child(2)').forEach((el, idx) => {
+                    const values = [stats.openCases, stats.resolvedCases, stats.criticalIssues];
+                    if (el && values[idx]) el.textContent = values[idx];
+                });
                 applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-                console.log('[app.js - FIX] Dashboard loaded.');
+                console.log('[app.js - FIX] Dashboard loaded with stats:', stats);
                 return;
             }
         }
