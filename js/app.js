@@ -1,9 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
-    // Debug: Check if kbSystemData is loaded
-    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
-
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -36,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[app.js - FIX] Calling protectPage().');
         protectPage();
     } else {
-        console.warn('[app.js - FIX] protectPage function not found. Checking Auth object.');
+        console.warn('[app.js - FIX] protectPage function not found.');
         if (typeof Auth !== 'undefined' && Auth.isAuthenticated) {
             if (!Auth.isAuthenticated()) {
                 console.log('[app.js - FIX] Auth.isAuthenticated is false, calling Auth.logout().');
@@ -175,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
 
-    // Debug: Check if critical elements exist
     console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
     console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
 
@@ -379,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const theme = getThemeColors(sectionData.themeColor);
 
-        let contentHTML = `<div class="space-y-10">`;
+        let contentHTML = `<div class="max-w-4xl mx-auto space-y-10 p-6">`;
         contentHTML += `<div class="flex justify-between items-center"><h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
         contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
 
@@ -387,31 +383,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let hasContent = false;
         if (sectionData.articles && sectionData.articles.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center">`;
             sectionData.articles.forEach(article => contentHTML += renderArticleCard_enhanced(article, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
         }
         if (sectionData.cases && sectionData.cases.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center">`;
             sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
         }
         if (sectionData.items && sectionData.items.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center">`;
             sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
         }
         if (sectionData.subsections && sectionData.subsections.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-folder-open mr-3 ${theme.text}"></i> Subsections</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-folder-open mr-3 ${theme.text}"></i> Subsections</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center">`;
             sectionData.subsections.forEach(subsection => contentHTML += renderSubsectionCard(subsection, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
         }
         if (sectionData.subCategories && sectionData.subCategories.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="flex flex-wrap gap-4">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="flex flex-wrap gap-4 justify-center">`;
             sectionData.subCategories.forEach(subCat => {
                 contentHTML += `
                     <a href="#" data-subcat-trigger="${sectionData.id}.${subCat.id}" class="px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all ${theme.cta}">
@@ -931,4 +927,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('[app.js - FIX] Initialization complete.');
 });
-```
