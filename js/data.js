@@ -5,23 +5,23 @@
 
 const kbSystemData = {
     meta: {
-        version: "0.1.2", // Updated version
-        lastGlobalUpdate: "2023-11-28T10:00:00Z" // Updated date
+        version: "0.1.2", // Updated version to reflect changes
+        lastGlobalUpdate: "2023-11-28T12:00:00Z" // Updated date
     },
     sections: [
         {
             id: "support",
             name: "Support",
-            icon: "fas fa-headset", // Used for sidebar
-            themeColor: "blue", // Hint for styling
-            description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage. Also includes active case management.",
+            icon: "fas fa-headset",
+            themeColor: "blue", // Added for consistency with newer styling
+            description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
             articles: [
                 {
                     id: "sup001",
                     title: "How to Handle a High Priority Ticket",
                     tags: ["high priority", "escalation", "critical issue"],
                     lastUpdated: "2023-10-27",
-                    contentPath: "articles/support/sup001.html",
+                    contentPath: "articles/support/sup001.html", 
                     summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively."
                 },
                 {
@@ -41,18 +41,18 @@ const kbSystemData = {
                     summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
                 }
             ],
-            cases: [ // Added for Case Management
+            cases: [ // ADDED Case Management Data
                 {
                     id: "case001",
                     title: "Frequent System Disconnects - User Alpha",
                     tags: ["connectivity", "disconnect", "user report", "alpha client"],
                     lastUpdated: "2023-11-20",
                     summary: "User Alpha reports frequent disconnects from the main platform. Initial investigation points to network instability.",
-                    status: "Pending Investigation", // e.g., Pending, Investigating, Escalated, Resolved, Closed
+                    status: "Pending Investigation",
                     assignedTo: "Support Team B",
                     resolutionStepsPreview: "1. Check user's local network. 2. Review server logs...",
-                    type: "case", // To differentiate
-                    contentPath: "articles/support/cases/case001.html" // Optional: link to full case details if exist
+                    type: "case",
+                    contentPath: "articles/support/cases/case001.html" 
                 },
                 {
                     id: "case002",
@@ -81,7 +81,7 @@ const kbSystemData = {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
-            themeColor: "teal",
+            themeColor: "teal", // Added
             description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
             articles: [
                  {
@@ -98,7 +98,7 @@ const kbSystemData = {
             id: "logistics",
             name: "Logistics",
             icon: "fas fa-truck",
-            themeColor: "green",
+            themeColor: "green", // Added
             description: "Documentation related to logistics operations, supply chain management, and transportation.",
             articles: []
         },
@@ -106,7 +106,7 @@ const kbSystemData = {
             id: "customer_care",
             name: "Customer Care",
             icon: "fas fa-users",
-            themeColor: "indigo",
+            themeColor: "indigo", // Added
             description: "Guidelines and best practices for providing excellent customer care and support.",
             articles: []
         },
@@ -114,7 +114,7 @@ const kbSystemData = {
             id: "dist_follow_up",
             name: "Distribution & Follow up",
             icon: "fas fa-people-carry",
-            themeColor: "cyan",
+            themeColor: "cyan", // Added
             description: "Procedures for product distribution and post-delivery follow-up actions.",
             articles: []
         },
@@ -122,7 +122,7 @@ const kbSystemData = {
             id: "logistics_driver",
             name: "Logistics (Driver Complaints)",
             icon: "fas fa-shipping-fast",
-            themeColor: "lime",
+            themeColor: "lime", // Added
             description: "Handling driver complaints and related logistical issues.",
             articles: []
         },
@@ -130,7 +130,7 @@ const kbSystemData = {
             id: "logistics_3pl",
             name: "Logistics-3PL",
             icon: "fas fa-boxes",
-            themeColor: "yellow",
+            themeColor: "yellow", // Added
             description: "Information specific to third-party logistics providers and collaborations.",
             articles: []
         },
@@ -138,7 +138,7 @@ const kbSystemData = {
             id: "order_at_store",
             name: "Order at store (Mac)",
             icon: "fas fa-store",
-            themeColor: "pink",
+            themeColor: "pink", // Added
             description: "Procedures for orders placed at physical store locations using Mac systems.",
             articles: []
         },
@@ -146,15 +146,15 @@ const kbSystemData = {
             id: "logistics_admin",
             name: "Logistics-Admin",
             icon: "fas fa-user-shield",
-            themeColor: "red",
+            themeColor: "red", // Added
             description: "Administrative tasks and oversight for logistics operations.",
             articles: []
         },
         {
             id: "os",
             name: "Operating Systems",
-            icon: "fab fa-windows", // Note: FontAwesome brand icon
-            themeColor: "sky",
+            icon: "fab fa-windows",
+            themeColor: "sky", // Added
             description: "Guides and troubleshooting for supported operating systems.",
             articles: []
         },
@@ -162,7 +162,7 @@ const kbSystemData = {
             id: "compensation",
             name: "Compensation Policies",
             icon: "fas fa-hand-holding-usd",
-            themeColor: "amber",
+            themeColor: "amber", // Added
             description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
             articles: []
         },
@@ -170,7 +170,7 @@ const kbSystemData = {
             id: "op_instructions",
             name: "Operational Instructions",
             icon: "fas fa-clipboard-list",
-            themeColor: "slate", // Using slate for a more neutral gray
+            themeColor: "slate", // Added
             description: "General operational instructions and standard operating procedures (SOPs).",
             articles: []
         },
@@ -178,30 +178,30 @@ const kbSystemData = {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
-            themeColor: "purple",
+            themeColor: "purple", // Added
             description: "A centralized collection of frequently used forms, document templates, and checklists.",
-            items: [ // Note: using 'items' key as defined in original data.js for this section
+            items: [ 
                 {
                     id: "form001",
                     title: "New Client Onboarding Checklist",
-                    type: "checklist",
-                    url: "/templates/client_onboarding.pdf",
+                    type: "checklist", 
+                    url: "/templates/client_onboarding.pdf", 
                     description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
                     lastUpdated: "2023-09-15",
                 },
                 {
                     id: "form002",
                     title: "Incident Report Form",
-                    type: "form",
-                    url: "/templates/incident_report.docx",
+                    type: "form", 
+                    url: "/templates/incident_report.docx", 
                     description: "Form for reporting operational or security incidents.",
                     lastUpdated: "2023-10-01",
                 },
                 {
                     id: "temp001",
                     title: "Standard Email Signature Template",
-                    type: "template",
-                    url: "/templates/email_signature_guide.html",
+                    type: "template", 
+                    url: "/templates/email_signature_guide.html", 
                     description: "Official email signature template and usage guidelines for company communication.",
                     lastUpdated: "2023-08-20",
                 }
@@ -211,10 +211,12 @@ const kbSystemData = {
 };
 
 function loadSectionContent(sectionId) {
+    // This function is less critical if displaySectionContent in app.js handles data fetching directly.
+    // However, searchKb still uses kbSystemData globally.
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
-        console.log(`Data for ${sectionData.name} ready for rendering.`);
-        return sectionData;
+        console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
+        return sectionData; 
     }
     return null;
 }
@@ -226,58 +228,52 @@ function searchKb(query) {
     if (!kbSystemData || !kbSystemData.sections) return results;
 
     kbSystemData.sections.forEach(section => {
-        // Search articles
         if (section.articles) {
             section.articles.forEach(article => {
                 if (article.title.toLowerCase().includes(lowerQuery) ||
                     (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (article.summary && article.summary.toLowerCase().includes(lowerQuery))
                 ) {
-                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article' });
+                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor });
                 }
             });
         }
-        // Search items (e.g., in Forms/Templates)
-        if (section.items) {
-            section.items.forEach(item => {
-                if (item.title.toLowerCase().includes(lowerQuery) ||
-                    (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
-                    item.type.toLowerCase().includes(lowerQuery)
-                ) {
-                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item' });
-                }
-            });
-        }
-        // Search cases (e.g., in Support)
-        if (section.cases) {
+        if (section.cases) { // ADDED search for cases
             section.cases.forEach(caseItem => {
                 if (caseItem.title.toLowerCase().includes(lowerQuery) ||
                     (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (caseItem.summary && caseItem.summary.toLowerCase().includes(lowerQuery)) ||
                     (caseItem.status && caseItem.status.toLowerCase().includes(lowerQuery))
                 ) {
-                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case' });
+                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case', themeColor: section.themeColor });
                 }
             });
         }
-        // Search section itself
+        if (section.items) {
+            section.items.forEach(item => {
+                if (item.title.toLowerCase().includes(lowerQuery) ||
+                    (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
+                    item.type.toLowerCase().includes(lowerQuery)
+                ) {
+                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item', themeColor: section.themeColor });
+                }
+            });
+        }
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-            if (!results.some(r => r.id === section.id && r.type === 'section_match')) { // Ensure 'type' is 'section_match' for this specific check
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match'});
+            if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
+                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
             }
         }
-        // Search glossary
         if(section.glossary) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // Check for existing glossary entry from same section
-                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term'});
+                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
+                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor});
                     }
                 }
             });
         }
     });
-    // Sort results: articles, cases, items, then section matches, then glossary
     results.sort((a, b) => {
         const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
         return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
