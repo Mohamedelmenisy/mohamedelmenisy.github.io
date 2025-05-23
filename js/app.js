@@ -264,13 +264,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pageContent) return;
 
         if (sectionId === 'home') {
+            // Only redraw home content if it's not already showing or if forced (e.g. explicit #home click)
+            // This check can be subtle. A simple check might be:
+            // if (pageContent.querySelector('#welcomeUserName') && !itemIdToFocus && !subCategoryFilter) {
+            //    console.log('[app.js] Home content likely already displayed. Skipping full redraw unless forced.');
+            //    // Still need to ensure correct sidebar highlight and breadcrumbs for home
+            //    if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Welcome";
+            //    if (breadcrumbsContainer) {
+            //        breadcrumbsContainer.innerHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
+            //        breadcrumbsContainer.classList.remove('hidden', 'md:hidden');
+            //    }
+            //    return;
+            // }
+            // For simplicity and to ensure state consistency after other navigations, we redraw home.
+            // More sophisticated state management (like virtual DOM) would handle this better.
+            
             pageContent.innerHTML = initialPageContentHTML;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Welcome";
             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
-                breadcrumbsContainer.classList.remove('hidden', 'md:hidden'); // Ensure visible
+                breadcrumbsContainer.classList.remove('hidden', 'md:hidden');
             }
-            // Re-apply user name and KB version if they were part of initialPageContentHTML and got wiped
             const welcomeUserEl = document.getElementById('welcomeUserName');
             if (currentUser && welcomeUserEl) welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
             const kbVersionEl = document.getElementById('kbVersion');
@@ -282,7 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
             initialCards.forEach((card, index) => {
                 card.style.animationDelay = `${(index + 1) * 0.1}s`;
             });
-             // Ensure theme dependent mark styles are applied
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
             return;
         }
@@ -297,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const theme = getThemeColors(sectionData.themeColor);
         let contentHTML = `<div class="space-y-10">`;
-        // Section Header
         contentHTML += `<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                           <h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
                             <span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex">
@@ -307,8 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
                           </h2>
                         </div>`;
         contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
-
-        // Section-specific "Ask" input
         contentHTML += `
             <div class="my-6 p-4 bg-white dark:bg-gray-800/70 dark:border dark:border-gray-700 rounded-lg shadow-md card-animate">
                 <label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask a question about ${escapeHTML(sectionData.name)}:</label>
@@ -321,13 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         let contentRendered = false;
-
-        if (subCategoryFilter === 'cases' && sectionData.id === 'support') {
-            // Special handling for ?subcat=cases: only show cases or prioritize them
-        }
-
-        // Render Articles
-        if (sectionData.articles && sectionData.articles.length > 0 && (!subCategoryFilter || subCategoryFilter !== 'cases_only')) { // Example filter logic
+        if (sectionData.articles && sectionData.articles.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles
                             </h3>`;
@@ -336,8 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
             contentHTML += `</div>`;
             contentRendered = true;
         }
-
-        // Render Cases (specific to Support section, or if type=case exists)
         if (sectionData.cases && sectionData.cases.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases
@@ -347,8 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
             contentHTML += `</div>`;
             contentRendered = true;
         }
-        
-        // Render Items (e.g., Forms/Templates)
         if (sectionData.items && sectionData.items.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-archive mr-3 ${theme.text}"></i> Available ${escapeHTML(sectionData.name)}
@@ -358,8 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
             contentHTML += `</div>`;
             contentRendered = true;
         }
-        
-        // Render Sub-Categories
         if (sectionData.subCategories && sectionData.subCategories.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories
@@ -375,10 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </a>`;
             });
             contentHTML += `</div>`;
-            // contentRendered = true; // Subcategories themselves are not primary content
         }
-
-        // Render Glossary
         if (sectionData.glossary && sectionData.glossary.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center">
                               <i class="fas fa-book mr-3 ${theme.text}"></i> Glossary
@@ -395,8 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             contentHTML += `</div>`;
             contentRendered = true;
         }
-
-        if (!contentRendered && !(sectionData.subCategories && sectionData.subCategories.length > 0) ) { // If no articles, items, cases, glossary AND no subcategories, show "No content"
+        if (!contentRendered && !(sectionData.subCategories && sectionData.subCategories.length > 0) ) {
             const noContentTheme = getThemeColors(sectionData.themeColor || 'gray');
             contentHTML += `<div class="bg-white dark:bg-gray-800/50 p-10 rounded-xl shadow-lg text-center card-animate border-2 border-dashed border-gray-300 dark:border-gray-700">
                                 <i class="fas fa-info-circle text-5xl ${noContentTheme.icon} mb-6"></i>
@@ -407,13 +401,11 @@ document.addEventListener('DOMContentLoaded', () => {
         contentHTML += `</div>`;
         pageContent.innerHTML = contentHTML;
 
-        // Card animations
         const newCards = pageContent.querySelectorAll('.card-animate');
         newCards.forEach((card, index) => {
             card.style.animationDelay = `${index * 0.07}s`;
         });
 
-        // Update breadcrumbs
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
             let breadcrumbHTML = `<a href="#home" class="quick-link-button hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1.5 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
@@ -427,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
             breadcrumbsContainer.classList.remove('hidden');
         }
 
-        // Scroll to and highlight specific item if itemIdToFocus is provided
         if (itemIdToFocus) {
             setTimeout(() => {
                 const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
@@ -436,9 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
                 }
-            }, 150); // Delay to ensure DOM is fully rendered
+            }, 150);
         }
-         // Ensure theme dependent mark styles are applied
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
@@ -454,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[app.js] handleSectionTrigger called. Section: "${sectionId}", Item: "${itemIdToFocus}", SubCat: "${subCategoryFilter}"`);
         if (typeof kbSystemData === 'undefined') {
             console.error("[app.js] CRITICAL: kbSystemData is not defined when handleSectionTrigger is called. Aborting.");
-            // Display a prominent error to the user or retry loading data if applicable.
             if(pageContent) pageContent.innerHTML = "<p class='text-red-500 p-4'>Error: Knowledge base data could not be loaded. Please try refreshing the page or contact support.</p>";
             return;
         }
@@ -462,110 +451,91 @@ document.addEventListener('DOMContentLoaded', () => {
         displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
     }
 
-    // Function to parse hash and trigger content loading
+    // MODIFIED Function to parse hash and trigger content loading
     function processHash() {
-        console.log('[app.js] processHash function TRIGGERED.'); // ADDED FOR DEBUGGING
+        console.log('[app.js] processHash function TRIGGERED.');
         let sectionToLoad = 'home';
         let itemIdToFocus = null;
         let subCategoryFilter = null;
 
-        if (window.location.hash) {
-            const fullHash = window.location.hash.substring(1); 
-            console.log(`[app.js] Current hash: "${fullHash}"`);
-            
-            let pathPart = fullHash;
+        const currentHash = window.location.hash.substring(1);
+        console.log(`[app.js] Current hash for processing: "${currentHash}"`);
+
+        if (currentHash) {
+            let pathPart = currentHash;
             let queryParams = '';
 
-            if (fullHash.includes('?')) {
-                [pathPart, queryParams] = fullHash.split('?', 2);
+            if (currentHash.includes('?')) {
+                [pathPart, queryParams] = currentHash.split('?', 2);
             }
 
             const pathSegments = pathPart.split('/'); 
             const sectionFromHash = pathSegments[0];
 
             if (sectionFromHash) {
-                // Check kbSystemData availability here specifically for parsing
                 if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-                     console.error("[app.js] processHash: kbSystemData is not available for parsing hash. Will default to home if possible, or error out.");
-                     // If displaySectionContent handles kbSystemData being undefined, this might be okay.
-                     // But it's better to ensure data is loaded before routing.
+                     console.error("[app.js] processHash: kbSystemData is not available for parsing hash. Defaulting to home.");
+                     sectionToLoad = 'home'; // Default to home if data is missing
                 } else if (kbSystemData.sections.some(s => s.id === sectionFromHash)) {
                     sectionToLoad = sectionFromHash;
                     if (pathSegments.length > 1 && pathSegments[1]) {
                         itemIdToFocus = pathSegments[1];
                     }
+                    console.log(`[DEBUG] Parsed from hash - Section: ${sectionToLoad}, Item: ${itemIdToFocus}`);
                 } else {
                     console.warn(`[app.js] Section from hash "${sectionFromHash}" not found in kbSystemData. Defaulting to home.`);
-                     // window.history.replaceState(null, null, '#home'); // Optionally clear invalid hash
+                    sectionToLoad = 'home';
+                    // window.history.replaceState(null, null, '#home'); // Optionally clear invalid hash
                 }
+            } else { // If hash is just "#" or something invalid after substring(1)
+                 sectionToLoad = 'home';
             }
 
             if (queryParams) {
                 const params = new URLSearchParams(queryParams);
                 subCategoryFilter = params.get('subcat');
+                console.log(`[DEBUG] Parsed from hash - SubCategory Filter: ${subCategoryFilter}`);
             }
         } else {
-            console.log('[app.js] No hash found, will load home.');
+            console.log('[app.js] No hash found, will load "home".');
+            sectionToLoad = 'home';
         }
         
+        console.log(`[DEBUG] Forcing handleSectionTrigger for: Section="${sectionToLoad}", Item="${itemIdToFocus}", SubCat="${subCategoryFilter}"`);
         handleSectionTrigger(sectionToLoad, itemIdToFocus, subCategoryFilter);
     }
 
     // Initial page load based on hash
-    // Ensure kbSystemData is loaded before processing the hash for the first time.
-    // If data.js loads synchronously and is included before app.js, kbSystemData should be available.
-    // If data.js were asynchronous, we'd need to wait for it.
     if (typeof kbSystemData !== 'undefined') {
         processHash();
     } else {
-        console.warn("[app.js] kbSystemData not immediately available on DOMContentLoaded. Hash processing might be delayed or fail if data.js is async and not yet loaded.");
-        // Fallback or error handling if data is critical for initial routing and not yet there.
-        // For now, we assume synchronous load as per file structure.
-        // If it's an issue, we might need to wrap processHash in a check or a promise.
-        // As a quick check:
-        setTimeout(() => { // Try again after a short delay if kbSystemData was slow
-            if (typeof kbSystemData !== 'undefined' && !window.location.hash) { // If still no hash and data loaded
-                // This implies initial load was to home and processHash might not have run with data
-            } else if(typeof kbSystemData !== 'undefined' && window.location.hash && pageContent.innerHTML === initialPageContentHTML && window.location.hash !== '#home') {
+        console.warn("[app.js] kbSystemData not immediately available on DOMContentLoaded. Initial hash processing might be delayed or use defaults.");
+        setTimeout(() => {
+            if (typeof kbSystemData !== 'undefined') {
                  console.log("[app.js] Retrying processHash after short delay as data might have loaded late.");
                  processHash();
+            } else {
+                console.error("[app.js] kbSystemData still not available after delay. Cannot process initial hash. Loading home by default.");
+                handleSectionTrigger('home');
             }
-        }, 100);
+        }, 200);
     }
     
     // Listen for hash changes
-    window.addEventListener('hashchange', processHash);
+    window.addEventListener('hashchange', () => {
+        console.log('[app.js] hashchange event detected.');
+        processHash();
+    });
 
     // Sidebar link click handlers
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            // The default action of the <a> tag with an href like "#sectionId"
-            // is to change the hash and trigger the 'hashchange' event.
-            // So, we don't need to call processHash() or handleSectionTrigger() here.
-            // We also should NOT use e.preventDefault() as that would stop the hash from changing.
-            console.log(`[app.js] Sidebar link clicked: ${this.getAttribute('href')}. Default action will change hash and trigger hashchange listener.`);
-            
-            // The commented-out code below was an attempt to prevent re-triggering if already on the same base section.
-            // However, for deep linking (e.g. #section/item or #section?subcat=foo),
-            // even if the base section is the same, the item or subcategory might be different,
-            // so processHash should always run to determine the correct state.
-            /*
-            const currentBaseHash = window.location.hash.substring(1).split('/')[0].split('?')[0];
-            const linkBaseHash = this.getAttribute('href').substring(1).split('/')[0].split('?')[0];
-            if (this.getAttribute('href') === window.location.hash) {
-                 console.log('[app.js] Clicked link is same as current hash. Preventing default and forcing re-process for potential state changes.');
-                 e.preventDefault(); // Prevent default to allow manual re-processing
-                 processHash(); // Force re-process for sub-item or query param changes
-            } else if (currentBaseHash === linkBaseHash && this.getAttribute('href') !== window.location.hash) {
-                // If base is same but full hash is different (e.g. different item or subcat), hashchange will handle it.
-            }
-            */
+            console.log(`[app.js] Sidebar link clicked: ${this.getAttribute('href')}. Default <a> action will change hash and trigger hashchange listener.`);
         });
     });
 
     // Delegated event listeners for dynamic content within pageContent
     pageContent.addEventListener('click', (e) => {
-        // Rating buttons
         const ratingTarget = e.target.closest('.rating-btn');
         if (ratingTarget) {
             e.preventDefault();
@@ -580,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return; 
         }
 
-        // Section-specific search button
         const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
         if (sectionSearchBtn) {
             const input = pageContent.querySelector('#sectionSearchInput');
@@ -604,29 +573,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return; 
         }
 
-        // Quick links (e.g., Home breadcrumb, bookmark links, subcategory links on section page)
-        // These should have hrefs like #home, #section/item, #section?subcat=foo
-        // The default behavior of these links will change the hash and trigger the 'hashchange' listener.
-        // So, no specific e.preventDefault() or manual hash setting is needed here.
         const quickLinkTarget = e.target.closest('a[href^="#"]');
-        if (quickLinkTarget && quickLinkTarget.closest('#pageContent')) { // Ensure it's a hash link within pageContent
+        if (quickLinkTarget && quickLinkTarget.closest('#pageContent')) {
             console.log(`[app.js] Hash link clicked within pageContent: ${quickLinkTarget.getAttribute('href')}. Default action will trigger hashchange.`);
-            // No e.preventDefault();
-            // No window.location.hash = ...;
         }
         
-        // Special handling for "Support Tools" quick link ON THE HOME PAGE
         const subCatTriggerHome = e.target.closest('[data-subcat-trigger]');
-         if (subCatTriggerHome && pageContent.querySelector('#welcomeUserName')) { // Check if it's on the home page grid
-             e.preventDefault(); // Prevent default for this specific case as we handle scroll
+         if (subCatTriggerHome && pageContent.querySelector('#welcomeUserName')) {
+             e.preventDefault();
              const triggerValue = subCatTriggerHome.dataset.subcatTrigger;
              if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
-                window.location.hash = `${sectionId}?subcat=${subId}`; // Triggers hashchange, which will load section content
+                window.location.hash = `${sectionId}?subcat=${subId}`;
                 
-                if (subId === 'tools') { // After hashchange loads the section, then try to scroll
+                if (subId === 'tools') {
                      setTimeout(() => {
-                        if (document.getElementById('pageContent')) { // Check if pageContent is still there
+                        if (document.getElementById('pageContent')) {
                             const zendeskArticleCard = Array.from(document.querySelectorAll('#pageContent .card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                             if (zendeskArticleCard) {
                                 const cardElement = zendeskArticleCard.closest('.card');
@@ -639,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 console.log('[app.js] Zendesk card not found after loading support section for tools subcat.');
                             }
                         }
-                     }, 600); // Increased delay to ensure section is fully rendered by hashchange
+                     }, 600);
                  }
              }
          }
@@ -756,8 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
             a.addEventListener('click', (e) => { 
-                // Default action of link will change hash and trigger hashchange.
-                // We just need to hide the search results.
                 if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
                 if (globalSearchInput) globalSearchInput.value = ''; 
             });
