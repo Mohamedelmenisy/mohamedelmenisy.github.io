@@ -314,29 +314,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask a question about ${escapeHTML(sectionData.name)}:</label>
                 <div class="flex">
                     <input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border border-gray-300 dark:border-gray-600 rounded-l-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200" placeholder="e.g., How to handle P1 tickets?">
-                    <button id="sectionSearchBtn" class="${theme.cta} hover:opacity-80 text-white px-4 py-2 rounded-r-md flex items-center" style="background-color: var(--theme-cta-bg, #4f46e5); color: var(--theme-cta-text, white);"><i class="fas fa-search mr-2"></i>Ask</button>
+                    <button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button>
                 </div>
                 <div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div>
             </div>
         `;
-        // Dynamically set CSS variables for the button background based on theme.cta
-        const ctaColorMatch = theme.cta.match(/text-([a-z]+)-(\d+)/);
-        if (ctaColorMatch) {
-            const colorName = ctaColorMatch[1];
-            const colorShade = ctaColorMatch[2];
-             // A bit of a hack to get bg color for button; ideally theme.cta would provide bg too.
-            const bgColor = `var(--color-${colorName}-${colorShade})`; // This relies on you defining these CSS vars or Tailwind generating them.
-            // For Tailwind, directly use bg classes if possible, or use a style override for the button.
-            // Simpler: use a fixed button color or a theme-based button style.
-            // For now, let's use a generic Indigo button for Ask.
-            // Replace the button style above with fixed colors for Ask btn or refine theme.cta
-        }
-         // Re-adjusting Ask button:
-         contentHTML = contentHTML.replace(
-            `class="${theme.cta} hover:opacity-80 text-white px-4 py-2 rounded-r-md flex items-center" style="background-color: var(--theme-cta-bg, #4f46e5); color: var(--theme-cta-text, white);"`,
-            `class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"`
-        );
-
 
         let contentRendered = false;
 
@@ -469,20 +451,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleSectionTrigger(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        console.log(`[app.js] handleSectionTrigger: sectionId="${sectionId}", itemIdToFocus="${itemIdToFocus}", subCategoryFilter="${subCategoryFilter}"`);
+        console.log(`[app.js] handleSectionTrigger called. Section: "${sectionId}", Item: "${itemIdToFocus}", SubCat: "${subCategoryFilter}"`);
+        if (typeof kbSystemData === 'undefined') {
+            console.error("[app.js] CRITICAL: kbSystemData is not defined when handleSectionTrigger is called. Aborting.");
+            // Display a prominent error to the user or retry loading data if applicable.
+            if(pageContent) pageContent.innerHTML = "<p class='text-red-500 p-4'>Error: Knowledge base data could not be loaded. Please try refreshing the page or contact support.</p>";
+            return;
+        }
         highlightSidebarLink(sectionId);
         displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
     }
 
     // Function to parse hash and trigger content loading
     function processHash() {
-        console.log('[app.js] processHash triggered by hashchange or initial load.');
+        console.log('[app.js] processHash function TRIGGERED.'); // ADDED FOR DEBUGGING
         let sectionToLoad = 'home';
         let itemIdToFocus = null;
         let subCategoryFilter = null;
 
         if (window.location.hash) {
-            const fullHash = window.location.hash.substring(1); // e.g., "support/sup001" or "support?subcat=cases"
+            const fullHash = window.location.hash.substring(1); 
+            console.log(`[app.js] Current hash: "${fullHash}"`);
             
             let pathPart = fullHash;
             let queryParams = '';
@@ -491,18 +480,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 [pathPart, queryParams] = fullHash.split('?', 2);
             }
 
-            const pathSegments = pathPart.split('/'); // e.g., ["support", "sup001"] or ["support"]
+            const pathSegments = pathPart.split('/'); 
             const sectionFromHash = pathSegments[0];
 
             if (sectionFromHash) {
-                if (kbSystemData && kbSystemData.sections && kbSystemData.sections.some(s => s.id === sectionFromHash)) {
+                // Check kbSystemData availability here specifically for parsing
+                if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+                     console.error("[app.js] processHash: kbSystemData is not available for parsing hash. Will default to home if possible, or error out.");
+                     // If displaySectionContent handles kbSystemData being undefined, this might be okay.
+                     // But it's better to ensure data is loaded before routing.
+                } else if (kbSystemData.sections.some(s => s.id === sectionFromHash)) {
                     sectionToLoad = sectionFromHash;
                     if (pathSegments.length > 1 && pathSegments[1]) {
                         itemIdToFocus = pathSegments[1];
                     }
                 } else {
-                    console.warn(`[app.js] Section from hash "${sectionFromHash}" not found. Defaulting to home.`);
-                    // Optionally clear invalid hash: window.history.replaceState(null, null, '#home');
+                    console.warn(`[app.js] Section from hash "${sectionFromHash}" not found in kbSystemData. Defaulting to home.`);
+                     // window.history.replaceState(null, null, '#home'); // Optionally clear invalid hash
                 }
             }
 
@@ -510,25 +504,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 const params = new URLSearchParams(queryParams);
                 subCategoryFilter = params.get('subcat');
             }
+        } else {
+            console.log('[app.js] No hash found, will load home.');
         }
         
         handleSectionTrigger(sectionToLoad, itemIdToFocus, subCategoryFilter);
     }
 
     // Initial page load based on hash
-    processHash();
+    // Ensure kbSystemData is loaded before processing the hash for the first time.
+    // If data.js loads synchronously and is included before app.js, kbSystemData should be available.
+    // If data.js were asynchronous, we'd need to wait for it.
+    if (typeof kbSystemData !== 'undefined') {
+        processHash();
+    } else {
+        console.warn("[app.js] kbSystemData not immediately available on DOMContentLoaded. Hash processing might be delayed or fail if data.js is async and not yet loaded.");
+        // Fallback or error handling if data is critical for initial routing and not yet there.
+        // For now, we assume synchronous load as per file structure.
+        // If it's an issue, we might need to wrap processHash in a check or a promise.
+        // As a quick check:
+        setTimeout(() => { // Try again after a short delay if kbSystemData was slow
+            if (typeof kbSystemData !== 'undefined' && !window.location.hash) { // If still no hash and data loaded
+                // This implies initial load was to home and processHash might not have run with data
+            } else if(typeof kbSystemData !== 'undefined' && window.location.hash && pageContent.innerHTML === initialPageContentHTML && window.location.hash !== '#home') {
+                 console.log("[app.js] Retrying processHash after short delay as data might have loaded late.");
+                 processHash();
+            }
+        }, 100);
+    }
+    
     // Listen for hash changes
     window.addEventListener('hashchange', processHash);
 
-    // Sidebar link click handlers (already set hrefs like #sectionId)
+    // Sidebar link click handlers
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            // Let the hashchange event handle the logic
-            // const sectionId = this.dataset.section;
-            // if (sectionId === window.location.hash.substring(1).split('/')[0].split('?')[0]) {
-            //     e.preventDefault(); // Prevent re-trigger if already on same base section
-            //     processHash(); // Still process if params changed or item focus needed
-            // }
+            // The default action of the <a> tag with an href like "#sectionId"
+            // is to change the hash and trigger the 'hashchange' event.
+            // So, we don't need to call processHash() or handleSectionTrigger() here.
+            // We also should NOT use e.preventDefault() as that would stop the hash from changing.
+            console.log(`[app.js] Sidebar link clicked: ${this.getAttribute('href')}. Default action will change hash and trigger hashchange listener.`);
+            
+            // The commented-out code below was an attempt to prevent re-triggering if already on the same base section.
+            // However, for deep linking (e.g. #section/item or #section?subcat=foo),
+            // even if the base section is the same, the item or subcategory might be different,
+            // so processHash should always run to determine the correct state.
+            /*
+            const currentBaseHash = window.location.hash.substring(1).split('/')[0].split('?')[0];
+            const linkBaseHash = this.getAttribute('href').substring(1).split('/')[0].split('?')[0];
+            if (this.getAttribute('href') === window.location.hash) {
+                 console.log('[app.js] Clicked link is same as current hash. Preventing default and forcing re-process for potential state changes.');
+                 e.preventDefault(); // Prevent default to allow manual re-processing
+                 processHash(); // Force re-process for sub-item or query param changes
+            } else if (currentBaseHash === linkBaseHash && this.getAttribute('href') !== window.location.hash) {
+                // If base is same but full hash is different (e.g. different item or subcat), hashchange will handle it.
+            }
+            */
         });
     });
 
@@ -546,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ratingContainer) {
                  ratingContainer.innerHTML = `<span class="text-xs text-green-500 dark:text-green-400">Thanks for your feedback!</span>`;
             }
-            return; // Prevent other handlers
+            return; 
         }
 
         // Section-specific search button
@@ -558,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
                 console.log(`[app.js] Section-specific search for: "${query}" in section "${currentSectionId}"`);
-                const results = searchKb(query); // searchKb searches globally, could be filtered for currentSectionId
+                const results = searchKb(query);
                 const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
                 const themeColor = sectionData ? sectionData.themeColor : 'gray';
                 const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
@@ -570,38 +601,45 @@ document.addEventListener('DOMContentLoaded', () => {
                  const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
                  if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">Please enter at least 2 characters.</p>`;
             }
-            return; // Prevent other handlers
+            return; 
         }
 
-        // Quick links (e.g., Home breadcrumb)
-        const quickLinkTarget = e.target.closest('.quick-link-button[data-section-trigger]');
-        if (quickLinkTarget) {
-            e.preventDefault(); // Already handled by hashchange
-            // const sectionId = quickLinkTarget.dataset.sectionTrigger;
-            // window.location.hash = sectionId; // This will trigger hashchange
+        // Quick links (e.g., Home breadcrumb, bookmark links, subcategory links on section page)
+        // These should have hrefs like #home, #section/item, #section?subcat=foo
+        // The default behavior of these links will change the hash and trigger the 'hashchange' listener.
+        // So, no specific e.preventDefault() or manual hash setting is needed here.
+        const quickLinkTarget = e.target.closest('a[href^="#"]');
+        if (quickLinkTarget && quickLinkTarget.closest('#pageContent')) { // Ensure it's a hash link within pageContent
+            console.log(`[app.js] Hash link clicked within pageContent: ${quickLinkTarget.getAttribute('href')}. Default action will trigger hashchange.`);
+            // No e.preventDefault();
+            // No window.location.hash = ...;
         }
         
-        // Subcategory trigger on home page (e.g. Support Tools)
+        // Special handling for "Support Tools" quick link ON THE HOME PAGE
         const subCatTriggerHome = e.target.closest('[data-subcat-trigger]');
-         if (subCatTriggerHome && subCatTriggerHome.closest('#pageContent > div:first-child')) { // Check if it's on the home page grid
-             e.preventDefault();
+         if (subCatTriggerHome && pageContent.querySelector('#welcomeUserName')) { // Check if it's on the home page grid
+             e.preventDefault(); // Prevent default for this specific case as we handle scroll
              const triggerValue = subCatTriggerHome.dataset.subcatTrigger;
              if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
-                window.location.hash = `${sectionId}?subcat=${subId}`; // Triggers hashchange
-                // Special handling for "tools" to scroll, can be done in processHash or displaySectionContent
-                 if (subId === 'tools') {
+                window.location.hash = `${sectionId}?subcat=${subId}`; // Triggers hashchange, which will load section content
+                
+                if (subId === 'tools') { // After hashchange loads the section, then try to scroll
                      setTimeout(() => {
-                         const zendeskArticleCard = Array.from(document.querySelectorAll('#pageContent .card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
-                         if (zendeskArticleCard) {
-                             const cardElement = zendeskArticleCard.closest('.card');
-                             if (cardElement) {
-                                 cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                 cardElement.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
-                                 setTimeout(() => cardElement.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500'), 2500);
-                             }
-                         }
-                     }, 400); // Increased delay for content rendering and then scroll
+                        if (document.getElementById('pageContent')) { // Check if pageContent is still there
+                            const zendeskArticleCard = Array.from(document.querySelectorAll('#pageContent .card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
+                            if (zendeskArticleCard) {
+                                const cardElement = zendeskArticleCard.closest('.card');
+                                if (cardElement) {
+                                    cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    cardElement.classList.add('ring-2', 'ring-offset-2', 'ring-indigo-500');
+                                    setTimeout(() => cardElement.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500'), 2500);
+                                }
+                            } else {
+                                console.log('[app.js] Zendesk card not found after loading support section for tools subcat.');
+                            }
+                        }
+                     }, 600); // Increased delay to ensure section is fully rendered by hashchange
                  }
              }
          }
@@ -623,16 +661,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             const a = document.createElement('a');
             let itemSpecificId = result.id;
-            // For section_match or glossary_term, the 'id' might be the sectionId or a generated one.
-            // Ensure the link is valid.
             if (result.type === 'section_match') {
                 a.href = `#${result.sectionId}`;
             } else if (result.type === 'glossary_term') {
-                 // For glossary, we might want to link to the section and highlight the term.
-                 // Current hash system supports item IDs, not specific glossary terms within a section.
-                 // So, link to section.
                  a.href = `#${result.sectionId}`;
-                 itemSpecificId = result.id; // This might be like `glossary_SLA`
+                 itemSpecificId = result.id; 
             } else {
                  a.href = `#${result.sectionId}/${result.id}`;
             }
@@ -664,7 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ul.appendChild(li);
         });
         container.appendChild(ul);
-        // Ensure theme dependent mark styles are applied for these new results
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
@@ -687,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.addEventListener('click', (event) => {
-            if (!globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
+            if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
                 searchResultsContainer.classList.add('hidden');
             }
         });
@@ -714,21 +746,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             const a = document.createElement('a');
             
-            // Determine href based on result type
             if (result.type === 'section_match') {
                 a.href = `#${result.id}`;
             } else if (result.type === 'glossary_term') {
-                a.href = `#${result.sectionId}`; // Link to section, highlighting term not directly supported by hash
-            } else { // article, item, case
+                a.href = `#${result.sectionId}`; 
+            } else { 
                 a.href = `#${result.sectionId}/${result.id}`;
             }
 
             a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
-            a.addEventListener('click', (e) => { // Let hashchange handle it
-                // e.preventDefault(); // Not needed if href sets hash correctly
-                // window.location.hash = a.getAttribute('href'); // This would trigger hashchange
+            a.addEventListener('click', (e) => { 
+                // Default action of link will change hash and trigger hashchange.
+                // We just need to hide the search results.
                 if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                if (globalSearchInput) globalSearchInput.value = ''; // Clear search input
+                if (globalSearchInput) globalSearchInput.value = ''; 
             });
 
             const titleDiv = document.createElement('div');
@@ -740,20 +771,20 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
             
             const sectionDiv = document.createElement('div');
-            const theme = getThemeColors(kbSystemData.sections.find(s=>s.id === result.sectionId)?.themeColor || 'gray');
+            const sectionDataForTheme = kbSystemData.sections.find(s=>s.id === result.sectionId);
+            const theme = getThemeColors(sectionDataForTheme ? sectionDataForTheme.themeColor : 'gray');
             sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || result.title)}`;
+            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || (result.type === 'section_match' ? result.title : 'Unknown Section'))}`;
 
 
             a.appendChild(titleDiv);
-            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); // Don't show summary if it's section desc
+            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); 
             a.appendChild(sectionDiv);
             li.appendChild(a);
             ul.appendChild(li);
         });
         searchResultsContainer.appendChild(ul);
         searchResultsContainer.classList.remove('hidden');
-        // Ensure theme dependent mark styles are applied for these new results
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
     
