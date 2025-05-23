@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Section Header
         contentHTML += `
-            <div class="card-animate"> {/* Animate header block */}
+            <div class="card-animate">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
                     <h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center mb-2 sm:mb-0">
                         <span class="p-2.5 rounded-lg ${theme.iconContainer} mr-3 sm:mr-4 inline-flex">
