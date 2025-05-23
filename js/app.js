@@ -139,9 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
+    const dashboardSection = document.getElementById('dashboardSection');
 
     // Debug: Check if critical elements exist
     console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
+    console.log('[app.js - DEBUG] dashboardSection:', dashboardSection ? 'Found' : 'Not found');
     console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
 
     const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
@@ -271,6 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Hide dashboard and reset content
+        if (dashboardSection) dashboardSection.classList.add('hidden');
+
         if (sectionId === 'home') {
             pageContent.innerHTML = initialPageContent;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
@@ -291,6 +296,20 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
             console.log('[app.js - FIX] Home page loaded.');
             return;
+        }
+
+        if (sectionId === 'dashboard') {
+            if (dashboardSection) {
+                dashboardSection.classList.remove('hidden');
+                if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Dashboard';
+                if (breadcrumbsContainer) {
+                    breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="text-indigo-600 dark:text-indigo-400">Dashboard</span>`;
+                    breadcrumbsContainer.classList.remove('hidden');
+                }
+                applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+                console.log('[app.js - FIX] Dashboard loaded.');
+                return;
+            }
         }
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
