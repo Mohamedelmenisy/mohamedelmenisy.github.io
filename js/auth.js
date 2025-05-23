@@ -14,9 +14,10 @@ const Auth = {
             alert('All fields are required for signup.');
             return false;
         }
-        // Check if email format is valid (very basic) and ends with @company.com
-        if (!email.includes('@') || !email.endsWith('@company.com')) {
-             alert('Please use a valid work email ending with @company.com.');
+        // Check if email format is valid (very basic) and ends with @thecehfz.com
+        // --- MODIFIED LINE ---
+        if (!email.includes('@') || !email.endsWith('@thecehfz.com')) { 
+             alert('Please use a valid work email ending with @thecehfz.com.');
              return false;
         }
         // Check if user already exists
