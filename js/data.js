@@ -1,94 +1,106 @@
 // js/data.js
-
-// This will be expanded significantly.
-// For now, it's just a placeholder to show where data will live.
-
 const kbSystemData = {
-    meta: {
-        version: "0.1.0",
-        lastGlobalUpdate: "2023-10-28T10:00:00Z"
-    },
+    meta: { /* ... */ },
     sections: [
+        {
+            id: "dashboard_home", // Special ID for dashboard view
+            name: "Dashboard",
+            icon: "layout-dashboard"
+            // No articles here, it's a special view
+        },
         {
             id: "support",
             name: "Support",
-            icon: "fas fa-headset",
+            icon: "life-buoy",
             description: "Resources and procedures for the Support team.",
             articles: [
                 {
                     id: "sup001",
-                    title: "How to Handle a High Priority Ticket",
-                    tags: ["high priority", "escalation", "critical issue"],
-                    lastUpdated: "2023-10-27",
-                    contentPath: "articles/support/sup001.html", // Or actual HTML/Markdown content
-                    summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently."
+                    title: "Handling High Priority Tickets",
+                    tags: ["high priority", "escalation", "critical issue", "sop"],
+                    lastUpdated: "Nov 01, 2023",
+                    summary: "Step-by-step guide for managing and resolving P1 support tickets efficiently and effectively.",
+                    contentPath: "articles/support/sup001.html"
                 },
-                // ... more articles
-            ],
-            subCategories: [
-                { id: "cases", name: "Cases" },
-                { id: "escalation", name: "Escalation Procedures" },
-                { id: "tools", name: "Support Tools" }
-            ],
-            glossary: [
-                { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client." }
+                {
+                    id: "sup002",
+                    title: "Password Reset Procedure for Enterprise Clients",
+                    tags: ["password", "reset", "enterprise", "security"],
+                    lastUpdated: "Oct 25, 2023",
+                    summary: "Secure method for resetting passwords for enterprise-level client accounts.",
+                    contentPath: "articles/support/sup002.html"
+                }
             ]
         },
         {
-            id: "partner_care",
-            name: "Partner Care",
-            icon: "fas fa-handshake",
-            description: "Information for managing and supporting our partners.",
-            articles: [] // Populate later
+            id: "logistics",
+            name: "Logistics",
+            icon: "truck",
+            description: "Logistics operations, 3PL management, and driver information.",
+            articles: [
+                {
+                    id: "log001",
+                    title: "New 3PL Partner Onboarding Process",
+                    tags: ["3pl", "onboarding", "partner", "checklist"],
+                    lastUpdated: "Oct 28, 2023",
+                    summary: "Detailed steps and requirements for integrating a new third-party logistics partner into our network.",
+                    contentPath: "articles/logistics/log001.html"
+                }
+            ]
         },
-        // ... other sections from the sidebar
+        // ... other sections
         {
             id: "forms_templates",
-            name: "Forms/Templates",
-            icon: "fas fa-file-alt",
-            description: "A collection of frequently used forms and document templates.",
-            items: [
-                {
-                    id: "form001",
-                    title: "New Client Onboarding Checklist",
-                    type: "checklist", // 'form', 'template', 'link'
-                    url: "/templates/client_onboarding.pdf", // or a link to an online form
-                    description: "Standard checklist for onboarding new clients."
+            name: "Forms & Templates",
+            icon: "folder-open",
+            description: "Collection of essential forms and document templates.",
+            articles: [ // Can also list templates as "articles" for consistency in display
+                 {
+                    id: "tpl001",
+                    title: "Client Onboarding Checklist PDF",
+                    tags: ["template", "pdf", "onboarding", "client"],
+                    lastUpdated: "Sep 15, 2023",
+                    summary: "Downloadable PDF checklist for new client onboarding.",
+                    type: "template_link", // Differentiator
+                    url: "/path/to/client_onboarding.pdf"
                 }
             ]
         }
-    ],
-    // Global glossary, or common terms can also be here
-    // User preferences (might be stored server-side later)
+    ]
 };
 
-// Function to load content (will be more sophisticated)
-function loadSectionContent(sectionId) {
-    const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-    if (sectionData) {
-        // Logic to render articles, subcategories, etc.
-        console.log(`Loading content for ${sectionData.name}`);
-        // This is where you'd update the #pageContent in dashboard.html
-        // For example, iterate through sectionData.articles and create HTML elements
-        return sectionData; // Return data for rendering
-    }
-    return null;
-}
-
-// Placeholder for search functionality
+// Enhanced searchKb function
 function searchKb(query) {
     const lowerQuery = query.toLowerCase();
     const results = [];
+    if (!kbSystemData || !kbSystemData.sections) return results;
+
     kbSystemData.sections.forEach(section => {
-        section.articles.forEach(article => {
-            if (article.title.toLowerCase().includes(lowerQuery) ||
-                (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                (article.summary && article.summary.toLowerCase().includes(lowerQuery))
-            ) {
-                results.push({ ...article, sectionName: section.name, sectionId: section.id });
-            }
-        });
-        // Could also search section names, descriptions, glossary terms etc.
+        if (section.articles) {
+            section.articles.forEach(article => {
+                let score = 0;
+                const titleLower = article.title.toLowerCase();
+                const summaryLower = (article.summary || "").toLowerCase();
+                
+                if (titleLower.includes(lowerQuery)) {
+                    score += 10; // Higher score for title match
+                }
+                if (summaryLower.includes(lowerQuery)) {
+                    score += 2;
+                }
+                if (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) {
+                    score += 5; // Good score for tag match
+                }
+
+                if (score > 0) {
+                    results.push({ ...article, sectionName: section.name, sectionId: section.id, score });
+                }
+            });
+        }
     });
-    return results;
+    // Sort results by score (higher score first)
+    return results.sort((a, b) => b.score - a.score);
 }
+
+// Placeholder for fetching article content (e.g., via AJAX if content is in separate files)
+// function getArticleContent(articlePath) { /* ... */ }
