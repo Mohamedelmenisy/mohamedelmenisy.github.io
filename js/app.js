@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
+    // Debug: Check if kbSystemData is loaded
+    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
+
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
         });
     }
 
