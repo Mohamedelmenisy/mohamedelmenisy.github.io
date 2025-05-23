@@ -269,7 +269,24 @@ function searchKb(query) {
                  results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
             }
         }
-        if(section.glossary) {
+        if (section.glossary) {
             section.glossary.forEach(term => {
-                if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id
+                if (term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)) {
+                    if (!results.some(r => r.id === term.term && r.type === 'glossary_term')) {
+                        results.push({
+                            id: term.term,
+                            title: term.term,
+                            summary: term.definition,
+                            sectionName: section.name,
+                            sectionId: section.id,
+                            type: 'glossary_term',
+                            themeColor: section.themeColor
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    return results;
+}
