@@ -1,4 +1,3 @@
-```javascript
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
