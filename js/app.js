@@ -401,10 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
              // First, navigate to the main section
              handleSectionTrigger(sectionId);
              // Then, attempt to scroll or highlight the subcategory.
-             // This might require IDs on subcategory elements or more complex logic.
-             // For now, just logging it.
              console.log(`Subcategory link clicked: Section ${sectionId}, SubCategory ${subCategoryId}`);
-             // Example: try to find and scroll to an article related to 'tools' if subcat is 'tools'
              if (subCategoryId === 'tools') {
                  setTimeout(() => { // wait for content to render
                     const zendeskArticleCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
@@ -480,16 +477,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleSectionTrigger(result.sectionId);
                 searchResultsContainer.classList.add('hidden');
                 globalSearchInput.value = '';
-                // TODO: Scroll to or highlight specific article if possible after section load
-                // This is tricky because content loads async. A simple highlight:
+                // Scroll to or highlight specific article
                 setTimeout(() => {
                     const articles = pageContent.querySelectorAll('.card');
                     articles.forEach(cardEl => {
                         const titleEl = cardEl.querySelector('h3');
                         if (titleEl && titleEl.textContent === result.title) {
                             cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            cardEl.classList.add('ring-2', 'ring-offset-2', theme.border.replace('border-', 'ring-')); // Use theme color for ring
-                            setTimeout(() => cardEl.classList.remove('ring-2', 'ring-offset-2', theme.border.replace('border-', 'ring-')), 2500);
+                            // Use theme color for ring, ensuring theme object is available or default
+                            const cardTheme = getThemeColors(kbSystemData.sections.find(s => s.id === result.sectionId)?.themeColor);
+                            const ringColorClass = cardTheme.border ? cardTheme.border.replace('border-', 'ring-') : 'ring-indigo-500';
+                            cardEl.classList.add('ring-2', 'ring-offset-2', ringColorClass);
+                            setTimeout(() => cardEl.classList.remove('ring-2', 'ring-offset-2', ringColorClass), 2500);
                         }
                     });
                 }, 300); // Delay to allow content to render
@@ -539,4 +538,5 @@ document.addEventListener('DOMContentLoaded', () => {
         return text.substring(0, maxLength) + '...';
     }
 
+    // TODO: "Ask a Question" functionality can be added later.
 });
