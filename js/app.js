@@ -536,13 +536,22 @@ document.addEventListener('DOMContentLoaded', () => {
         searchResultsContainer.classList.remove('hidden');
     }
 
-    function escapeHTML(str) {
-        // ... (escapeHTML function remains the same)
-        if (typeof str !== 'string') return '';
-        return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
-        });
+   // أعد كتابة هذه الدالة يدويًا في app.js
+function escapeHTML(str) {
+    if (typeof str !== 'string') {
+        return '';
     }
+    return str.replace(/[&<>"']/g, function (match) {
+        const escapeChars = {
+            '&': '&',
+            '<': '<',
+            '>': '>',
+            '"': '"',
+            "'": '''
+        };
+        return escapeChars[match];
+    });
+}
 
     function highlightText(text, query) {
         // ... (highlightText function remains the same)
