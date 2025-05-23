@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
@@ -317,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
         }
         if (sectionData.cases && sectionData.cases.length > 0) {
+            contentHTML += `<div class="mb-4"><button id="addNewCaseBtn" class="btn btn-primary">Add New Case</button></div>`;
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
             contentHTML += `</div>`;
@@ -615,155 +616,178 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] Initial hash load:', { sectionId, itemId, subCategoryFilter });
     handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
 
-    console.log('[app.js - FIX] All initializations complete.');
-});
-// Add New Case Feature
-const addNewCaseBtn = document.getElementById('addNewCaseBtn');
-const pageContent = document.getElementById('pageContent');
+    // Add New Case Feature
+    const addNewCaseBtn = document.getElementById('addNewCaseBtn');
+    if (addNewCaseBtn && pageContent) {
+        console.log('[app.js - DEBUG] Add New Case button found.');
+        addNewCaseBtn.addEventListener('click', () => {
+            console.log('[app.js - DEBUG] Add New Case button clicked.');
 
-if (addNewCaseBtn && pageContent) {
-    addNewCaseBtn.addEventListener('click', () => {
-        const modalHTML = `
-            <div class="modal fade" id="newCaseModal" tabindex="-1" aria-labelledby="newCaseModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="newCaseModalLabel">Add New Case</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="newCaseForm">
-                                <div class="mb-3">
-                                    <label for="caseTitle" class="form-label">Case Title</label>
-                                    <input type="text" class="form-control" id="caseTitle" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="caseSummary" class="form-label">Summary</label>
-                                    <textarea class="form-control" id="caseSummary" rows="3"></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="caseResolution" class="form-label">Resolution Steps</label>
-                                    <div id="caseResolutionEditor"></div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="caseAttachments" class="form-label">Attachments</label>
-                                    <input type="file" class="form-control" id="caseAttachments" multiple>
-                                    <div id="attachmentList" class="mt-2"></div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="caseStatus" class="form-label">Status</label>
-                                    <select class="form-select" id="caseStatus">
-                                        <option value="Pending Investigation">Pending Investigation</option>
-                                        <option value="Escalated to Tier 2">Escalated to Tier 2</option>
-                                        <option value="Resolved">Resolved</option>
-                                    </select>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" id="saveCaseBtn">Save Case</button>
+            const modalHTML = `
+                <div class="modal fade" id="newCaseModal" tabindex="-1" aria-labelledby="newCaseModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="newCaseModalLabel">Add New Case</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="newCaseForm">
+                                    <div class="mb-3">
+                                        <label for="caseTitle" class="form-label">Case Title</label>
+                                        <input type="text" class="form-control" id="caseTitle" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="caseSummary" class="form-label">Summary</label>
+                                        <textarea class="form-control" id="caseSummary" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="caseResolution" class="form-label">Resolution Steps</label>
+                                        <div id="caseResolutionEditor"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="caseAttachments" class="form-label">Attachments</label>
+                                        <input type="file" class="form-control" id="caseAttachments" multiple>
+                                        <div id="attachmentList" class="mt-2"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="caseStatus" class="form-label">Status</label>
+                                        <select class="form-select" id="caseStatus">
+                                            <option value="Pending Investigation">Pending Investigation</option>
+                                            <option value="Escalated to Tier 2">Escalated to Tier 2</option>
+                                            <option value="Resolved">Resolved</option>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" id="saveCaseBtn">Save Case</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        pageContent.insertAdjacentHTML('beforeend', modalHTML);
+            pageContent.insertAdjacentHTML('beforeend', modalHTML);
 
-        // Initialize Quill Editor
-        const quill = new Quill('#caseResolutionEditor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['blockquote', 'code-block'],
-                    [{ 'header': 1 }, { 'header': 2 }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'script': 'sub'}, { 'script': 'super' }],
-                    [{ 'indent': '-1'}, { 'indent': '+1' }],
-                    [{ 'direction': 'rtl' }],
-                    [{ 'size': ['small', false, 'large', 'huge'] }],
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'font': [] }],
-                    [{ 'align': [] }],
-                    ['clean'],
-                    ['link', 'image', 'video', 'table']
-                ]
+            // Check if Quill and Bootstrap are loaded
+            if (typeof Quill === 'undefined') {
+                console.error('[app.js - ERROR] Quill library not loaded. Please include <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>');
+                return;
             }
-        });
-
-        // Handle Attachments
-        const attachmentInput = document.getElementById('caseAttachments');
-        const attachmentList = document.getElementById('attachmentList');
-        attachmentInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            attachmentList.innerHTML = '';
-            for (let file of files) {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'alert alert-info d-flex justify-content-between align-items-center mb-1';
-                fileItem.innerHTML = `
-                    ${file.name} (${(file.size / 1024).toFixed(2)} KB)
-                    <button class="btn btn-danger btn-sm remove-attachment" data-name="${file.name}">Remove</button>
-                `;
-                attachmentList.appendChild(fileItem);
+            if (typeof bootstrap === 'undefined') {
+                console.error('[app.js - ERROR] Bootstrap library not loaded. Please include <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>');
+                return;
             }
-        });
 
-        attachmentList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove-attachment')) {
-                const fileName = e.target.dataset.name;
-                attachmentInput.value = ''; // Reset input to clear file list
+            // Initialize Quill Editor
+            const quill = new Quill('#caseResolutionEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', 'code-block'],
+                        [{ 'header': 1 }, { 'header': 2 }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        [{ 'direction': 'rtl' }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        ['clean'],
+                        ['link', 'image', 'video', 'table']
+                    ]
+                }
+            });
+
+            console.log('[app.js - DEBUG] Quill editor initialized.');
+
+            // Handle Attachments
+            const attachmentInput = document.getElementById('caseAttachments');
+            const attachmentList = document.getElementById('attachmentList');
+            attachmentInput.addEventListener('change', (e) => {
+                const files = e.target.files;
                 attachmentList.innerHTML = '';
-            }
-        });
-
-        // Save Case
-        const saveCaseBtn = document.getElementById('saveCaseBtn');
-        saveCaseBtn.addEventListener('click', () => {
-            const caseTitle = document.getElementById('caseTitle').value;
-            const caseSummary = document.getElementById('caseSummary').value;
-            const caseResolution = quill.root.innerHTML;
-            const caseStatus = document.getElementById('caseStatus').value;
-            const attachments = attachmentInput.files;
-
-            if (caseTitle && caseResolution) {
-                const newCase = {
-                    id: `case${Date.now()}`, // Unique ID based on timestamp
-                    title: caseTitle,
-                    summary: caseSummary,
-                    resolutionSteps: caseResolution,
-                    status: caseStatus,
-                    tags: ['new', 'user_report'],
-                    contentPath: '#', // Placeholder, can be updated with real path
-                    resolutionStepsPreview: quill.getText().substring(0, 50) + '...'
-                };
-
-                // Add to kbSystemData (temporary, replace with API call if needed)
-                const supportSection = kbSystemData.sections.find(s => s.id === 'support');
-                if (supportSection) {
-                    if (!supportSection.cases) supportSection.cases = [];
-                    supportSection.cases.push(newCase);
-                    handleSectionTrigger('support'); // Refresh the section
+                for (let file of files) {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'alert alert-info d-flex justify-content-between align-items-center mb-1';
+                    fileItem.innerHTML = `
+                        ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+                        <button class="btn btn-danger btn-sm remove-attachment" data-name="${file.name}">Remove</button>
+                    `;
+                    attachmentList.appendChild(fileItem);
                 }
+                console.log('[app.js - DEBUG] Attachments selected:', Array.from(files).map(f => f.name));
+            });
 
-                // Handle attachments (simplified, replace with upload logic)
-                if (attachments.length > 0) {
-                    console.log('Attachments to upload:', Array.from(attachments).map(f => f.name));
-                    // Here you would typically upload files to a server and store URLs
+            attachmentList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-attachment')) {
+                    const fileName = e.target.dataset.name;
+                    attachmentInput.value = ''; // Reset input to clear file list
+                    attachmentList.innerHTML = '';
+                    console.log('[app.js - DEBUG] Removed attachment:', fileName);
                 }
+            });
 
-                const modal = bootstrap.Modal.getInstance(document.getElementById('newCaseModal'));
-                modal.hide();
-                alert('Case saved successfully!');
-            } else {
-                alert('Please fill in the title and resolution steps.');
-            }
+            // Save Case
+            const saveCaseBtn = document.getElementById('saveCaseBtn');
+            saveCaseBtn.addEventListener('click', () => {
+                const caseTitle = document.getElementById('caseTitle').value;
+                const caseSummary = document.getElementById('caseSummary').value;
+                const caseResolution = quill.root.innerHTML;
+                const caseStatus = document.getElementById('caseStatus').value;
+                const attachments = attachmentInput.files;
+
+                if (caseTitle && caseResolution) {
+                    const newCase = {
+                        id: `case${Date.now()}`, // Unique ID based on timestamp
+                        title: caseTitle,
+                        summary: caseSummary,
+                        resolutionSteps: caseResolution,
+                        status: caseStatus,
+                        tags: ['new', 'user_report'],
+                        contentPath: '#', // Placeholder, can be updated with real path
+                        resolutionStepsPreview: quill.getText().substring(0, 50) + '...'
+                    };
+
+                    // Add to kbSystemData
+                    const supportSection = kbSystemData.sections.find(s => s.id === 'support');
+                    if (supportSection) {
+                        if (!supportSection.cases) supportSection.cases = [];
+                        supportSection.cases.push(newCase);
+                        handleSectionTrigger('support'); // Refresh the section
+                        console.log('[app.js - DEBUG] Case saved:', newCase.title);
+                    } else {
+                        console.error('[app.js - ERROR] Support section not found in kbSystemData.');
+                    }
+
+                    // Handle attachments (simplified, replace with upload logic)
+                    if (attachments.length > 0) {
+                        console.log('[app.js - DEBUG] Attachments to upload:', Array.from(attachments).map(f => f.name));
+                        // Add upload logic here if needed (e.g., FormData with fetch)
+                    }
+
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('newCaseModal'));
+                    modal.hide();
+                    alert('Case saved successfully!');
+                } else {
+                    alert('Please fill in the title and resolution steps.');
+                    console.warn('[app.js - WARN] Missing required fields:', { caseTitle, caseResolution });
+                }
+            });
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('newCaseModal'));
+            modal.show();
+            console.log('[app.js - DEBUG] Modal shown.');
         });
+    } else {
+        console.error('[app.js - ERROR] Add New Case button or pageContent not found:', { addNewCaseBtn, pageContent });
+    }
 
-        // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('newCaseModal'));
-        modal.show();
-    });
-}
+    console.log('[app.js - FIX] All initializations complete.');
+});
