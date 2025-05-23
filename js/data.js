@@ -5,90 +5,236 @@
 
 const kbSystemData = {
     meta: {
-        version: "0.1.0",
-        lastGlobalUpdate: "2023-10-28T10:00:00Z"
+        version: "0.1.1", // Updated version
+        lastGlobalUpdate: "2023-11-15T12:00:00Z" // Updated date
     },
     sections: [
         {
             id: "support",
             name: "Support",
             icon: "fas fa-headset",
-            description: "Resources and procedures for the Support team.",
+            description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
             articles: [
                 {
                     id: "sup001",
                     title: "How to Handle a High Priority Ticket",
                     tags: ["high priority", "escalation", "critical issue"],
                     lastUpdated: "2023-10-27",
-                    contentPath: "articles/support/sup001.html", // Or actual HTML/Markdown content
-                    summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently."
+                    contentPath: "articles/support/sup001.html", 
+                    summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively."
                 },
-                // ... more articles
+                {
+                    id: "sup002",
+                    title: "Standard Ticket Resolution Workflow",
+                    tags: ["workflow", "standard procedure", "tickets"],
+                    lastUpdated: "2023-11-02",
+                    contentPath: "articles/support/sup002.html",
+                    summary: "Overview of the standard workflow for handling all types of support tickets from creation to resolution."
+                },
+                {
+                    id: "sup003",
+                    title: "Using the Zendesk Integration",
+                    tags: ["zendesk", "tools", "integration"],
+                    lastUpdated: "2023-10-15",
+                    contentPath: "articles/support/sup003.html",
+                    summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
+                }
             ],
             subCategories: [
-                { id: "cases", name: "Cases" },
-                { id: "escalation", name: "Escalation Procedures" },
+                { id: "cases", name: "Case Management" },
+                { id: "escalation_procedures", name: "Escalation Procedures" },
                 { id: "tools", name: "Support Tools" }
             ],
             glossary: [
-                { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client." }
+                { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client regarding service quality, availability, responsibilities." },
+                { term: "P1", definition: "Priority 1 - A critical issue affecting multiple users or core functionality, requiring immediate attention." }
             ]
         },
         {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
-            description: "Information for managing and supporting our partners.",
-            articles: [] // Populate later
+            description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
+            articles: [
+                 {
+                    id: "pc001",
+                    title: "Partner Onboarding Process",
+                    tags: ["onboarding", "new partner", "checklist"],
+                    lastUpdated: "2023-11-10",
+                    contentPath: "articles/partner_care/pc001.html",
+                    summary: "Detailed checklist and steps for successfully onboarding new partners into our ecosystem."
+                }
+            ]
         },
-        // ... other sections from the sidebar
+        {
+            id: "logistics",
+            name: "Logistics",
+            icon: "fas fa-truck",
+            description: "Documentation related to logistics operations, supply chain management, and transportation.",
+            articles: []
+        },
+        {
+            id: "customer_care",
+            name: "Customer Care",
+            icon: "fas fa-users",
+            description: "Guidelines and best practices for providing excellent customer care and support.",
+            articles: []
+        },
+        {
+            id: "dist_follow_up",
+            name: "Distribution & Follow up",
+            icon: "fas fa-people-carry",
+            description: "Procedures for product distribution and post-delivery follow-up actions.",
+            articles: []
+        },
+        {
+            id: "logistics_driver",
+            name: "Logistics (Driver Complaints)",
+            icon: "fas fa-shipping-fast",
+            description: "Handling driver complaints and related logistical issues.",
+            articles: []
+        },
+        {
+            id: "logistics_3pl",
+            name: "Logistics-3PL",
+            icon: "fas fa-boxes",
+            description: "Information specific to third-party logistics providers and collaborations.",
+            articles: []
+        },
+        {
+            id: "order_at_store",
+            name: "Order at store (Mac)",
+            icon: "fas fa-store",
+            description: "Procedures for orders placed at physical store locations using Mac systems.",
+            articles: []
+        },
+        {
+            id: "logistics_admin",
+            name: "Logistics-Admin",
+            icon: "fas fa-user-shield",
+            description: "Administrative tasks and oversight for logistics operations.",
+            articles: []
+        },
+        {
+            id: "os",
+            name: "Operating Systems",
+            icon: "fab fa-windows",
+            description: "Guides and troubleshooting for supported operating systems.",
+            articles: []
+        },
+        {
+            id: "compensation",
+            name: "Compensation Policies",
+            icon: "fas fa-hand-holding-usd",
+            description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
+            articles: []
+        },
+        {
+            id: "op_instructions",
+            name: "Operational Instructions",
+            icon: "fas fa-clipboard-list",
+            description: "General operational instructions and standard operating procedures (SOPs).",
+            articles: []
+        },
         {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
-            description: "A collection of frequently used forms and document templates.",
-            items: [
+            description: "A centralized collection of frequently used forms, document templates, and checklists.",
+            items: [ // Note: using 'items' key as defined in original data.js for this section
                 {
                     id: "form001",
                     title: "New Client Onboarding Checklist",
-                    type: "checklist", // 'form', 'template', 'link'
-                    url: "/templates/client_onboarding.pdf", // or a link to an online form
-                    description: "Standard checklist for onboarding new clients."
+                    type: "checklist", 
+                    url: "/templates/client_onboarding.pdf", 
+                    description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
+                    lastUpdated: "2023-09-15",
+                },
+                {
+                    id: "form002",
+                    title: "Incident Report Form",
+                    type: "form", 
+                    url: "/templates/incident_report.docx", 
+                    description: "Form for reporting operational or security incidents.",
+                    lastUpdated: "2023-10-01",
+                },
+                {
+                    id: "temp001",
+                    title: "Standard Email Signature Template",
+                    type: "template", 
+                    url: "/templates/email_signature_guide.html", 
+                    description: "Official email signature template and usage guidelines for company communication.",
+                    lastUpdated: "2023-08-20",
                 }
             ]
         }
     ],
-    // Global glossary, or common terms can also be here
-    // User preferences (might be stored server-side later)
 };
 
 // Function to load content (will be more sophisticated)
+// This function is now conceptually replaced by displaySectionContent in app.js,
+// but searchKb is still useful.
 function loadSectionContent(sectionId) {
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
-        // Logic to render articles, subcategories, etc.
-        console.log(`Loading content for ${sectionData.name}`);
-        // This is where you'd update the #pageContent in dashboard.html
-        // For example, iterate through sectionData.articles and create HTML elements
-        return sectionData; // Return data for rendering
+        console.log(`Data for ${sectionData.name} ready for rendering.`);
+        return sectionData; 
     }
     return null;
 }
 
-// Placeholder for search functionality
+// Placeholder for search functionality - Enhanced slightly
 function searchKb(query) {
     const lowerQuery = query.toLowerCase();
     const results = [];
+
+    if (!kbSystemData || !kbSystemData.sections) return results;
+
     kbSystemData.sections.forEach(section => {
-        section.articles.forEach(article => {
-            if (article.title.toLowerCase().includes(lowerQuery) ||
-                (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                (article.summary && article.summary.toLowerCase().includes(lowerQuery))
-            ) {
-                results.push({ ...article, sectionName: section.name, sectionId: section.id });
+        // Search articles
+        if (section.articles) {
+            section.articles.forEach(article => {
+                if (article.title.toLowerCase().includes(lowerQuery) ||
+                    (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
+                    (article.summary && article.summary.toLowerCase().includes(lowerQuery))
+                ) {
+                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article' });
+                }
+            });
+        }
+        // Search items (e.g., in Forms/Templates)
+        if (section.items) {
+            section.items.forEach(item => {
+                if (item.title.toLowerCase().includes(lowerQuery) ||
+                    (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
+                    item.type.toLowerCase().includes(lowerQuery)
+                ) {
+                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item' });
+                }
+            });
+        }
+        // Search section names and descriptions
+        if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
+             // Avoid adding section if articles already matched, or provide a different result type
+            if (!results.some(r => r.sectionId === section.id && r.type !== 'section_match')) {
+                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match'});
             }
-        });
-        // Could also search section names, descriptions, glossary terms etc.
+        }
+        // Search glossary terms
+        if(section.glossary) {
+            section.glossary.forEach(term => {
+                if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
+                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // prevent duplicates
+                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term'});
+                    }
+                }
+            });
+        }
+    });
+    // Prioritize results: articles, items, then section matches, then glossary
+    results.sort((a, b) => {
+        const typePriority = { 'article': 0, 'item': 1, 'section_match': 2, 'glossary_term': 3 };
+        return (typePriority[a.type] || 4) - (typePriority[b.type] || 4);
     });
     return results;
 }
