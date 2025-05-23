@@ -5,8 +5,8 @@
 
 const kbSystemData = {
     meta: {
-        version: "0.1.1", // Updated version
-        lastGlobalUpdate: "2023-11-15T12:00:00Z" // Updated date
+        version: "0.1.2", // Updated version
+        lastGlobalUpdate: "2023-11-28T10:00:00Z" // Updated date
     },
     sections: [
         {
@@ -14,7 +14,7 @@ const kbSystemData = {
             name: "Support",
             icon: "fas fa-headset", // Used for sidebar
             themeColor: "blue", // Hint for styling
-            description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
+            description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage. Also includes active case management.",
             articles: [
                 {
                     id: "sup001",
@@ -39,6 +39,32 @@ const kbSystemData = {
                     lastUpdated: "2023-10-15",
                     contentPath: "articles/support/sup003.html",
                     summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
+                }
+            ],
+            cases: [ // Added for Case Management
+                {
+                    id: "case001",
+                    title: "Frequent System Disconnects - User Alpha",
+                    tags: ["connectivity", "disconnect", "user report", "alpha client"],
+                    lastUpdated: "2023-11-20",
+                    summary: "User Alpha reports frequent disconnects from the main platform. Initial investigation points to network instability.",
+                    status: "Pending Investigation", // e.g., Pending, Investigating, Escalated, Resolved, Closed
+                    assignedTo: "Support Team B",
+                    resolutionStepsPreview: "1. Check user's local network. 2. Review server logs...",
+                    type: "case", // To differentiate
+                    contentPath: "articles/support/cases/case001.html" // Optional: link to full case details if exist
+                },
+                {
+                    id: "case002",
+                    title: "Payment Gateway Error - Order #12345",
+                    tags: ["payment", "gateway", "error", "critical"],
+                    lastUpdated: "2023-11-22",
+                    summary: "Order #12345 failed at payment stage. Customer unable to complete purchase. Gateway: Stripe.",
+                    status: "Escalated to Tier 2",
+                    assignedTo: "Finance Support",
+                    resolutionStepsPreview: "1. Verify error code with Stripe. 2. Check for recent gateway updates...",
+                    type: "case",
+                    contentPath: "articles/support/cases/case002.html"
                 }
             ],
             subCategories: [
@@ -200,48 +226,61 @@ function searchKb(query) {
     if (!kbSystemData || !kbSystemData.sections) return results;
 
     kbSystemData.sections.forEach(section => {
+        // Search articles
         if (section.articles) {
             section.articles.forEach(article => {
                 if (article.title.toLowerCase().includes(lowerQuery) ||
                     (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (article.summary && article.summary.toLowerCase().includes(lowerQuery))
                 ) {
-                    // Removed themeColor from here for now, was: themeColor: section.themeColor || 'gray'
                     results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article' });
                 }
             });
         }
+        // Search items (e.g., in Forms/Templates)
         if (section.items) {
             section.items.forEach(item => {
                 if (item.title.toLowerCase().includes(lowerQuery) ||
                     (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
                     item.type.toLowerCase().includes(lowerQuery)
                 ) {
-                     // Removed themeColor
                     results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item' });
                 }
             });
         }
+        // Search cases (e.g., in Support)
+        if (section.cases) {
+            section.cases.forEach(caseItem => {
+                if (caseItem.title.toLowerCase().includes(lowerQuery) ||
+                    (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
+                    (caseItem.summary && caseItem.summary.toLowerCase().includes(lowerQuery)) ||
+                    (caseItem.status && caseItem.status.toLowerCase().includes(lowerQuery))
+                ) {
+                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case' });
+                }
+            });
+        }
+        // Search section itself
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-            if (!results.some(r => r.sectionId === section.id && r.type !== 'section_match')) {
-                 // Removed themeColor
+            if (!results.some(r => r.id === section.id && r.type === 'section_match')) { // Ensure 'type' is 'section_match' for this specific check
                  results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match'});
             }
         }
+        // Search glossary
         if(section.glossary) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
-                         // Removed themeColor
+                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // Check for existing glossary entry from same section
                          results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term'});
                     }
                 }
             });
         }
     });
+    // Sort results: articles, cases, items, then section matches, then glossary
     results.sort((a, b) => {
-        const typePriority = { 'article': 0, 'item': 1, 'section_match': 2, 'glossary_term': 3 };
-        return (typePriority[a.type] || 4) - (typePriority[b.type] || 4);
+        const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
+        return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
     });
     return results;
 }
