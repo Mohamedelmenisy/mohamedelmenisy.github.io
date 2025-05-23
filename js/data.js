@@ -6,19 +6,14 @@
 const kbSystemData = {
     meta: {
         version: "0.1.2", // Updated version to reflect changes
-        lastGlobalUpdate: "2023-11-28T12:00:00Z", // Updated date
-        dashboardStats: { // Added dashboard stats
-            openCases: 5,
-            resolvedCases: 10,
-            criticalIssues: 2
-        }
+        lastGlobalUpdate: "2023-11-28T12:00:00Z" // Updated date
     },
     sections: [
         {
             id: "support",
             name: "Support",
             icon: "fas fa-headset",
-            themeColor: "blue", // Added for consistency with newer styling
+            themeColor: "blue",
             description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
             articles: [
                 {
@@ -46,7 +41,7 @@ const kbSystemData = {
                     summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
                 }
             ],
-            cases: [ // ADDED Case Management Data
+            cases: [
                 {
                     id: "case001",
                     title: "Frequent System Disconnects - User Alpha",
@@ -57,7 +52,7 @@ const kbSystemData = {
                     assignedTo: "Support Team B",
                     resolutionStepsPreview: "1. Check user's local network. 2. Review server logs...",
                     type: "case",
-                    contentPath: "articles/support/cases/case001.html" 
+                    contentPath: "articles/support/cases/case001.html"
                 },
                 {
                     id: "case002",
@@ -77,6 +72,7 @@ const kbSystemData = {
                 { id: "escalation_procedures", name: "Escalation Procedures" },
                 { id: "tools", name: "Support Tools" }
             ],
+            subsections: [], // New field for subsections
             glossary: [
                 { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client regarding service quality, availability, responsibilities." },
                 { term: "P1", definition: "Priority 1 - A critical issue affecting multiple users or core functionality, requiring immediate attention." }
@@ -86,10 +82,10 @@ const kbSystemData = {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
-            themeColor: "teal", // Added
+            themeColor: "teal",
             description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
             articles: [
-                 {
+                {
                     id: "pc001",
                     title: "Partner Onboarding Process",
                     tags: ["onboarding", "new partner", "checklist"],
@@ -97,93 +93,104 @@ const kbSystemData = {
                     contentPath: "articles/partner_care/pc001.html",
                     summary: "Detailed checklist and steps for successfully onboarding new partners into our ecosystem."
                 }
-            ]
+            ],
+            subsections: []
         },
         {
             id: "logistics",
             name: "Logistics",
             icon: "fas fa-truck",
-            themeColor: "green", // Added
+            themeColor: "green",
             description: "Documentation related to logistics operations, supply chain management, and transportation.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "customer_care",
             name: "Customer Care",
             icon: "fas fa-users",
-            themeColor: "indigo", // Added
+            themeColor: "indigo",
             description: "Guidelines and best practices for providing excellent customer care and support.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "dist_follow_up",
             name: "Distribution & Follow up",
             icon: "fas fa-people-carry",
-            themeColor: "cyan", // Added
+            themeColor: "cyan",
             description: "Procedures for product distribution and post-delivery follow-up actions.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "logistics_driver",
             name: "Logistics (Driver Complaints)",
             icon: "fas fa-shipping-fast",
-            themeColor: "lime", // Added
+            themeColor: "lime",
             description: "Handling driver complaints and related logistical issues.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "logistics_3pl",
             name: "Logistics-3PL",
             icon: "fas fa-boxes",
-            themeColor: "yellow", // Added
+            themeColor: "yellow",
             description: "Information specific to third-party logistics providers and collaborations.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "order_at_store",
             name: "Order at store (Mac)",
             icon: "fas fa-store",
-            themeColor: "pink", // Added
+            themeColor: "pink",
             description: "Procedures for orders placed at physical store locations using Mac systems.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "logistics_admin",
             name: "Logistics-Admin",
             icon: "fas fa-user-shield",
-            themeColor: "red", // Added
+            themeColor: "red",
             description: "Administrative tasks and oversight for logistics operations.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "os",
             name: "Operating Systems",
             icon: "fab fa-windows",
-            themeColor: "sky", // Added
+            themeColor: "sky",
             description: "Guides and troubleshooting for supported operating systems.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "compensation",
             name: "Compensation Policies",
             icon: "fas fa-hand-holding-usd",
-            themeColor: "amber", // Added
+            themeColor: "amber",
             description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "op_instructions",
             name: "Operational Instructions",
             icon: "fas fa-clipboard-list",
-            themeColor: "slate", // Added
+            themeColor: "slate",
             description: "General operational instructions and standard operating procedures (SOPs).",
-            articles: []
+            articles: [],
+            subsections: []
         },
         {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
-            themeColor: "purple", // Added
+            themeColor: "purple",
             description: "A centralized collection of frequently used forms, document templates, and checklists.",
             items: [ 
                 {
@@ -192,7 +199,7 @@ const kbSystemData = {
                     type: "checklist", 
                     url: "/templates/client_onboarding.pdf", 
                     description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
-                    lastUpdated: "2023-09-15",
+                    lastUpdated: "2023-09-15"
                 },
                 {
                     id: "form002",
@@ -200,7 +207,7 @@ const kbSystemData = {
                     type: "form", 
                     url: "/templates/incident_report.docx", 
                     description: "Form for reporting operational or security incidents.",
-                    lastUpdated: "2023-10-01",
+                    lastUpdated: "2023-10-01"
                 },
                 {
                     id: "temp001",
@@ -208,16 +215,24 @@ const kbSystemData = {
                     type: "template", 
                     url: "/templates/email_signature_guide.html", 
                     description: "Official email signature template and usage guidelines for company communication.",
-                    lastUpdated: "2023-08-20",
+                    lastUpdated: "2023-08-20"
                 }
-            ]
+            ],
+            subsections: []
+        },
+        {
+            id: "case_management",
+            name: "Case Management",
+            icon: "fas fa-briefcase",
+            themeColor: "orange",
+            description: "Manage cases across all sections: create, edit, or delete case records.",
+            articles: [],
+            subsections: []
         }
-    ],
+    ]
 };
 
 function loadSectionContent(sectionId) {
-    // This function is less critical if displaySectionContent in app.js handles data fetching directly.
-    // However, searchKb still uses kbSystemData globally.
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
         console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
@@ -243,7 +258,7 @@ function searchKb(query) {
                 }
             });
         }
-        if (section.cases) { // ADDED search for cases
+        if (section.cases) {
             section.cases.forEach(caseItem => {
                 if (caseItem.title.toLowerCase().includes(lowerQuery) ||
                     (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
@@ -264,29 +279,109 @@ function searchKb(query) {
                 }
             });
         }
+        if (section.subsections) {
+            section.subsections.forEach(subsection => {
+                if (subsection.name.toLowerCase().includes(lowerQuery) ||
+                    (subsection.description && subsection.description.toLowerCase().includes(lowerQuery))
+                ) {
+                    results.push({ ...subsection, sectionName: section.name, sectionId: section.id, type: 'subsection', themeColor: section.themeColor });
+                }
+            });
+        }
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
             if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
+                results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor });
             }
         }
         if (section.glossary) {
             section.glossary.forEach(term => {
                 if (term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)) {
-                    if (!results.some(r => r.id === term.term && r.type === 'glossary_term')) {
-                        results.push({
-                            id: term.term,
-                            title: term.term,
-                            summary: term.definition,
-                            sectionName: section.name,
-                            sectionId: section.id,
-                            type: 'glossary_term',
-                            themeColor: section.themeColor
-                        });
+                    if (!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)) {
+                        results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor });
                     }
                 }
             });
         }
     });
-
+    results.sort((a, b) => {
+        const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'subsection': 3, 'section_match': 4, 'glossary_term': 5 };
+        return (typePriority[a.type] || 6) - (typePriority[b.type] || 6);
+    });
     return results;
+}
+
+function addCase(sectionId, caseData) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (!section) return null;
+    if (!section.cases) section.cases = [];
+    caseData.id = `case${Date.now()}`;
+    caseData.lastUpdated = new Date().toISOString().split('T')[0];
+    caseData.type = 'case';
+    caseData.contentPath = `articles/${sectionId}/cases/${caseData.id}.html`;
+    section.cases.push(caseData);
+    saveData();
+    return caseData;
+}
+
+function updateCase(sectionId, caseId, updatedData) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (section && section.cases) {
+        const caseIndex = section.cases.findIndex(c => c.id === caseId);
+        if (caseIndex !== -1) {
+            section.cases[caseIndex] = { ...section.cases[caseIndex], ...updatedData, lastUpdated: new Date().toISOString().split('T')[0] };
+            saveData();
+            return section.cases[caseIndex];
+        }
+    }
+    return null;
+}
+
+function deleteCase(sectionId, caseId) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (section && section.cases) {
+        section.cases = section.cases.filter(c => c.id !== caseId);
+        saveData();
+        return true;
+    }
+    return false;
+}
+
+function addSubsection(sectionId, subsectionData) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (!section) return null;
+    if (!section.subsections) section.subsections = [];
+    subsectionData.id = `subsection${Date.now()}`;
+    subsectionData.createdAt = new Date().toISOString().split('T')[0];
+    subsectionData.type = 'subsection';
+    section.subsections.push(subsectionData);
+    saveData();
+    return subsectionData;
+}
+
+function updateSubsection(sectionId, subsectionId, updatedData) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (section && section.subsections) {
+        const subsectionIndex = section.subsections.findIndex(s => s.id === subsectionId);
+        if (subsectionIndex !== -1) {
+            section.subsections[subsectionIndex] = { ...section.subsections[subsectionIndex], ...updatedData, lastUpdated: new Date().toISOString().split('T')[0] };
+            saveData();
+            return section.subsections[subsectionIndex];
+        }
+    }
+    return null;
+}
+
+function deleteSubsection(sectionId, subsectionId) {
+    const section = kbSystemData.sections.find(s => s.id === sectionId);
+    if (section && section.subsections) {
+        section.subsections = section.subsections.filter(s => s.id !== subsectionId);
+        saveData();
+        return true;
+    }
+    return false;
+}
+
+function saveData() {
+    console.log('Data saved:', kbSystemData);
+    localStorage.setItem('kbSystemData', JSON.stringify(kbSystemData));
 }
