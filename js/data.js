@@ -12,7 +12,8 @@ const kbSystemData = {
         {
             id: "support",
             name: "Support",
-            icon: "fas fa-headset",
+            icon: "fas fa-headset", // Used for sidebar
+            themeColor: "blue", // Hint for styling
             description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
             articles: [
                 {
@@ -20,7 +21,7 @@ const kbSystemData = {
                     title: "How to Handle a High Priority Ticket",
                     tags: ["high priority", "escalation", "critical issue"],
                     lastUpdated: "2023-10-27",
-                    contentPath: "articles/support/sup001.html", 
+                    contentPath: "articles/support/sup001.html",
                     summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively."
                 },
                 {
@@ -54,6 +55,7 @@ const kbSystemData = {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
+            themeColor: "teal",
             description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
             articles: [
                  {
@@ -70,6 +72,7 @@ const kbSystemData = {
             id: "logistics",
             name: "Logistics",
             icon: "fas fa-truck",
+            themeColor: "green",
             description: "Documentation related to logistics operations, supply chain management, and transportation.",
             articles: []
         },
@@ -77,6 +80,7 @@ const kbSystemData = {
             id: "customer_care",
             name: "Customer Care",
             icon: "fas fa-users",
+            themeColor: "indigo",
             description: "Guidelines and best practices for providing excellent customer care and support.",
             articles: []
         },
@@ -84,6 +88,7 @@ const kbSystemData = {
             id: "dist_follow_up",
             name: "Distribution & Follow up",
             icon: "fas fa-people-carry",
+            themeColor: "cyan",
             description: "Procedures for product distribution and post-delivery follow-up actions.",
             articles: []
         },
@@ -91,6 +96,7 @@ const kbSystemData = {
             id: "logistics_driver",
             name: "Logistics (Driver Complaints)",
             icon: "fas fa-shipping-fast",
+            themeColor: "lime",
             description: "Handling driver complaints and related logistical issues.",
             articles: []
         },
@@ -98,6 +104,7 @@ const kbSystemData = {
             id: "logistics_3pl",
             name: "Logistics-3PL",
             icon: "fas fa-boxes",
+            themeColor: "yellow",
             description: "Information specific to third-party logistics providers and collaborations.",
             articles: []
         },
@@ -105,6 +112,7 @@ const kbSystemData = {
             id: "order_at_store",
             name: "Order at store (Mac)",
             icon: "fas fa-store",
+            themeColor: "pink",
             description: "Procedures for orders placed at physical store locations using Mac systems.",
             articles: []
         },
@@ -112,13 +120,15 @@ const kbSystemData = {
             id: "logistics_admin",
             name: "Logistics-Admin",
             icon: "fas fa-user-shield",
+            themeColor: "red",
             description: "Administrative tasks and oversight for logistics operations.",
             articles: []
         },
         {
             id: "os",
             name: "Operating Systems",
-            icon: "fab fa-windows",
+            icon: "fab fa-windows", // Note: FontAwesome brand icon
+            themeColor: "sky",
             description: "Guides and troubleshooting for supported operating systems.",
             articles: []
         },
@@ -126,6 +136,7 @@ const kbSystemData = {
             id: "compensation",
             name: "Compensation Policies",
             icon: "fas fa-hand-holding-usd",
+            themeColor: "amber",
             description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
             articles: []
         },
@@ -133,6 +144,7 @@ const kbSystemData = {
             id: "op_instructions",
             name: "Operational Instructions",
             icon: "fas fa-clipboard-list",
+            themeColor: "slate", // Using slate for a more neutral gray
             description: "General operational instructions and standard operating procedures (SOPs).",
             articles: []
         },
@@ -140,29 +152,30 @@ const kbSystemData = {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
+            themeColor: "purple",
             description: "A centralized collection of frequently used forms, document templates, and checklists.",
             items: [ // Note: using 'items' key as defined in original data.js for this section
                 {
                     id: "form001",
                     title: "New Client Onboarding Checklist",
-                    type: "checklist", 
-                    url: "/templates/client_onboarding.pdf", 
+                    type: "checklist",
+                    url: "/templates/client_onboarding.pdf",
                     description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
                     lastUpdated: "2023-09-15",
                 },
                 {
                     id: "form002",
                     title: "Incident Report Form",
-                    type: "form", 
-                    url: "/templates/incident_report.docx", 
+                    type: "form",
+                    url: "/templates/incident_report.docx",
                     description: "Form for reporting operational or security incidents.",
                     lastUpdated: "2023-10-01",
                 },
                 {
                     id: "temp001",
                     title: "Standard Email Signature Template",
-                    type: "template", 
-                    url: "/templates/email_signature_guide.html", 
+                    type: "template",
+                    url: "/templates/email_signature_guide.html",
                     description: "Official email signature template and usage guidelines for company communication.",
                     lastUpdated: "2023-08-20",
                 }
@@ -178,7 +191,7 @@ function loadSectionContent(sectionId) {
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
         console.log(`Data for ${sectionData.name} ready for rendering.`);
-        return sectionData; 
+        return sectionData;
     }
     return null;
 }
@@ -198,7 +211,7 @@ function searchKb(query) {
                     (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (article.summary && article.summary.toLowerCase().includes(lowerQuery))
                 ) {
-                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article' });
+                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor || 'gray' });
                 }
             });
         }
@@ -209,7 +222,7 @@ function searchKb(query) {
                     (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
                     item.type.toLowerCase().includes(lowerQuery)
                 ) {
-                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item' });
+                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item', themeColor: section.themeColor || 'gray' });
                 }
             });
         }
@@ -217,7 +230,7 @@ function searchKb(query) {
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
              // Avoid adding section if articles already matched, or provide a different result type
             if (!results.some(r => r.sectionId === section.id && r.type !== 'section_match')) {
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match'});
+                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor || 'gray'});
             }
         }
         // Search glossary terms
@@ -225,7 +238,7 @@ function searchKb(query) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
                     if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // prevent duplicates
-                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term'});
+                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor || 'gray'});
                     }
                 }
             });
