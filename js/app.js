@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[app.js - YOUR VERSION BASE + FIX] DOMContentLoaded fired.');
+    console.log('[app.js - FIX] DOMContentLoaded fired.');
 
-    // --- Helper Functions (escapeHTML, highlightText, truncateText) ---
+    // Debug: Check if kbSystemData is loaded
+    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
+
+    // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
         });
     }
 
@@ -18,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const regex = new RegExp(`(${escapedQuery})`, 'gi');
             return safeText.replace(regex, '<mark>$1</mark>');
         } catch (e) {
-            console.error("[app.js] Error in highlightText regex:", e);
+            console.error('[app.js] Error in highlightText regex:', e);
             return safeText;
         }
     }
@@ -42,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             console.log('[app.js - FIX] User is authenticated via Auth object.');
         } else {
-            console.error("[app.js - FIX] CRITICAL: Authentication mechanism not found.");
+            console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
         }
     }
 
@@ -56,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const footerKbVersionSpan = document.getElementById('footerKbVersion');
 
     if (currentUser) {
-        const userDisplayName = currentUser.fullName || currentUser.email || "User";
+        const userDisplayName = currentUser.fullName || currentUser.email || 'User';
         if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
         if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
     }
@@ -137,13 +140,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
 
-    const initialPageContent = pageContent ? pageContent.innerHTML : "<p>Error: pageContent missing on load.</p>";
+    // Debug: Check if critical elements exist
+    console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
+    console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
+
+    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
 
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
+            console.log(`[app.js - FIX] Highlighted sidebar link for section: "${sectionId}"`);
+        } else {
+            console.warn(`[app.js - FIX] No sidebar link found for section: "${sectionId}"`);
         }
     }
 
@@ -251,18 +261,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
         console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
-            console.error("[app.js - FIX] pageContent is NULL.");
+            console.error('[app.js - FIX] pageContent is NULL.');
+            pageContent.innerHTML = '<p>Error: pageContent element not found.</p>';
             return;
         }
         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error("[app.js - FIX] kbSystemData is UNDEFINED.");
-            pageContent.innerHTML = "<p>Error: Data missing.</p>";
+            console.error('[app.js - FIX] kbSystemData is UNDEFINED.');
+            pageContent.innerHTML = '<p>Error: Data missing.</p>';
             return;
         }
 
         if (sectionId === 'home') {
             pageContent.innerHTML = initialPageContent;
-            if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Welcome";
+            if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
@@ -278,13 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
             initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+            console.log('[app.js - FIX] Home page loaded.');
             return;
         }
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
             pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section not found</h2><p>"${escapeHTML(sectionId)}" does not exist.</p></div>`;
-            if (currentSectionTitleEl) currentSectionTitleEl.textContent = "Not Found";
+            if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Not Found';
+            console.warn(`[app.js - FIX] Section "${sectionId}" not found in kbSystemData.`);
             return;
         }
 
@@ -359,6 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
+                } else {
+                    console.warn(`[app.js - FIX] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
                 }
             }, 200);
         }
@@ -366,9 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        console.log(`[app.js - FIX] handleSectionTrigger CALLED for section: "${sectionId}", item: "${itemId}", subCat: "${subCategoryFilter}"`);
+        console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
         if (typeof kbSystemData === 'undefined') {
-            console.error("[app.js - FIX] kbSystemData undefined in handleSectionTrigger!");
+            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger!');
             return;
         }
         highlightSidebarLink(sectionId);
@@ -376,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update URL hash
         const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
         window.history.replaceState(null, '', `#${hash}`);
+        console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
     }
 
     // Parse URL hash
@@ -394,6 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`[app.js - FIX] Sidebar link click, data-section: "${sectionId}"`);
             if (sectionId) {
                 handleSectionTrigger(sectionId);
+            } else {
+                console.error('[app.js - FIX] No data-section attribute found on sidebar link:', this);
             }
         });
     });
@@ -413,6 +431,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
                     if (globalSearchInput) globalSearchInput.value = '';
                 }
+            } else {
+                console.error('[app.js - FIX] No data-section-trigger attribute found:', target);
             }
         }
 
@@ -422,13 +442,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
+                console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
                 handleSectionTrigger(sectionId, null, subId);
                 if (sectionId === 'support' && subId === 'tools') {
                     setTimeout(() => {
                         const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
-                        if (zendeskCard?.closest('.card')) zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (zendeskCard?.closest('.card')) {
+                            zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            console.log('[app.js - FIX] Scrolled to Zendesk card.');
+                        } else {
+                            console.warn('[app.js - FIX] Zendesk card not found.');
+                        }
                     }, 300);
                 }
+            } else {
+                console.error('[app.js - FIX] Invalid data-subcat-trigger value:', triggerValue);
             }
         }
     });
@@ -461,6 +489,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchResultsContainer.classList.remove('hidden');
             }
         });
+    } else {
+        console.warn('[app.js - FIX] Global search elements missing:', { globalSearchInput, searchResultsContainer });
     }
 
     function renderGlobalSearchResults_enhanced(results, query) {
@@ -490,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const sectionDiv = document.createElement('div');
             const theme = getThemeColors(result.themeColor || 'gray');
             sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || "Unknown")}`;
+            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
             a.appendChild(titleDiv);
             if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
             a.appendChild(sectionDiv);
@@ -569,6 +599,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         });
+    } else {
+        console.error('[app.js - FIX] pageContent element not found on initialization.');
     }
 
     // Handle URL hash on page load and hash change
