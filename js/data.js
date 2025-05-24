@@ -1,4 +1,4 @@
-// /infini-base/js/data.js.txt
+// /infini-base/js/data.js
 const kbSystemData = {
     meta: {
         version: "0.1.2", // Updated version to reflect changes
