@@ -211,8 +211,6 @@ const kbSystemData = {
 };
 
 function loadSectionContent(sectionId) {
-    // This function is less critical if displaySectionContent in app.js handles data fetching directly.
-    // However, searchKb still uses kbSystemData globally.
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
         console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
