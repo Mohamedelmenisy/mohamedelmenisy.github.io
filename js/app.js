@@ -1,4 +1,3 @@
-// /infini-base/js/app.js
 let currentUser = null;
 let isInitialAuthCheckComplete = false;
 
@@ -32,9 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 '<': '<',
                 '>': '>',
                 '"': '"',
-                "'": '''
+                "'": '\''
             }[match];
-        }); // THIS IS AROUND LINE 32
+        });
     }
 
     function highlightText(text, query) {
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const loginPath = window.location.origin + (window.location.pathname.includes('/infini-base/') ? '/infini-base/' : '/') + loginPageName + '?reason=session_ended_app';
                 window.location.replace(loginPath);
             } else {
-                 if (loadingOverlay) loadingOverlay.style.display = 'none';
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             }
             return;
         }
@@ -127,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isInitialAuthCheckComplete = true;
 
             if (!document.body.dataset.initialLoadDone) {
-                console.log('[app.js] Auth confirmed (event:',event,'), processing initial section load.');
+                console.log('[app.js] Auth confirmed (event:', event, '), processing initial section load.');
                 const { sectionId, itemId, subCategoryFilter } = parseHash();
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
                 document.body.dataset.initialLoadDone = 'true';
@@ -135,9 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
                 if (mainPageContainer) mainPageContainer.style.visibility = 'visible';
             } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                 console.log('[app.js] Auth token refreshed or user updated. UI should be current.');
-                 if (loadingOverlay && loadingOverlay.style.display !== 'none') loadingOverlay.style.display = 'none';
-                 if (mainPageContainer && mainPageContainer.style.visibility !== 'visible') mainPageContainer.style.visibility = 'visible';
+                console.log('[app.js] Auth token refreshed or user updated. UI should be current.');
+                if (loadingOverlay && loadingOverlay.style.display !== 'none') loadingOverlay.style.display = 'none';
+                if (mainPageContainer && mainPageContainer.style.visibility !== 'visible') mainPageContainer.style.visibility = 'visible';
             }
         }
     });
@@ -263,13 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const homeLink = document.querySelector('.sidebar-link[data-section="home"]');
             if (homeLink && (sectionId === 'home' || !sectionId)) homeLink.classList.add('active');
-            // console.warn(`[app.js] No specific sidebar link found for section: "${sectionId}"`);
         }
     }
 
     // --- Card Rendering Functions ---
-    // Make sure these are defined or copied from your previous app.js.txt
-    // Ensure they use escapeHTML for all user-generated content.
     function getThemeColors(themeColor = 'gray') {
         const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
         const colorMap = {
@@ -290,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         return colorMap[color] || colorMap.gray;
     }
+
     function renderArticleCard_enhanced(article, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
@@ -319,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
+
     function renderItemCard_enhanced(item, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
@@ -343,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
+
     function renderCaseCard_enhanced(caseItem, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const caseIcon = 'fas fa-briefcase';
@@ -367,11 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
-    // --- End of Card Rendering Functions ---
-
 
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        // ... (Implementation from previous response, ensure it's correct)
         console.log('[app.js] handleSectionTrigger called. CurrentUser:', currentUser ? currentUser.email : 'None', 'Section:', sectionId, 'Item:', itemId, 'SubCat:', subCategoryFilter);
 
         if (!isInitialAuthCheckComplete) {
@@ -388,19 +384,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        highlightSidebarLink(sectionId || 'home'); // Default to home if sectionId is falsy
+        highlightSidebarLink(sectionId || 'home');
         displaySectionContent(sectionId || 'home', itemId, subCategoryFilter);
 
         const newHashSuffix = itemId ? `${sectionId}/${itemId}` : (subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId);
         const newHash = `#${newHashSuffix || 'home'}`;
         if (window.location.hash !== newHash) {
-            window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', newHash);
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, document.title, newHash);
             console.log(`[app.js] URL hash updated to: ${newHash}`);
         }
     }
 
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        // ... (Full implementation from previous response, ensure it's correct and uses escapeHTML)
         console.log(`[app.js] displaySectionContent for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
 
         if (!pageContent) {
@@ -408,12 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.innerHTML = '<div class="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900"><p class="text-2xl text-red-600 p-10">Critical Error: UI cannot be rendered. Please contact support.</p></div>';
             return;
         }
-         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
             console.error('[app.js] displaySectionContent: kbSystemData or sections missing.');
             pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-600">Error Loading Data</h2><p>The knowledge base data could not be loaded. Please try again later or contact support.</p></div>';
             return;
         }
-
 
         if (sectionId === 'home' || !sectionId) {
             pageContent.innerHTML = initialPageContent;
@@ -428,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (kbSystemData.meta) {
                 if (homeKbVersionEl) homeKbVersionEl.textContent = escapeHTML(kbSystemData.meta.version);
-                if (homeLastKbUpdateEl) homeLastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+                if (homeLastKbUpdateEl) lastKbUpdateSpan.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
             }
             pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
                 card.style.animationDelay = `${(index + 1) * 0.05}s`;
@@ -543,16 +537,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     function parseHash() {
         const hash = window.location.hash.substring(1);
         if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
         const parts = hash.split('/');
-        const sectionId = parts[0] || 'home'; // Default to home if sectionId is empty after split
+        const sectionId = parts[0] || 'home';
         let itemId = null;
         let subCategoryFilter = null;
 
-        if (parts.length > 1 && parts[1]) { // Ensure parts[1] exists and is not empty
+        if (parts.length > 1 && parts[1]) {
             const potentialSubCatId = parts[1];
             const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
             if (sectionData && sectionData.subCategories && sectionData.subCategories.some(sc => sc.id === potentialSubCatId)) {
@@ -587,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-         if (homeSubcatTrigger && (pageContent?.querySelector('#welcomeUserName') || initialPageContent.includes('Welcome,'))) {
+        if (homeSubcatTrigger && (pageContent?.querySelector('#welcomeUserName') || initialPageContent.includes('Welcome,'))) {
             e.preventDefault();
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             const parts = triggerValue.split('.');
@@ -618,8 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResultsContainer = document.getElementById('searchResultsContainer');
 
     if (globalSearchInput && searchResultsContainer) {
-        // ... (Global search implementation as provided)
-         let debounceTimeout;
+        let debounceTimeout;
         globalSearchInput.addEventListener('input', () => {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
@@ -648,9 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         let triggerAttrs = `data-section-trigger="${result.sectionId}"`;
                         if (result.id && (result.type !== 'section_match')) {
-                             triggerAttrs += ` data-item-id="${result.id}"`;
+                            triggerAttrs += ` data-item-id="${result.id}"`;
                         }
-
 
                         resultsHTML += `
                             <a href="#${itemPath}" ${triggerAttrs} 
