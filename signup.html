@@ -62,6 +62,9 @@
             transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+            display: flex; /* For loading spinner */
+            align-items: center; /* For loading spinner */
+            justify-content: center; /* For loading spinner */
         }
         .signup-btn:hover {
             background: linear-gradient(90deg, #2563eb, #1d4ed8); /* Darker Blue */
@@ -72,15 +75,27 @@
             transform: translateY(0px) scale(1);
             box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
         }
+        .signup-btn.loading .btn-text { display: none; }
+        .signup-btn.loading .loading-spinner { display: inline-block; }
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         .form-title {
              font-family: 'Inter', sans-serif;
         }
-        /* Styles for messages from your provided code */
         .form-message {
-            padding: 0.75rem 1rem; /* 12px 16px */
-            margin-bottom: 1rem; /* 16px */
-            border-radius: 0.375rem; /* 6px */
-            font-size: 0.875rem; /* 14px */
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
             text-align: center;
             border-width: 1px;
             border-style: solid;
@@ -90,10 +105,18 @@
             border-color: #6ee7b7; /* green-300 */
             color: #065f46; /* green-800 */
         }
-        .error-message { /* General form error, if needed separately */
+        .error-message {
             background-color: #fee2e2; /* red-100 */
             border-color: #fca5a5; /* red-300 */
             color: #991b1b; /* red-800 */
+        }
+        .field-error-message { /* For specific field errors */
+            background-color: transparent;
+            border: none;
+            color: #ef4444; /* red-500 */
+            text-align: left;
+            padding: 0.25rem 0 0 0;
+            font-size: 0.75rem; /* 12px */
         }
     </style>
 </head>
@@ -105,11 +128,9 @@
             <p class="text-gray-600 mt-1">Join InfiniBase and start organizing knowledge.</p>
         </div>
 
-        <!-- Notification Area -->
-        <div id="signupSuccessMessage" class="form-message success-message" style="display: none;"></div>
-        <div id="signupErrorMessage" class="form-message error-message" style="display: none;"></div>
+        <div id="signupGeneralMessage" class="form-message" style="display: none;"></div>
 
-        <form id="signupForm" class="space-y-6">
+        <form id="signupForm" class="space-y-4"> {/* Reduced space for tighter field error messages */}
             <div>
                 <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <div class="relative">
@@ -117,6 +138,7 @@
                     <input type="text" id="fullName" name="fullName" placeholder="E.g., Jane Doe" required
                            class="input-field w-full p-3 text-gray-700 focus:outline-none">
                 </div>
+                <div id="fullNameError" class="field-error-message"></div>
             </div>
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
@@ -125,6 +147,7 @@
                     <input type="email" id="email" name="email" placeholder="your.name@thechefz.co" required
                            class="input-field w-full p-3 text-gray-700 focus:outline-none">
                 </div>
+                <div id="emailError" class="field-error-message"></div>
                 <p class="text-xs text-gray-500 mt-1">Must be a <code class="bg-gray-200 p-0.5 rounded">@thechefz.co</code> email address.</p>
             </div>
             <div>
@@ -134,10 +157,12 @@
                     <input type="password" id="password" name="password" placeholder="Choose a strong password" required minlength="6"
                            class="input-field w-full p-3 text-gray-700 focus:outline-none">
                 </div>
+                <div id="passwordError" class="field-error-message"></div>
                  <p class="text-xs text-gray-500 mt-1">Minimum 6 characters.</p>
             </div>
-            <button type="submit" class="signup-btn w-full py-3 text-white font-semibold">
-                Sign Up <i class="fas fa-arrow-right ml-2"></i>
+            <button type="submit" id="submitButton" class="signup-btn w-full py-3 text-white font-semibold">
+                <span class="btn-text">Sign Up <i class="fas fa-arrow-right ml-2"></i></span>
+                <span class="loading-spinner"></span>
             </button>
         </form>
         <p class="text-center mt-6 text-sm text-gray-600">
@@ -145,114 +170,224 @@
         </p>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script>
+    <!-- Import Supabase Client -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // --- Supabase Configuration ---
+        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co'; // YOUR_SUPABASE_URL
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4'; // YOUR_SUPABASE_ANON_KEY
+        let supabase;
+
+        try {
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized for signup.');
+        } catch (e) {
+            console.error("Failed to initialize Supabase client:", e);
+            displayGeneralMessage("Service unavailable. Please try again later.", "error");
+            const form = document.getElementById('signupForm');
+            if (form) form.style.display = 'none';
+        }
+
+
+        // --- DOM Elements ---
         const signupForm = document.getElementById('signupForm');
-        const signupSuccessMessageEl = document.getElementById('signupSuccessMessage');
-        const signupErrorMessageEl = document.getElementById('signupErrorMessage');
+        const fullNameInput = document.getElementById('fullName');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitButton = document.getElementById('submitButton');
 
-        function displaySuccessMessage(message) {
-            if (signupSuccessMessageEl) {
-                signupSuccessMessageEl.textContent = message;
-                signupSuccessMessageEl.style.display = 'block';
-            }
-            if (signupErrorMessageEl) {
-                signupErrorMessageEl.style.display = 'none';
-            }
-        }
+        const fullNameErrorEl = document.getElementById('fullNameError');
+        const emailErrorEl = document.getElementById('emailError');
+        const passwordErrorEl = document.getElementById('passwordError');
+        const signupGeneralMessageEl = document.getElementById('signupGeneralMessage');
 
-        function displayErrorMessage(message) {
-            if (signupErrorMessageEl) {
-                signupErrorMessageEl.textContent = message;
-                signupErrorMessageEl.style.display = 'block';
-            }
-            if (signupSuccessMessageEl) {
-                signupSuccessMessageEl.style.display = 'none';
+        // --- Helper Functions for UI ---
+        function displayFieldError(element, message) {
+            if (element) {
+                element.textContent = message;
+                element.style.display = 'block';
+                const inputField = element.previousElementSibling?.querySelector('input');
+                if (inputField) inputField.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
             }
         }
 
-        function clearMessages() {
-            if (signupSuccessMessageEl) signupSuccessMessageEl.style.display = 'none';
-            if (signupErrorMessageEl) signupErrorMessageEl.style.display = 'none';
+        function clearFieldError(element) {
+            if (element) {
+                element.textContent = '';
+                element.style.display = 'none';
+                const inputField = element.previousElementSibling?.querySelector('input');
+                if (inputField) inputField.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+            }
         }
 
-
-        signupForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            clearMessages(); // Clear previous messages
-
-            const fullName = document.getElementById('fullName').value.trim();
-            const email = document.getElementById('email').value.trim().toLowerCase(); // Normalize email
-            const password = document.getElementById('password').value;
-
-            if (!fullName || !email || !password) {
-                displayErrorMessage('Please fill in all fields.');
-                return;
+        function displayGeneralMessage(message, type = 'error') {
+            if (signupGeneralMessageEl) {
+                signupGeneralMessageEl.textContent = message;
+                signupGeneralMessageEl.classList.remove('success-message', 'error-message');
+                signupGeneralMessageEl.classList.add(type === 'success' ? 'success-message' : 'error-message');
+                signupGeneralMessageEl.style.display = 'block';
             }
+        }
 
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                displayErrorMessage('Please enter a valid email address.');
-                return;
+        function clearGeneralMessage() {
+            if (signupGeneralMessageEl) signupGeneralMessageEl.style.display = 'none';
+        }
+
+        function setButtonLoading(isLoading) {
+            if (submitButton) {
+                submitButton.disabled = isLoading;
+                submitButton.classList.toggle('loading', isLoading);
             }
+        }
 
-            const expectedDomain = '@thechefz.co';
-            if (!email.endsWith(expectedDomain)) {
-                 displayErrorMessage(`Please use a valid work email ending with ${expectedDomain}.`);
-                 return;
-            }
+        // --- Form Submission Logic ---
+        if (signupForm && supabase) {
+            signupForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                clearGeneralMessage();
+                clearFieldError(fullNameErrorEl);
+                clearFieldError(emailErrorEl);
+                clearFieldError(passwordErrorEl);
+                setButtonLoading(true);
 
-            if (password.length < 6) {
-                displayErrorMessage('Password must be at least 6 characters long.');
-                return;
-            }
+                const fullName = fullNameInput.value.trim();
+                const email = emailInput.value.trim().toLowerCase();
+                const password = passwordInput.value;
 
-            // Auth.signup will handle if user exists and internally show alerts/redirect
-            // For a more integrated experience, Auth.signup could return more detailed status
-            // or throw specific errors that this script can catch and display nicely.
-            // For now, we'll adapt to its current behavior.
-
-            // Simulate Auth.signup's behavior for success display
-            const tempUsers = JSON.parse(localStorage.getItem('kb_users')) || [];
-            if (tempUsers.find(user => user.email.toLowerCase() === email.toLowerCase())) {
-                 // Auth.signup will show an alert and redirect.
-                 // If we want to prevent its alert and use our own:
-                 // displayErrorMessage('User with this email already exists. Please login.');
-                 // setTimeout(() => { window.location.href = 'login.html'; }, 2000);
-                 // For now, let Auth.signup handle it.
-                 Auth.signup(fullName, email, password);
-                 return;
-            }
-
-
-            const signupSuccess = Auth.signup(fullName, email, password);
-
-            if (signupSuccess) {
-                // Auth.signup shows an alert and redirects.
-                // If we wanted to replace that with our custom message before redirect:
-                // displaySuccessMessage("Signup successful! Please login. Redirecting...");
-                // signupForm.reset();
-                // setTimeout(() => {
-                //    window.location.href = 'login.html';
-                // }, 2500);
-                // Since Auth.signup ALREADY redirects and shows alert, this block might not fully execute
-                // or the redirect might happen before the message is very visible.
-                // For true custom message before redirect, Auth.signup needs modification.
-            } else {
-                // This 'else' might not be reached if Auth.signup handles all its errors with alerts.
-                // If Auth.signup returns false for a reason not covered by its alerts,
-                // we can show a generic error here.
-                if (!signupSuccessMessageEl.style.display.includes('block')) { // Avoid overriding specific error from Auth.js if it set one
-                     displayErrorMessage("Signup failed. Please try again.");
+                // --- Client-side Validation ---
+                let isValid = true;
+                if (!fullName) {
+                    displayFieldError(fullNameErrorEl, 'Full name is required.');
+                    isValid = false;
                 }
-            }
-        });
+                if (!email) {
+                    displayFieldError(emailErrorEl, 'Email is required.');
+                    isValid = false;
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    displayFieldError(emailErrorEl, 'Please enter a valid email address.');
+                    isValid = false;
+                } else {
+                    const expectedDomain = '@thechefz.co';
+                    if (!email.endsWith(expectedDomain)) {
+                        displayFieldError(emailErrorEl, `Must be a ${expectedDomain} email address.`);
+                        isValid = false;
+                    }
+                }
+                if (!password) {
+                    displayFieldError(passwordErrorEl, 'Password is required.');
+                    isValid = false;
+                } else if (password.length < 6) {
+                    displayFieldError(passwordErrorEl, 'Password must be at least 6 characters.');
+                    isValid = false;
+                }
 
-         // Redirect if already authenticated
-        if (Auth.isAuthenticated()) {
-            console.log('[signup.html] User already authenticated, redirecting to dashboard.');
-            window.location.href = 'dashboard.html';
+                if (!isValid) {
+                    setButtonLoading(false);
+                    return;
+                }
+
+                // --- Supabase Signup ---
+                try {
+                    const { data: authResponse, error: signUpError } = await supabase.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: {
+                                full_name: fullName // This will be stored in auth.users.user_metadata
+                            }
+                        }
+                    });
+
+                    if (signUpError) {
+                        console.error('Supabase signUp Error:', signUpError);
+                        if (signUpError.message.includes("User already registered")) {
+                            displayGeneralMessage("This email is already registered. Please log in.", "error");
+                        } else if (signUpError.message.includes("Password should be at least 6 characters")) {
+                            displayFieldError(passwordErrorEl, "Password should be at least 6 characters.");
+                        }
+                        else {
+                            displayGeneralMessage(`Signup failed: ${signUpError.message}`, "error");
+                        }
+                        setButtonLoading(false);
+                        return;
+                    }
+
+                    // console.log('Supabase signUp Response Data:', authResponse);
+
+                    if (authResponse.user && authResponse.user.identities && authResponse.user.identities.length === 0) {
+                        // This case can happen if "Confirm email" is OFF and the user already exists (but signUp doesn't error)
+                        // Or if the user exists but email is not confirmed and signUp is called again.
+                         displayGeneralMessage("This email is already registered. If you haven't confirmed your email, please check your inbox (and spam folder).", "error");
+                         setButtonLoading(false);
+                         return;
+                    }
+
+
+                    // If email confirmation is required, user object is returned but session is null.
+                    // If email confirmation is OFF, user object AND session are returned.
+                    if (authResponse.user) {
+                        // Attempt to insert into public.users table
+                        // The 'id' should match auth.users.id, 'email' auth.users.email
+                        // 'role' defaults to 'viewer' by database schema.
+                        const { error: profileError } = await supabase
+                            .from('users') // Your custom public users table
+                            .insert({
+                                id: authResponse.user.id, // Link to auth.users table
+                                email: authResponse.user.email,
+                                full_name: fullName, // Or from authResponse.user.user_metadata.full_name
+                                // 'role' will use the default 'viewer' from your table definition
+                            });
+
+                        if (profileError) {
+                            console.error('Error inserting user profile into public.users:', profileError);
+                            // User is created in Supabase Auth, but profile creation failed.
+                            // This is a partial success. Advise user to contact support or try login.
+                            // If "Confirm email" is ON, they'll get the confirmation email anyway.
+                            if (authResponse.session) { // Auto-confirmed
+                                displayGeneralMessage("Account created, but profile setup had an issue. Please try logging in or contact support.", "error");
+                            } else { // Email confirmation pending
+                                displayGeneralMessage("Account created and confirmation email sent, but profile setup had an issue. Please confirm your email, then contact support if problems persist.", "error");
+                            }
+                        } else {
+                            if (authResponse.session) { // Email auto-confirmed (or "Confirm email" is OFF)
+                                displayGeneralMessage("Signup successful! You are now logged in. Redirecting...", "success");
+                                setTimeout(() => { window.location.href = 'dashboard.html'; }, 2500);
+                            } else { // "Confirm email" is ON, session is null until confirmed
+                                displayGeneralMessage("Signup successful! Please check your email to confirm your account.", "success");
+                                signupForm.reset();
+                            }
+                        }
+                    } else {
+                        // Should not happen if signUpError was not thrown, but as a fallback.
+                        displayGeneralMessage("Signup failed. Unexpected response from server.", "error");
+                    }
+
+                } catch (error) {
+                    console.error("General error during signup process:", error);
+                    displayGeneralMessage("An unexpected error occurred. Please try again.", "error");
+                } finally {
+                    // Only turn off loading if not redirecting or if a persistent message is shown
+                    if (!signupGeneralMessageEl.textContent.includes("Redirecting...") &&
+                        !(signupGeneralMessageEl.classList.contains('success-message') && signupGeneralMessageEl.textContent.includes("confirm your account"))
+                       ) {
+                        setButtonLoading(false);
+                    }
+                }
+            });
         }
+
+        // Check if already authenticated (using Supabase Auth)
+        // This replaces the old Auth.isAuthenticated() for this page
+        if (supabase) {
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    console.log('[signup.html] User already authenticated with Supabase, redirecting to dashboard.');
+                    window.location.href = 'dashboard.html';
+                }
+            });
+        }
+
     </script>
 </body>
 </html>
