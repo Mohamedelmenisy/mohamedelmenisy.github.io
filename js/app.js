@@ -1,11 +1,11 @@
-document.addEventListener('DOMContentLoaded', () => {
+ocument.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - MODIFIED] DOMContentLoaded fired.');
 
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
         });
     }
 
@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             itemDetailModal.offsetWidth;
             itemDetailModal.classList.remove('opacity-0');
             itemDetailModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+
         }
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Ensure styles within modal are themed
     }
@@ -150,10 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
             itemDetailModal.classList.add('opacity-0');
             itemDetailModal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
             setTimeout(() => {
-                itemDetailModal.classList.add('hidden');
-                if (modalTitleEl) modalTitleEl.textContent = '';
-                if (modalBodyEl) modalBodyEl.innerHTML = '';
-                if (modalFooterEl) modalFooterEl.innerHTML = '';
+                 itemDetailModal.classList.add('hidden');
+                 if (modalTitleEl) modalTitleEl.textContent = '';
+                 if (modalBodyEl) modalBodyEl.innerHTML = '';
+                 if (modalFooterEl) modalFooterEl.innerHTML = '';
             }, 300); // Match transition duration
         }
     }
@@ -190,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
-    const mainContent = document.querySelector('main'); // Added for scrolling
 
     // Store the initial HTML structure for the home page dynamically.
     // This will now include a placeholder for Access Tracking.
@@ -231,15 +231,11 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `;
 
+
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
-            console.log(`[app.js] Highlighted sidebar link for section: "${sectionId}"`);
-        } else {
-            console.warn(`[app.js] No sidebar link found for section: "${sectionId}"`);
-        }
+        if (activeLink) activeLink.classList.add('active');
     }
 
     function getThemeColors(themeColor = 'gray') {
@@ -373,13 +369,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sectionId === 'home' || !sectionId) { // Default to home
             pageContent.innerHTML = initialPageContentStructure;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
-            if (breadcrumbsContainer) {
+             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
             const welcomeUserEl = pageContent.querySelector('#welcomeUserName');
             if (currentUser && welcomeUserEl) {
-                welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
+                 welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
             }
             // Update version/date on home page dynamically if elements exist in initialPageContentStructure
             const kbVersionHomeEl = pageContent.querySelector('#kbVersionDisplayHome');
@@ -399,7 +395,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.animation = `fadeInUp 0.5s ease-out forwards ${(index + 1) * 0.07}s`;
             });
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            window.location.hash = '#home';
             return;
         }
 
@@ -534,21 +529,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
-            let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
+            let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">&gt;</span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
             if (subCategoryFilter) {
                 const subCatData = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter);
                 if (subCatData) {
-                    bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <a href="#" data-section-trigger="${sectionData.id}" class="hover:underline ${theme.text}">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(subCatData.name)}</span>`;
+                     bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">&gt;</span> <a href="#" data-section-trigger="${sectionData.id}" class="hover:underline ${theme.text}">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400 dark:text-gray-500">&gt;</span> <span class="${theme.text} font-medium">${escapeHTML(subCatData.name)}</span>`;
                 }
             }
             breadcrumbsContainer.innerHTML = bcHTML;
             breadcrumbsContainer.classList.remove('hidden');
             breadcrumbsContainer.querySelectorAll('a[data-section-trigger]').forEach(link => {
-                link.addEventListener('click', (e) => { 
-                    e.preventDefault(); 
-                    console.log(`[app.js] Breadcrumb clicked: Section Trigger = ${e.currentTarget.dataset.sectionTrigger}`);
-                    handleSectionTrigger(e.currentTarget.dataset.sectionTrigger); 
-                });
+                link.addEventListener('click', (e) => { e.preventDefault(); handleSectionTrigger(e.currentTarget.dataset.sectionTrigger); });
             });
         }
 
@@ -559,14 +550,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
-                } else {
-                    console.warn(`[app.js] Item with ID "${itemIdToFocus}" not found to focus.`);
                 }
             }, 250);
         }
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-        window.location.hash = `#${sectionId}${subCategoryFilter ? '/' + subCategoryFilter : ''}`;
     }
+
 
     // --- Modal for Item Details ---
     window.showItemDetailsModal = function(sectionId, itemId, itemType) {
@@ -603,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${item.tags ? `<div class="mt-3"><strong>Tags:</strong> ${item.tags.map(t => `<span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full mr-1">${escapeHTML(t)}</span>`).join('')}</div>` : ''}
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">Last Updated: ${item.lastUpdated}</p>
                 `;
-                logAccess(userNameForLog, item.title, section.name, 'Case');
+                 logAccess(userNameForLog, item.title, section.name, 'Case');
             }
         }
 
@@ -687,6 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModal();
         displaySectionContent(sectionId, null, currentSubCategoryFilter); // Refresh view, maintaining subcategory filter if active
     }
+
 
     window.showAddEditCaseModal = function(sectionId, caseIdToEdit = null) {
         const section = kbSystemData.sections.find(s => s.id === sectionId);
@@ -861,381 +851,306 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${escapeHTML(entry.item)}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${escapeHTML(entry.section)}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${escapeHTML(entry.type)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${new Date(entry.timestamp).toLocaleString()}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${new Date(entry.timestamp).toLocaleString()}</td>
                     </tr>`;
             });
-            reportHTML += `</tbody></table></div>`;
+            reportHTML += '</tbody></table></div>';
+            if (accessHistory.length > 20) {
+                reportHTML += '<p class="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">Showing last 20 entries.</p>';
+            }
         }
         container.innerHTML = reportHTML;
-    }
-
-    // --- Navigation Handler (MODIFIED) ---
-    let currentSubCategoryFilter = null;
-    window.handleSectionTrigger = function(sectionId, subCatId = null) {
-        console.log(`[app.js] handleSectionTrigger called with sectionId: ${sectionId}, subCatId: ${subCatId}`);
-        currentSubCategoryFilter = subCatId || null;
-        highlightSidebarLink(sectionId);
-        displaySectionContent(sectionId, null, currentSubCategoryFilter);
-    };
-
-    // --- Event Listeners for Navigation ---
-    document.querySelectorAll('[data-section-trigger], [data-subcat-trigger]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const sectionId = link.getAttribute('data-section-trigger');
-            const subCatId = link.getAttribute('data-subcat-trigger');
-            console.log(`[app.js] Navigation Event Listener] Link clicked: Section Trigger = ${link.dataset.sectionTrigger || 'N/A'}, Subcat Trigger = ${link.dataset.subcatTrigger || 'N/A'}`);
-            if (subCatId) {
-                handleSectionTrigger(sectionId, subCatId);
-            } else {
-                handleSectionTrigger(sectionId);
-            }
-            if (mainContent) {
-                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        });
-    });
-
-    // --- Global Search ---
-    const searchInput = document.getElementById('globalSearchInput');
-    const searchButton = document.getElementById('globalSearchBtn');
-    const searchResultsContainer = document.getElementById('searchResultsContainer');
-
-    function performGlobalSearch(query) {
-        if (!query || query.length < 2) {
-            searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Please enter at least 2 characters to search.</p>';
-            return;
-        }
-        let resultsHTML = '';
-        let hasResults = false;
-
-        kbSystemData.sections.forEach(section => {
-            let sectionResults = [];
-            const theme = getThemeColors(section.themeColor);
-
-            // Search Articles
-            if (section.articles) {
-                section.articles.forEach(article => {
-                    if (
-                        article.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (article.summary && article.summary.toLowerCase().includes(query.toLowerCase())) ||
-                        (article.details && article.details.toLowerCase().includes(query.toLowerCase())) ||
-                        (article.tags && article.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-                    ) {
-                        sectionResults.push({
-                            type: 'article',
-                            html: `
-                                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 border-l-4 ${theme.border}">
-                                    <div class="flex items-center mb-2">
-                                        <i class="fas fa-newspaper mr-2 ${theme.icon}"></i>
-                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">${highlightText(article.title, query)}</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(article.summary || article.details, 100), query) || 'No summary.'}</p>
-                                    <button onclick="showItemDetailsModal('${section.id}', '${article.id}', 'article')" class="mt-2 text-sm ${theme.cta}">
-                                        View Details <i class="fas fa-arrow-right ml-1"></i>
-                                    </button>
-                                </div>`
-                        });
-                    }
-                });
-            }
-
-            // Search Cases
-            if (section.cases) {
-                section.cases.forEach(caseItem => {
-                    if (
-                        caseItem.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (caseItem.summary && caseItem.summary.toLowerCase().includes(query.toLowerCase())) ||
-                        (caseItem.resolutionSteps && caseItem.resolutionSteps.toLowerCase().includes(query.toLowerCase())) ||
-                        (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-                    ) {
-                        sectionResults.push({
-                            type: 'case',
-                            html: `
-                                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 border-l-4 ${theme.border}">
-                                    <div class="flex items-center mb-2">
-                                        <i class="fas fa-briefcase mr-2 ${theme.icon}"></i>
-                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">${highlightText(caseItem.title, query)}</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(caseItem.summary, 100), query) || 'No summary.'}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Status: ${highlightText(caseItem.status, query)}</p>
-                                    <button onclick="showItemDetailsModal('${section.id}', '${caseItem.id}', 'case')" class="mt-2 text-sm ${theme.cta}">
-                                        View Details <i class="fas fa-arrow-right ml-1"></i>
-                                    </button>
-                                </div>`
-                        });
-                    }
-                });
-            }
-
-            // Search Items (Forms/Templates)
-            if (section.items) {
-                section.items.forEach(item => {
-                    if (
-                        item.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
-                    ) {
-                        sectionResults.push({
-                            type: 'item',
-                            html: `
-                                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 border-l-4 ${theme.border}">
-                                    <div class="flex items-center mb-2">
-                                        <i class="fas fa-file-alt mr-2 ${theme.icon}"></i>
-                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">${highlightText(item.title, query)}</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(item.description, 100), query) || 'No description.'}</p>
-                                    <a href="${escapeHTML(item.url)}" target="_blank" class="mt-2 text-sm ${theme.cta}">
-                                        Open <i class="fas fa-external-link-alt ml-1"></i>
-                                    </a>
-                                </div>`
-                        });
-                    }
-                });
-            }
-
-            // Search Glossary
-            if (section.glossary) {
-                section.glossary.forEach(entry => {
-                    if (
-                        entry.term.toLowerCase().includes(query.toLowerCase()) ||
-                        entry.definition.toLowerCase().includes(query.toLowerCase())
-                    ) {
-                        sectionResults.push({
-                            type: 'glossary',
-                            html: `
-                                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 border-l-4 ${theme.border}">
-                                    <div class="flex items-center mb-2">
-                                        <i class="fas fa-book mr-2 ${theme.icon}"></i>
-                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">${highlightText(entry.term, query)}</h4>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(entry.definition, 100), query)}</p>
-                                </div>`
-                        });
-                    }
-                });
-            }
-
-            if (sectionResults.length > 0) {
-                hasResults = true;
-                resultsHTML += `
-                    <div class="mb-6">
-                        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 border-b pb-2 ${theme.border}">${escapeHTML(section.name)}</h3>
-                        <div class="space-y-3">
-                            ${sectionResults.map(r => r.html).join('')}
-                        </div>
-                    </div>`;
-            }
-        });
-
-        if (!hasResults) {
-            resultsHTML = '<p class="text-gray-500 dark:text-gray-400">No results found.</p>';
-        }
-        searchResultsContainer.innerHTML = resultsHTML;
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
-    if (searchButton && searchInput) {
-        searchButton.addEventListener('click', () => {
-            const query = searchInput.value.trim();
-            console.log(`[app.js] Global search initiated with query: "${query}"`);
-            performGlobalSearch(query);
-        });
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = searchInput.value.trim();
-                console.log(`[app.js] Global search initiated via Enter key with query: "${query}"`);
-                performGlobalSearch(query);
-            }
-        });
-    }
+    // --- Navigation Handling ---
+    let currentSubCategoryFilter = null; // Keep track of active subcategory filter
 
-    // --- Section-Specific Search ---
-    function setupSectionSearch(sectionId) {
-        const sectionSearchInput = document.getElementById('sectionSearchInput');
-        const sectionSearchBtn = document.getElementById('sectionSearchBtn');
-        const sectionSearchResults = document.getElementById('sectionSearchResults');
-
-        if (!sectionSearchInput || !sectionSearchBtn || !sectionSearchResults) return;
-
-        function performSectionSearch(query) {
-            if (!query || query.length < 2) {
-                sectionSearchResults.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-sm">Please enter at least 2 characters to search.</p>';
-                return;
-            }
-
-            const section = kbSystemData.sections.find(s => s.id === sectionId);
-            if (!section) {
-                sectionSearchResults.innerHTML = '<p class="text-red-500 dark:text-red-400 text-sm">Section not found.</p>';
-                return;
-            }
-
-            let resultsHTML = '';
-            let hasResults = false;
-            const theme = getThemeColors(section.themeColor);
-
-            // Search Articles
-            if (section.articles) {
-                section.articles.forEach(article => {
-                    if (
-                        article.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (article.summary && article.summary.toLowerCase().includes(query.toLowerCase())) ||
-                        (article.details && article.details.toLowerCase().includes(query.toLowerCase())) ||
-                        (article.tags && article.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-                    ) {
-                        hasResults = true;
-                        resultsHTML += `
-                            <div class="p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm hover:shadow-md transition-shadow duration-300 border-l-3 ${theme.border}">
-                                <div class="flex items-center mb-1">
-                                    <i class="fas fa-newspaper mr-2 ${theme.icon}"></i>
-                                    <h4 class="font-medium text-gray-800 dark:text-gray-200 text-sm">${highlightText(article.title, query)}</h4>
-                                </div>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(article.summary || article.details, 80), query) || 'No summary.'}</p>
-                                <button onclick="showItemDetailsModal('${section.id}', '${article.id}', 'article')" class="mt-1 text-xs ${theme.cta}">
-                                    View <i class="fas fa-arrow-right ml-1"></i>
-                                </button>
-                            </div>`;
-                    }
-                });
-            }
-
-            // Search Cases
-            if (section.cases) {
-                section.cases.forEach(caseItem => {
-                    if (
-                        caseItem.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (caseItem.summary && caseItem.summary.toLowerCase().includes(query.toLowerCase())) ||
-                        (caseItem.resolutionSteps && caseItem.resolutionSteps.toLowerCase().includes(query.toLowerCase())) ||
-                        (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase())))
-                    ) {
-                        hasResults = true;
-                        resultsHTML += `
-                            <div class="p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm hover:shadow-md transition-shadow duration-300 border-l-3 ${theme.border}">
-                                <div class="flex items-center mb-1">
-                                    <i class="fas fa-briefcase mr-2 ${theme.icon}"></i>
-                                    <h4 class="font-medium text-gray-800 dark:text-gray-200 text-sm">${highlightText(caseItem.title, query)}</h4>
-                                </div>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(caseItem.summary, 80), query) || 'No summary.'}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Status: ${highlightText(caseItem.status, query)}</p>
-                                <button onclick="showItemDetailsModal('${section.id}', '${caseItem.id}', 'case')" class="mt-1 text-xs ${theme.cta}">
-                                    View <i class="fas fa-arrow-right ml-1"></i>
-                                </button>
-                            </div>`;
-                    }
-                });
-            }
-
-            // Search Items (Forms/Templates)
-            if (section.items) {
-                section.items.forEach(item => {
-                    if (
-                        item.title.toLowerCase().includes(query.toLowerCase()) ||
-                        (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
-                    ) {
-                        hasResults = true;
-                        resultsHTML += `
-                            <div class="p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm hover:shadow-md transition-shadow duration-300 border-l-3 ${theme.border}">
-                                <div class="flex items-center mb-1">
-                                    <i class="fas fa-file-alt mr-2 ${theme.icon}"></i>
-                                    <h4 class="font-medium text-gray-800 dark:text-gray-200 text-sm">${highlightText(item.title, query)}</h4>
-                                </div>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(item.description, 80), query) || 'No description.'}</p>
-                                <a href="${escapeHTML(item.url)}" target="_blank" class="mt-1 text-xs ${theme.cta}">
-                                    Open <i class="fas fa-external-link-alt ml-1"></i>
-                                </a>
-                            </div>`;
-                    }
-                });
-            }
-
-            // Search Glossary
-            if (section.glossary) {
-                section.glossary.forEach(entry => {
-                    if (
-                        entry.term.toLowerCase().includes(query.toLowerCase()) ||
-                        entry.definition.toLowerCase().includes(query.toLowerCase())
-                    ) {
-                        hasResults = true;
-                        resultsHTML += `
-                            <div class="p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm hover:shadow-md transition-shadow duration-300 border-l-3 ${theme.border}">
-                                <div class="flex items-center mb-1">
-                                    <i class="fas fa-book mr-2 ${theme.icon}"></i>
-                                    <h4 class="font-medium text-gray-800 dark:text-gray-200 text-sm">${highlightText(entry.term, query)}</h4>
-                                </div>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">${highlightText(truncateText(entry.definition, 80), query)}</p>
-                            </div>`;
-                    }
-                });
-            }
-
-            sectionSearchResults.innerHTML = hasResults ? resultsHTML : '<p class="text-gray-500 dark:text-gray-400 text-sm">No results found in this section.</p>';
-            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-        }
-
-        sectionSearchBtn.addEventListener('click', () => {
-            const query = sectionSearchInput.value.trim();
-            console.log(`[app.js] Section search initiated for section "${sectionId}" with query: "${query}"`);
-            performSectionSearch(query);
-        });
-
-        sectionSearchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = sectionSearchInput.value.trim();
-                console.log(`[app.js] Section search initiated via Enter key for section "${sectionId}" with query: "${query}"`);
-                performSectionSearch(query);
-            }
-        });
-    }
-
-    // --- Rating System ---
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.rating-btn');
-        if (btn) {
-            const itemId = btn.dataset.itemId;
-            const itemType = btn.dataset.itemType;
-            const rating = btn.dataset.rating;
-            console.log(`[app.js] Rating clicked: Item ID = ${itemId}, Type = ${itemType}, Rating = ${rating}`);
-
-            let section;
-            kbSystemData.sections.forEach(s => {
-                if (itemType === 'article' && s.articles && s.articles.some(a => a.id === itemId)) section = s;
-                if (itemType === 'case' && s.cases && s.cases.some(c => c.id === itemId)) section = s;
-            });
-
-            if (section) {
-                const item = itemType === 'article' ? section.articles.find(a => a.id === itemId) : section.cases.find(c => c.id === itemId);
-                if (item) {
-                    if (!item.ratings) item.ratings = { up: 0, down: 0 };
-                    item.ratings[rating] = (item.ratings[rating] || 0) + 1;
-                    alert(`Thank you for your feedback on "${item.title}"!`);
-                    console.log(`[app.js] Updated ratings for ${itemType} "${item.title}":`, item.ratings);
-                }
-            }
-        }
-    });
-
-    // --- URL Hash Navigation ---
-    function handleHashNavigation() {
-        const hash = window.location.hash.substring(1); // Remove '#'
-        if (!hash) {
-            handleSectionTrigger('home');
+    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
+        if (typeof kbSystemData === 'undefined') {
+            if(pageContent) pageContent.innerHTML = "<p>Error: Knowledge base data is missing.</p>";
             return;
         }
-        const [sectionId, subCatId] = hash.split('/');
-        console.log(`[app.js] Hash navigation: Section = ${sectionId}, SubCat = ${subCatId || 'N/A'}`);
-        handleSectionTrigger(sectionId, subCatId || null);
-    }
-    window.addEventListener('hashchange', handleHashNavigation);
-    handleHashNavigation();
+        highlightSidebarLink(sectionId);
+        currentSubCategoryFilter = subCategoryFilter; // Update global subcategory filter
+        displaySectionContent(sectionId, itemId, subCategoryFilter);
 
-    // --- Initialize Section Search After Content Load ---
-    document.addEventListener('sectionContentLoaded', (e) => {
-        const sectionId = e.detail.sectionId;
-        console.log(`[app.js] sectionContentLoaded event received for section: ${sectionId}`);
-        setupSectionSearch(sectionId);
+        // Log access if navigating to a subsection view directly
+        if (subCategoryFilter && !itemId) {
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            const subCat = section?.subCategories?.find(sc => sc.id === subCategoryFilter);
+            if (section && subCat) {
+                logAccess(userNameForLog, subCat.name, section.name, 'Subsection');
+            }
+        }
+
+        let hash = sectionId;
+        if (subCategoryFilter) hash += `/${subCategoryFilter}`;
+        if (itemId) { // If itemID is present, it's the most specific part of the hash
+             if (subCategoryFilter && !itemId.startsWith(subCategoryFilter)) {
+                hash = `${sectionId}/${itemId}`;
+             } else if (!subCategoryFilter) {
+                hash = `${sectionId}/${itemId}`;
+             }
+        }
+        if (window.location.hash !== `#${hash}`) {
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, sectionId, `#${hash}`);
+        }
+        if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function parseHash() {
+        const hash = window.location.hash.replace('#', '');
+        if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
+        const parts = hash.split('/');
+        const sectionId = parts[0];
+        let itemId = null;
+        let subCategoryFilter = null;
+
+        if (parts.length > 1) {
+            const potentialId = parts[1];
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (sectionData) {
+                const isSubCategory = sectionData.subCategories?.some(sc => sc.id === potentialId);
+                const isArticle = sectionData.articles?.some(a => a.id === potentialId);
+                const isCase = sectionData.cases?.some(c => c.id === potentialId);
+                const isItem = sectionData.items?.some(i => i.id === potentialId);
+
+                if (isSubCategory) {
+                    subCategoryFilter = potentialId;
+                    if (parts.length > 2) itemId = parts[2]; // Item within subcategory
+                } else if (isArticle || isCase || isItem) {
+                    itemId = potentialId;
+                } else {
+                    itemId = potentialId; // Fallback if not a known type or subcategory
+                }
+            } else {
+                itemId = potentialId;
+            }
+        }
+        return { sectionId, itemId, subCategoryFilter };
+    }
+
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sectionId = this.dataset.section;
+            if (sectionId) handleSectionTrigger(sectionId, null, null);
+        });
     });
 
-    // Dispatch initial sectionContentLoaded for home
-    document.dispatchEvent(new CustomEvent('sectionContentLoaded', { detail: { sectionId: 'home' } }));
+    document.body.addEventListener('click', function(e) {
+        const triggerLink = e.target.closest('[data-section-trigger], [data-subcat-trigger]');
+        if (triggerLink) {
+            e.preventDefault();
+            const sectionId = triggerLink.dataset.sectionTrigger;
+            const itemId = triggerLink.dataset.itemId;
+            const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter;
+            const subcatTriggerValue = triggerLink.dataset.subcatTrigger;
+
+            if (sectionId) {
+                handleSectionTrigger(sectionId, itemId, subcatFilterFromSectionTrigger);
+            } else if (subcatTriggerValue) {
+                if (subcatTriggerValue.includes('.')) {
+                    const [sId, subId] = subcatTriggerValue.split('.');
+                    handleSectionTrigger(sId, null, subId);
+                     if (sId === 'support' && subId === 'tools_guides') { // Updated to tools_guides
+                        setTimeout(() => {
+                            const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
+                            if (zendeskCard && zendeskCard.closest('.card')) {
+                                zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 300);
+                    }
+                }
+            }
+            if (triggerLink.closest('#searchResultsContainer')) {
+                if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
+                if (globalSearchInput) globalSearchInput.value = '';
+            }
+        }
+    });
+
+    // Global Search
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    const searchResultsContainer = document.getElementById('searchResultsContainer');
+    let searchDebounceTimer;
+
+    if (globalSearchInput && searchResultsContainer) {
+        globalSearchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                const query = globalSearchInput.value.trim();
+                if (query.length > 1 && typeof searchKb === 'function') {
+                    renderGlobalSearchResults_enhanced(searchKb(query), query);
+                } else {
+                    searchResultsContainer.innerHTML = '';
+                    searchResultsContainer.classList.add('hidden');
+                }
+            }, 300);
+        });
+        document.addEventListener('click', (event) => {
+            if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
+                searchResultsContainer.classList.add('hidden');
+            }
+        });
+        globalSearchInput.addEventListener('focus', () => {
+            if (globalSearchInput.value.trim().length > 1 && searchResultsContainer.children.length > 0) {
+                searchResultsContainer.classList.remove('hidden');
+            }
+        });
+    }
+
+    function renderGlobalSearchResults_enhanced(results, query) {
+        if (!searchResultsContainer) return;
+        searchResultsContainer.innerHTML = '';
+        if (results.length === 0) {
+            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-300">No results for "${escapeHTML(query)}".</div>`;
+            searchResultsContainer.classList.remove('hidden');
+            return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
+        results.slice(0, 10).forEach(result => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `javascript:void(0);`;
+            a.dataset.sectionTrigger = result.sectionId;
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                 a.dataset.itemId = result.id;
+            }
+            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'font-semibold text-gray-800 dark:text-white';
+            titleDiv.innerHTML = highlightText(result.title, query);
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
+            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
+
+            const sectionDiv = document.createElement('div');
+            const theme = getThemeColors(result.themeColor || 'gray');
+            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
+            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
+
+            a.appendChild(titleDiv);
+            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
+            a.appendChild(sectionDiv);
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+        searchResultsContainer.appendChild(ul);
+        searchResultsContainer.classList.remove('hidden');
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    function renderSectionSearchResults(results, query, containerElement, sectionThemeColor) {
+        if (!containerElement) return;
+        containerElement.innerHTML = '';
+        if (results.length === 0) {
+            containerElement.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results in this section for "${escapeHTML(query)}".</p>`;
+            return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'space-y-2';
+        const theme = getThemeColors(sectionThemeColor);
+
+        results.slice(0, 5).forEach(result => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `javascript:void(0);`;
+            a.dataset.sectionTrigger = result.sectionId;
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                a.dataset.itemId = result.id;
+            }
+            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button section-search-result-link`;
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = `font-semibold ${theme.text}`;
+            titleDiv.innerHTML = highlightText(result.title, query);
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
+            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
+
+            const typeBadge = document.createElement('span');
+            typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium capitalize`;
+            typeBadge.textContent = result.type.replace(/_/g, ' ');
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex items-center justify-between mb-1';
+            headerDiv.appendChild(titleDiv);
+            headerDiv.appendChild(typeBadge);
+
+            a.appendChild(headerDiv);
+            a.appendChild(summaryDiv);
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+        if (ul.children.length === 0) {
+             containerElement.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No relevant results in this section for "${escapeHTML(query)}".</p>`;
+        } else {
+            containerElement.appendChild(ul);
+        }
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    // Event delegation for section-specific search, ratings, etc. in pageContent
+    if (pageContent) {
+        pageContent.addEventListener('click', (e) => {
+            const ratingTarget = e.target.closest('.rating-btn');
+            if (ratingTarget) {
+                e.preventDefault();
+                const ratingContainer = ratingTarget.closest('.rating-container');
+                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500 font-medium">Feedback sent!</span>`;
+                return;
+            }
+
+            const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
+            if (sectionSearchBtn) {
+                e.preventDefault();
+                const inputEl = pageContent.querySelector('#sectionSearchInput');
+                const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
+                if (inputEl && resultsContainerEl) {
+                    const currentSectionId = inputEl.dataset.sectionId;
+                    const query = inputEl.value.trim();
+                    const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
+                    if (query && query.length > 1 && typeof searchKb === 'function' && sectionData) {
+                        const allResults = searchKb(query);
+                        const sectionSpecificResults = allResults.filter(r => r.sectionId === currentSectionId || r.type === 'glossary_term');
+                        renderSectionSearchResults(sectionSpecificResults, query, resultsContainerEl, sectionData.themeColor || 'gray');
+                    } else if (query.length <= 1) {
+                        resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Enter at least 2 characters.</p>`;
+                    } else {
+                         resultsContainerEl.innerHTML = `<p class="text-sm text-red-500 p-3 bg-red-50 dark:bg-red-700/30 rounded-md">Search error.</p>`;
+                    }
+                }
+                return;
+            }
+        });
+        pageContent.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.id === 'sectionSearchInput') {
+                e.preventDefault();
+                const searchButton = pageContent.querySelector('#sectionSearchBtn');
+                if (searchButton) searchButton.click();
+            }
+        });
+    }
+
+    // Handle URL hash on page load and changes
+    window.addEventListener('popstate', (event) => {
+        const { sectionId, itemId, subCategoryFilter } = parseHash();
+        if (event.state) {
+             handleSectionTrigger(event.state.sectionId || 'home', event.state.itemId, event.state.subCategoryFilter);
+        } else {
+            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+        }
+    });
+
+    // Initial load
+    const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
+    handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
+
+    console.log('[app.js - MODIFIED] All initializations complete.');
 });
