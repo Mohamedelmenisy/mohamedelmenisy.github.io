@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>InfiniBase - Loading...</title>
+    <!-- Supabase SDK is loaded here -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; text-align: center; }
@@ -30,43 +31,46 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        async function checkAuthStatusAndRedirect() {
-            try {
-                // Check if there's an active session by trying to get the current session
-                // This method doesn't trigger onAuthStateChange immediately on load,
-                // so it's good for a quick check before deciding the initial redirect.
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-                if (sessionError) {
-                    console.error('Error getting session in index.html:', sessionError);
-                    // Fallback to signup if there's an error fetching session,
-                    // assuming it's safer to treat as unauthenticated.
-                    window.location.replace('signup.html');
-                    return;
-                }
-
-                if (session) {
-                    // User is logged in
-                    console.log('User is authenticated (session exists in index.html). Redirecting to dashboard.html');
-                    window.location.replace('dashboard.html');
-                } else {
-                    // User is not logged in (no active session)
-                    console.log('User is not authenticated (no session in index.html). Redirecting to signup.html');
-                    window.location.replace('signup.html');
-                }
-            } catch (error) {
-                console.error('Critical error during auth check in index.html:', error);
-                // Fallback in case of any other unexpected error
-                window.location.replace('signup.html');
+        // Wrap the Supabase initialization and auth check in a DOMContentLoaded listener
+        document.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+            
+            // Check if Supabase object is available
+            if (typeof Supabase === 'undefined' || typeof Supabase.createClient === 'undefined') {
+                console.error('Supabase SDK not loaded or createClient is not a function.');
+                // Optionally, display an error message to the user or try reloading
+                document.querySelector('.loading-container p').textContent = 'Error loading application. Please try again.';
+                return;
             }
-        }
 
-        // Call the function to perform the check and redirect when the page loads
-        checkAuthStatusAndRedirect();
+            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            async function checkAuthStatusAndRedirect() {
+                try {
+                    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                    if (sessionError) {
+                        console.error('Error getting session in index.html:', sessionError);
+                        window.location.replace('signup.html'); // Assuming signup.html is at the root
+                        return;
+                    }
+
+                    if (session) {
+                        console.log('User is authenticated (session exists in index.html). Redirecting to dashboard.html');
+                        window.location.replace('dashboard.html'); // Assuming dashboard.html is at the root
+                    } else {
+                        console.log('User is not authenticated (no session in index.html). Redirecting to signup.html');
+                        window.location.replace('signup.html'); // Assuming signup.html is at the root
+                    }
+                } catch (error) {
+                    console.error('Critical error during auth check in index.html:', error);
+                    window.location.replace('signup.html'); // Fallback
+                }
+            }
+
+            checkAuthStatusAndRedirect();
+        });
     </script>
 </body>
 </html>
