@@ -223,14 +223,14 @@
         </form>
 
         <div class="links-footer">
-            Already have an account? <a href="/login.html">Log in</a>
+            Already have an account? <a href="/infini-base/login.html">Log in</a>
         </div>
     </div>
 
     <!-- 1. Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 2. Your Supabase client initializer -->
-    <script src="/js/supabase.js"></script>
+    <script src="/infini-base/js/supabase.js"></script>
     <!-- 3. Page specific logic -->
     <script>
         let supabase; // Will be assigned window.supabaseClient
@@ -290,7 +290,7 @@
             if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
                 console.error("[signup.html] Supabase client (window.supabaseClient) not available.");
                 displayGeneralMessage("Service unavailable. Please try again later.", "error");
-                if (signupForm) signupForm.style.display = 'none';
+                if (signupForm) signupForm.style.display = 'none'; // Hide form if Supabase fails
                 return;
             }
             supabase = window.supabaseClient; // Assign to local supabase variable
@@ -300,7 +300,7 @@
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('[signup.html] User already authenticated, redirecting to dashboard.');
-                    window.location.replace('/dashboard.html');
+                    window.location.replace('/infini-base/dashboard.html');
                 } else {
                     if (fullNameInput) fullNameInput.focus();
                 }
@@ -372,10 +372,10 @@
                             return;
                         }
 
-                        // authResponse.user should exist if signUpError is null
                         if (authResponse.user) {
+                             // Attempt to insert into public.users table
                             const { error: profileError } = await supabase
-                                .from('users') // Make sure 'users' table has RLS policies allowing authenticated users to insert their own profile, or service_role key for this.
+                                .from('users')
                                 .insert({
                                     id: authResponse.user.id,
                                     email: authResponse.user.email,
@@ -384,35 +384,31 @@
 
                             if (profileError) {
                                 console.error('Error inserting user profile into public.users:', profileError);
-                                // Even if profile insert fails, auth user is created.
-                                // Inform user about email confirmation if needed.
+                                // Decide how to handle this - for now, proceed with auth flow
                             }
                             
-                            // Check if email confirmation is required by looking at session.
-                            // If session is null, email confirmation is pending.
                             const emailConfirmationRequired = !authResponse.session && authResponse.user.email_confirmed_at === null;
 
                             if (emailConfirmationRequired) {
                                 displayGeneralMessage("Signup initiated! Please check your email to confirm your account. Then, proceed to log in.", "info");
                                 signupForm.reset();
                                 setTimeout(() => {
-                                    window.location.href = `/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
+                                    window.location.href = `/infini-base/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
                                 }, 3500);
-                            } else { // Signup complete, user might be auto-confirmed or confirmation is off
+                            } else { 
                                 displayGeneralMessage("Signup successful! Redirecting to login...", "success");
                                 setTimeout(() => {
-                                    window.location.href = `/login.html?email=${encodeURIComponent(email)}&signedup=true`;
+                                    window.location.href = `/infini-base/login.html?email=${encodeURIComponent(email)}&signedup=true`;
                                 }, 2500);
                             }
                         } else {
-                             // This case should ideally be caught by signUpError.
-                             // However, if Supabase returns a successful response (no error) but no user object,
-                             // it might indicate that email confirmation is required and it's just an acknowledgment.
-                            console.warn("SignUp success but no user object in response, email confirmation might be required.");
+                            // This case might be rare if signUpError is properly handled.
+                            // It could mean email confirmation is required and no immediate session/user object is returned by default.
+                            console.warn("SignUp success but no user object in authResponse.user, email confirmation might be required.");
                             displayGeneralMessage("Signup request received. Please check your email to complete the process and then log in.", "info");
                             signupForm.reset();
                             setTimeout(() => {
-                                window.location.href = `/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
+                                window.location.href = `/infini-base/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
                             }, 3500);
                         }
 
@@ -420,10 +416,9 @@
                         console.error("General error during signup process:", error);
                         displayGeneralMessage("An unexpected error occurred. Please try again.", "error");
                     } finally {
-                        // Only set loading to false if not redirecting or showing a confirmation message
-                        const isRedirecting = signupGeneralMessageEl.textContent.includes("Redirecting to login...") ||
-                                              signupGeneralMessageEl.textContent.includes("confirm your account");
-                        if (!isRedirecting) {
+                        const isRedirectingOrConfirming = signupGeneralMessageEl.textContent.includes("Redirecting to login...") ||
+                                                          signupGeneralMessageEl.textContent.includes("confirm your account");
+                        if (!isRedirectingOrConfirming) {
                             setButtonLoading(false);
                         }
                     }
