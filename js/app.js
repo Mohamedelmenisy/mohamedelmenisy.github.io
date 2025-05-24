@@ -1,5 +1,6 @@
 let currentUser = null;
 let isInitialAuthCheckComplete = false;
+let kbSystemData = window.kbSystemData || {}; // Default to empty object if not defined
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] DOMContentLoaded fired.');
@@ -15,11 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabase = window.supabaseClient;
 
     console.log('[app.js] kbSystemData:', typeof kbSystemData !== 'undefined' ? 'Available' : 'undefined');
-    if (typeof kbSystemData === 'undefined') {
-        console.error('[app.js] CRITICAL: kbSystemData is not loaded. Most functionalities will fail.');
-        const pageContent = document.getElementById('pageContent');
-        if(pageContent) pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-600 dark:text-red-400">Critical Error</h2><p>Knowledge base data (kbSystemData) could not be loaded. Please contact an administrator.</p></div>';
-        return;
+    if (!kbSystemData.sections) {
+        console.error('[app.js] CRITICAL: kbSystemData.sections is not loaded. Using fallback.');
+        kbSystemData = {
+            sections: [],
+            meta: { version: '1.0.0', lastGlobalUpdate: new Date().toISOString() }
+        };
     }
 
     // --- Helper Functions ---
@@ -378,8 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('[app.js] handleSectionTrigger: No currentUser. Aborting section load (should redirect).');
             return;
         }
-        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js] handleSectionTrigger: kbSystemData or kbSystemData.sections is undefined.');
+        if (!kbSystemData.sections) {
+            console.error('[app.js] handleSectionTrigger: kbSystemData.sections is undefined.');
             if(pageContent) pageContent.innerHTML = '<p class="p-4 text-red-500">Error: Knowledge base data is not available to display sections.</p>';
             return;
         }
@@ -403,8 +405,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.innerHTML = '<div class="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900"><p class="text-2xl text-red-600 p-10">Critical Error: UI cannot be rendered. Please contact support.</p></div>';
             return;
         }
-        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js] displaySectionContent: kbSystemData or sections missing.');
+        if (!kbSystemData.sections) {
+            console.error('[app.js] displaySectionContent: kbSystemData.sections missing.');
             pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-600">Error Loading Data</h2><p>The knowledge base data could not be loaded. Please try again later or contact support.</p></div>';
             return;
         }
