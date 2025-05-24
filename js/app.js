@@ -11,6 +11,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const mainContent = document.querySelector('main');
 
+    // --- Add Case Modal Elements ---
+    const addCaseModalOverlay = document.getElementById('addCaseModalOverlay');
+    const addCasePopup = document.getElementById('addCasePopup');
+    const closeAddCasePopupBtn = document.getElementById('closeAddCasePopupBtn');
+    const addCaseForm = document.getElementById('addCaseForm');
+    const caseTitleInput = document.getElementById('caseTitleInput');
+    const caseSummaryInput = document.getElementById('caseSummaryInput');
+    const caseContentEditorEl = document.getElementById('caseContentEditor');
+    const cancelAddCaseBtn = document.getElementById('cancelAddCaseBtn');
+    const saveCaseBtn = document.getElementById('saveCaseBtn');
+
+    let quillEditor = null;
+    let currentSectionIdForPopup = null; // To store section ID when popup opens
+
+    // Define sections eligible for "+ Add Case" button
+    const KNOWLEDGE_AREA_SECTION_IDS = [
+        'support', 'partner_care', 'logistics', 'customer_care',
+        'dist_follow_up', 'logistics_driver', 'logistics_3pl',
+        'order_at_store', 'logistics_admin', 'os'
+    ];
+
+
     // فحص وجود العناصر الأساسية
     console.log('[app.js - CHECK] pageContent:', pageContent ? 'Found' : 'Not found');
     console.log('[app.js - CHECK] sidebarLinks:', sidebarLinks.length, 'links found');
@@ -75,6 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
     console.log('[app.js - FIX] Current user:', currentUser);
+    // Ensure currentUser.role is available, e.g., currentUser = { email: '...', fullName: '...', role: 'user' }
+    // For testing, if role is not set:
+    // if (currentUser && !currentUser.role) { currentUser.role = 'admin'; console.warn("currentUser.role was undefined, defaulted to 'admin' for testing.");}
+
 
     // --- Supabase View Tracking Function ---
     async function trackUserView(sectionId, itemId, itemType) {
@@ -192,6 +218,156 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Add Case Modal Logic ---
+    function initializeQuillEditor() {
+        if (caseContentEditorEl && !quillEditor) {
+            const toolbarOptions = [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'indent': '-1'}, { 'indent': '+1' }],
+                ['link', /*'image'*/], // Image might require more setup for storage
+                ['clean']
+            ];
+            quillEditor = new Quill(caseContentEditorEl, {
+                modules: {
+                    toolbar: toolbarOptions
+                },
+                theme: 'snow'
+            });
+        }
+    }
+
+    function showAddCasePopup(sectionId) {
+        if (!addCasePopup || !addCaseModalOverlay) return;
+        currentSectionIdForPopup = sectionId; // Store the current section ID
+        addCaseForm.reset();
+        if (quillEditor) {
+            quillEditor.setText(''); // Clear Quill editor content
+        } else {
+            initializeQuillEditor();
+        }
+        addCaseModalOverlay.classList.remove('hidden');
+        addCaseModalOverlay.classList.add('flex'); // For items-center, justify-center
+        addCasePopup.classList.remove('hidden');
+        setTimeout(() => { // For transition
+            addCaseModalOverlay.classList.remove('opacity-0');
+            addCasePopup.classList.remove('opacity-0', 'scale-95');
+            addCasePopup.classList.add('opacity-100', 'scale-100');
+        }, 10);
+        caseTitleInput.focus();
+    }
+
+    function hideAddCasePopup() {
+        if (!addCasePopup || !addCaseModalOverlay) return;
+        addCaseModalOverlay.classList.add('opacity-0');
+        addCasePopup.classList.add('opacity-0', 'scale-95');
+        addCasePopup.classList.remove('opacity-100', 'scale-100');
+        setTimeout(() => {
+            addCaseModalOverlay.classList.add('hidden');
+            addCaseModalOverlay.classList.remove('flex');
+            addCasePopup.classList.add('hidden');
+            if (addCaseForm) addCaseForm.reset();
+            if (quillEditor) quillEditor.setText('');
+            currentSectionIdForPopup = null; // Clear stored section ID
+        }, 300); // Match transition duration
+    }
+
+    if (closeAddCasePopupBtn) closeAddCasePopupBtn.addEventListener('click', hideAddCasePopup);
+    if (cancelAddCaseBtn) cancelAddCaseBtn.addEventListener('click', hideAddCasePopup);
+    if (addCaseModalOverlay) addCaseModalOverlay.addEventListener('click', (e) => {
+        if (e.target === addCaseModalOverlay) hideAddCasePopup();
+    });
+
+    if (addCaseForm) {
+        addCaseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentSectionIdForPopup || !currentUser || !currentUser.email) {
+                alert('Error: Cannot save case. User or section context is missing.');
+                return;
+            }
+            if (!supabase) {
+                alert('Error: Database connection not available.');
+                return;
+            }
+
+            const title = caseTitleInput.value.trim();
+            const summary = caseSummaryInput.value.trim();
+            const content = quillEditor ? quillEditor.root.innerHTML : ''; // Get HTML content
+
+            if (!title) {
+                alert('Case Title is required.');
+                caseTitleInput.focus();
+                return;
+            }
+
+            saveCaseBtn.disabled = true;
+            saveCaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+
+            try {
+                const { data: newCaseArray, error } = await supabase
+                    .from('cases') // Make sure this table exists in your Supabase
+                    .insert({
+                        section_id: currentSectionIdForPopup,
+                        title: title,
+                        summary: summary,
+                        content: content, // HTML content
+                        status: 'New', // Default status
+                        created_by: currentUser.email,
+                        // Supabase will auto-generate created_at if column default is now()
+                        // Supabase will auto-generate id if it's a serial or UUID primary key
+                    })
+                    .select(); // Crucial: to get the newly inserted row back, including its ID
+
+                if (error) {
+                    throw error;
+                }
+
+                if (newCaseArray && newCaseArray.length > 0) {
+                    const newCaseDataFromDb = newCaseArray[0];
+                    console.log('[app.js - Add Case] Case saved to Supabase:', newCaseDataFromDb);
+
+                    // Update local kbSystemData
+                    const sectionData = kbSystemData.sections.find(s => s.id === currentSectionIdForPopup);
+                    if (sectionData) {
+                        if (!sectionData.cases) {
+                            sectionData.cases = [];
+                        }
+                        // Construct case object matching renderCaseCard_enhanced expectations
+                        const newCaseForKb = {
+                            id: newCaseDataFromDb.id, // Use ID from Supabase
+                            title: newCaseDataFromDb.title,
+                            summary: newCaseDataFromDb.summary,
+                            // content: newCaseDataFromDb.content, // Full content, not directly used by card
+                            status: newCaseDataFromDb.status,
+                            tags: [], // New cases start with no tags
+                            resolutionStepsPreview: truncateText(summary || "View details for steps.", 50), // Or derive from content
+                            contentPath: null, // Explicitly null for DB-driven cases
+                            // created_at: newCaseDataFromDb.created_at // If you need it in kbSystemData
+                        };
+                        sectionData.cases.unshift(newCaseForKb); // Add to the beginning of the list
+                    }
+
+                    hideAddCasePopup();
+                    alert('Case saved successfully!');
+                    // Re-render the current section to show the new case
+                    displaySectionContent(currentSectionIdForPopup, newCaseDataFromDb.id); // Focus the new item
+                } else {
+                    console.error('[app.js - Add Case] No data returned after insert.');
+                    alert('Error: Case saved, but no confirmation data received.');
+                }
+
+            } catch (err) {
+                console.error('[app.js - Add Case] Error saving case to Supabase:', err);
+                alert(`Error saving case: ${err.message}`);
+            } finally {
+                saveCaseBtn.disabled = false;
+                saveCaseBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Case';
+            }
+        });
+    }
+
+
     // --- Sidebar Navigation & Content Loading ---
     const initialPageContent = pageContent.innerHTML || '<p>Error: Initial page content could not be loaded.</p>';
 
@@ -230,6 +406,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderArticleCard_enhanced(article, sectionData, query = null) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
+        // Note: The `onclick` for copy link might be better handled with an event listener
+        // for CSP compliance and cleaner code, but kept as is from original.
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
                 <div class="flex items-start mb-3">
@@ -249,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
                         <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
                     </div>
-                    <a href="${escapeHTML(article.contentPath)}" target="_blank" 
+                    <a href="${escapeHTML(article.contentPath)}" target="_blank"
                        class="text-sm font-medium ${theme.cta} group"
                        data-track-view="true"
                        data-track-section-id="${escapeHTML(sectionData.id)}"
@@ -296,6 +474,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCaseCard_enhanced(caseItem, sectionData, query = null) {
         const theme = getThemeColors(sectionData.themeColor);
         const caseIcon = 'fas fa-briefcase';
+        // For cases added via UI, contentPath might be null.
+        // The "Details" link will not render if contentPath is null.
+        // A future enhancement could be a modal to show `caseItem.content` for these.
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
                 <div class="flex items-start mb-3">
@@ -312,16 +493,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText} capitalize">${highlightText(caseItem.status, query)}</span>
-                    ${caseItem.contentPath ? 
-                        `<a href="${escapeHTML(caseItem.contentPath)}" target="_blank" 
+                    ${caseItem.contentPath ?
+                        `<a href="${escapeHTML(caseItem.contentPath)}" target="_blank"
                            class="text-sm font-medium ${theme.cta} group"
                            data-track-view="true"
                            data-track-section-id="${escapeHTML(sectionData.id)}"
                            data-track-item-id="${escapeHTML(caseItem.id)}"
                            data-track-item-type="case">
                             Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
-                        </a>` 
-                        : `<div class="w-16"></div>`}
+                        </a>`
+                        // If no contentPath, we could add a button to view DB content in a modal here.
+                        // For now, it shows nothing if no contentPath.
+                        : `<div class="w-16"></div>` /* Placeholder to maintain layout if no link */ }
                 </div>
             </div>
         `;
@@ -364,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.opacity = 0;
                 card.style.transform = 'translateY(20px)';
                 card.style.animation = 'none';
-                card.offsetHeight;
+                card.offsetHeight; // Trigger reflow
                 card.style.animation = `fadeInUp 0.5s ease-out forwards ${(index + 1) * 0.1}s`;
             });
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
@@ -385,9 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const theme = getThemeColors(sectionData.themeColor);
-
         let contentHTML = `<div class="space-y-10">`;
 
+        // Section Header
         contentHTML += `
             <div class="card-animate">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
@@ -401,14 +584,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="text-gray-600 dark:text-gray-300 text-lg">${escapeHTML(sectionData.description)}</p>
             </div>`;
 
+        // Section Search
         contentHTML += `
             <div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate" style="animation-delay: 0.1s;">
                 <label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Ask about ${escapeHTML(sectionData.name)}:
                 </label>
                 <div class="flex">
-                    <input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" 
-                           class="flex-grow p-2.5 border border-gray-300 dark:border-gray-600 rounded-l-md dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500" 
+                    <input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}"
+                           class="flex-grow p-2.5 border border-gray-300 dark:border-gray-600 rounded-l-md dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500"
                            placeholder="E.g., 'how to handle tickets', 'zendesk', 'SLA'">
                     <button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center transition-colors">
                         <i class="fas fa-search mr-2"></i>Ask
@@ -418,7 +602,19 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
 
         let hasContent = false;
-        let animationDelayIndex = 1;
+        let animationDelayIndex = 1; // Start animation delay index for content cards
+
+        // ADD "+ Add Case" Button if applicable
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin') && KNOWLEDGE_AREA_SECTION_IDS.includes(sectionId)) {
+            contentHTML += `
+                <div class="my-5 card-animate" style="animation-delay: ${animationDelayIndex * 0.05}s;">
+                    <button id="triggerAddCasePopupBtn" data-section-id="${sectionId}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i> Add New Case
+                    </button>
+                </div>`;
+            animationDelayIndex++;
+        }
+
 
         if (sectionData.articles && sectionData.articles.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center card-animate" style="animation-delay: ${animationDelayIndex * 0.05}s;"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
@@ -460,8 +656,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (subCat.id === 'escalation_procedures') subCatIcon = 'fas fa-exclamation-triangle';
 
                 contentHTML += `
-                    <a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" 
-                       class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group border-l-4 ${theme.border} text-center flex flex-col items-center justify-center transform hover:-translate-y-1 card-animate" 
+                    <a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}"
+                       class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group border-l-4 ${theme.border} text-center flex flex-col items-center justify-center transform hover:-translate-y-1 card-animate"
                        style="animation-delay: ${animationDelayIndex * 0.05}s;">
                         <i class="${subCatIcon} text-3xl mb-3 ${theme.icon} group-hover:scale-110 transition-transform"></i>
                         <h4 class="font-medium text-gray-700 dark:text-gray-200 group-hover:${theme.text}">${escapeHTML(subCat.name)}</h4>
@@ -476,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sectionData.glossary.forEach(entry => {
                 contentHTML += `
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}" style="animation-delay: ${animationDelayIndex * 0.05}s;">
-                        <strong class="${theme.text}">${escapeHTML(entry.term)}:</strong> 
+                        <strong class="${theme.text}">${escapeHTML(entry.term)}:</strong>
                         <span class="text-gray-700 dark:text-gray-300">${escapeHTML(entry.definition)}</span>
                     </div>`;
             });
@@ -484,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
         }
 
+        // If no primary content (articles, cases, items) and no subcategories
         if (!hasContent && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
             contentHTML += `
                 <div class="p-10 text-center bg-white dark:bg-gray-800 rounded-lg shadow-md card-animate" style="animation-delay: ${animationDelayIndex * 0.05}s;">
@@ -493,20 +690,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
         }
 
-        contentHTML += `</div>`;
+        contentHTML += `</div>`; // Close space-y-10 div
 
         pageContent.innerHTML = contentHTML;
         console.log(`[app.js - DEBUG] Successfully set innerHTML for section "${sectionId}".`);
 
+        // Add event listener for the dynamically added "Add New Case" button
+        const triggerAddCaseBtn = pageContent.querySelector('#triggerAddCasePopupBtn');
+        if (triggerAddCaseBtn) {
+            triggerAddCaseBtn.addEventListener('click', () => {
+                const sId = triggerAddCaseBtn.dataset.sectionId;
+                showAddCasePopup(sId);
+            });
+        }
+
+        // Animate cards
         pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
             card.style.opacity = 0;
             card.style.transform = 'translateY(20px)';
             card.style.animation = 'none';
-            card.offsetHeight;
+            card.offsetHeight; // Trigger reflow
             const delay = card.style.animationDelay || `${index * 0.07}s`;
             card.style.animation = `fadeInUp 0.5s ease-out forwards ${delay}`;
         });
 
+        // Update title and breadcrumbs
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
             let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
@@ -529,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Focus on item if specified
         if (itemIdToFocus) {
             setTimeout(() => {
                 const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
@@ -539,36 +748,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     console.warn(`[app.js - DEBUG] Item "${itemIdToFocus}" not found in section "${sectionId}" DOM for focusing.`);
                 }
-            }, 250);
+            }, 250); // Delay to allow content to render
         }
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply theme styles for dynamic content
     }
 
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
         console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
 
-        // تحديث الهاش أولاً
         let hash = sectionId;
         if (itemId) {
             hash = `${sectionId}/${itemId}`;
         } else if (subCategoryFilter) {
-            hash = `${sectionId}/${subCategoryFilter}`;
+            // If there's a subCategoryFilter, itemId should ideally be null unless we are deep linking to an item within a subcategory view
+            // For now, if subCategoryFilter is present, itemId is ignored for hash to keep it simpler.
+            // Or, if an item can be under a subcategory: hash = `${sectionId}/${subCategoryFilter}/${itemId}`;
+            // Let's assume for now that subCategoryFilter implies a view of that subcategory, not a specific item within it via direct hash.
+             hash = `${sectionId}/${subCategoryFilter}`;
         }
+        // Ensure itemId is only appended if subCategoryFilter is not the primary focus for the hash part
+        // If the itemId is explicitly passed with a subCategoryFilter, it implies focusing an item within that filtered view.
+        if (subCategoryFilter && itemId) {
+            hash = `${sectionId}/${subCategoryFilter}/${itemId}`;
+        }
+
+
         try {
             window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', `#${hash}`);
             console.log(`[app.js - DEBUG] URL hash updated to: #${hash}`);
         } catch (e) {
             console.error('[app.js - CRITICAL] Failed to update URL hash:', e);
-            document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Failed to update URL hash. Check browser compatibility or security restrictions.</div>';
+            // Avoid breaking the app if pushState fails (e.g., in file:/// context sometimes)
         }
 
-        // إضاءة الرابط في الشريط الجانبي
         highlightSidebarLink(sectionId);
-
-        // تحميل المحتوى
         displaySectionContent(sectionId, itemId, subCategoryFilter);
 
-        // التمرير لأعلى
         if (mainContent) {
             mainContent.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
@@ -587,40 +802,52 @@ document.addEventListener('DOMContentLoaded', () => {
         let subCategoryFilter = null;
 
         if (parts.length > 1) {
-            const potentialId = parts[1];
+            const potentialIdOrSubCat = parts[1];
             const sectionData = kbSystemData?.sections?.find(s => s.id === sectionId);
-            if (sectionData) {
-                const isSubCategory = sectionData.subCategories?.some(sc => sc.id === potentialId);
-                const isArticle = sectionData.articles?.some(a => a.id === potentialId);
-                const isCase = sectionData.cases?.some(c => c.id === potentialId);
-                const isItem = sectionData.items?.some(i => i.id === potentialId);
 
-                console.log('[app.js - DEBUG] parseHash checks:', { isSubCategory, isArticle, isCase, isItem });
+            if (sectionData) {
+                const isSubCategory = sectionData.subCategories?.some(sc => sc.id === potentialIdOrSubCat);
 
                 if (isSubCategory) {
-                    subCategoryFilter = potentialId;
-                    if (parts.length > 2) {
+                    subCategoryFilter = potentialIdOrSubCat;
+                    if (parts.length > 2) { // Potentially an item ID within a subcategory
                         itemId = parts[2];
+                         // Validate if this itemId actually exists under this section/subcat context
+                        const itemExists = sectionData.articles?.some(a => a.id === itemId && a.subCategory === subCategoryFilter) ||
+                                           sectionData.cases?.some(c => c.id === itemId && c.subCategory === subCategoryFilter) ||
+                                           sectionData.items?.some(i => i.id === itemId && i.subCategory === subCategoryFilter);
+                        if (!itemExists) {
+                            console.warn(`[app.js] Item ID "${itemId}" not found under subcategory "${subCategoryFilter}" for section "${sectionId}". Clearing itemId.`);
+                            // itemId = null; // Or let displaySectionContent handle non-existent item ID
+                        }
                     }
-                } else if (isArticle || isCase || isItem) {
-                    itemId = potentialId;
-                } else {
-                    console.warn(`[app.js] Hash part "${potentialId}" in section "${sectionId}" is not a known subCategory, article, case, or item. Treating as itemId.`);
-                    itemId = potentialId;
+                } else { // Not a subcategory, so parts[1] must be an itemId
+                    itemId = potentialIdOrSubCat;
+                     // Validate if this itemId actually exists in the section
+                    const itemExists = sectionData.articles?.some(a => a.id === itemId) ||
+                                       sectionData.cases?.some(c => c.id === itemId) ||
+                                       sectionData.items?.some(i => i.id === itemId);
+                    if (!itemExists) {
+                         console.warn(`[app.js] Item ID "${itemId}" not found directly under section "${sectionId}" (and not a subcategory).`);
+                         // itemId = null; // Or let displaySectionContent handle non-existent item ID
+                    }
                 }
             } else {
-                console.warn(`[app.js] Section "${sectionId}" not found in kbSystemData during hash parsing. Treating "${potentialId}" as itemId.`);
-                itemId = potentialId;
+                console.warn(`[app.js] Section "${sectionId}" not found in kbSystemData during hash parsing. Treating subsequent parts as itemId or subCategory.`);
+                // Fallback if sectionData is not available yet, assume parts[1] is itemId or subCategory
+                // This logic might be too simplistic if kbSystemData is not loaded.
+                // A more robust approach would defer full parsing until kbSystemData is ready.
+                itemId = potentialIdOrSubCat; // Could be subcat or item
+                if (parts.length > 2) itemId = parts[2]; // If 3 parts, 2nd could be subcat, 3rd item
             }
         }
         return { sectionId, itemId, subCategoryFilter };
     }
 
-    // دالة للانتظار حتى تتوفر kbSystemData
-    function waitForKbSystemData(callback) {
-        const maxAttempts = 50; // حوالي 5 ثواني (50 * 100ms)
-        let attempts = 0;
 
+    function waitForKbSystemData(callback) {
+        const maxAttempts = 50;
+        let attempts = 0;
         function check() {
             attempts++;
             if (typeof kbSystemData !== 'undefined' && kbSystemData.sections) {
@@ -634,34 +861,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(check, 100);
             }
         }
-
         check();
     }
 
-    // دالة لإضافة مستمعات الأحداث
     function initializeEventListeners() {
         console.log('[app.js - DEBUG] Initializing event listeners...');
 
-        // مستمع أحداث ديناميكي على document
         document.addEventListener('click', function(e) {
             const triggerLink = e.target.closest('[data-section-trigger], [data-subcat-trigger]');
             if (triggerLink) {
                 e.preventDefault();
                 const sectionId = triggerLink.dataset.sectionTrigger;
-                const itemId = triggerLink.dataset.itemId;
-                const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter;
-                const subcatTriggerValue = triggerLink.dataset.subcatTrigger;
+                const itemId = triggerLink.dataset.itemId; // For direct item links
+                const subcatFilterForSection = triggerLink.dataset.subcatFilter; // For subcategory links under a section trigger
+                const subcatTriggerValue = triggerLink.dataset.subcatTrigger; // For direct subcategory triggers (e.g., from home page)
 
-                console.log('[app.js - DEBUG] Dynamic link clicked:', { sectionId, itemId, subcatFilterFromSectionTrigger, subcatTriggerValue });
+                console.log('[app.js - DEBUG] Dynamic link clicked:', { sectionId, itemId, subcatFilterForSection, subcatTriggerValue });
 
-                if (sectionId) {
-                    handleSectionTrigger(sectionId, itemId, subcatFilterFromSectionTrigger);
-                } else if (subcatTriggerValue) {
+                if (sectionId) { // Most common case: sidebar link or breadcrumb to section
+                    handleSectionTrigger(sectionId, itemId, subcatFilterForSection);
+                } else if (subcatTriggerValue) { // e.g., "Explore Tools" from home page card: data-subcat-trigger="support.tools"
                     if (subcatTriggerValue.includes('.')) {
                         const [sId, subId] = subcatTriggerValue.split('.');
-                        handleSectionTrigger(sId, null, subId);
+                        handleSectionTrigger(sId, null, subId); // Navigate to section 'sId' and filter by 'subId'
+                        // Special handling for "Support Tools" -> Zendesk scroll (as per original code)
                         if (sId === 'support' && subId === 'tools') {
                             setTimeout(() => {
+                                // This assumes displaySectionContent with subCategoryFilter will render the items.
+                                // The original logic for scrolling to Zendesk card might need adjustment
+                                // if subCategoryFilter implies a different rendering path for sub-items.
+                                // For now, let's assume the items of the subcategory are rendered directly.
                                 const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                                 if (zendeskCard && zendeskCard.closest('.card')) {
                                     zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -669,40 +898,51 @@ document.addEventListener('DOMContentLoaded', () => {
                                 } else {
                                     console.warn('[app.js - DEBUG] Zendesk card not found after navigating to Support Tools.');
                                 }
-                            }, 300);
+                            }, 300); // Delay for content rendering
                         }
                     } else {
                         console.error('[app.js - DEBUG] Invalid data-subcat-trigger value (must contain "."):', subcatTriggerValue);
                     }
                 }
 
+                // Hide global search results if a result link was clicked
                 if (triggerLink.closest('#searchResultsContainer')) {
-                    const searchResultsContainer = document.getElementById('searchResultsContainer');
-                    const globalSearchInput = document.getElementById('globalSearchInput');
-                    if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                    if (globalSearchInput) globalSearchInput.value = '';
+                    const searchResultsContainerEl = document.getElementById('searchResultsContainer');
+                    const globalSearchInputEl = document.getElementById('globalSearchInput');
+                    if (searchResultsContainerEl) searchResultsContainerEl.classList.add('hidden');
+                    if (globalSearchInputEl) globalSearchInputEl.value = '';
+                }
+                // Hide section search results if a result link was clicked
+                if (triggerLink.closest('#sectionSearchResults')) {
+                    const sectionResultsContainerEl = document.getElementById('sectionSearchResults');
+                    // const sectionSearchInputEl = document.getElementById('sectionSearchInput'); // Might want to clear this too
+                    if (sectionResultsContainerEl) sectionResultsContainerEl.innerHTML = ''; // Clear results
                 }
             }
-        }, true); // استخدام capture phase لضمان التقاط الأحداث
+        }, true);
 
-        // مستمع أحداث popstate
         window.addEventListener('popstate', (event) => {
-            const { sectionId, itemId, subCategoryFilter } = parseHash();
-            console.log('[app.js - DEBUG] popstate event (hash changed via browser back/forward):', { sectionId, itemId, subCategoryFilter });
-            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+            waitForKbSystemData(() => { // Ensure data is ready before parsing hash on popstate
+                const { sectionId, itemId, subCategoryFilter } = parseHash();
+                console.log('[app.js - DEBUG] popstate event (hash changed via browser back/forward):', { sectionId, itemId, subCategoryFilter });
+                // No pushState here, just display based on current hash
+                highlightSidebarLink(sectionId || 'home');
+                displaySectionContent(sectionId || 'home', itemId, subCategoryFilter);
+            });
         });
 
-        // مستمع أحداث hashchange كإجراء احتياطي
+        // hashchange is a fallback, popstate is preferred for SPA-like behavior
         window.addEventListener('hashchange', () => {
-            console.log('[app.js - DEBUG] hashchange event fired:', window.location.hash);
-            const { sectionId, itemId, subCategoryFilter } = parseHash();
-            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+             console.log('[app.js - DEBUG] hashchange event fired:', window.location.hash);
+             // This might be redundant if popstate handles it well, but can be a safety net.
+             // To avoid double handling, check if state was already handled by popstate.
+             // For simplicity, let's assume popstate is the primary handler.
         });
 
         console.log('[app.js - DEBUG] Event listeners initialized successfully.');
     }
 
-    // Global Search
+
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     let searchDebounceTimer;
@@ -747,7 +987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         results.slice(0, 10).forEach(result => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
+            a.href = `javascript:void(0);`; // Will be handled by event listener
             a.dataset.sectionTrigger = result.sectionId;
             if (result.type !== 'section_match' && result.type !== 'glossary_term') {
                  a.dataset.itemId = result.id;
@@ -796,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
         results.slice(0, 5).forEach(result => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
+            a.href = `javascript:void(0);`; // Handled by event listener
             a.dataset.sectionTrigger = result.sectionId;
             if (result.type !== 'section_match' && result.type !== 'glossary_term') {
                 a.dataset.itemId = result.id;
@@ -825,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
             li.appendChild(a);
             ul.appendChild(li);
         });
-        if (ul.children.length === 0) {
+        if (ul.children.length === 0) { // Should not happen due to initial check, but as a safeguard
             containerElement.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No relevant results found in this section for "${escapeHTML(query)}".</p>`;
         } else {
             containerElement.appendChild(ul);
@@ -833,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
-    // مستمعات الأحداث لـ pageContent (للبحث داخل القسم وتتبع المشاهدات)
+
     if (pageContent) {
         pageContent.addEventListener('click', (e) => {
             const ratingTarget = e.target.closest('.rating-btn');
@@ -843,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ratingContainer) {
                     ratingContainer.innerHTML = `<span class="text-xs text-green-500 dark:text-green-400 font-medium">Thanks for your feedback!</span>`;
                 }
-                return;
+                return; // Stop further processing for rating buttons
             }
 
             const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
@@ -869,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     console.error("[app.js] Section search input or results container not found in pageContent.");
                 }
-                return;
+                return; // Stop further processing
             }
 
             const trackableViewLink = e.target.closest('a[data-track-view="true"]');
@@ -881,6 +1121,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sectionId && itemId && itemType) {
                     console.log('[app.js - DEBUG] Trackable link clicked, calling trackUserView:', { sectionId, itemId, itemType });
                     trackUserView(sectionId, itemId, itemType);
+                    // Note: Do not return here, as the link still needs to navigate if it's an actual href.
+                    // If it's a JS-handled link, the main document click listener will handle navigation.
                 } else {
                     console.warn('[app.js] Missing tracking data attributes on link:', trackableViewLink);
                 }
@@ -900,13 +1142,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('[app.js - CRITICAL] pageContent element not found on DOMContentLoaded. Dynamic event listeners will not be attached.');
     }
 
-    // التحميل الابتدائي للصفحة
-    const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
-    console.log('[app.js - DEBUG] Initial page load hash parsing:', { initialSectionId, initialItemId, initialSubCategoryFilter });
-
-    // انتظر تحميل kbSystemData ثم نفذ التهيئة
+    // Initial page load logic
     waitForKbSystemData(() => {
         initializeEventListeners();
+        const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
+        console.log('[app.js - DEBUG] Initial page load hash parsing (after kbSystemData ready):', { initialSectionId, initialItemId, initialSubCategoryFilter });
         handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
     });
 
