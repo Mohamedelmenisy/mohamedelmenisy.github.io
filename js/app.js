@@ -1,3 +1,5 @@
+import { supabase } from './supabase.js'; // Import Supabase client
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
@@ -8,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
@@ -54,6 +56,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
     console.log('[app.js - FIX] Current user:', currentUser);
+
+    // --- Supabase View Tracking Function ---
+    async function trackUserView(sectionId, itemId, itemType) {
+        if (!currentUser || !currentUser.email) {
+            console.warn('[app.js - trackUserView] User or user email not found. Skipping view tracking.');
+            return;
+        }
+        if (!supabase) {
+            console.error('[app.js - trackUserView] Supabase client not available. Skipping view tracking.');
+            return;
+        }
+    
+        console.log(`[app.js - trackUserView] Tracking view for: User: ${currentUser.email}, Section: ${sectionId}, Item: ${itemId}, Type: ${itemType}`);
+    
+        try {
+            const { data, error } = await supabase
+                .from('views_log') // Your table name
+                .insert({
+                    user_email: currentUser.email,
+                    section_id: sectionId,
+                    item_id: itemId,
+                    item_type: itemType
+                    // 'viewed_at' column should have a default value like 'now()' in your Supabase table schema
+                });
+    
+            if (error) {
+                console.error('[app.js - trackUserView] Error logging view to Supabase:', error.message);
+            } else {
+                console.log('[app.js - trackUserView] View logged successfully:', data);
+            }
+        } catch (e) {
+            console.error('[app.js - trackUserView] Exception while logging view:', e);
+        }
+    }
+
 
     const userNameDisplay = document.getElementById('userNameDisplay');
     const welcomeUserName = document.getElementById('welcomeUserName');
@@ -149,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
+    const mainContent = document.querySelector('main'); // For scrolling to top
 
     console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
     console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
@@ -211,7 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
                         <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
                     </div>
-                    <a href="${escapeHTML(article.contentPath)}" target="_blank" class="text-sm font-medium ${theme.cta} group">
+                    <a href="${escapeHTML(article.contentPath)}" target="_blank" 
+                       class="text-sm font-medium ${theme.cta} group"
+                       data-track-view="true"
+                       data-track-section-id="${escapeHTML(sectionData.id)}"
+                       data-track-item-id="${escapeHTML(article.id)}"
+                       data-track-item-type="article">
                         Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
                     </a>
                 </div>
@@ -270,7 +313,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText} capitalize">${highlightText(caseItem.status, query)}</span>
-                    ${caseItem.contentPath ? `<a href="${escapeHTML(caseItem.contentPath)}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>` /* Placeholder for alignment */}
+                    ${caseItem.contentPath ? 
+                        `<a href="${escapeHTML(caseItem.contentPath)}" target="_blank" 
+                           class="text-sm font-medium ${theme.cta} group"
+                           data-track-view="true"
+                           data-track-section-id="${escapeHTML(sectionData.id)}"
+                           data-track-item-id="${escapeHTML(caseItem.id)}"
+                           data-track-item-type="case">
+                            Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
+                        </a>` 
+                        : `<div class="w-16"></div>` /* Placeholder for alignment */}
                 </div>
             </div>
         `;
@@ -280,8 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
             console.error('[app.js - FIX] pageContent is NULL. Cannot display section.');
-            // Potentially try to re-acquire pageContent if it can be dynamically created/destroyed, though not typical for this structure.
-            // Or display an error message in a global error div if one exists.
             return;
         }
         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
@@ -520,37 +570,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update URL hash
         let hash = sectionId;
-        if (subCategoryFilter) { // Sub-category takes precedence for hash if itemID is not also present (or itemID is part of subcat)
-            hash += `/${subCategoryFilter}`;
-        }
-        if (itemId) { // If itemID is present, it's the most specific part of the hash
-             if (subCategoryFilter && !itemId.startsWith(subCategoryFilter)) { // If itemId is not part of subCat context (e.g. direct link to item)
-                // This logic might need refinement based on how subCat filters content vs direct item links
-                hash = `${sectionId}/${itemId}`; 
-             } else if (!subCategoryFilter) {
-                hash = `${sectionId}/${itemId}`;
-             }
-             // If itemId is implicitly part of subCategoryFilter context, the subCategoryFilter hash might be enough.
-             // For now, assume itemId is specific enough.
-        }
-        
-        // Avoid double slashes if itemId or subCategoryFilter is null/empty
-        const parts = [sectionId, subCategoryFilter, itemId].filter(Boolean);
-        if (parts.length === 3 && parts[1] === parts[2].substring(0, parts[1].length)) { // e.g. support/tools/tool001
-            // This case is tricky. For now, let's assume itemId is primary if present.
-            // If an item is directly linked, subCategoryFilter might be less relevant for the hash.
-            // If navigating via subCategory, then item, hash should reflect that.
-            // Simplification: if itemId exists, it's sectionId/itemId. If only subCat, sectionId/subCat.
-            if (itemId) hash = `${sectionId}/${itemId}`;
-            else if (subCategoryFilter) hash = `${sectionId}/${subCategoryFilter}`;
-            else hash = sectionId;
-
-        } else if (itemId) {
+        if (itemId) {
             hash = `${sectionId}/${itemId}`;
         } else if (subCategoryFilter) {
             hash = `${sectionId}/${subCategoryFilter}`;
-        } else {
-            hash = sectionId;
         }
 
 
@@ -574,10 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let itemId = null;
         let subCategoryFilter = null;
 
-        // Attempt to determine if the second part is an itemId or a subCategoryFilter
         if (parts.length > 1) {
             const potentialId = parts[1];
-            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            const sectionData = kbSystemData?.sections?.find(s => s.id === sectionId);
             if (sectionData) {
                 const isSubCategory = sectionData.subCategories?.some(sc => sc.id === potentialId);
                 const isArticle = sectionData.articles?.some(a => a.id === potentialId);
@@ -586,20 +608,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (isSubCategory) {
                     subCategoryFilter = potentialId;
-                    if (parts.length > 2) { // Potentially an item within a subcategory context
-                        itemId = parts[2];
+                    if (parts.length > 2) { 
+                        itemId = parts[2]; // Potentially an item ID after subcategory
                     }
                 } else if (isArticle || isCase || isItem) {
                     itemId = potentialId;
                 } else {
-                    // Could be an old/invalid ID, or a subCategory not yet identified
-                    // For now, assume it could be an itemId if not a known subCategory
-                    itemId = potentialId; 
-                    console.warn(`[app.js] Hash part "${potentialId}" in section "${sectionId}" is not a known subCategory, article, case, or item. Assuming itemId for now.`);
+                    // If not a known entity, assume it might be an item ID or a subcategory ID not explicitly listed as item
+                    // This logic favors itemId if subCategoryFilter is not explicitly matched.
+                    // For example, a direct link to an item not listed under a subcategory filter in the URL
+                    console.warn(`[app.js] Hash part "${potentialId}" in section "${sectionId}" is not a known subCategory, article, case, or item. Assuming itemId or generic sub-identifier.`);
+                    itemId = potentialId; // Fallback: treat as item ID or generic identifier
                 }
             } else {
-                 // Section not found, parts[1] could be anything
-                itemId = potentialId; // Best guess
+                itemId = potentialId; 
             }
         }
         return { sectionId, itemId, subCategoryFilter };
@@ -627,10 +649,10 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             
             const sectionId = triggerLink.dataset.sectionTrigger;
-            const itemId = triggerLink.dataset.itemId; // For specific item links (e.g. from search)
-            const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter; // For subcategory cards
+            const itemId = triggerLink.dataset.itemId; 
+            const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter; 
 
-            const subcatTriggerValue = triggerLink.dataset.subcatTrigger; // For home page quick links like "support.tools"
+            const subcatTriggerValue = triggerLink.dataset.subcatTrigger; 
 
             if (sectionId) {
                 console.log(`[app.js - FIX] Body click on data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subcatFilterFromSectionTrigger}"`);
@@ -640,10 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (subcatTriggerValue.includes('.')) {
                     const [sId, subId] = subcatTriggerValue.split('.');
                     handleSectionTrigger(sId, null, subId);
-                     // Special handling for "Support Tools" quick link on home to scroll to Zendesk
                     if (sId === 'support' && subId === 'tools') {
                         setTimeout(() => {
-                            // Ensure pageContent is updated before trying to find the card
                             const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                             if (zendeskCard && zendeskCard.closest('.card')) {
                                 zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -651,17 +671,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             } else {
                                 console.warn('[app.js - FIX] Zendesk card not found after navigating to Support Tools.');
                             }
-                        }, 300); // Delay to allow content to render
+                        }, 300); 
                     }
                 } else {
                      console.error('[app.js - FIX] Invalid data-subcat-trigger value (must contain "."):', subcatTriggerValue);
                 }
             }
 
-            // Hide global search results if a link inside it was clicked
             if (triggerLink.closest('#searchResultsContainer')) {
                 if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                if (globalSearchInput) globalSearchInput.value = ''; // Optionally clear search
+                if (globalSearchInput) globalSearchInput.value = ''; 
             }
         }
     });
@@ -684,13 +703,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 300);
         });
-        // Hide search results when clicking outside
         document.addEventListener('click', (event) => {
             if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
                 searchResultsContainer.classList.add('hidden');
             }
         });
-        // Show search results on focus if there's content
         globalSearchInput.addEventListener('focus', () => {
             if (globalSearchInput.value.trim().length > 1 && searchResultsContainer.children.length > 0) {
                 searchResultsContainer.classList.remove('hidden');
@@ -702,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGlobalSearchResults_enhanced(results, query) {
         if (!searchResultsContainer) return;
-        searchResultsContainer.innerHTML = ''; // Clear previous results
+        searchResultsContainer.innerHTML = ''; 
         if (results.length === 0) {
             searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-300">No results for "${escapeHTML(query)}".</div>`;
             searchResultsContainer.classList.remove('hidden');
@@ -710,19 +727,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const ul = document.createElement('ul');
         ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
-        results.slice(0, 10).forEach(result => { // Limit to 10 results
+        results.slice(0, 10).forEach(result => { 
             const li = document.createElement('li');
             const a = document.createElement('a');
-            // Critical: Ensure data-section-trigger and data-item-id are correctly set for navigation
-            a.href = `javascript:void(0);`; // Prevent default link behavior
+            a.href = `javascript:void(0);`; 
             a.dataset.sectionTrigger = result.sectionId; 
             if (result.type !== 'section_match' && result.type !== 'glossary_term') {
-                 // Only add itemId if it's an actual item, not a section or glossary term itself
                  a.dataset.itemId = result.id;
             }
-            // For glossary terms, we might want to scroll to the glossary section on the page, or open item directly.
-            // For section_match, itemId is not applicable as it refers to the section itself.
-
             a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
 
             const titleDiv = document.createElement('div');
@@ -734,28 +746,27 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
             
             const sectionDiv = document.createElement('div');
-            const theme = getThemeColors(result.themeColor || 'gray'); // Use result's themeColor
+            const theme = getThemeColors(result.themeColor || 'gray'); 
             sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
             sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown Section')}`;
 
             a.appendChild(titleDiv);
-            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); // Don't show section description as summary here
+            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv); 
             a.appendChild(sectionDiv);
             li.appendChild(a);
             ul.appendChild(li);
         });
         searchResultsContainer.appendChild(ul);
         searchResultsContainer.classList.remove('hidden');
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply mark styles
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); 
     }
 
-    // Function to render section-specific search results
     function renderSectionSearchResults(results, query, containerElement, sectionThemeColor) {
         if (!containerElement) {
             console.error("[app.js] Section search results container not found.");
             return;
         }
-        containerElement.innerHTML = ''; // Clear previous
+        containerElement.innerHTML = ''; 
         if (results.length === 0) {
             containerElement.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results found within this section for "${escapeHTML(query)}".</p>`;
             return;
@@ -763,20 +774,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ul = document.createElement('ul');
         ul.className = 'space-y-2';
-        const theme = getThemeColors(sectionThemeColor); // Use section's theme
+        const theme = getThemeColors(sectionThemeColor); 
 
-        results.slice(0, 5).forEach(result => { // Show top 5 results
-            // Only show results relevant to the current section IF the searchKb function doesn't already filter by section
-            // Assuming searchKb returns global results, so we need to filter here
+        results.slice(0, 5).forEach(result => { 
             const currentSectionId = containerElement.closest('[data-section-id]')?.dataset.sectionId || document.getElementById('sectionSearchInput')?.dataset.sectionId;
-            if (result.sectionId !== currentSectionId && result.type !== 'glossary_term') { // Glossary can be global, or we filter it too
-                 // return; // Skip if not in current section, unless it's a glossary term meant to be shown
-            }
+            // if (result.sectionId !== currentSectionId && result.type !== 'glossary_term') {
+            //      // return; // This filtering is now done before calling renderSectionSearchResults
+            // }
 
             const li = document.createElement('li');
             const a = document.createElement('a');
             a.href = `javascript:void(0);`;
-            a.dataset.sectionTrigger = result.sectionId; // Keep sectionId for navigation
+            a.dataset.sectionTrigger = result.sectionId; 
             if (result.type !== 'section_match' && result.type !== 'glossary_term') {
                 a.dataset.itemId = result.id;
             }
@@ -804,35 +813,27 @@ document.addEventListener('DOMContentLoaded', () => {
             li.appendChild(a);
             ul.appendChild(li);
         });
-        if (ul.children.length === 0) { // If all results were filtered out
+        if (ul.children.length === 0) { 
              containerElement.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No relevant results found in this section for "${escapeHTML(query)}".</p>`;
         } else {
             containerElement.appendChild(ul);
         }
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply mark styles
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); 
     }
 
 
-    // Event delegation for section-specific search and ratings within pageContent
     if (pageContent) {
         pageContent.addEventListener('click', (e) => {
-            // Rating button
             const ratingTarget = e.target.closest('.rating-btn');
             if (ratingTarget) {
                 e.preventDefault();
                 const ratingContainer = ratingTarget.closest('.rating-container');
-                if (ratingContainer) { // Provide simple feedback
+                if (ratingContainer) { 
                     ratingContainer.innerHTML = `<span class="text-xs text-green-500 dark:text-green-400 font-medium">Thanks for your feedback!</span>`;
                 }
-                // Here you would typically send this rating to a backend or store locally
-                // const itemId = ratingTarget.dataset.itemId;
-                // const itemType = ratingTarget.dataset.itemType;
-                // const ratingValue = ratingTarget.dataset.rating;
-                // console.log(`Rated item ${itemType} ${itemId} as ${ratingValue}`);
-                return; // Stop further processing for this click
+                return; 
             }
 
-            // Section Search button
             const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
             if (sectionSearchBtn) {
                 e.preventDefault();
@@ -846,8 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (query && query.length > 1 && typeof searchKb === 'function' && sectionData) {
                         const allResults = searchKb(query);
-                        // Filter results to only those belonging to the current section for section search
-                        const sectionSpecificResults = allResults.filter(r => r.sectionId === currentSectionId || r.type === 'glossary_term'); // Keep glossary terms if they are relevant globally or per section
+                        const sectionSpecificResults = allResults.filter(r => r.sectionId === currentSectionId || r.type === 'glossary_term'); 
                         renderSectionSearchResults(sectionSpecificResults, query, resultsContainerEl, sectionData.themeColor || 'gray');
                     } else if (query.length <= 1) {
                         resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Please enter at least 2 characters to search.</p>`;
@@ -857,10 +857,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     console.error("[app.js] Section search input or results container not found in pageContent.");
                 }
-                return; // Stop further processing
+                return; 
+            }
+
+            // Handle clicks on "Read More" (article) or "Details" (case) links for tracking
+            const trackableViewLink = e.target.closest('a[data-track-view="true"]');
+            if (trackableViewLink) {
+                const sectionId = trackableViewLink.dataset.trackSectionId;
+                const itemId = trackableViewLink.dataset.trackItemId;
+                const itemType = trackableViewLink.dataset.trackItemType;
+
+                if (sectionId && itemId && itemType) {
+                    trackUserView(sectionId, itemId, itemType);
+                } else {
+                    console.warn('[app.js] Missing tracking data attributes on link:', trackableViewLink);
+                }
+                // Do not return or preventDefault, allow the link to open as intended (target="_blank")
             }
         });
-         // Allow "Enter" key for section search
+
         pageContent.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && e.target.id === 'sectionSearchInput') {
                 e.preventDefault();
@@ -875,23 +890,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
 
-    // Handle URL hash on page load and hash changes (popstate for back/forward)
     window.addEventListener('popstate', (event) => {
-        const { sectionId, itemId, subCategoryFilter } = parseHash(); // Re-parse hash
+        const { sectionId, itemId, subCategoryFilter } = parseHash(); 
         console.log('[app.js - FIX] popstate event (hash changed via browser back/forward):', { sectionId, itemId, subCategoryFilter });
-        // event.state might contain the state pushed via pushState, or null if hash changed directly
         if (event.state) {
              handleSectionTrigger(event.state.sectionId || 'home', event.state.itemId, event.state.subCategoryFilter);
         } else {
-            // Fallback if state is null (e.g., manual hash change or initial load from bookmark)
             handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
         }
     });
 
-    // Initial load based on hash
     const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
     console.log('[app.js - FIX] Initial page load hash parsing:', { initialSectionId, initialItemId, initialSubCategoryFilter });
+    
+    // Ensure kbSystemData is available before initial trigger if not home
+    if (initialSectionId !== 'home' && typeof kbSystemData === 'undefined') {
+        console.warn('[app.js - FIX] kbSystemData not yet loaded, delaying initial section trigger for:', initialSectionId);
+        // This scenario might require waiting for kbSystemData if it's loaded asynchronously
+        // For now, assuming kbSystemData is loaded synchronously before this script or very early.
+        // If kbSystemData is loaded later, this initial trigger might fail or show "not found".
+        // A more robust solution would be to ensure kbSystemData is loaded before calling handleSectionTrigger,
+        // perhaps by checking in an interval or using a promise/callback for kbSystemData loading.
+    }
     handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
+
 
     console.log('[app.js - FIX] All initializations complete.');
 });
