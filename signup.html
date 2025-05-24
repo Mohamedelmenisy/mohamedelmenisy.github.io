@@ -75,6 +75,26 @@
         .form-title {
              font-family: 'Inter', sans-serif;
         }
+        /* Styles for messages from your provided code */
+        .form-message {
+            padding: 0.75rem 1rem; /* 12px 16px */
+            margin-bottom: 1rem; /* 16px */
+            border-radius: 0.375rem; /* 6px */
+            font-size: 0.875rem; /* 14px */
+            text-align: center;
+            border-width: 1px;
+            border-style: solid;
+        }
+        .success-message {
+            background-color: #d1fae5; /* green-100 */
+            border-color: #6ee7b7; /* green-300 */
+            color: #065f46; /* green-800 */
+        }
+        .error-message { /* General form error, if needed separately */
+            background-color: #fee2e2; /* red-100 */
+            border-color: #fca5a5; /* red-300 */
+            color: #991b1b; /* red-800 */
+        }
     </style>
 </head>
 <body class="h-full font-sans">
@@ -84,6 +104,11 @@
             <h2 class="text-3xl font-bold text-gray-800 form-title">Create Your Account</h2>
             <p class="text-gray-600 mt-1">Join InfiniBase and start organizing knowledge.</p>
         </div>
+
+        <!-- Notification Area -->
+        <div id="signupSuccessMessage" class="form-message success-message" style="display: none;"></div>
+        <div id="signupErrorMessage" class="form-message error-message" style="display: none;"></div>
+
         <form id="signupForm" class="space-y-6">
             <div>
                 <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -122,37 +147,105 @@
 
     <script src="js/auth.js"></script>
     <script>
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
+        const signupForm = document.getElementById('signupForm');
+        const signupSuccessMessageEl = document.getElementById('signupSuccessMessage');
+        const signupErrorMessageEl = document.getElementById('signupErrorMessage');
+
+        function displaySuccessMessage(message) {
+            if (signupSuccessMessageEl) {
+                signupSuccessMessageEl.textContent = message;
+                signupSuccessMessageEl.style.display = 'block';
+            }
+            if (signupErrorMessageEl) {
+                signupErrorMessageEl.style.display = 'none';
+            }
+        }
+
+        function displayErrorMessage(message) {
+            if (signupErrorMessageEl) {
+                signupErrorMessageEl.textContent = message;
+                signupErrorMessageEl.style.display = 'block';
+            }
+            if (signupSuccessMessageEl) {
+                signupSuccessMessageEl.style.display = 'none';
+            }
+        }
+
+        function clearMessages() {
+            if (signupSuccessMessageEl) signupSuccessMessageEl.style.display = 'none';
+            if (signupErrorMessageEl) signupErrorMessageEl.style.display = 'none';
+        }
+
+
+        signupForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            clearMessages(); // Clear previous messages
+
             const fullName = document.getElementById('fullName').value.trim();
             const email = document.getElementById('email').value.trim().toLowerCase(); // Normalize email
             const password = document.getElementById('password').value;
 
             if (!fullName || !email || !password) {
-                alert('Please fill in all fields.');
+                displayErrorMessage('Please fill in all fields.');
                 return;
             }
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
-                alert('Please enter a valid email address.');
+                displayErrorMessage('Please enter a valid email address.');
                 return;
             }
 
-            const expectedDomain = '@thechefz.co'; // CORRECTED DOMAIN
+            const expectedDomain = '@thechefz.co';
             if (!email.endsWith(expectedDomain)) {
-                 alert(`Please use a valid work email ending with ${expectedDomain}.`);
+                 displayErrorMessage(`Please use a valid work email ending with ${expectedDomain}.`);
                  return;
             }
 
             if (password.length < 6) {
-                alert('Password must be at least 6 characters long.');
+                displayErrorMessage('Password must be at least 6 characters long.');
                 return;
             }
 
-            // Auth.signup will handle if user exists and redirect
+            // Auth.signup will handle if user exists and internally show alerts/redirect
+            // For a more integrated experience, Auth.signup could return more detailed status
+            // or throw specific errors that this script can catch and display nicely.
+            // For now, we'll adapt to its current behavior.
+
+            // Simulate Auth.signup's behavior for success display
+            const tempUsers = JSON.parse(localStorage.getItem('kb_users')) || [];
+            if (tempUsers.find(user => user.email.toLowerCase() === email.toLowerCase())) {
+                 // Auth.signup will show an alert and redirect.
+                 // If we want to prevent its alert and use our own:
+                 // displayErrorMessage('User with this email already exists. Please login.');
+                 // setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+                 // For now, let Auth.signup handle it.
+                 Auth.signup(fullName, email, password);
+                 return;
+            }
+
+
             const signupSuccess = Auth.signup(fullName, email, password);
-            // No need to do anything else here, Auth.signup handles alerts and redirection
+
+            if (signupSuccess) {
+                // Auth.signup shows an alert and redirects.
+                // If we wanted to replace that with our custom message before redirect:
+                // displaySuccessMessage("Signup successful! Please login. Redirecting...");
+                // signupForm.reset();
+                // setTimeout(() => {
+                //    window.location.href = 'login.html';
+                // }, 2500);
+                // Since Auth.signup ALREADY redirects and shows alert, this block might not fully execute
+                // or the redirect might happen before the message is very visible.
+                // For true custom message before redirect, Auth.signup needs modification.
+            } else {
+                // This 'else' might not be reached if Auth.signup handles all its errors with alerts.
+                // If Auth.signup returns false for a reason not covered by its alerts,
+                // we can show a generic error here.
+                if (!signupSuccessMessageEl.style.display.includes('block')) { // Avoid overriding specific error from Auth.js if it set one
+                     displayErrorMessage("Signup failed. Please try again.");
+                }
+            }
         });
 
          // Redirect if already authenticated
