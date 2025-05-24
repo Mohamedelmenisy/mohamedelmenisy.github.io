@@ -399,13 +399,40 @@
          </div>
      </div>
 
-    <!-- 1. Supabase CDN (as per original signup.txt) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- 2. Your Supabase client initializer (as per original signup.txt) -->
-    <script src="/infini-base/js/supabase.js"></script>
-    <!-- 3. Page specific logic -->
-    <script>
-        let supabase; // Will be assigned window.supabaseClient
+    <!-- Supabase CDN is loaded here to ensure createClient is available -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
+    <!-- REMOVED: <script src="/infini-base/js/supabase.js"></script> -->
+    
+    <!-- Page specific logic -->
+    <script type="module"> // Added type="module" to allow import
+        // Directly import and initialize Supabase client here
+        // Make sure to replace with your ACTUAL InfiniBase Supabase URL and Anon Key
+        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+        
+        let supabase;
+        try {
+            // Ensure supabase.createClient is available from the CDN script
+            if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient === 'undefined') {
+                throw new Error("Supabase CDN not loaded or createClient not found.");
+            }
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('[signup.html] Supabase client initialized directly in page script.');
+        } catch (error) {
+            console.error("[signup.html] Supabase client initialization failed:", error);
+            const generalMsgEl = document.getElementById('signupGeneralMessage');
+            if (generalMsgEl) {
+                generalMsgEl.textContent = "Service unavailable. Please try again later.";
+                generalMsgEl.className = 'form-message error-message general-form-error';
+                generalMsgEl.style.display = 'block';
+            }
+            const formEl = document.getElementById('signupForm');
+            if (formEl) formEl.style.display = 'none';
+            // Early exit if supabase fails to initialize
+            // This entire script might not proceed if supabase is not defined.
+            // Consider how to handle this gracefully, maybe by wrapping remaining script in an if(supabase) block
+        }
+
 
         // DOM Elements (adapted from signup1.txt and original signup.txt)
         const signupForm = document.getElementById('signupForm');
@@ -422,10 +449,10 @@
         const passwordErrorEl = document.getElementById('passwordError');
         const confirmErrorEl = document.getElementById('confirmError');
         const termsErrorEl = document.getElementById('termsError');
-        const signupGeneralMessageEl = document.getElementById('signupGeneralMessage'); // Single general message div
+        const signupGeneralMessageEl = document.getElementById('signupGeneralMessage');
         const passwordStrengthEl = document.getElementById('passwordStrength');
 
-        // Utility Functions (adapted from original signup.txt and signup1.txt)
+        // Utility Functions
         function displayFieldError(element, message, inputElement) {
             if (element) {
                 element.textContent = message;
@@ -445,7 +472,7 @@
         function displayGeneralMessage(message, type = 'error') {
             if (signupGeneralMessageEl) {
                 signupGeneralMessageEl.textContent = message;
-                signupGeneralMessageEl.className = 'form-message'; // Reset classes
+                signupGeneralMessageEl.className = 'form-message'; 
                 if (type === 'success') signupGeneralMessageEl.classList.add('success-message');
                 else if (type === 'info') signupGeneralMessageEl.classList.add('info-message');
                 else signupGeneralMessageEl.classList.add('error-message', 'general-form-error');
@@ -456,7 +483,7 @@
         function clearGeneralMessage() {
             if (signupGeneralMessageEl) {
                  signupGeneralMessageEl.style.display = 'none';
-                 signupGeneralMessageEl.className = 'form-message'; // Reset classes
+                 signupGeneralMessageEl.className = 'form-message';
             }
         }
 
@@ -503,21 +530,24 @@
         }
         
         function initializePage() {
-            // Initialize Supabase client from global scope (supabase.js)
-            if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
-                console.error("[signup.html] Supabase client (window.supabaseClient) not available.");
-                displayGeneralMessage("Service unavailable. Please try again later.", "error");
-                if (signupForm) signupForm.style.display = 'none';
-                return;
+            // Supabase is now initialized directly above this function
+            if (!supabase || !supabase.auth) {
+                // Error handling for supabase initialization is done where it's initialized.
+                // If we reach here and supabase is not valid, it's a critical failure.
+                console.error("[signup.html] Supabase client not properly initialized. Page functionality will be limited.");
+                // Optionally, disable the form if supabase is not ready
+                if (signupForm) {
+                    const submitBtn = signupForm.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = true;
+                }
+                return; 
             }
-            supabase = window.supabaseClient;
-            console.log('[signup.html] Supabase client (window.supabaseClient) ready.');
 
             // Check if user is already logged in
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('[signup.html] User already authenticated, redirecting to dashboard.');
-                    window.location.replace('/infini-base/dashboard.html'); // Ensure correct dashboard path
+                    window.location.replace('/infini-base/dashboard.html');
                 } else {
                     if (nameInput) nameInput.focus();
                 }
@@ -527,7 +557,7 @@
             if (passwordInput) {
                 passwordInput.addEventListener('input', (e) => {
                     updatePasswordStrength(e.target.value);
-                    if (confirmInput.value) { // Re-validate confirm if password changes
+                    if (confirmInput.value) { 
                          if (e.target.value !== confirmInput.value) {
                             displayFieldError(confirmErrorEl, "Passwords do not match.", confirmInput);
                         } else {
@@ -582,6 +612,7 @@
 
                     let isValid = true;
 
+                    // --- VALIDATION LOGIC (Same as before) ---
                     if (!nameValue) {
                         displayFieldError(nameErrorEl, "Full name is required.", nameInput);
                         isValid = false;
@@ -604,11 +635,7 @@
                         displayFieldError(passwordErrorEl, "Password must be at least 8 characters.", passwordInput);
                         isValid = false;
                     }
-                    updatePasswordStrength(passwordValue); // Also updates visual
-                     // Optionally, enforce strength:
-                    // if (passwordStrengthEl && (passwordStrengthEl.classList.contains('strength-weak') || passwordStrengthEl.classList.contains('strength-very-weak'))) {
-                    //    displayFieldError(passwordErrorEl, "Password is too weak.", passwordInput); isValid = false;
-                    // }
+                    updatePasswordStrength(passwordValue);
 
 
                     if (!confirmPasswordValue) {
@@ -619,7 +646,7 @@
                         isValid = false;
                     }
                     if (!termsAgreed) {
-                        displayFieldError(termsErrorEl, "You must agree to the terms and conditions.", termsCheckbox); // Pass checkbox for potential styling
+                        displayFieldError(termsErrorEl, "You must agree to the terms and conditions.", termsCheckbox);
                         isValid = false;
                     }
 
@@ -627,35 +654,32 @@
                         setButtonLoading(false);
                         return;
                     }
+                    // --- END VALIDATION LOGIC ---
+
+                    console.log("Attempting signup for:", emailValue, "Pass length:", passwordValue.length);
 
                     try {
                         const { data: authData, error: authError } = await supabase.auth.signUp({
                             email: emailValue,
                             password: passwordValue
-                            // NO options.data here
                         });
 
                         if (authError) {
-                             // Check if it's a "user already exists" type error that might still have a user object for confirmation resend
                             if (!(authData && authData.user && authData.user.email === emailValue && authData.user.email_confirmed_at === null)) {
-                                throw authError; // Rethrow if not the specific case above
+                                throw authError;
                             }
-                             console.log("AuthError but user object present for unconfirmed email, proceeding to user handling.");
+                             console.log("AuthError but user object present for unconfirmed email, proceeding.");
                         }
                         
                         if (authData && authData.user) {
-                            // Case 1: User exists, email IS confirmed, but NO session (already fully registered)
                             if (!authData.session && authData.user.email_confirmed_at !== null) {
                                 displayGeneralMessage("This email is already registered and confirmed. Please log in.", "error");
                             }
-                            // Case 2: User exists, email IS NOT confirmed, NO session (Email confirmation pending)
                             else if (!authData.session && authData.user.email_confirmed_at === null) {
                                 displayGeneralMessage("Signup initiated! Please check your email to confirm your account. Then, proceed to log in.", "info");
                                 signupForm.reset();
-                                nameInput.focus();
-                                // Optional: Resend confirmation if it was an old attempt, Supabase handles this usually.
+                                if(nameInput) nameInput.focus();
                             } 
-                            // Case 3: User exists AND session IS active (auto-confirmed or email verification disabled by Supabase settings)
                             else if (authData.session) {
                                 const { error: profileError } = await supabase
                                     .from('users') 
@@ -663,14 +687,11 @@
                                         id: authData.user.id, 
                                         name: nameValue, 
                                         email: emailValue
-                                        // is_admin and role will use DB defaults
                                     });
 
                                 if (profileError) {
                                     console.error("Error inserting user profile:", profileError);
                                     displayGeneralMessage(`Account created, but profile setup failed. Please contact support. (${profileError.message})`, "error");
-                                    // Consider what to do here - user is auth'd but no profile.
-                                    // Maybe log them out or show specific instructions.
                                 } else {
                                     displayGeneralMessage("Signup successful! Redirecting to login...", "success");
                                     setTimeout(() => {
@@ -678,18 +699,22 @@
                                     }, 2500);
                                 }
                             } else {
-                                // Fallback for unexpected state
                                 console.warn("Unexpected state in user/session processing:", authData);
                                 displayGeneralMessage("An unexpected issue occurred. Please check your email or try again.", "info");
                             }
                         } else if (!authError) { 
-                            // No user data and no authError after initial check (should be rare with Supabase v2)
                             console.warn("SignUp response did not contain user data or a specific error.");
                             displayGeneralMessage("Signup request received. Please check your email to complete the process.", "info");
                         }
 
                     } catch (error) {
                         console.error("Signup CATCH Block Error:", error);
+                        console.error("Error Name:", error.name);
+                        console.error("Error Message:", error.message);
+                        console.error("Error Status (if any):", error.status);
+                        console.error("Full Error Object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
+
                         let errorMessage = "An unexpected error occurred. Please try again.";
                         if (error && error.message) {
                             const lowerMessage = error.message.toLowerCase();
@@ -700,18 +725,21 @@
                                 displayGeneralMessage(errorMessage, "error");
                             } else if (lowerMessage.includes("password should be at least")) {
                                 displayFieldError(passwordErrorEl, error.message, passwordInput);
-                                clearGeneralMessage(); // Don't show general if field specific
+                                clearGeneralMessage();
                             } else if (error.status === 429 || lowerMessage.includes("rate limit exceeded")) {
                                 errorMessage = "Too many signup attempts. Please try again later.";
                                 displayGeneralMessage(errorMessage, "error");
-                            } else {
+                            } else if (error.message.includes("Database error saving new user")) { // Specific check
+                                errorMessage = "Signup failed: Could not save user information to the database. Please try again.";
+                                displayGeneralMessage(errorMessage, "error");
+                            }
+                             else {
                                 displayGeneralMessage(`Signup failed: ${error.message}`, "error");
                             }
                         } else {
                             displayGeneralMessage(errorMessage, "error");
                         }
                     } finally {
-                        // Only set loading false if not redirecting or explicitly showing info message that implies waiting
                         const isWaitingForUserAction = signupGeneralMessageEl.style.display === 'block' &&
                                                       (signupGeneralMessageEl.classList.contains('info-message') ||
                                                        signupGeneralMessageEl.textContent.includes("Redirecting to login..."));
@@ -721,9 +749,9 @@
                     }
                 });
             }
-        } // end of initializePage
+        }
 
-        // Modal Handling (from signup1.txt)
+        // Modal Handling (Same as before)
         const modalTriggers = document.querySelectorAll('[data-modal-target]');
         const closeButtons = document.querySelectorAll('[data-close-modal]');
 
@@ -735,14 +763,12 @@
                 if (modal) openModal(modal);
             });
         });
-
         closeButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const modal = this.closest('.modal');
                 if (modal) closeModal(modal);
             });
         });
-
         window.addEventListener('click', function(event) {
             document.querySelectorAll('.modal.active').forEach(modal => { 
                 if (event.target == modal) closeModal(modal);
@@ -753,32 +779,33 @@
                  document.querySelectorAll('.modal.active').forEach(modal => closeModal(modal));
             }
         });
-
         function openModal(modal) {
             if (modal == null) return;
             modal.style.display = 'block'; 
-            requestAnimationFrame(() => modal.classList.add('active')); // For potential transitions
+            requestAnimationFrame(() => modal.classList.add('active'));
             document.body.classList.add('modal-open');
             modal.setAttribute('aria-hidden', 'false');
             const firstFocusableElement = modal.querySelector('h1, button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
             if (firstFocusableElement) firstFocusableElement.focus();
         }
-
         function closeModal(modal) {
             if (modal == null) return;
             modal.classList.remove('active');
-            // Listen for transition end if you add one, otherwise direct hide
             modal.style.display = 'none'; 
             document.body.classList.remove('modal-open');
             modal.setAttribute('aria-hidden', 'true');
         }
 
-        // Initialize after DOM is ready and supabase.js has potentially run
+        // Initialize after DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            // Small delay to ensure supabase.js might have initialized window.supabaseClient
-             setTimeout(initializePage, 100); 
+            if (supabase) { // Only initialize page logic if supabase client was successfully created
+                initializePage();
+            } else {
+                console.warn("Supabase client not available, page initialization skipped.");
+                // displayGeneralMessage is already called during supabase init failure
+            }
         });
-        console.log("InfiniBase signup script loaded.");
+        console.log("InfiniBase signup script (direct init) loaded.");
     </script>
 </body>
 </html>
