@@ -22,6 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    if (sidebarLinks.length === 0) {
+        console.error('[app.js - CRITICAL] No sidebar links (.sidebar-link) found in DOM. Navigation will fail.');
+        document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Sidebar links (.sidebar-link) not found. Please check the HTML structure.</div>';
+        return;
+    }
+
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -90,7 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     user_email: currentUser.email,
                     section_id: sectionId,
                     item_id: itemId,
-                    item_type: itemType
+                    item_type: itemType,
+                    viewed_at: new Date().toISOString()
                 });
 
             if (error) {
@@ -112,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser) {
         const userDisplayName = currentUser.fullName || currentUser.email || 'User';
         if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
+        if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
     }
 
     if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) {
@@ -539,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
         console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
 
-        // تحديث الهاش أولاً حتى لو فيه مشكلة في تحميل المحتوى
+        // تحديث الهاش أولاً
         let hash = sectionId;
         if (itemId) {
             hash = `${sectionId}/${itemId}`;
@@ -547,10 +555,11 @@ document.addEventListener('DOMContentLoaded', () => {
             hash = `${sectionId}/${subCategoryFilter}`;
         }
         try {
-            window.history.pushState({ sectionId, itemId, subCategoryFilter }, sectionId, `#${hash}`);
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', `#${hash}`);
             console.log(`[app.js - DEBUG] URL hash updated to: #${hash}`);
         } catch (e) {
             console.error('[app.js - CRITICAL] Failed to update URL hash:', e);
+            document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Failed to update URL hash. Check browser compatibility or security restrictions.</div>';
         }
 
         // إضاءة الرابط في الشريط الجانبي
@@ -562,6 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // التمرير لأعلى
         if (mainContent) {
             mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
 
@@ -571,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
 
         const parts = hash.split('/');
-        const sectionId = parts[0];
+        const sectionId = parts[0] || 'home';
         let itemId = null;
         let subCategoryFilter = null;
 
@@ -594,10 +605,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (isArticle || isCase || isItem) {
                     itemId = potentialId;
                 } else {
-                    console.warn(`[app.js] Hash part "${potentialId}" in section "${sectionId}" is not a known subCategory, article, case, or item. Assuming itemId.`);
+                    console.warn(`[app.js] Hash part "${potentialId}" in section "${sectionId}" is not a known subCategory, article, case, or item. Treating as itemId.`);
                     itemId = potentialId;
                 }
             } else {
+                console.warn(`[app.js] Section "${sectionId}" not found in kbSystemData during hash parsing. Treating "${potentialId}" as itemId.`);
                 itemId = potentialId;
             }
         }
@@ -606,41 +618,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // دالة للانتظار حتى تتوفر kbSystemData
     function waitForKbSystemData(callback) {
-        if (typeof kbSystemData !== 'undefined' && kbSystemData.sections) {
-            console.log('[app.js - DEBUG] kbSystemData is now available.');
-            callback();
-        } else {
-            console.warn('[app.js - DEBUG] kbSystemData not yet loaded, waiting...');
-            setTimeout(() => waitForKbSystemData(callback), 100);
+        const maxAttempts = 50; // حوالي 5 ثواني (50 * 100ms)
+        let attempts = 0;
+
+        function check() {
+            attempts++;
+            if (typeof kbSystemData !== 'undefined' && kbSystemData.sections) {
+                console.log('[app.js - DEBUG] kbSystemData is now available after', attempts, 'attempts.');
+                callback();
+            } else if (attempts >= maxAttempts) {
+                console.error('[app.js - CRITICAL] kbSystemData failed to load after', maxAttempts, 'attempts. Navigation will not work.');
+                document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Knowledge base data (kbSystemData) failed to load. Please check how kbSystemData is being loaded.</div>';
+            } else {
+                console.warn('[app.js - DEBUG] kbSystemData not yet loaded, attempt', attempts, 'of', maxAttempts);
+                setTimeout(check, 100);
+            }
         }
+
+        check();
     }
 
-    // دالة لإضافة مستمعات الأحداث بعد التأكد من وجود العناصر
+    // دالة لإضافة مستمعات الأحداث
     function initializeEventListeners() {
         console.log('[app.js - DEBUG] Initializing event listeners...');
 
-        // مستمعات أحداث الشريط الجانبي
-        if (sidebarLinks.length === 0) {
-            console.error('[app.js - CRITICAL] No sidebar links (.sidebar-link) found in DOM. Navigation will not work.');
-            pageContent.innerHTML += '<div class="p-6 text-center text-red-500">Error: Sidebar links (.sidebar-link) not found. Please check the HTML structure.</div>';
-            return;
-        }
-
-        sidebarLinks.forEach(link => {
-            if (!link.dataset.section) {
-                console.warn('[app.js - DEBUG] Sidebar link missing data-section attribute:', link);
-                return;
-            }
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const sectionId = this.dataset.section;
-                console.log(`[app.js - DEBUG] Sidebar link clicked, data-section: "${sectionId}"`);
-                handleSectionTrigger(sectionId, null, null);
-            });
-        });
-
-        // مستمع الأحداث الديناميكي للروابط الفرعية
-        document.body.addEventListener('click', function(e) {
+        // مستمع أحداث ديناميكي على document
+        document.addEventListener('click', function(e) {
             const triggerLink = e.target.closest('[data-section-trigger], [data-subcat-trigger]');
             if (triggerLink) {
                 e.preventDefault();
@@ -680,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (globalSearchInput) globalSearchInput.value = '';
                 }
             }
-        });
+        }, true); // استخدام capture phase لضمان التقاط الأحداث
 
         // مستمع أحداث popstate
         window.addEventListener('popstate', (event) => {
@@ -830,6 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
     }
 
+    // مستمعات الأحداث لـ pageContent (للبحث داخل القسم وتتبع المشاهدات)
     if (pageContent) {
         pageContent.addEventListener('click', (e) => {
             const ratingTarget = e.target.closest('.rating-btn');
@@ -875,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const itemType = trackableViewLink.dataset.trackItemType;
 
                 if (sectionId && itemId && itemType) {
+                    console.log('[app.js - DEBUG] Trackable link clicked, calling trackUserView:', { sectionId, itemId, itemType });
                     trackUserView(sectionId, itemId, itemType);
                 } else {
                     console.warn('[app.js] Missing tracking data attributes on link:', trackableViewLink);
