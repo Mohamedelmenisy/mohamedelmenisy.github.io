@@ -13,12 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
 
     // --- Helper Functions ---
-    function escapeHTML(str) {
+    function escapeHTML(str) { // السطر 15 تقريبًا يبدأ هنا
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
+            // السطر 19 تقريبًا (حسب كيفية حساب المحرر للأسطر) هو السطر التالي
             return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
-    }
+    } // ينتهي هنا
 
     function highlightText(text, query) {
         if (!text) return '';
@@ -45,48 +46,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (event === 'SIGNED_OUT' || !session) {
             currentUser = null;
-            // Redirect to login.html if not already on a public page (like login or signup)
-            // This assumes login.html and signup.html are at the root.
-            const currentPath = window.location.pathname;
-            if (!currentPath.endsWith('login.html') && !currentPath.endsWith('signup.html')) {
+            const currentPath = window.location.pathname.split('/').pop(); // Get the current HTML file name
+            if (currentPath !== 'login.html' && currentPath !== 'signup.html' && currentPath !== '') { // Allow root path if it's the entry
                 console.log('[app.js - Supabase] No session or signed out, redirecting to login.html');
-                window.location.replace('login.html'); // Adjust if login page is elsewhere
+                // Determine base path for login.html relative to current location
+                const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                window.location.replace(basePath + 'login.html');
             }
             return;
         }
 
         if (session) {
-            // User is logged in. Fetch profile from 'public.users' table.
             try {
                 const { data: userProfile, error: profileError } = await supabaseClient
-                    .from('users') // Your table name for user profiles
-                    .select('full_name, role') // Columns for full name and role
+                    .from('users')
+                    .select('full_name, role')
                     .eq('id', session.user.id)
                     .single();
 
-                if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means 0 rows found, not a server error.
+                if (profileError && profileError.code !== 'PGRST116') {
                     console.error('[app.js - Supabase] Error fetching user profile:', profileError);
-                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // Fallback
+                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
                 } else if (userProfile) {
                     currentUser = { ...session.user, fullName: userProfile.full_name, role: userProfile.role };
                 } else {
                     console.warn('[app.js - Supabase] User profile not found for:', session.user.id, '. Using email as name and default role.');
-                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // Fallback for missing profile
+                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
                 }
             } catch (e) {
                 console.error('[app.js - Supabase] Exception fetching user profile:', e);
-                currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // General fallback
+                currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
             }
 
             console.log('[app.js - Supabase] Current user set:', currentUser);
-            initializeUserDependentUI(); // Update UI elements that show user info
+            initializeUserDependentUI();
 
-            // Handle initial page load based on hash, only once after auth is confirmed
             if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !document.body.dataset.initialLoadDone) {
                 const { sectionId, itemId, subCategoryFilter } = parseHash();
                 console.log('[app.js - FIX] Initial hash load (after auth):', { sectionId, itemId, subCategoryFilter });
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-                document.body.dataset.initialLoadDone = 'true'; // Mark initial load as done
+                document.body.dataset.initialLoadDone = 'true';
             }
         }
     });
@@ -106,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             console.log('[app.js - Supabase] User-dependent UI initialized for:', userDisplayName, 'Role:', currentUser.role);
         } else {
-            // This state should ideally be brief due to redirection
             if (userNameDisplay) userNameDisplay.textContent = 'User';
             if (welcomeUserName) welcomeUserName.textContent = 'Welcome!';
             if (avatarImg) {
@@ -128,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app.js - FIX] kbSystemData or kbSystemData.meta not available for version info.');
     }
 
-    // --- Theme Switcher ---
     const themeSwitcher = document.getElementById('themeSwitcher');
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
@@ -172,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadTheme();
 
-    // --- Logout Button ---
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', async () => {
@@ -182,12 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('[app.js - Supabase] Error during sign out:', error);
             } else {
                 console.log('[app.js - Supabase] Sign out successful. Redirect will be handled by onAuthStateChange.');
-                // currentUser is set to null and redirection happens in onAuthStateChange
             }
         });
     }
 
-    // --- Report an Error Button ---
     const reportErrorBtn = document.getElementById('reportErrorBtn');
     if (reportErrorBtn) {
         reportErrorBtn.addEventListener('click', () => {
@@ -197,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Sidebar Navigation & Content Loading ---
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
@@ -334,15 +327,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (sectionId === 'home') {
-            pageContent.innerHTML = initialPageContent; // Restore initial home content
+            pageContent.innerHTML = initialPageContent;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            // Re-initialize user-specific and KB meta data for home page
-            initializeUserDependentUI(); // Ensure welcome message is correct
-            const kbVersionEl = document.getElementById('kbVersion'); // these might be on the initialPageContent
+            initializeUserDependentUI();
+            const kbVersionEl = document.getElementById('kbVersion');
             const lastKbUpdateEl = document.getElementById('lastKbUpdate');
             if (kbSystemData.meta) {
                 if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
@@ -447,8 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
         if (!currentUser) {
             console.warn('[app.js - DEBUG] handleSectionTrigger called but no currentUser. Auth might be pending or failed. Aborting.');
-            // Supabase onAuthStateChange should redirect if not authenticated.
-            // If on login page, this is fine. If on dashboard and this happens, it's an issue.
             return;
         }
         if (typeof kbSystemData === 'undefined') {
@@ -459,7 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
         displaySectionContent(sectionId, itemId, subCategoryFilter);
 
         const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
-        // Only update hash if it's different to avoid redundant `hashchange` events if already on correct hash
         if (window.location.hash !== `#${hash}`) {
             window.history.replaceState(null, '', `#${hash}`);
             console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
@@ -468,11 +457,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseHash() {
         const hash = window.location.hash.replace('#', '');
-        if (!hash) return { sectionId: 'home' }; // Default to home
+        if (!hash) return { sectionId: 'home' };
         const parts = hash.split('/');
-        // Basic parsing: sectionId/itemId or sectionId/subCategoryFilter
-        // More robust parsing might be needed if hashes get more complex
-        return { sectionId: parts[0], itemId: parts[1], subCategoryFilter: parts[1] }; // Assuming itemId and subCategoryFilter can share the second part for now
+        return { sectionId: parts[0], itemId: parts[1], subCategoryFilter: parts[1] };
     }
 
     sidebarLinks.forEach(link => {
@@ -508,13 +495,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) { // Ensure it's on home page
+        if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) {
             e.preventDefault();
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
                 console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
-                handleSectionTrigger(sectionId, null, subId); // Pass subId as subCategoryFilter
+                handleSectionTrigger(sectionId, null, subId);
                 if (sectionId === 'support' && subId === 'tools') {
                     setTimeout(() => {
                         const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
@@ -532,7 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Global Search
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     let searchDebounceTimer;
@@ -577,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         results.slice(0, 10).forEach(result => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `javascript:void(0);`; // Will be handled by body click listener
+            a.href = `javascript:void(0);`;
             a.dataset.sectionTrigger = result.sectionId;
             if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
             a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
@@ -616,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         results.slice(0, 5).forEach(result => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `javascript:void(0);`; // Will be handled by body click listener
+            a.href = `javascript:void(0);`;
             a.dataset.sectionTrigger = result.sectionId;
             if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
             a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
@@ -659,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentSectionId = input?.dataset.sectionId;
                 const query = input?.value.trim();
                 if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                    const results = searchKb(query); // searchKb is from data.js
+                    const results = searchKb(query);
                     const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
                     const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
                     if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
@@ -675,18 +661,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.addEventListener('hashchange', () => {
-        if (currentUser) { // Only process hash change if user is authenticated and present
+        if (currentUser) {
             const { sectionId, itemId, subCategoryFilter } = parseHash();
             console.log('[app.js - FIX] Hash changed, user authenticated. Processing:', { sectionId, itemId, subCategoryFilter });
             handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
         } else {
             console.log('[app.js - FIX] Hash changed, but currentUser is not set. Awaiting auth state or redirect.');
-            // If not authenticated, onAuthStateChange should handle redirection.
-            // If on login page, this is expected.
         }
     });
-
-    // Initial page load logic is now handled within onAuthStateChange when event is 'INITIAL_SESSION' or 'SIGNED_IN'.
 
     console.log('[app.js - FIX] Core initializations complete. Awaiting Supabase auth state to finalize page setup.');
 });
