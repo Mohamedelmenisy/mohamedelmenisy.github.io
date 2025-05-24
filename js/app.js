@@ -1,3 +1,6 @@
+// js/app.js
+import { supabase } from './supabase.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js - FIX] DOMContentLoaded fired.');
 
@@ -51,6 +54,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
     console.log('[app.js - FIX] Current user:', currentUser);
+
+    // Fetch user role from Supabase
+    async function getUserRole(email) {
+        if (!email) return 'viewer';
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('role')
+                .eq('email', email)
+                .single();
+            if (error) {
+                console.error('[app.js] Error fetching user role:', error);
+                return 'viewer';
+            }
+            return data?.role || 'viewer';
+        } catch (e) {
+            console.error('[app.js] Exception fetching user role:', e);
+            return 'viewer';
+        }
+    }
 
     const userNameDisplay = document.getElementById('userNameDisplay');
     const welcomeUserName = document.getElementById('welcomeUserName');
@@ -250,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
                 ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Steps: ${escapeHTML(caseItem.resolutionStepsPreview)}</p>` : ''}
                 ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div class="mt-auto flex between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
                     ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
                 </div>
@@ -258,7 +281,138 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
+    // Function to create the Add Case pop-up
+    function createAddCasePopup(sectionId, sectionData) {
+        const theme = getThemeColors(sectionData.themeColor);
+        const popup = document.createElement('div');
+        popup.id = 'addCasePopup';
+        popup.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+        popup.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Add New Case</h2>
+                <form id="addCaseForm">
+                    <div class="mb-4">
+                        <label for="caseTitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+                        <input type="text" id="caseTitle" class="mt-1 p-2 w-full border rounded-md dark:bg-gray-700 focus:ring-2 focus:ring-brand-primary" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="caseSummary" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Summary</label>
+                        <textarea id="caseSummary" class="mt-1 p-2 w-full border rounded-md dark:bg-gray-700 focus:ring-2 focus:ring-brand-primary" rows="4"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="caseContent" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Content</label>
+                        <div id="caseContentEditor" class="bg-white dark:bg-gray-700 border rounded-md"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelCaseBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500">Cancel</button>
+                        <button type="submit" id="saveCaseBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(popup);
+
+        // Initialize Quill editor
+        const quill = new Quill('#caseContentEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    ['image', 'link', 'video'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['clean']
+                ]
+            }
+        });
+
+        // Handle form submission
+        const form = document.getElementById('addCaseForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('caseTitle').value.trim();
+            const summary = document.getElementById('caseSummary').value.trim();
+            const content = quill.root.innerHTML;
+
+            if (!title) {
+                alert('Title is required.');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('cases')
+                    .insert([{
+                        section_id: sectionId,
+                        title,
+                        summary,
+                        content,
+                        status: 'New',
+                        created_by: currentUser.email
+                    }]);
+                if (error) {
+                    console.error('[app.js] Error saving case to Supabase:', error);
+                    alert('Failed to save case. Please try again.');
+                    return;
+                }
+                console.log('[app.js] Case saved successfully:', data);
+                alert('Case added successfully!');
+                popup.remove();
+                // Refresh the section to show the new case
+                refreshCases(sectionId);
+            } catch (e) {
+                console.error('[app.js] Exception saving case:', e);
+                alert('An error occurred. Please try again.');
+            }
+        });
+
+        // Handle Cancel button
+        document.getElementById('cancelCaseBtn').addEventListener('click', () => {
+            popup.remove();
+        });
+
+        // Close pop-up when clicking outside
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        });
+    }
+
+    // Function to fetch cases from Supabase and update kbSystemData
+    async function refreshCases(sectionId) {
+        try {
+            const { data, error } = await supabase
+                .from('cases')
+                .select('*')
+                .eq('section_id', sectionId);
+            if (error) {
+                console.error('[app.js] Error fetching cases from Supabase:', error);
+                return;
+            }
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            if (section) {
+                section.cases = data.map(caseItem => ({
+                    id: caseItem.id,
+                    title: caseItem.title,
+                    tags: caseItem.tags || [],
+                    summary: caseItem.summary,
+                    status: caseItem.status,
+                    assigned_to: caseItem.assigned_to,
+                    contentPath: caseItem.content ? `articles/${sectionId}/cases/${caseItem.id}.html` : null,
+                    resolutionStepsPreview: caseItem.content ? truncateText(caseItem.content.replace(/<[^>]+>/g, ''), 50) : null,
+                    type: 'case',
+                    lastUpdated: caseItem.updated_at
+                }));
+                console.log(`[app.js] Refreshed cases for section ${sectionId}:`, section.cases);
+                displaySectionContent(sectionId);
+            }
+        } catch (e) {
+            console.error('[app.js] Exception refreshing cases:', e);
+        }
+    }
+
+    async function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
         console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
             console.error('[app.js - FIX] pageContent is NULL.');
@@ -301,6 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Fetch cases from Supabase to ensure latest data
+        await refreshCases(sectionId);
+
         const theme = getThemeColors(sectionData.themeColor);
 
         let contentHTML = `<div class="space-y-10">`;
@@ -317,7 +474,13 @@ document.addEventListener('DOMContentLoaded', () => {
             hasContent = true;
         }
         if (sectionData.cases && sectionData.cases.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3>`;
+            // Add "Add Case" button for admins and super_admins
+            const userRole = await getUserRole(currentUser?.email);
+            if (['admin', 'super_admin'].includes(userRole)) {
+                contentHTML += `<div class="mb-4"><button id="addCaseBtn" data-section-id="${sectionData.id}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center"><i class="fas fa-plus mr-2"></i>Add Case</button></div>`;
+            }
+            contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
             contentHTML += `</div>`;
             hasContent = true;
@@ -348,6 +511,14 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
 
         pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
+
+        // Add event listener for Add Case button
+        const addCaseBtn = pageContent.querySelector('#addCaseBtn');
+        if (addCaseBtn) {
+            addCaseBtn.addEventListener('click', () => {
+                createAddCasePopup(sectionId, sectionData);
+            });
+        }
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
