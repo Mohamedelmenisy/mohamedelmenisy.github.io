@@ -1,6 +1,19 @@
+async function loadKbData() {
+    try {
+        const response = await fetch('data.json');
+        window.kbSystemData = await response.json();
+    } catch (error) {
+        console.error('[app.js] Failed to load kbSystemData:', error);
+        window.kbSystemData = window.kbSystemData || {
+            sections: [],
+            meta: { version: '1.0.0', lastGlobalUpdate: new Date().toISOString() }
+        };
+    }
+}
+
 let currentUser = null;
 let isInitialAuthCheckComplete = false;
-let kbSystemData = window.kbSystemData || {}; // Default to empty object if not defined
+let kbSystemData = window.kbSystemData || {}; // Default to global or empty object
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] DOMContentLoaded fired.');
@@ -133,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
                 document.body.dataset.initialLoadDone = 'true';
 
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
+                if (loadingOverlay) loadingOverlay.style.display = 'none'; // Hide overlay after initial load
                 if (mainPageContainer) mainPageContainer.style.visibility = 'visible';
             } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
                 console.log('[app.js] Auth token refreshed or user updated. UI should be current.');
@@ -492,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (sectionData.items && sectionData.items.length > 0) {
             contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-            sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
+            sectionData.items.forEach(item => contentContentHTML += renderItemCard_enhanced(item, sectionData));
             contentHTML += `</div></div>`;
             hasRenderedContent = true;
         }
