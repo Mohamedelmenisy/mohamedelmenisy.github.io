@@ -45,38 +45,47 @@
         <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
     </div>
 
+    <!-- Load Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Supabase Client Setup
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Wait for DOM content and Supabase SDK to load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Supabase Client Setup
+            const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Check user session and redirect
-        async function checkSession() {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) {
-                    console.error('[index.html] Error checking session:', error);
-                    window.location.replace('/signup.html');
-                    return;
-                }
+            // Check user session and redirect
+            async function checkSession() {
+                try {
+                    const { data: { session }, error } = await supabase.auth.getSession();
+                    if (error) {
+                        console.error('[index.html] Error checking session:', error.message);
+                        window.location.replace('/signup.html');
+                        return;
+                    }
 
-                if (session) {
-                    console.log('[index.html] User is logged in, redirecting to dashboard.html');
-                    window.location.replace('/dashboard.html');
-                } else {
-                    console.log('[index.html] No user session, redirecting to signup.html');
+                    if (session) {
+                        console.log('[index.html] User is logged in, redirecting to dashboard.html');
+                        window.location.replace('/dashboard.html');
+                    } else {
+                        console.log('[index.html] No user session, redirecting to signup.html');
+                        window.location.replace('/signup.html');
+                    }
+                } catch (e) {
+                    console.error('[index.html] Exception during session check:', e.message);
                     window.location.replace('/signup.html');
                 }
-            } catch (e) {
-                console.error('[index.html] Exception during session check:', e);
+            }
+
+            // Run session check only after Supabase is loaded
+            if (typeof supabase !== 'undefined') {
+                checkSession();
+            } else {
+                console.error('[index.html] Supabase SDK failed to load. Redirecting to signup.html');
                 window.location.replace('/signup.html');
             }
-        }
-
-        // Run session check on page load
-        document.addEventListener('DOMContentLoaded', checkSession);
+        });
     </script>
 </body>
 </html>
