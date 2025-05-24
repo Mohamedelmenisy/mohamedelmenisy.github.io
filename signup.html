@@ -180,28 +180,33 @@
                 return;
             }
 
-            try {
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: { full_name: fullName }
-                    }
-                });
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { full_name: fullName }
+                        }
+                    });
 
-                if (error) {
-                    if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
-                        showMessage('This email is already registered. Try logging in.', 'error');
-                    } else {
-                        showMessage(error.message || 'An error occurred during signup.', 'error');
+                    if (error) {
+                        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+                            showMessage('This email is already registered. Try logging in.', 'error');
+                        } else {
+                            showMessage(`Attempt ${attempt}: ${error.message || 'An error occurred during signup.'}`, 'error');
+                        }
+                        if (attempt === 2) throw error;
+                        continue;
                     }
-                    throw error;
+
+                    showMessage('Account created successfully! Please check your email to verify.', 'success');
+                    document.getElementById('signup-form').reset();
+                    break;
+                } catch (error) {
+                    console.error('Signup Error:', error);
+                    if (attempt === 2) showMessage('Failed after retries. Please try again later.', 'error');
                 }
-
-                showMessage('Account created successfully! Please check your email to verify.', 'success');
-                document.getElementById('signup-form').reset();
-            } catch (error) {
-                console.error('Signup Error:', error);
             }
         }
 
