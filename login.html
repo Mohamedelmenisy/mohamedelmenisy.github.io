@@ -58,9 +58,6 @@
             border-color: #6366f1; /* indigo-500 */
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25); /* Indigo focus ring */
         }
-        .input-field:focus + .input-icon { /* Change icon color on focus - this won't work directly with sibling selector, JS needed or restructure */
-            /* color: #6366f1; */ /* This would require JS or different HTML structure. For now, icon color is static. */
-        }
         .login-btn {
             background: linear-gradient(90deg, #6366f1, #4f46e5); /* Indigo gradient */
             transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -79,6 +76,40 @@
         .form-title {
              font-family: 'Inter', sans-serif; /* Ensuring consistent font if Inter is loaded */
         }
+        .error-message, .field-error-message { /* For field-specific errors */
+            font-size: 0.75rem; /* text-xs */
+            color: #EF4444; /* red-500 */
+            margin-top: 0.25rem; /* mt-1 */
+        }
+        .general-form-error { /* For general form errors */
+            background-color: #FEE2E2; /* red-100 */
+            color: #B91C1C; /* red-700 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 1rem; /* mb-4 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .success-message { /* For success messages */
+            background-color: #D1FAE5; /* green-100 */
+            color: #047857; /* green-700 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 1rem; /* mb-4 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        /* Loading state for button */
+        .loading .btn-text {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-flex;
+            align-items: center;
+        }
+        .form-message a { /* Style links within messages */
+            color: currentColor;
+            font-weight: bold;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="h-full font-sans">
@@ -88,33 +119,47 @@
             <h2 class="text-3xl font-bold text-gray-800 form-title">Welcome to InfiniBase</h2>
             <p class="text-gray-600 mt-1">Please login to access your knowledge base.</p>
         </div>
-        <form id="loginForm" class="space-y-6">
+
+        <div id="supabaseErrorMessage" class="general-form-error" style="display: none;">
+            Error: Could not initialize authentication service.
+        </div>
+        <div id="alreadyLoggedInMessage" class="success-message" style="display: none;">
+            You are already logged in. <a href="dashboard.html">Go to Dashboard</a>
+        </div>
+
+        <div id="loginSuccessMessage" class="success-message" style="display: none;"></div>
+        <div id="loginGeneralError" class="general-form-error" style="display: none;"></div>
+
+        <form id="loginForm" class="space-y-6" novalidate>
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
                 <div class="relative">
                     <span class="input-icon"><i class="fas fa-envelope"></i></span>
-                    <input type="email" id="email" name="email" placeholder="your.email@thecehfz.com" required 
-                           class="input-field w-full p-3 text-gray-700 focus:outline-none">
+                    <input type="email" id="email" name="email" placeholder="your.email@thechefz.co" required
+                           class="input-field w-full p-3 text-gray-700 focus:outline-none" aria-describedby="emailError loginGeneralError">
                 </div>
+                <div id="emailError" class="field-error-message"></div>
             </div>
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <div class="relative">
                      <span class="input-icon"><i class="fas fa-lock"></i></span>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required 
-                           class="input-field w-full p-3 text-gray-700 focus:outline-none">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required
+                           class="input-field w-full p-3 text-gray-700 focus:outline-none" aria-describedby="passwordError loginGeneralError">
                 </div>
+                <div id="passwordError" class="field-error-message"></div>
             </div>
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
-                    <input type="checkbox" id="rememberMe" name="rememberMe" 
+                    <input type="checkbox" id="rememberMe" name="rememberMe"
                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                     <label for="rememberMe" class="ml-2 block text-sm text-gray-700">Remember me</label>
                 </div>
-                 <a href="#" class="text-sm text-indigo-600 hover:text-indigo-500 hover:underline">Forgot password?</a>
+                 <a href="#" id="forgotPasswordLink" class="text-sm text-indigo-600 hover:text-indigo-500 hover:underline">Forgot password?</a>
             </div>
-            <button type="submit" class="login-btn w-full py-3 text-white font-semibold">
-                Login <i class="fas fa-sign-in-alt ml-2"></i>
+            <button type="submit" id="loginButton" class="login-btn w-full py-3 text-white font-semibold flex items-center justify-center">
+                <span class="btn-text">Login <i class="fas fa-sign-in-alt ml-2"></i></span>
+                <span class="loading-spinner" style="display: none;"><i class="fas fa-spinner fa-spin mr-2"></i>Logging In...</span>
             </button>
         </form>
         <p class="text-center mt-6 text-sm text-gray-600">
@@ -122,32 +167,282 @@
         </p>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('rememberMe').checked;
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-            if (!email || !password) {
-                alert('Please fill in all fields.');
-                return;
+        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+
+        let supabase;
+        try {
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized for login.html using ES Modules');
+        } catch (error) {
+            console.error("Supabase client initialization failed:", error);
+            const supabaseErrorDiv = document.getElementById('supabaseErrorMessage');
+            if (supabaseErrorDiv) {
+                supabaseErrorDiv.textContent = error.message || "Error: Could not initialize authentication service.";
+                supabaseErrorDiv.style.display = 'block';
             }
-            // Basic email format validation (does not check domain here, Auth.login can do that if needed)
-            if (!email.includes('@')) {
-                alert('Please enter a valid email address.');
-                return;
-            }
-
-            Auth.login(email, password, rememberMe);
-        });
-
-        // Redirect if already authenticated
-        if (Auth.isAuthenticated()) {
-            console.log('[login.html] User already authenticated, redirecting to dashboard.');
-            window.location.href = 'dashboard.html';
+            const loginFrm = document.getElementById('loginForm');
+            if(loginFrm) loginFrm.style.display = 'none';
+            const linksP = document.querySelector('.login-container > p.text-center'); // Selector for "Don't have an account?"
+            if(linksP) linksP.style.display = 'none';
+            const loginHeaderDiv = document.querySelector('.login-container > .text-center.mb-8');
+            if(loginHeaderDiv) loginHeaderDiv.style.display = 'none';
         }
+
+        // DOM Elements
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const rememberCheckbox = document.getElementById('rememberMe'); // Updated ID
+        const loginButton = document.getElementById('loginButton');
+
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+        const loginGeneralError = document.getElementById('loginGeneralError');
+        const loginSuccessMessage = document.getElementById('loginSuccessMessage');
+        const alreadyLoggedInMessageDiv = document.getElementById('alreadyLoggedInMessage');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+
+        const REMEMBERED_EMAIL_KEY = 'infiniBaseRememberedEmail'; // Updated key
+        const USER_DATA_KEY = 'infiniBaseUserData'; // Updated key
+
+        // Utility Functions
+        function displayError(element, message) {
+            if(element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+        function clearError(element) {
+            if(element) {
+                element.textContent = '';
+                element.style.display = 'none';
+            }
+        }
+         function displaySuccess(element, message) {
+            if(element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+        function setButtonLoading(isLoading) {
+            if (!loginButton) return;
+            loginButton.disabled = isLoading;
+            loginButton.classList.toggle('loading', isLoading);
+        }
+
+        async function storeUserDetails(user) {
+            if (!user || !supabase) return;
+            try {
+                const { data: profile, error } = await supabase
+                    .from('users') // Assumes 'users' table exists
+                    .select('name, is_admin')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') { // PGRST116 = 0 rows, not an error for profile
+                    console.warn('Error fetching user profile:', error.message);
+                }
+
+                const userData = {
+                    id: user.id,
+                    email: user.email,
+                    name: profile?.name || user.user_metadata?.full_name || user.email.split('@')[0],
+                    isAdmin: profile?.is_admin || false,
+                };
+                localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+                console.log('User details stored in localStorage:', userData);
+            } catch (e) {
+                console.error('Failed to store user details:', e);
+            }
+        }
+
+        // Initial Page Load Logic
+        async function initializePage() {
+            if (!supabase) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const signedUp = urlParams.get('signedup') === 'true';
+            const redirectTo = urlParams.get('redirectTo') || 'dashboard.html'; // Updated redirect
+
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (session && !signedUp) {
+                console.log('User already logged in. Redirecting to:', redirectTo);
+                if(alreadyLoggedInMessageDiv) alreadyLoggedInMessageDiv.style.display = 'block';
+                if(loginForm) loginForm.style.display = 'none';
+                const linksP = document.querySelector('.login-container > p.text-center');
+                if(linksP) linksP.style.display = 'none'; // Hide signup link
+                // Optional: Redirect after a short delay or keep the message
+                // window.location.replace(redirectTo);
+                return;
+            }
+
+            if(loginForm) loginForm.style.display = 'block';
+            const linksP = document.querySelector('.login-container > p.text-center');
+            if(linksP) linksP.style.display = 'block';
+            if(alreadyLoggedInMessageDiv) alreadyLoggedInMessageDiv.style.display = 'none';
+
+
+            if (signedUp) {
+                displaySuccess(loginSuccessMessage, 'Signup successful! Please log in. ✅');
+                const emailFromParam = urlParams.get('email');
+                if (emailFromParam && emailInput) {
+                    emailInput.value = emailFromParam;
+                }
+                // Clean the URL params
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+                if (rememberedEmail && emailInput && !emailInput.value) {
+                    emailInput.value = rememberedEmail;
+                    if(rememberCheckbox) rememberCheckbox.checked = true;
+                }
+            }
+
+            if (emailInput && passwordInput) {
+                if (emailInput.value === '' && !signedUp) { // Don't focus email if it was just prefilled from signup
+                    emailInput.focus();
+                } else {
+                    passwordInput.focus();
+                }
+            }
+        }
+
+        if (loginForm && supabase) {
+            loginForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                clearError(emailError);
+                clearError(passwordError);
+                clearError(loginGeneralError);
+                clearError(loginSuccessMessage);
+                setButtonLoading(true);
+
+                const email = emailInput.value.trim().toLowerCase();
+                const password = passwordInput.value;
+                const rememberMe = rememberCheckbox ? rememberCheckbox.checked : false;
+
+                let isValid = true;
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    displayError(emailError, 'Please enter a valid email address.');
+                    isValid = false;
+                }
+                if (!password) {
+                    displayError(passwordError, 'Password is required.');
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    setButtonLoading(false);
+                    return;
+                }
+
+                if (rememberMe) {
+                    localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+                } else {
+                    localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+                }
+
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: email,
+                        password: password,
+                    });
+
+                    if (error) {
+                        throw error;
+                    }
+
+                    if (data && data.user) {
+                        await storeUserDetails(data.user);
+                        displaySuccess(loginSuccessMessage, 'Login successful! Redirecting...');
+
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirectToTarget = urlParams.get('redirectTo') || 'dashboard.html'; // Updated redirect
+
+                        setTimeout(() => {
+                            window.location.replace(redirectToTarget);
+                        }, 1000);
+                    } else {
+                         throw new Error('Login successful but no user data returned.');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    let errorMessage = 'Login failed. Please check your credentials.';
+                    if (error && error.message) {
+                        if (error.message.toLowerCase().includes('invalid login credentials')) {
+                            errorMessage = 'Incorrect email or password.';
+                        } else if (error.message.toLowerCase().includes('email not confirmed')) {
+                            errorMessage = 'Please check your inbox to confirm your email address first.';
+                        } else {
+                            // Keep Supabase's message if it's something else (e.g., rate limits)
+                            errorMessage = error.message;
+                        }
+                    }
+                    displayError(loginGeneralError, errorMessage);
+                } finally {
+                    if (!loginSuccessMessage.textContent.includes("Redirecting")) {
+                         setButtonLoading(false);
+                    }
+                }
+            });
+        }
+
+        if (forgotPasswordLink && supabase) {
+            forgotPasswordLink.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const email = emailInput.value.trim();
+
+                clearError(loginGeneralError);
+                clearError(emailError);
+                clearError(loginSuccessMessage);
+
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    displayError(loginGeneralError, 'Please enter your email address above to request a password reset.');
+                    if (emailInput) emailInput.focus();
+                    return;
+                }
+
+                displaySuccess(loginSuccessMessage, 'Sending reset instructions if the email exists...');
+                setButtonLoading(true);
+
+                try {
+                    // Construct the redirect URL to be in the same directory as login.html
+                    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                    const resetRedirectTo = baseUrl + 'reset-password.html';
+
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: resetRedirectTo
+                    });
+                    if (error) throw error;
+                    displaySuccess(loginSuccessMessage, 'Password reset instructions sent to your email (if your account exists). Please check your inbox and spam folder.');
+                } catch (error) {
+                    console.error('Password reset error:', error);
+                    // Provide a generic success message even on error for privacy, as Supabase does.
+                    displaySuccess(loginSuccessMessage, 'If your email is registered, you will receive reset instructions. Please also check your spam folder.');
+                } finally {
+                    setButtonLoading(false);
+                }
+            });
+        }
+
+        // Run initialization
+        if (supabase) {
+            initializePage();
+        } else {
+            const loginFrm = document.getElementById('loginForm');
+            if(loginFrm) loginFrm.style.display = 'none';
+            const linksP = document.querySelector('.login-container > p.text-center');
+            if(linksP) linksP.style.display = 'none';
+            const loginHeaderDiv = document.querySelector('.login-container > .text-center.mb-8');
+            if(loginHeaderDiv && document.getElementById('supabaseErrorMessage')?.style.display === 'block') {
+                loginHeaderDiv.style.display = 'none';
+            }
+        }
+        console.log('Login page script loaded and initialized.');
     </script>
 </body>
 </html>
