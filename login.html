@@ -125,6 +125,11 @@
             border-color: #86efac;
             color: #166534;
         }
+        .info-message { /* Added for needsconfirmation */
+            background-color: #e0f2fe; /* Light blue, e.g., sky-100 */
+            border-color: #7dd3fc; /* Sky-300 */
+            color: #075985; /* Sky-800 */
+        }
         .error-message.general-form-error {
             background-color: #fee2e2;
             border-color: #fca5a5;
@@ -251,26 +256,17 @@
             </button>
         </form>
         <div class="links-footer">
-            Don't have an account? <a href="signup.html">Sign up</a>
+            Don't have an account? <a href="/signup.html">Sign up</a>
         </div>
     </div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-        let supabase;
-
-        try {
-            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase client initialized for InfiniBase login.');
-        } catch (e) {
-            console.error("Failed to initialize Supabase client:", e);
-            displayGeneralMessage("Service unavailable. Please try again later.", "error");
-            const form = document.getElementById('loginForm');
-            if (form) form.style.display = 'none';
-        }
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Your Supabase client initializer -->
+    <script src="/js/supabase.js"></script>
+    <!-- 3. Page specific logic -->
+    <script>
+        let supabase; // Will be assigned window.supabaseClient
 
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
@@ -284,7 +280,7 @@
         const passwordErrorEl = document.getElementById('passwordError');
         const loginGeneralMessageEl = document.getElementById('loginGeneralMessage');
 
-        const REMEMBERED_EMAIL_KEY_INFINIBASE = 'infiniBaseRememberedEmail'; // Use a specific key
+        const REMEMBERED_EMAIL_KEY_INFINIBASE = 'infiniBaseRememberedEmail';
 
         function displayFieldError(element, message) {
             if (element) {
@@ -305,8 +301,10 @@
         function displayGeneralMessage(message, type = 'error') {
             if (loginGeneralMessageEl) {
                 loginGeneralMessageEl.textContent = message;
-                loginGeneralMessageEl.classList.remove('success-message', 'error-message', 'general-form-error');
-                loginGeneralMessageEl.classList.add(type === 'success' ? 'success-message' : 'error-message', 'general-form-error');
+                loginGeneralMessageEl.classList.remove('success-message', 'error-message', 'general-form-error', 'info-message');
+                if (type === 'success') loginGeneralMessageEl.classList.add('success-message');
+                else if (type === 'info') loginGeneralMessageEl.classList.add('info-message');
+                else loginGeneralMessageEl.classList.add('error-message', 'general-form-error');
                 loginGeneralMessageEl.style.display = 'block';
             }
         }
@@ -328,166 +326,183 @@
             passwordToggle.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
         }
 
-        if (passwordToggle) {
-            passwordToggle.addEventListener('click', togglePasswordVisibility);
-            passwordToggle.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    togglePasswordVisibility();
+        function initializePage() {
+            if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
+                console.error("[login.html] Supabase client (window.supabaseClient) not available.");
+                displayGeneralMessage("Service unavailable. Please try again later.", "error");
+                if (loginForm) loginForm.style.display = 'none';
+                return;
+            }
+            supabase = window.supabaseClient; // Assign to local supabase variable
+            console.log('[login.html] Supabase client (window.supabaseClient) ready.');
+
+            // Check if user is already logged in
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    console.log('[login.html] User already authenticated, redirecting to dashboard.');
+                    window.location.replace('/dashboard.html');
                 }
             });
-        }
-        
-        // Load remembered email
-        const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY_INFINIBASE);
-        if (rememberedEmail && emailInput) {
-            emailInput.value = rememberedEmail;
-            if (rememberMeCheckbox) rememberMeCheckbox.checked = true;
-        }
-        
-        // Focus email or password
-        if(emailInput && passwordInput) {
-             if (emailInput.value === '') {
-                emailInput.focus();
-            } else {
-                passwordInput.focus();
+
+            if (passwordToggle) {
+                passwordToggle.addEventListener('click', togglePasswordVisibility);
+                passwordToggle.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        togglePasswordVisibility();
+                    }
+                });
             }
-        }
-         // Check for signup success message
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('signedup') === 'true') {
-            displayGeneralMessage("Signup successful! Please log in with your new account.", "success");
-            const signedUpEmail = urlParams.get('email');
-            if (signedUpEmail && emailInput && !emailInput.value) {
-                 emailInput.value = signedUpEmail;
-                 if (passwordInput) passwordInput.focus();
+            
+            const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY_INFINIBASE);
+            if (rememberedEmail && emailInput) {
+                emailInput.value = rememberedEmail;
+                if (rememberMeCheckbox) rememberMeCheckbox.checked = true;
             }
-            // Clean URL params
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-
-        if (loginForm && supabase) {
-            loginForm.addEventListener('submit', async function(event) {
-                event.preventDefault();
-                clearGeneralMessage();
-                clearFieldError(emailErrorEl);
-                clearFieldError(passwordErrorEl);
-                setButtonLoading(true);
-
-                const email = emailInput.value.trim().toLowerCase();
-                const password = passwordInput.value;
-                const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
-
-                let isValid = true;
-                if (!email) {
-                    displayFieldError(emailErrorEl, 'Email is required.');
-                    isValid = false;
-                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    displayFieldError(emailErrorEl, 'Please enter a valid email address.');
-                    isValid = false;
-                }
-                if (!password) {
-                    displayFieldError(passwordErrorEl, 'Password is required.');
-                    isValid = false;
-                }
-
-                if (!isValid) {
-                    setButtonLoading(false);
-                    return;
-                }
-
-                if (rememberMe) {
-                    localStorage.setItem(REMEMBERED_EMAIL_KEY_INFINIBASE, email);
+            
+            if(emailInput && passwordInput) {
+                 if (emailInput.value === '') {
+                    emailInput.focus();
                 } else {
-                    localStorage.removeItem(REMEMBERED_EMAIL_KEY_INFINIBASE);
+                    passwordInput.focus();
                 }
+            }
 
-                try {
-                    const { data, error } = await supabase.auth.signInWithPassword({
-                        email: email,
-                        password: password,
-                    });
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('signedup') === 'true') {
+                displayGeneralMessage("Signup successful! Please log in with your new account.", "success");
+                const signedUpEmail = urlParams.get('email');
+                if (signedUpEmail && emailInput && !emailInput.value) {
+                     emailInput.value = signedUpEmail;
+                     if (passwordInput) passwordInput.focus();
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (urlParams.get('needsconfirmation') === 'true') {
+                displayGeneralMessage("Account created! Please check your email to confirm your account, then log in.", "info");
+                const signedUpEmail = urlParams.get('email');
+                 if (signedUpEmail && emailInput && !emailInput.value) {
+                    emailInput.value = signedUpEmail;
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
-                    if (error) {
-                        throw error;
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    clearGeneralMessage();
+                    clearFieldError(emailErrorEl);
+                    clearFieldError(passwordErrorEl);
+                    setButtonLoading(true);
+
+                    const email = emailInput.value.trim().toLowerCase();
+                    const password = passwordInput.value;
+                    const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
+
+                    let isValid = true;
+                    if (!email) {
+                        displayFieldError(emailErrorEl, 'Email is required.');
+                        isValid = false;
+                    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        displayFieldError(emailErrorEl, 'Please enter a valid email address.');
+                        isValid = false;
+                    }
+                    if (!password) {
+                        displayFieldError(passwordErrorEl, 'Password is required.');
+                        isValid = false;
                     }
 
-                    if (data.user && data.session) {
-                        // Optionally, store some non-sensitive user info if needed by other parts of app immediately
-                        // For InfiniBase, app.js will fetch role from public.users table after this.
-                        console.log('Login successful for:', data.user.email);
-                        displayGeneralMessage('Login successful! Redirecting...', 'success');
-                        setTimeout(() => {
-                            window.location.href = 'dashboard.html'; // Or your main app page (index.html often redirects here)
-                        }, 1500);
+                    if (!isValid) {
+                        setButtonLoading(false);
+                        return;
+                    }
+
+                    if (rememberMe) {
+                        localStorage.setItem(REMEMBERED_EMAIL_KEY_INFINIBASE, email);
                     } else {
-                        throw new Error('Login successful but no user session data returned.');
+                        localStorage.removeItem(REMEMBERED_EMAIL_KEY_INFINIBASE);
                     }
-                } catch (error) {
-                    console.error('Login error:', error);
-                    let errorMessage = 'Login failed. Please check your credentials.';
-                    if (error && error.message) {
-                        if (error.message.toLowerCase().includes('invalid login credentials')) {
-                            errorMessage = 'Incorrect email or password.';
-                        } else if (error.message.toLowerCase().includes('email not confirmed')) {
-                            errorMessage = 'Email not confirmed. Please check your inbox.';
-                        } else {
-                            errorMessage = `Login error: ${error.message}`;
+
+                    try {
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                            email: email,
+                            password: password,
+                        });
+
+                        if (error) {
+                            throw error; // Let catch block handle it
                         }
+
+                        if (data.user && data.session) {
+                            console.log('Login successful for:', data.user.email);
+                            displayGeneralMessage('Login successful! Redirecting to dashboard...', 'success');
+                            setTimeout(() => {
+                                window.location.replace('/dashboard.html'); 
+                            }, 1500);
+                        } else {
+                             // This case might occur if there's an issue but no explicit error object (e.g. MFA required)
+                            throw new Error('Login successful but no user session data returned. Multi-Factor Authentication might be required or other issue.');
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        let errorMessage = 'Login failed. Please check your credentials.';
+                        if (error && error.message) {
+                            if (error.message.toLowerCase().includes('invalid login credentials')) {
+                                errorMessage = 'Incorrect email or password.';
+                            } else if (error.message.toLowerCase().includes('email not confirmed')) {
+                                errorMessage = 'Email not confirmed. Please check your inbox for a confirmation link.';
+                            } else if (error.status === 429) {
+                                errorMessage = "Too many login attempts. Please try again later.";
+                            } else {
+                                errorMessage = `Login error: ${error.message}`;
+                            }
+                        }
+                        displayGeneralMessage(errorMessage, "error");
+                        setButtonLoading(false); // Ensure button is re-enabled on error
+                    } 
+                    // Removed finally block that re-enabled button, as redirect or error should handle it.
+                    // Re-add specific condition for re-enabling if not redirecting.
+                    if (!loginGeneralMessageEl.textContent.includes("Redirecting to dashboard...")) {
+                         setButtonLoading(false);
                     }
-                    displayGeneralMessage(errorMessage, "error");
-                } finally {
-                    if (!loginGeneralMessageEl.textContent.includes("Redirecting...")) {
+                });
+            }
+
+            if (forgotPasswordLink) {
+                forgotPasswordLink.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const email = emailInput.value.trim();
+                    clearGeneralMessage();
+                    clearFieldError(emailErrorEl);
+
+                    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        displayFieldError(emailErrorEl, 'Please enter your email address above to request a password reset.');
+                        emailInput.focus();
+                        return;
+                    }
+                    
+                    setButtonLoading(true); // Disable login button during this process
+                    displayGeneralMessage('Sending reset instructions...', 'info');
+
+                    try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                            // redirectTo: window.location.origin + '/reset-password.html' // Optional: if you have a custom reset page
+                        });
+                        if (error) throw error;
+                        displayGeneralMessage('Password reset instructions sent to your email (if your account exists). Please check your inbox and spam folder.', 'success');
+                    } catch (error) {
+                        console.error('Password reset error:', error);
+                        displayGeneralMessage('If your email is registered, you will receive reset instructions. Please also check your spam folder.', 'success'); // Generic for privacy
+                    } finally {
                         setButtonLoading(false);
                     }
-                }
-            });
+                });
+            }
         }
-
-        if (forgotPasswordLink && supabase) {
-            forgotPasswordLink.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const email = emailInput.value.trim();
-                clearGeneralMessage();
-                clearFieldError(emailErrorEl);
-
-
-                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    displayFieldError(emailErrorEl, 'Please enter your email address above to request a password reset.');
-                    emailInput.focus();
-                    return;
-                }
-                
-                displayGeneralMessage('Sending reset instructions if the email exists...', 'success'); // Use success for initiating message
-                setButtonLoading(true);
-
-                try {
-                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                        //redirectTo: window.location.origin + '/reset-password.html' // Path to your password reset page
-                        // For now, Supabase default email template will provide the link.
-                        // You would set redirectTo if you have a custom page to handle the reset token.
-                    });
-                    if (error) throw error;
-                    displayGeneralMessage('Password reset instructions sent to your email (if your account exists). Please check your inbox and spam folder.', 'success');
-                } catch (error) {
-                    console.error('Password reset error:', error);
-                     // Still show a generic success message for privacy reasons (don't reveal if email exists)
-                    displayGeneralMessage('If your email is registered, you will receive reset instructions. Please also check your spam folder.', 'success');
-                } finally {
-                    setButtonLoading(false);
-                }
-            });
-        }
-
-        if (supabase) {
-             supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) {
-                    console.log('[InfiniBase Login] User already authenticated, redirecting to dashboard.');
-                    window.location.href = 'dashboard.html';
-                }
-            });
-        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializePage, 200); // Delay to ensure supabase.js initializes window.supabaseClient
+        });
 
     </script>
 </body>
