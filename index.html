@@ -1,51 +1,106 @@
-    <!-- ... (head and body aound spinner) ... -->
-    <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/infini-base/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfiniBase</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f3f4f6;
+            font-family: sans-serif;
+        }
+        .loading-container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .spinner {
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <p class="text-lg text-gray-700">Loading InfiniBase...</p>
+        <p class="text-sm text-gray-500 mt-2">Checking your session...</p>
+        <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/infini-base/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
     </div>
 
     <!-- 1. Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- 2. Your Supabase client initializer -->
-    <script src="/infini-base/js/supabase.js"></script> <!-- Adjusted path -->
+    <script src="/infini-base/js/supabase.js"></script>
     <!-- 3. Page specific logic -->
     <script>
+        // Function to redirect to signup.html as a fallback
         function redirectToSignup() {
-            console.log('[index.html] Redirecting to signup.html');
-            window.location.replace('/infini-base/signup.html'); // Adjusted path
+            console.log('[index.html] Redirecting to signup.html due to fallback.');
+            window.location.replace('/infini-base/signup.html');
         }
 
+        // Check session function
         async function checkSessionAndRedirect() {
             try {
                 if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
                     console.error('[index.html] Supabase client (window.supabaseClient) not loaded or invalid.');
-                    redirectToSignup(); 
+                    redirectToSignup(); // Fallback to signup if client isn't ready
                     return;
                 }
 
-                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                // const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co'; // Not needed here, client is already created
+                // const SUPABASE_ANON_KEY = '...'; // Not needed here
+                // const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // Client already created in supabase.js
 
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
                 if (error) {
                     console.error('[index.html] Error checking session:', error.message);
-                    redirectToSignup();
+                    redirectToSignup(); // Fallback to signup on error
                     return;
                 }
 
                 if (session) {
                     console.log('[index.html] User is logged in, redirecting to dashboard.html');
-                    window.location.replace('/infini-base/dashboard.html'); // Adjusted path
+                    window.location.replace('/infini-base/dashboard.html');
                 } else {
                     console.log('[index.html] No user session, redirecting to signup.html');
                     redirectToSignup();
                 }
             } catch (e) {
                 console.error('[index.html] Exception during session check:', e.message);
-                redirectToSignup();
+                redirectToSignup(); // Fallback to signup on exception
             }
         }
 
+        // Run on DOM load with timeout to ensure Supabase loads
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
-                checkSessionAndRedirect();
-            }, 200); 
+                // Check if window.supabaseClient is defined from supabase.js
+                if (typeof window.supabaseClient !== 'undefined') {
+                    checkSessionAndRedirect();
+                } else {
+                    console.error('[index.html] Supabase Client (window.supabaseClient) failed to load after delay.');
+                    redirectToSignup();
+                }
+            }, 200); // 0.2-second delay, adjust if necessary
         });
     </script>
 </body>
