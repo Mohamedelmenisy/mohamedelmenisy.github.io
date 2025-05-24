@@ -352,10 +352,10 @@
 
                     try {
                         // 1. Sign up the user with Supabase Auth
+                        // MODIFIED: Removed 'name: fullName' from signUp options as requested
                         const { data: authResponse, error: signUpError } = await supabase.auth.signUp({
                             email: email,
-                            password: password,
-                                    name: fullName // Store as 'name' in user_metadata if needed by triggers
+                            password: password
                         });
 
                         if (signUpError) {
@@ -374,19 +374,20 @@
                         }
 
                         if (authResponse.user) {
-                            // 2. Insert into your public 'users' table
+                            // 2. Insert into your public 'users' table (as requested, separate from auth.signUp)
                             const { error: profileError } = await supabase
                                 .from('users') // Your custom public table
                                 .insert({
                                     id: authResponse.user.id, // Link to the auth.users table
                                     email: authResponse.user.email,
-                                    name: fullName, // ✅ MODIFICATION: Changed from full_name to name
+                                    name: fullName // Using 'name' column as per previous logic
                                 });
 
                             if (profileError) {
                                 console.error('Error inserting user profile into public.users:', profileError);
-                                // You might want to inform the user or log this more formally
-                                // For now, the auth user is created, so the flow can continue
+                                // Inform user or log more formally. For now, auth user created, so flow can continue.
+                                // To prevent user confusion, if profile creation is critical, might handle this error more visibly.
+                                // However, per current code, we proceed.
                             }
                             
                             const emailConfirmationRequired = !authResponse.session && authResponse.user.email_confirmed_at === null;
@@ -405,6 +406,10 @@
                             }
                         } else {
                             console.warn("SignUp success but no user object in authResponse.user, email confirmation might be required.");
+                            // This case might occur if email confirmation is enabled and `authResponse.user` is populated
+                            // but `authResponse.session` is null. The above block handles this.
+                            // If `authResponse.user` itself is null after a non-error response, it's unusual.
+                            // Re-routing to confirmation as a fallback.
                             displayGeneralMessage("Signup request received. Please check your email to complete the process and then log in.", "info");
                             signupForm.reset();
                             setTimeout(() => {
