@@ -117,8 +117,7 @@
         <div class="logo">InfiniBase</div>
         <h2>Create Your Account</h2>
         <p class="subtitle">Join InfiniBase to access the knowledge base.</p>
-        <!-- *** CHANGED div to form *** -->
-        <form id="signup-form">
+        <div id="signup-form">
             <div class="form-group">
                 <label for="full-name">Full Name</label>
                 <input type="text" id="full-name" name="full-name" required>
@@ -143,8 +142,8 @@
                 </label>
             </div>
             <div id="message" class="error" style="display: none;"></div>
-            <button type="button" onclick="handleSignup(event)">Create Account</button> <!-- Added type="button" for clarity, though preventDefault handles it -->
-        </form> <!-- *** CHANGED closing div to form *** -->
+            <button onclick="handleSignup(event)">Create Account</button>
+        </div>
         <p class="info-text">Your information is kept confidential and secure.</p>
         <div class="login-link">
             Already have an account? <a href="/login.html">Log in</a>
@@ -153,25 +152,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // *** CORRECTED SUPABASE INITIALIZATION ***
-        // Use window.supabase to explicitly access the global object provided by the CDN
-        const { createClient } = window.supabase; 
-        
-        // Now, 'supabase' here is your local client instance
-        const supabase = createClient(
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
             'https://aefiigottnlcmjzilqnh.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4'
         );
 
         async function handleSignup(event) {
-            event.preventDefault(); // This is important, especially now that it's a form
+            event.preventDefault();
 
             const fullName = document.getElementById('full-name').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
             const terms = document.getElementById('terms').checked;
-            const signupForm = document.getElementById('signup-form'); // Get the form element
 
             if (!email.endsWith('@thechefz.co')) {
                 showMessage('Email must be a @thechefz.co address.', 'error');
@@ -187,7 +181,7 @@
             }
 
             try {
-                const { data, error } = await supabase.auth.signUp({
+                const { data, error } = await supabaseClient.auth.signUp({
                     email,
                     password,
                     options: {
@@ -196,23 +190,25 @@
                 });
 
                 if (error) {
+                    if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+                        showMessage('This email is already registered. Try logging in.', 'error');
+                    } else {
+                        showMessage(error.message || 'An error occurred during signup.', 'error');
+                    }
                     throw error;
                 }
 
                 showMessage('Account created successfully! Please check your email to verify.', 'success');
-                if (signupForm) { // Check if form exists before calling reset
-                    signupForm.reset(); // This will now work correctly
-                }
+                document.getElementById('signup-form').reset();
             } catch (error) {
                 console.error('Signup Error:', error);
-                showMessage(error.message || 'An error occurred during signup.', 'error');
             }
         }
 
         function showMessage(message, type) {
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = message;
-            messageDiv.className = type; // Directly assign class name, e.g., "error" or "success"
+            messageDiv.className = type;
             messageDiv.style.display = 'block';
             setTimeout(() => {
                 messageDiv.style.display = 'none';
