@@ -68,9 +68,9 @@ const kbSystemData = {
                 }
             ],
             subCategories: [
-                { id: "cases", name: "Case Management" }, // Could link to a filtered view or specific content about case management
+                { id: "cases", name: "Case Management" },
                 { id: "escalation_procedures", name: "Escalation Procedures" },
-                { id: "tools", name: "Support Tools" } // Could filter articles tagged with 'tools' or show tool-specific guides
+                { id: "tools", name: "Support Tools" }
             ],
             glossary: [
                 { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client regarding service quality, availability, responsibilities." },
@@ -249,7 +249,7 @@ function searchKb(query) {
                 }
             });
         }
-        if (section.items) { // for forms/templates etc.
+        if (section.items) {
             section.items.forEach(item => {
                 if (item.title.toLowerCase().includes(lowerQuery) ||
                     (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
@@ -259,42 +259,21 @@ function searchKb(query) {
                 }
             });
         }
-        // Search section name and description itself
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-            // Avoid duplicating if already found via articles/cases/items (less likely with current structure, but good practice)
-            if (!results.some(r => r.id === section.id && r.type === 'section_match')) { // type 'section_match' to differentiate
-                 results.push({ 
-                     id: section.id, 
-                     title: section.name, 
-                     summary: section.description, 
-                     sectionName: section.name, 
-                     sectionId: section.id, 
-                     type: 'section_match', 
-                     themeColor: section.themeColor
-                    });
+            if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
+                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
             }
         }
-        // Search glossary terms
         if(section.glossary) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    // Check if this glossary term from this section is already added to avoid duplicates if query matches multiple terms in same section
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){ // unique id for glossary term result
-                         results.push({ 
-                             id: `glossary_${term.term}`, // create a unique id for the result
-                             title: term.term, 
-                             summary: term.definition, 
-                             sectionName: section.name, 
-                             sectionId: section.id, 
-                             type: 'glossary_term', 
-                             themeColor: section.themeColor
-                            });
+                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
+                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor});
                     }
                 }
             });
         }
     });
-    // Prioritize result types: articles, cases, items, then section matches, then glossary
     results.sort((a, b) => {
         const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
         return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
