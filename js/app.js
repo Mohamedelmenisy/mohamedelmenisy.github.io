@@ -3,23 +3,22 @@
 // Supabase Client Setup
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-// supabase object is globally available from the CDN script included in dash.html
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentUser = null; // Will hold Supabase user session + profile data (full_name, role)
+let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[app.js - FIX] DOMContentLoaded fired.');
-    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
+    console.log('[app.js] DOMContentLoaded fired.');
+    console.log('[app.js] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
 
     // --- Helper Functions ---
-    function escapeHTML(str) { // السطر 15 تقريبًا يبدأ هنا
+    function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            // السطر 19 تقريبًا (حسب كيفية حساب المحرر للأسطر) هو السطر التالي
+            // السطر 20 هنا. تأكد من عدم وجود أي أحرف غريبة هنا عند اللصق
             return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
-    } // ينتهي هنا
+    }
 
     function highlightText(text, query) {
         if (!text) return '';
@@ -46,12 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (event === 'SIGNED_OUT' || !session) {
             currentUser = null;
-            const currentPath = window.location.pathname.split('/').pop(); // Get the current HTML file name
-            if (currentPath !== 'login.html' && currentPath !== 'signup.html' && currentPath !== '') { // Allow root path if it's the entry
+            const currentPathFile = window.location.pathname.split('/').pop();
+            // Check if not already on login.html or signup.html (or similar public pages)
+            if (currentPathFile !== 'login.html' && currentPathFile !== 'signup.html') {
                 console.log('[app.js - Supabase] No session or signed out, redirecting to login.html');
-                // Determine base path for login.html relative to current location
-                const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                window.location.replace(basePath + 'login.html');
+                // Construct path relative to the root, assuming login.html is at the root
+                const loginPath = window.location.origin + '/login.html'; // Adjust if login.html is in a subdirectory
+                window.location.replace(loginPath);
             }
             return;
         }
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !document.body.dataset.initialLoadDone) {
                 const { sectionId, itemId, subCategoryFilter } = parseHash();
-                console.log('[app.js - FIX] Initial hash load (after auth):', { sectionId, itemId, subCategoryFilter });
+                console.log('[app.js] Initial hash load (after auth):', { sectionId, itemId, subCategoryFilter });
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
                 document.body.dataset.initialLoadDone = 'true';
             }
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (footerKbVersionSpan) footerKbVersionSpan.textContent = kbSystemData.meta.version;
         if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
     } else {
-        console.warn('[app.js - FIX] kbSystemData or kbSystemData.meta not available for version info.');
+        console.warn('[app.js] kbSystemData or kbSystemData.meta not available for version info.');
     }
 
     const themeSwitcher = document.getElementById('themeSwitcher');
@@ -196,8 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
 
-    console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
-    console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
+    console.log('[app.js] pageContent:', pageContent ? 'Found' : 'Not found');
+    console.log('[app.js] sidebarLinks:', sidebarLinks.length, 'links found');
 
     const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
 
@@ -206,9 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
-            console.log(`[app.js - FIX] Highlighted sidebar link for section: "${sectionId}"`);
+            console.log(`[app.js] Highlighted sidebar link for section: "${sectionId}"`);
         } else {
-            console.warn(`[app.js - FIX] No sidebar link found for section: "${sectionId}"`);
+            console.warn(`[app.js] No sidebar link found for section: "${sectionId}"`);
         }
     }
 
@@ -314,14 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
+        console.log(`[app.js] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
-            console.error('[app.js - FIX] pageContent is NULL.');
+            console.error('[app.js] pageContent is NULL.');
             if(document.body) document.body.innerHTML = '<p>Critical Error: pageContent element not found. UI cannot be rendered.</p>';
             return;
         }
         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js - FIX] kbSystemData is UNDEFINED.');
+            console.error('[app.js] kbSystemData is UNDEFINED.');
             pageContent.innerHTML = '<p>Error: Data missing.</p>';
             return;
         }
@@ -334,8 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 breadcrumbsContainer.classList.remove('hidden');
             }
             initializeUserDependentUI();
-            const kbVersionEl = document.getElementById('kbVersion');
-            const lastKbUpdateEl = document.getElementById('lastKbUpdate');
+            const kbVersionEl = pageContent.querySelector('#kbVersion') || document.getElementById('kbVersion');
+            const lastKbUpdateEl = pageContent.querySelector('#lastKbUpdate') || document.getElementById('lastKbUpdate');
             if (kbSystemData.meta) {
                 if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
                 if (lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
             initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            console.log('[app.js - FIX] Home page loaded.');
+            console.log('[app.js] Home page loaded.');
             return;
         }
 
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sectionData) {
             pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section not found</h2><p>"${escapeHTML(sectionId)}" does not exist.</p></div>`;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Not Found';
-            console.warn(`[app.js - FIX] Section "${sectionId}" not found in kbSystemData.`);
+            console.warn(`[app.js] Section "${sectionId}" not found in kbSystemData.`);
             return;
         }
 
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contentHTML += `</div>`;
 
         pageContent.innerHTML = contentHTML;
-        console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
+        console.log(`[app.js] Successfully set innerHTML for section "${sectionId}".`);
 
         pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
 
@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
                 } else {
-                    console.warn(`[app.js - FIX] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
+                    console.warn(`[app.js] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
                 }
             }, 200);
         }
@@ -436,13 +436,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
+        console.log('[app.js] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
         if (!currentUser) {
-            console.warn('[app.js - DEBUG] handleSectionTrigger called but no currentUser. Auth might be pending or failed. Aborting.');
+            console.warn('[app.js] handleSectionTrigger called but no currentUser. Auth might be pending or failed. Aborting.');
             return;
         }
         if (typeof kbSystemData === 'undefined') {
-            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger!');
+            console.error('[app.js] kbSystemData undefined in handleSectionTrigger!');
             return;
         }
         highlightSidebarLink(sectionId);
@@ -450,8 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
         if (window.location.hash !== `#${hash}`) {
-            window.history.replaceState(null, '', `#${hash}`);
-            console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
+            window.history.replaceState(null, '', `#${hash}`); // Use replaceState to avoid adding to history stack for internal navigation
+            console.log(`[app.js] Updated URL hash to: #${hash}`);
         }
     }
 
@@ -466,11 +466,11 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const sectionId = this.dataset.section;
-            console.log(`[app.js - FIX] Sidebar link click, data-section: "${sectionId}"`);
+            console.log(`[app.js] Sidebar link click, data-section: "${sectionId}"`);
             if (sectionId) {
                 handleSectionTrigger(sectionId);
             } else {
-                console.error('[app.js - FIX] No data-section attribute found on sidebar link:', this);
+                console.error('[app.js] No data-section attribute found on sidebar link:', this);
             }
         });
     });
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const sectionId = target.dataset.sectionTrigger;
             const itemId = target.dataset.itemId;
             const subCatFilter = target.dataset.subcatFilter;
-            console.log(`[app.js - FIX] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
+            console.log(`[app.js] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
             if (sectionId) {
                 handleSectionTrigger(sectionId, itemId, subCatFilter);
                 if (target.closest('#searchResultsContainer')) {
@@ -490,31 +490,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (globalSearchInput) globalSearchInput.value = '';
                 }
             } else {
-                console.error('[app.js - FIX] No data-section-trigger attribute found:', target);
+                console.error('[app.js] No data-section-trigger attribute found:', target);
             }
         }
 
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) {
+        if (homeSubcatTrigger && pageContent && (pageContent.querySelector('#welcomeUserName') || pageContent.innerHTML.includes('Welcome,'))) { // More robust check for home
             e.preventDefault();
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             if (triggerValue && triggerValue.includes('.')) {
                 const [sectionId, subId] = triggerValue.split('.');
-                console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
+                console.log(`[app.js] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
                 handleSectionTrigger(sectionId, null, subId);
                 if (sectionId === 'support' && subId === 'tools') {
                     setTimeout(() => {
                         const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                         if (zendeskCard?.closest('.card')) {
                             zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            console.log('[app.js - FIX] Scrolled to Zendesk card.');
+                            console.log('[app.js] Scrolled to Zendesk card.');
                         } else {
-                            console.warn('[app.js - FIX] Zendesk card not found.');
+                            console.warn('[app.js] Zendesk card not found.');
                         }
                     }, 300);
                 }
             } else {
-                console.error('[app.js - FIX] Invalid data-subcat-trigger value:', triggerValue);
+                console.error('[app.js] Invalid data-subcat-trigger value:', triggerValue);
             }
         }
     });
@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else {
-        console.warn('[app.js - FIX] Global search elements missing:', { globalSearchInput, searchResultsContainer });
+        console.warn('[app.js] Global search elements missing:', { globalSearchInput, searchResultsContainer });
     }
 
     function renderGlobalSearchResults_enhanced(results, query) {
@@ -657,18 +657,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else {
-        console.error('[app.js - FIX] pageContent element not found on initialization.');
+        console.error('[app.js] pageContent element not found on initialization.');
     }
 
     window.addEventListener('hashchange', () => {
         if (currentUser) {
             const { sectionId, itemId, subCategoryFilter } = parseHash();
-            console.log('[app.js - FIX] Hash changed, user authenticated. Processing:', { sectionId, itemId, subCategoryFilter });
+            console.log('[app.js] Hash changed, user authenticated. Processing:', { sectionId, itemId, subCategoryFilter });
             handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
         } else {
-            console.log('[app.js - FIX] Hash changed, but currentUser is not set. Awaiting auth state or redirect.');
+            console.log('[app.js] Hash changed, but currentUser is not set. Awaiting auth state or redirect.');
         }
     });
 
-    console.log('[app.js - FIX] Core initializations complete. Awaiting Supabase auth state to finalize page setup.');
+    console.log('[app.js] Core initializations complete. Awaiting Supabase auth state to finalize page setup.');
 });
