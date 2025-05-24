@@ -1,117 +1,371 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class=""> <!-- 'dark' class will be added here by JS -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfiniBase</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Dashboard - InfiniBase</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <!-- Add Quill.js CSS -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <!-- <link rel="stylesheet" href="css/style.css"> -->
+    <style>
+        /* Styles from your provided dash.txt - kept as is */
+        body, #sidebar, #mainContent, .card, input, button, a {
+            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
+        .sidebar-link.active {
+            background-color: #4A5568; /* gray-700 */
+            color: white !important; 
+            font-weight: 600;
+        }
+        .dark .sidebar-link.active {
+            background-color: #2D3748; /* darker gray for dark mode active */
+        }
+        .sidebar-link i {
+            transition: color 0.2s ease-in-out;
+        }
+        .sidebar-link.active i {
+            color: white !important; 
+        }
+        .card-animate {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #pageContent .grid > .card-animate:nth-child(1) { animation-delay: 0.1s; }
+        #pageContent .grid > .card-animate:nth-child(2) { animation-delay: 0.2s; }
+        #pageContent .grid > .card-animate:nth-child(3) { animation-delay: 0.3s; }
+        #pageContent .grid > .card-animate:nth-child(4) { animation-delay: 0.4s; }
+        #pageContent .grid > .card-animate:nth-child(5) { animation-delay: 0.5s; }
+        #pageContent .grid > .card-animate:nth-child(6) { animation-delay: 0.6s; }
+
+        #searchResultsContainer mark, #sectionSearchResults mark {
+            background-color: #fde047; 
+            color: #1f2937; 
+            padding: 0.1em 0.2em;
+            border-radius: 0.2em;
+            font-weight: bold;
+        }
+        .dark #searchResultsContainer mark, .dark #sectionSearchResults mark {
+            background-color: #78350f; 
+            color: #f3f4f6; 
+        }
+
+        #searchResultsContainer::-webkit-scrollbar, #sectionSearchResults::-webkit-scrollbar {
+            width: 8px;
+        }
+        #searchResultsContainer::-webkit-scrollbar-track, #sectionSearchResults::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #searchResultsContainer::-webkit-scrollbar-thumb, #sectionSearchResults::-webkit-scrollbar-thumb {
+            background-color: #9ca3af; 
+            border-radius: 4px;
+        }
+        .dark #searchResultsContainer::-webkit-scrollbar-thumb, .dark #sectionSearchResults::-webkit-scrollbar-thumb {
+            background-color: #4b5563; 
+        }
+
+        .focused-item {
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        .rating-container button i {
+            font-size: 0.95rem;
+        }
+        .rating-container button {
+            padding: 0.25rem 0.35rem;
+        }
+
+        /* Quill editor styling */
+        #quillEditorContainer .ql-toolbar {
+            background-color: #f9fafb; /* gray-50 */
+            border-top-left-radius: 0.375rem; /* rounded-md */
+            border-top-right-radius: 0.375rem; /* rounded-md */
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+        }
+        .dark #quillEditorContainer .ql-toolbar {
+            background-color: #374151; /* gray-700 */
+            border-bottom: 1px solid #4b5563; /* gray-600 */
+        }
+        #quillEditorContainer .ql-container {
+            height: 250px; /* Or any desired height */
+            font-size: 1rem;
+            border-bottom-left-radius: 0.375rem;
+            border-bottom-right-radius: 0.375rem;
+        }
+        .dark #quillEditorContainer .ql-snow {
+            color: #d1d5db; /* gray-300 */
+        }
+        .dark #quillEditorContainer .ql-editor {
+            background-color: #1f2937; /* gray-800 */
+        }
+         /* Modal styles */
+        .modal-content-view p, .modal-content-view ul, .modal-content-view ol {
+            margin-bottom: 0.75rem;
+        }
+        .modal-content-view ul { list-style: disc; margin-left: 1.5rem; }
+        .modal-content-view ol { list-style: decimal; margin-left: 1.5rem; }
+        .modal-content-view h1, .modal-content-view h2, .modal-content-view h3 {
+            font-weight: bold; margin-bottom: 0.5rem; margin-top:1rem;
+        }
+        .modal-content-view h1 { font-size: 1.5em; }
+        .modal-content-view h2 { font-size: 1.25em; }
+        .modal-content-view h3 { font-size: 1.1em; }
+        .modal-content-view pre {
+            background-color: #f3f4f6;
+            dark:background-color: #1f2937;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
+        }
+        .modal-content-view code {
+             font-family: monospace;
+        }
+        .modal-content-view blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 1rem;
+            margin-left: 0;
+            font-style: italic;
+        }
+        .modal-content-view table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        .modal-content-view th, .modal-content-view td {
+            border: 1px solid #ddd;
+            dark:border: 1px solid #4b5563;
+            padding: 8px;
+            text-align: left;
+        }
+        .modal-content-view th {
+            background-color: #f2f2f2;
+            dark:background-color: #374151;
+        }
+    </style>
 </head>
-<body class="bg-light-bg dark:bg-dark-bg text-gray-800 dark:text-dark-text min-h-screen">
-    <div class="flex h-screen overflow-hidden">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans antialiased">
+
+    <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="w-64 bg-white dark:bg-dark-card shadow-lg overflow-y-auto">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-brand-primary">InfiniBase</h1>
+        <aside id="sidebar" class="w-72 bg-gray-800 dark:bg-black text-gray-200 dark:text-gray-300 p-6 space-y-1 fixed h-full overflow-y-auto shadow-xl z-30">
+            <div class="text-3xl font-bold text-white mb-8 pb-4 border-b border-gray-700 dark:border-gray-600 flex items-center">
+                <i class="fas fa-database mr-3 text-indigo-400"></i> InfiniBase
             </div>
-            <nav class="mt-4">
-                <ul>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="home">Home</a></li>
-                    <li><p class="px-6 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400">Knowledge Areas</p></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="support">Support</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="partner_care">Partner Care</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="logistics">Logistics</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="customer_care">Customer Care</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="dist_follow_up">Distribution & Follow up</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="logistics_driver">Logistics (Driver Complaints)</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="logistics_3pl">Logistics-3PL</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="order_at_store">Order at store (Mac)</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="logistics_admin">Logistics-Admin</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="os">Operating Systems</a></li>
-                    <li><p class="px-6 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400">Resources & Policies</p></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="compensation">Compensation Policies</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="op_instructions">Operational Instructions</a></li>
-                    <li><a href="#" class="sidebar-link block px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700" data-section="forms_templates">Forms/Templates</a></li>
-                </ul>
+            <nav id="navigationMenu">
+                <div class="mt-3 mb-2">
+                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Main</span>
+                </div>
+                <a href="#" data-section="home" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-home mr-3 w-5 text-center text-gray-400 dark:text-gray-500 group-hover:text-white transition-colors"></i> Home
+                </a>
+
+                <div class="mt-6 mb-2">
+                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Knowledge Areas</span>
+                </div>
+                <!-- All other sidebar links kept as href="#" with data-section -->
+                <a href="#" data-section="support" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-headset mr-3 w-5 text-center text-blue-400 dark:text-blue-500 group-hover:text-white transition-colors"></i> Support
+                </a>
+                <a href="#" data-section="partner_care" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-handshake mr-3 w-5 text-center text-teal-400 dark:text-teal-500 group-hover:text-white transition-colors"></i> Partner Care
+                </a>
+                <a href="#" data-section="logistics" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-truck mr-3 w-5 text-center text-green-400 dark:text-green-500 group-hover:text-white transition-colors"></i> Logistics
+                </a>
+                 <a href="#" data-section="customer_care" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-users mr-3 w-5 text-center text-indigo-400 dark:text-indigo-500 group-hover:text-white transition-colors"></i> Customer Care
+                </a>
+                <a href="#" data-section="dist_follow_up" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-people-carry mr-3 w-5 text-center text-cyan-400 dark:text-cyan-500 group-hover:text-white transition-colors"></i> Distribution & Follow up
+                </a>
+                 <a href="#" data-section="logistics_driver" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-shipping-fast mr-3 w-5 text-center text-lime-400 dark:text-lime-500 group-hover:text-white transition-colors"></i> Logistics (Driver Complaints)
+                </a>
+                 <a href="#" data-section="logistics_3pl" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-boxes mr-3 w-5 text-center text-yellow-400 dark:text-yellow-500 group-hover:text-white transition-colors"></i> Logistics-3PL
+                </a>
+                <a href="#" data-section="order_at_store" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-store mr-3 w-5 text-center text-pink-400 dark:text-pink-500 group-hover:text-white transition-colors"></i> Order at store (Mac)
+                </a>
+                 <a href="#" data-section="logistics_admin" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-user-shield mr-3 w-5 text-center text-red-400 dark:text-red-500 group-hover:text-white transition-colors"></i> Logistics-Admin
+                </a>
+                 <a href="#" data-section="os" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fab fa-windows mr-3 w-5 text-center text-sky-400 dark:text-sky-500 group-hover:text-white transition-colors"></i> Operating Systems
+                </a>
+
+                <div class="mt-6 mb-2">
+                    <span class="px-3 text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">Resources & Policies</span>
+                </div>
+                <a href="#" data-section="compensation" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-hand-holding-usd mr-3 w-5 text-center text-amber-400 dark:text-amber-500 group-hover:text-white transition-colors"></i> Compensation Policies
+                </a>
+                <a href="#" data-section="op_instructions" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-clipboard-list mr-3 w-5 text-center text-gray-400 dark:text-gray-500 group-hover:text-white transition-colors"></i> Operational Instructions
+                </a>
+                <a href="#" data-section="forms_templates" class="sidebar-link group flex items-center py-3 px-3 rounded-lg transition duration-200 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white">
+                    <i class="fas fa-file-alt mr-3 w-5 text-center text-purple-400 dark:text-purple-500 group-hover:text-white transition-colors"></i> Forms/Templates
+                </a>
             </nav>
-            <div class="p-6">
-                <button id="themeSwitcher" class="flex items-center w-full px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                    <i id="themeIcon" class="fas fa-moon mr-2"></i>
-                    <span id="themeText">Dark Mode</span>
+
+            <div class="absolute bottom-6 left-6 right-6">
+                 <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors shadow-sm hover:shadow-md">
+                    <i id="themeIcon" class="fas fa-moon mr-2.5"></i> <span id="themeText">Dark Mode</span>
                 </button>
-                <button id="logoutButton" class="flex items-center w-full px-4 py-2 mt-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                <button id="logoutButton" class="w-full mt-3 flex items-center justify-center py-2.5 px-4 text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors shadow-sm hover:shadow-md">
+                    <i class="fas fa-sign-out-alt mr-2.5"></i> Logout
                 </button>
             </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="flex-1 p-8 overflow-y-auto">
-            <header class="flex justify-between items-center mb-8">
-                <div>
-                    <h2 id="currentSectionTitle" class="text-3xl font-bold">Welcome</h2>
-                    <nav id="breadcrumbs" class="text-sm mt-2 hidden">
-                        Home > Section
-                    </nav>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <input id="globalSearchInput" type="text" class="pl-10 pr-4 py-2 border rounded-md dark:bg-gray-700 focus:ring-2 focus:ring-brand-primary" placeholder="Search InfiniBase...">
-                        <i class="fas fa-search input-icon"></i>
-                        <div id="searchResultsContainer" class="absolute w-full mt-1 bg-white dark:bg-dark-card shadow-lg rounded-md max-h-96 overflow-y-auto hidden"></div>
+        <main id="mainContent" class="flex-1 ml-72 p-6 md:p-10 overflow-y-auto">
+            <header class="sticky top-0 bg-gray-100 dark:bg-gray-900 bg-opacity-80 dark:bg-opacity-80 backdrop-filter backdrop-blur-lg py-5 mb-8 z-20 -mx-6 md:-mx-10 px-6 md:px-10 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+                <div class="flex justify-between items-center">
+                    <div class="flex-shrink-0">
+                        <h1 id="currentSectionTitle" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Welcome</h1>
+                        <div id="breadcrumbs" class="ml-0.5 mt-1 text-xs md:text-sm text-gray-500 dark:text-gray-400 hidden md:block">
+                           {/* Home > Section - Will be updated by JS */}
+                        </div>
                     </div>
-                    <div class="flex items-center">
-                        <span id="userNameDisplay" class="font-medium">User Name</span>
+
+                    <div class="flex-grow px-4 lg:px-8 flex justify-center">
+                        <div class="relative w-full max-w-lg xl:max-w-2xl">
+                            <input type="search" id="globalSearchInput" placeholder="Search KB articles, forms, anything..."
+                                   class="w-full py-3 pl-12 pr-4 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent shadow-md">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-4">
+                                <i class="fas fa-search text-gray-400 dark:text-gray-500"></i>
+                            </span>
+                             <div id="searchResultsContainer" class="absolute mt-2 w-full max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl z-50 hidden">
+                                {/* Live search results will be injected here by app.js */}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center space-x-3 md:space-x-4">
+                            <div class="relative">
+                                 <button id="userProfileButton" class="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                    <img src="https://ui-avatars.com/api/?name=User+Name&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true" alt="User Avatar" class="w-9 h-9 rounded-full border-2 border-gray-300 dark:border-gray-600">
+                                    <span id="userNameDisplay" class="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">User Name</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500 dark:text-gray-400 hidden lg:inline"></i>
+                                 </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            <div id="pageContent">
-                <section>
-                    <h3 class="text-2xl font-bold mb-4">Welcome, <span id="welcomeUserName">User!</span></h3>
-                    <p class="mb-6">Select a section from the sidebar or use the search bar to find what you need.</p>
-                    <p class="mb-6">InfiniBase v<span id="kbVersion">0.1.0</span> - Last Updated: <span id="lastKbUpdate">2023-10-28</span></p>
+            <div id="pageContent" class="space-y-8">
+                <!-- Initial Welcome Content from your dash.txt -->
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-700 dark:to-purple-700 p-8 rounded-xl shadow-2xl text-white card-animate">
+                    <h2 class="text-3xl font-bold mb-3" id="welcomeUserName">Welcome, User!</h2>
+                    <p class="text-indigo-100 dark:text-indigo-200 text-lg">Select a section from the sidebar or use the search bar to find what you need.</p>
+                    <p class="text-indigo-200 dark:text-indigo-300 mt-1 text-sm">InfiniBase v<span id="kbVersion">0.1.0</span> - Last Updated: <span id="lastKbUpdate">2023-10-28</span></p>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="card bg-white dark:bg-dark-card p-6 rounded-lg shadow-interactive hover:shadow-xl transition-shadow card-animate">
-                            <h4 class="font-semibold text-lg mb-2 flex items-center">
-                                <i class="fas fa-headset mr-2 text-brand-primary"></i> Support Center
-                            </h4>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">Access high-priority ticket guides, escalation procedures, and tool documentation.</p>
-                            <a href="#" data-subcat-trigger="support.tools" class="text-brand-primary hover:underline">Go to Support</a>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.1s;">
+                        <div class="flex items-center mb-4">
+                            <div class="p-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md mr-4">
+                                <i class="fas fa-headset text-xl"></i>
+                            </div>
+                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Support Center</h3>
                         </div>
-                        <div class="card bg-white dark:bg-dark-card p-6 rounded-lg shadow-interactive hover:shadow-xl transition-shadow card-animate">
-                            <h4 class="font-semibold text-lg mb-2 flex items-center">
-                                <i class="fas fa-file-alt mr-2 text-brand-primary"></i> Forms & Templates
-                            </h4>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">Find client onboarding checklists, standard procedure documents, and other templates.</p>
-                            <a href="#" data-section-trigger="forms_templates" class="text-brand-primary hover:underline">View Forms</a>
-                        </div>
-                        <div class="card bg-white dark:bg-dark-card p-6 rounded-lg shadow-interactive hover:shadow-xl transition-shadow card-animate">
-                            <h4 class="font-semibold text-lg mb-2 flex items-center">
-                                <i class="fas fa-tools mr-2 text-brand-primary"></i> Support Tools
-                            </h4>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">Explore available tools for the Support team and their usage guides.</p>
-                            <a href="#" data-subcat-trigger="support.tools" class="text-brand-primary hover:underline">Explore Tools</a>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Access high-priority ticket guides, escalation procedures, and tool documentation.</p>
+                        <div class="mt-auto">
+                            <a href="#" data-section-trigger="support" class="quick-link-button text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline group">
+                                Go to Support <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
+                            </a>
                         </div>
                     </div>
-                </section>
+
+                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.2s;">
+                        <div class="flex items-center mb-4">
+                            <div class="p-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white shadow-md mr-4">
+                                <i class="fas fa-file-alt text-xl"></i>
+                            </div>
+                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Forms & Templates</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Find client onboarding checklists, standard procedure documents, and other templates.</p>
+                         <div class="mt-auto">
+                            <a href="#" data-section-trigger="forms_templates" class="quick-link-button text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline group">
+                                View Forms <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col transform hover:-translate-y-1 card-animate" style="animation-delay: 0.3s;">
+                        <div class="flex items-center mb-4">
+                            <div class="p-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white shadow-md mr-4">
+                                <i class="fas fa-tools text-xl"></i>
+                            </div>
+                            <h3 class="font-semibold text-xl text-gray-800 dark:text-white">Support Tools</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-5 flex-grow">Explore available tools for the Support team and their usage guides.</p>
+                         <div class="mt-auto">
+                            <a href="#" data-subcat-trigger="support.tools" class="quick-link-button text-sm font-medium text-green-600 dark:text-green-400 hover:underline group">
+                                Explore Tools <i class="fas fa-arrow-right ml-1 text-xs opacity-0 group-hover:opacity-100 transform -translate-x-1 group-hover:translate-x-0 transition-all duration-200"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Container for Access Tracking Report on Home Page -->
+                <div id="accessTrackingReportContainer" class="hidden">
+                    {/* To be populated by JS */}
+                </div>
             </div>
 
-            <footer class="mt-12 text-center text-gray-500 dark:text-gray-400">
-                <p>&copy; InfiniBase. All rights reserved. Version <span id="footerKbVersion">0.1.0</span>.</p>
-                <a href="#" id="reportErrorBtn" class="text-brand-primary hover:underline">Report an issue</a>
+            <footer class="mt-12 text-center text-sm text-gray-500 dark:text-gray-400 py-4 border-t border-gray-200 dark:border-gray-700">
+                © <script>document.write(new Date().getFullYear())</script> InfiniBase. All rights reserved. Version <span id="footerKbVersion">0.1.0</span>.
+                <button id="reportErrorBtn" class="ml-4 text-xs text-red-500 hover:text-red-400 hover:underline focus:outline-none">Report an issue</button>
             </footer>
         </main>
     </div>
 
-    <script src="js/auth.js"></script>
+    <!-- Generic Modal Structure -->
+    <div id="genericModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 backdrop-filter backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden flex items-center justify-center p-4">
+        <div class="relative bg-white dark:bg-gray-800 w-11/12 md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto shadow-xl rounded-lg">
+            <div class="flex justify-between items-center py-3 px-4 border-b dark:border-gray-700">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="modalTitle">Modal Title</h3>
+                <button id="closeModalBtn" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white">
+                    <i class="fas fa-times fa-lg"></i>
+                    <span class="sr-only">Close modal</span>
+                </button>
+            </div>
+            <div id="modalContent" class="p-4 md:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                <!-- Content will be injected here -->
+            </div>
+            <div id="modalActions" class="flex items-center justify-end p-4 md:p-5 space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600 hidden">
+                <!-- Action buttons like Save, Cancel will be injected here -->
+            </div>
+        </div>
+    </div>
+    <!-- Toast Notification Placeholder -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 p-4 rounded-lg shadow-md text-white hidden z-[100]">
+        <span id="toastMessage"></span>
+    </div>
+
+
+    <script src="js/auth.js"></script> 
     <script src="js/data.js"></script>
-    <script src="js/supabase.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script src="js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script>
+        const authUser = Auth.getCurrentUser();
+        if (authUser) {
+            const userDisplayName = authUser.fullName || authUser.email || 'User Name';
+            const avatarImg = document.querySelector('#userProfileButton img');
+            if (avatarImg) {
+                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
+            }
+        }
+    </script>
 </body>
 </html>
