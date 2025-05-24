@@ -288,5 +288,3 @@ const kbSystemData = {
         }
     ]
 };
-
-export { kbSystemData };
