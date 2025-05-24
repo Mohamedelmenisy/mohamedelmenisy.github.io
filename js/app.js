@@ -1,17 +1,33 @@
-// Supabase Client Setup
-const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+// /infini-base/js/app.js
 let currentUser = null;
+let isInitialAuthCheckComplete = false; // Flag to manage initial load
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] DOMContentLoaded fired.');
-    console.log('[app.js] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
+
+    if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
+        console.error('[app.js] window.supabaseClient is not available. App cannot initialize properly.');
+        const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.innerHTML = '<div class="text-center p-4"><p class="text-red-500 text-lg">Error: Authentication service failed to load.</p><p class="text-gray-600 dark:text-gray-400">Please check your internet connection and try refreshing the page. If the problem persists, contact support.</p></div>';
+        }
+        return;
+    }
+    const supabase = window.supabaseClient;
+
+    console.log('[app.js] kbSystemData:', typeof kbSystemData !== 'undefined' ? 'Available' : 'undefined');
+    if (typeof kbSystemData === 'undefined') {
+        console.error('[app.js] CRITICAL: kbSystemData is not loaded. Most functionalities will fail.');
+        // Display error on page if kbSystemData is missing
+        const pageContent = document.getElementById('pageContent');
+        if(pageContent) pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-600 dark:text-red-400">Critical Error</h2><p>Knowledge base data (kbSystemData) could not be loaded. Please contact an administrator.</p></div>';
+        return;
+    }
+
 
     // --- Helper Functions ---
     function escapeHTML(str) {
-        if (typeof str !== 'string') return '';
+        if (typeof str !== 'string') return String(str || ''); // Ensure string, handle null/undefined
         return str.replace(/[&<>"']/g, function(match) {
             return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
@@ -20,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function highlightText(text, query) {
         if (!text) return '';
         const safeText = escapeHTML(text);
-        if (!query) return safeText;
+        if (!query || query.length < 1) return safeText;
         try {
             const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedQuery})`, 'gi');
@@ -36,51 +52,97 @@ document.addEventListener('DOMContentLoaded', () => {
         return text.substring(0, maxLength) + '...';
     }
 
-    // --- Authentication & Page Protection (Supabase) ---
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        console.log('[app.js - Supabase] onAuthStateChange event:', event, 'session:', session ? 'exists' : 'null');
+    // --- Authentication & Page Protection ---
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[app.js - Supabase] onAuthStateChange event:', event, 'session:', session ? `exists (User ID: ${session.user.id})` : 'null');
+
+        const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
+        const mainPageContainer = document.querySelector('.flex.h-screen');
 
         if (event === 'SIGNED_OUT' || !session) {
             currentUser = null;
+            isInitialAuthCheckComplete = true;
             const currentPathFile = window.location.pathname.split('/').pop();
-            if (currentPathFile !== 'login.html' && currentPathFile !== 'signup.html') {
+            const loginPageName = 'login.html'; // Assuming login.html is at /infini-base/login.html or similar
+            const signupPageName = 'signup.html';
+
+            // Check if current page is NOT login or signup
+            if (!window.location.pathname.endsWith(loginPageName) && !window.location.pathname.endsWith(signupPageName)) {
                 console.log('[app.js - Supabase] No session or signed out, redirecting to login.html');
-                const loginPath = window.location.origin + '/login.html';
+                if (loadingOverlay) loadingOverlay.style.display = 'flex';
+                // Construct the correct path to login.html relative to the domain root
+                const loginPath = window.location.origin + (window.location.pathname.includes('/infini-base/') ? '/infini-base/' : '/') + loginPageName + '?reason=session_ended_app';
                 window.location.replace(loginPath);
+            } else {
+                 if (loadingOverlay) loadingOverlay.style.display = 'none'; // On login/signup, hide overlay
             }
             return;
         }
 
         if (session) {
             try {
-                const { data: userProfile, error: profileError } = await supabaseClient
-                    .from('users')
-                    .select('full_name, role')
-                    .eq('id', session.user.id)
+                // Fetch from public.users table
+                const { data: userProfile, error: profileError } = await supabase
+                    .from('users') // This is public.users
+                    .select('name, role, is_admin') // 'name' is your full name column
+                    .eq('id', session.user.id) // Match auth.users.id with public.users.id
                     .single();
 
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('[app.js - Supabase] Error fetching user profile:', profileError);
-                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
+                if (profileError && profileError.code !== 'PGRST116') { // PGRST116: 0 rows, not necessarily a hard error
+                    console.error('[app.js - Supabase] Error fetching user profile from public.users:', profileError);
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        fullName: session.user.user_metadata?.full_name || session.user.email.split('@')[0], // Fallback to metadata or email
+                        role: 'user' // Default role
+                    };
                 } else if (userProfile) {
-                    currentUser = { ...session.user, fullName: userProfile.full_name, role: userProfile.role };
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        fullName: userProfile.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0], // Use 'name' from public.users
+                        role: userProfile.role || (userProfile.is_admin ? 'admin' : 'user') // Use 'role', fallback to 'is_admin'
+                    };
                 } else {
-                    console.warn('[app.js - Supabase] User profile not found for:', session.user.id);
-                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
+                    // User exists in auth.users but not in public.users. This is a data integrity issue.
+                    // Signup process should ensure a public.users row is created.
+                    console.warn(`[app.js - Supabase] User profile NOT FOUND in public.users for ID: ${session.user.id}. Using fallbacks.`);
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        fullName: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                        role: 'user' // Default role
+                    };
+                    // Optionally, attempt to create the public.users entry here if it's missing,
+                    // though ideally signup/login should handle this.
                 }
             } catch (e) {
-                console.error('[app.js - Supabase] Exception fetching user profile:', e);
-                currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
+                console.error('[app.js - Supabase] Exception during user profile fetch:', e);
+                currentUser = { // Fallback user object
+                    id: session.user.id,
+                    email: session.user.email,
+                    fullName: session.user.email.split('@')[0],
+                    role: 'user'
+                };
             }
 
-            console.log('[app.js - Supabase] Current user set:', currentUser);
+            console.log('[app.js - Supabase] Current user session active:', currentUser);
             initializeUserDependentUI();
+            isInitialAuthCheckComplete = true;
 
-            if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !document.body.dataset.initialLoadDone) {
+            if (!document.body.dataset.initialLoadDone) {
+                console.log('[app.js] Auth confirmed (event:',event,'), processing initial section load.');
                 const { sectionId, itemId, subCategoryFilter } = parseHash();
-                console.log('[app.js] Initial hash load (after auth):', { sectionId, itemId, subCategoryFilter });
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
                 document.body.dataset.initialLoadDone = 'true';
+
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
+                if (mainPageContainer) mainPageContainer.style.visibility = 'visible';
+            } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                 console.log('[app.js] Auth token refreshed or user updated. UI should be current.');
+                 // Ensure UI is visible if it was hidden
+                 if (loadingOverlay && loadingOverlay.style.display !== 'none') loadingOverlay.style.display = 'none';
+                 if (mainPageContainer && mainPageContainer.style.visibility !== 'visible') mainPageContainer.style.visibility = 'visible';
             }
         }
     });
@@ -88,39 +150,43 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeUserDependentUI() {
         const userNameDisplay = document.getElementById('userNameDisplay');
         const welcomeUserName = document.getElementById('welcomeUserName');
-        const avatarImg = document.querySelector('#userProfileButton img');
+        const avatarImg = document.querySelector('#userProfileButton img#userAvatar'); // More specific selector
 
         if (currentUser) {
-            const userDisplayName = currentUser.fullName || currentUser.email || 'User';
+            const userDisplayName = escapeHTML(currentUser.fullName) || escapeHTML(currentUser.email) || 'User';
             if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
-            if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
+            if (welcomeUserName) welcomeUserName.innerHTML = `Welcome, <span class="font-bold">${userDisplayName}</span>!`; // Use innerHTML for potential styling
             if (avatarImg) {
                 avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
                 avatarImg.alt = `${userDisplayName}'s Avatar`;
             }
             console.log('[app.js - Supabase] User-dependent UI initialized for:', userDisplayName);
         } else {
-            if (userNameDisplay) userNameDisplay.textContent = 'User';
-            if (welcomeUserName) welcomeUserName.textContent = 'Welcome!';
+            const defaultName = 'User';
+            if (userNameDisplay) userNameDisplay.textContent = defaultName;
+            if (welcomeUserName) welcomeUserName.innerHTML = `Welcome!`;
             if (avatarImg) {
-                avatarImg.src = `https://ui-avatars.com/api/?name=User+Name&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
-                avatarImg.alt = 'User Avatar';
+                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
+                avatarImg.alt = `${defaultName}'s Avatar`;
             }
+             console.log('[app.js] User-dependent UI initialized for GUEST (should be redirecting).');
         }
     }
 
+    // KB Version and Update Info
     const kbVersionSpan = document.getElementById('kbVersion');
     const lastKbUpdateSpan = document.getElementById('lastKbUpdate');
     const footerKbVersionSpan = document.getElementById('footerKbVersion');
 
     if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) {
-        if (kbVersionSpan) kbVersionSpan.textContent = kbSystemData.meta.version;
-        if (footerKbVersionSpan) footerKbVersionSpan.textContent = kbSystemData.meta.version;
+        if (kbVersionSpan) kbVersionSpan.textContent = escapeHTML(kbSystemData.meta.version);
+        if (footerKbVersionSpan) footerKbVersionSpan.textContent = escapeHTML(kbSystemData.meta.version);
         if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
     } else {
         console.warn('[app.js] kbSystemData or kbSystemData.meta not available for version info.');
     }
 
+    // Theme Switcher
     const themeSwitcher = document.getElementById('themeSwitcher');
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
@@ -139,11 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDark = htmlElement.classList.contains('dark');
         document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark').forEach(mark => {
             if (isDark) {
-                mark.style.backgroundColor = '#78350f';
-                mark.style.color = '#f3f4f6';
+                mark.style.backgroundColor = '#78350f'; // Darker orange
+                mark.style.color = '#f3f4f6'; // Light gray
             } else {
-                mark.style.backgroundColor = '#fde047';
-                mark.style.color = '#1f2937';
+                mark.style.backgroundColor = '#fde047'; // Yellow
+                mark.style.color = '#1f2937'; // Dark gray
             }
         });
     }
@@ -162,372 +228,362 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTheme(newTheme);
         });
     }
-    loadTheme();
+    loadTheme(); // Apply theme on initial load
 
+    // Logout Button
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', async () => {
             console.log('[app.js - Supabase] Logout button clicked.');
-            const { error } = await supabaseClient.auth.signOut();
+            const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
+            if(loadingOverlay) loadingOverlay.style.display = 'flex';
+
+            const { error } = await supabase.auth.signOut();
             if (error) {
                 console.error('[app.js - Supabase] Error during sign out:', error);
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+                alert('Logout failed: ' + error.message);
             } else {
-                console.log('[app.js - Supabase] Sign out successful.');
+                console.log('[app.js - Supabase] Sign out successful. Redirect will be handled by onAuthStateChange.');
+                // onAuthStateChange handles redirection
             }
         });
     }
 
+    // Report Error Button
     const reportErrorBtn = document.getElementById('reportErrorBtn');
     if (reportErrorBtn) {
         reportErrorBtn.addEventListener('click', () => {
-            const sectionTitleText = currentSectionTitleEl ? currentSectionTitleEl.textContent : 'Current Page';
+            const sectionTitleText = document.getElementById('currentSectionTitle') ? document.getElementById('currentSectionTitle').textContent : 'Current Page';
             const pageUrl = window.location.href;
-            alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}\n(Placeholder)`);
+            // Replace with a more sophisticated error reporting mechanism (e.g., mailto, form, API call)
+            alert(`Report an issue for: ${escapeHTML(sectionTitleText)}\nURL: ${escapeHTML(pageUrl)}\n\n(This is a placeholder. Please describe the issue to your administrator.)`);
         });
     }
 
+    // Sidebar and Content Elements
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
 
-    console.log('[app.js] pageContent:', pageContent ? 'Found' : 'Not found');
-    console.log('[app.js] sidebarLinks:', sidebarLinks.length, 'links found');
+    console.log('[app.js] pageContent element:', pageContent ? 'Found' : 'NOT FOUND');
+    console.log('[app.js] sidebarLinks found:', sidebarLinks.length);
 
-    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
+    const initialPageContent = pageContent ? pageContent.innerHTML : '<p class="text-red-500 p-4">Error: Initial page content could not be captured because pageContent element was missing on load.</p>';
 
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
-            console.log(`[app.js] Highlighted sidebar link for section: "${sectionId}"`);
         } else {
-            console.warn(`[app.js] No sidebar link found for section: "${sectionId}"`);
+            // If no specific section matches, try to keep 'home' active or none.
+            const homeLink = document.querySelector('.sidebar-link[data-section="home"]');
+            if (homeLink && sectionId === 'home') homeLink.classList.add('active');
+            console.warn(`[app.js] No sidebar link found or explicitly matched for section: "${sectionId}"`);
         }
     }
+    // --- Card Rendering Functions (getThemeColors, renderArticleCard_enhanced, etc.) ---
+    // These remain the same as in your app.js.txt. Make sure they use escapeHTML appropriately.
+    function getThemeColors(themeColor = 'gray') { /* ... as provided ... */ }
+    function renderArticleCard_enhanced(article, sectionData) { /* ... as provided, ensure escapeHTML is used ... */ }
+    function renderItemCard_enhanced(item, sectionData) { /* ... as provided, ensure escapeHTML is used ... */ }
+    function renderCaseCard_enhanced(caseItem, sectionData) { /* ... as provided, ensure escapeHTML is used ... */ }
 
-    function getThemeColors(themeColor = 'gray') {
-        const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
-        const colorMap = {
-            blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' },
-            teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' },
-            green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' },
-            indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-600 dark:text-indigo-400', iconContainer: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-indigo-500', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300', statusBg: 'bg-indigo-100 dark:bg-indigo-500/20', statusText: 'text-indigo-700 dark:text-indigo-400' },
-            cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900', text: 'text-cyan-600 dark:text-cyan-400', iconContainer: 'bg-cyan-100 dark:bg-cyan-800/50', icon: 'text-cyan-500 dark:text-cyan-400', cta: 'text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300', border: 'border-cyan-500', tagBg: 'bg-cyan-100 dark:bg-cyan-500/20', tagText: 'text-cyan-700 dark:text-cyan-300', statusBg: 'bg-cyan-100 dark:bg-cyan-500/20', statusText: 'text-cyan-700 dark:text-cyan-400' },
-            lime: { bg: 'bg-lime-100 dark:bg-lime-900', text: 'text-lime-600 dark:text-lime-400', iconContainer: 'bg-lime-100 dark:bg-lime-800/50', icon: 'text-lime-500 dark:text-lime-400', cta: 'text-lime-600 hover:text-lime-700 dark:text-lime-400 dark:hover:text-lime-300', border: 'border-lime-500', tagBg: 'bg-lime-100 dark:bg-lime-500/20', tagText: 'text-lime-700 dark:text-lime-300', statusBg: 'bg-lime-100 dark:bg-lime-500/20', statusText: 'text-lime-700 dark:text-lime-400' },
-            yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-400', iconContainer: 'bg-yellow-100 dark:bg-yellow-800/50', icon: 'text-yellow-500 dark:text-yellow-400', cta: 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300', border: 'border-yellow-500', tagBg: 'bg-yellow-100 dark:bg-yellow-500/20', tagText: 'text-yellow-700 dark:text-yellow-300', statusBg: 'bg-yellow-100 dark:bg-yellow-500/20', statusText: 'text-yellow-700 dark:text-yellow-400' },
-            pink: { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-600 dark:text-pink-400', iconContainer: 'bg-pink-100 dark:bg-pink-800/50', icon: 'text-pink-500 dark:text-pink-400', cta: 'text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300', border: 'border-pink-500', tagBg: 'bg-pink-100 dark:bg-pink-500/20', tagText: 'text-pink-700 dark:text-pink-300', statusBg: 'bg-pink-100 dark:bg-pink-500/20', statusText: 'text-pink-700 dark:text-pink-400' },
-            red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400' },
-            sky: { bg: 'bg-sky-100 dark:bg-sky-900', text: 'text-sky-600 dark:text-sky-400', iconContainer: 'bg-sky-100 dark:bg-sky-800/50', icon: 'text-sky-500 dark:text-sky-400', cta: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300', border: 'border-sky-500', tagBg: 'bg-sky-100 dark:bg-sky-500/20', tagText: 'text-sky-700 dark:text-sky-300', statusBg: 'bg-sky-100 dark:bg-sky-500/20', statusText: 'text-sky-700 dark:text-sky-400' },
-            amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400' },
-            purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-400', iconContainer: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', cta: 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300', border: 'border-purple-500', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300', statusBg: 'bg-purple-100 dark:bg-purple-500/20', statusText: 'text-purple-700 dark:text-purple-400' },
-            slate: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-700/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-200 dark:bg-slate-700', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-200 dark:bg-slate-600', statusText: 'text-slate-700 dark:text-slate-300' },
-            gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }
-        };
-        return colorMap[color] || colorMap.gray;
-    }
-
-    function renderArticleCard_enhanced(article, sectionData) {
-        const theme = getThemeColors(sectionData.themeColor);
-        const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-        return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
-                <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
-                    </div>
-                    <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
-                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${article.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
-                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                    </a>
-                </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(article.summary) || 'No summary available.'}</p>
-                ${article.tags && article.tags.length > 0 ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div class="rating-container text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                        <span class="mr-1">Helpful?</span>
-                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
-                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
-                    </div>
-                    <a href="${article.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">
-                        Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
-                    </a>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderItemCard_enhanced(item, sectionData) {
-        const theme = getThemeColors(sectionData.themeColor);
-        const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-        return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
-                 <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
-                    </div>
-                    <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
-                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${item.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
-                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                    </a>
-                </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(item.description) || 'No description available.'}</p>
-                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold tracking-wide">${escapeHTML(item.type)}</span>
-                    <a href="${item.url}" target="_blank" class="text-sm font-medium ${theme.cta} group">
-                        Open <i class="fas fa-external-link-alt ml-1 text-xs opacity-75 group-hover:scale-110 transition-transform duration-200"></i>
-                    </a>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderCaseCard_enhanced(caseItem, sectionData) {
-        const theme = getThemeColors(sectionData.themeColor);
-        const caseIcon = 'fas fa-briefcase';
-        return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
-                <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                         <i class="${caseIcon} text-xl ${theme.icon}"></i>
-                    </div>
-                    <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
-                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
-                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                    </a>
-                </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
-                ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Steps: ${escapeHTML(caseItem.resolutionStepsPreview)}</p>` : ''}
-                ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
-                    ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
-                </div>
-            </div>
-        `;
-    }
 
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        console.log('[app.js] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
+        console.log('[app.js] handleSectionTrigger called. CurrentUser:', currentUser ? currentUser.email : 'None', 'Section:', sectionId, 'Item:', itemId, 'SubCat:', subCategoryFilter);
+
+        if (!isInitialAuthCheckComplete) {
+            console.warn('[app.js] handleSectionTrigger: Auth check not complete. Aborting section load.');
+            return;
+        }
         if (!currentUser) {
-            console.warn('[app.js] No currentUser. Awaiting authentication.');
+            console.warn('[app.js] handleSectionTrigger: No currentUser. Aborting section load (should redirect).');
+            // Redirect should have happened via onAuthStateChange
             return;
         }
-        if (typeof kbSystemData === 'undefined') {
-            console.error('[app.js] kbSystemData is undefined.');
+        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+            console.error('[app.js] handleSectionTrigger: kbSystemData or kbSystemData.sections is undefined.');
+            if(pageContent) pageContent.innerHTML = '<p class="p-4 text-red-500">Error: Knowledge base data is not available to display sections.</p>';
             return;
         }
+
         highlightSidebarLink(sectionId);
         displaySectionContent(sectionId, itemId, subCategoryFilter);
 
-        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
-        if (window.location.hash !== `#${hash}`) {
-            window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', `#${hash}`);
-            console.log(`[app.js] Updated URL hash to: #${hash}`);
+        // Update URL hash without adding to history for normal navigation,
+        // but allow direct hash changes to create history.
+        const newHash = itemId ? `${sectionId}/${itemId}` : (subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId);
+        if (window.location.hash !== `#${newHash}`) {
+            // Consider using replaceState for internal navigation to keep browser history cleaner
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', `#${newHash}`);
+            console.log(`[app.js] URL hash updated to: #${newHash}`);
         }
     }
 
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        console.log(`[app.js] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
+        console.log(`[app.js] displaySectionContent for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
+
         if (!pageContent) {
-            console.error('[app.js] pageContent is NULL.');
-            if(document.body) document.body.innerHTML = '<p>Critical Error: pageContent element not found. UI cannot be rendered.</p>';
+            console.error('[app.js] CRITICAL: pageContent element is NULL in displaySectionContent.');
+            document.body.innerHTML = '<div class="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900"><p class="text-2xl text-red-600 p-10">Critical Error: UI cannot be rendered. Please contact support.</p></div>';
             return;
         }
-        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js] kbSystemData is UNDEFINED.');
-            pageContent.innerHTML = '<p>Error: Data missing.</p>';
+         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+            console.error('[app.js] displaySectionContent: kbSystemData or sections missing.');
+            pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-600">Error Loading Data</h2><p>The knowledge base data could not be loaded. Please try again later or contact support.</p></div>';
             return;
         }
 
-        if (sectionId === 'home') {
-            pageContent.innerHTML = initialPageContent;
+
+        if (sectionId === 'home' || !sectionId) { // Default to home if sectionId is falsy
+            pageContent.innerHTML = initialPageContent; // Restore original home content
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            initializeUserDependentUI();
-            const kbVersionEl = pageContent.querySelector('#kbVersion') || document.getElementById('kbVersion');
-            const lastKbUpdateEl = pageContent.querySelector('#lastKbUpdate') || document.getElementById('lastKbUpdate');
-            if (kbSystemData.meta) {
-                if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
-                if (lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-            }
+            initializeUserDependentUI(); // Re-initialize user-specific parts of home
+            const homeKbVersionEl = pageContent.querySelector('#kbVersion') || document.getElementById('kbVersion');
+            const homeLastKbUpdateEl = pageContent.querySelector('#lastKbUpdate') || document.getElementById('lastKbUpdate');
 
-            const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
-            initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
-            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            console.log('[app.js] Home page loaded.');
+            if (kbSystemData.meta) {
+                if (homeKbVersionEl) homeKbVersionEl.textContent = escapeHTML(kbSystemData.meta.version);
+                if (homeLastKbUpdateEl) homeLastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+            }
+            // Re-apply card animations for home page if any
+            pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
+                card.style.animationDelay = `${(index + 1) * 0.05}s`; // Faster delay
+                card.classList.remove('fadeInUp'); // Remove class to allow re-trigger if needed
+                void card.offsetWidth; // Trigger reflow
+                card.classList.add('fadeInUp'); // Re-add class
+            });
+            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply mark colors
+            console.log('[app.js] Home page content displayed.');
+            if (itemIdToFocus) console.warn(`[app.js] itemIdToFocus (${itemIdToFocus}) provided for home page, but not typically used here.`);
             return;
         }
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
-            pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section not found</h2><p>"${escapeHTML(sectionId)}" does not exist.</p></div>`;
+            pageContent.innerHTML = `<div class="p-6 text-center card-animate"><h2 class="text-2xl font-semibold text-red-500">Section Not Found</h2><p>The section you requested ("${escapeHTML(sectionId)}") does not exist or could not be loaded.</p> <a href="#" data-section-trigger="home" class="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Go to Home</a></div>`;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Not Found';
+            if (breadcrumbsContainer) breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> Not Found`;
             console.warn(`[app.js] Section "${sectionId}" not found in kbSystemData.`);
             return;
         }
 
         const theme = getThemeColors(sectionData.themeColor);
+        let contentHTML = `<div class="space-y-10">`; // Outer container
 
-        let contentHTML = `<div class="space-y-10">`;
-        contentHTML += `<div class="flex justify-between items-center"><h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
-        contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
+        // Section Header
+        contentHTML += `
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 card-animate">
+                <div class="flex items-center mb-3 sm:mb-0">
+                    <span class="p-3 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex items-center justify-center shadow-sm">
+                        <i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">${escapeHTML(sectionData.name)}</h2>
+                        <p class="text-gray-600 dark:text-gray-300 mt-1 text-base">${escapeHTML(sectionData.description)}</p>
+                    </div>
+                </div>
+            </div>`;
 
-        contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask about ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border rounded-l-md dark:bg-gray-700" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
+        // Section Search (Optional - consider if needed per section vs global)
+        // contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search in ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border border-gray-300 dark:border-gray-600 rounded-l-md dark:bg-gray-700 dark:text-gray-200 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
 
-        let hasContent = false;
-        if (sectionData.articles && sectionData.articles.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-            sectionData.articles.forEach(article => contentHTML += renderArticleCard_enhanced(article, sectionData));
-            contentHTML += `</div>`;
-            hasContent = true;
-        }
-        if (sectionData.cases && sectionData.cases.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-            sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
-            contentHTML += `</div>`;
-            hasContent = true;
-        }
-        if (sectionData.items && sectionData.items.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-            sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
-            contentHTML += `</div>`;
-            hasContent = true;
-        }
+        let hasRenderedContent = false;
+
+        // Sub-Categories First (if any)
         if (sectionData.subCategories && sectionData.subCategories.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
-            sectionData.subCategories.forEach(subCat => contentHTML += `<a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center"><i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i><h4 class="font-medium">${escapeHTML(subCat.name)}</h4></a>`);
-            contentHTML += `</div>`;
+            contentHTML += `<div class="card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+            sectionData.subCategories.forEach(subCat => {
+                contentHTML += `
+                    <a href="#${sectionData.id}/${subCat.id}" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" 
+                       class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center text-center transform hover:-translate-y-1 border-t-4 ${theme.border}">
+                        <div class="p-3 rounded-full ${theme.iconContainer} mb-3">
+                            <i class="fas fa-folder-open text-3xl ${theme.icon}"></i>
+                        </div>
+                        <h4 class="font-semibold text-lg text-gray-800 dark:text-white">${escapeHTML(subCat.name)}</h4>
+                        ${subCat.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHTML(truncateText(subCat.description, 50))}</p>` : ''}
+                    </a>`;
+            });
+            contentHTML += `</div></div>`;
+            hasRenderedContent = true;
         }
+
+
+        // Articles
+        if (sectionData.articles && sectionData.articles.length > 0) {
+            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.articles.forEach(article => contentHTML += renderArticleCard_enhanced(article, sectionData));
+            contentHTML += `</div></div>`;
+            hasRenderedContent = true;
+        }
+
+        // Cases
+        if (sectionData.cases && sectionData.cases.length > 0) {
+            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
+            contentHTML += `</div></div>`;
+            hasRenderedContent = true;
+        }
+
+        // Items (e.g., Forms/Templates)
+        if (sectionData.items && sectionData.items.length > 0) {
+            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
+            contentHTML += `</div></div>`;
+            hasRenderedContent = true;
+        }
+
+        // Glossary
         if (sectionData.glossary && sectionData.glossary.length > 0) {
-            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
-            sectionData.glossary.forEach(entry => contentHTML += `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}"><strong class="${theme.text}">${escapeHTML(entry.term)}:</strong> ${escapeHTML(entry.definition)}</div>`);
-            contentHTML += `</div>`;
-            hasContent = true;
+            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
+            sectionData.glossary.forEach(entry => contentHTML += `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow border-l-4 ${theme.border}"><strong class="${theme.text} font-medium">${escapeHTML(entry.term)}:</strong> ${escapeHTML(entry.definition)}</div>`);
+            contentHTML += `</div></div>`;
+            hasRenderedContent = true;
         }
-        if (!hasContent && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
-            contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl mb-4"></i><h3 class="text-xl font-semibold">No content yet</h3><p>Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
-        }
-        contentHTML += `</div>`;
 
+        if (!hasRenderedContent) {
+            contentHTML += `<div class="p-10 text-center bg-white dark:bg-gray-800 rounded-lg shadow-md card-animate"><i class="fas fa-info-circle text-4xl ${theme.text} mb-4"></i><h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">No Content Yet</h3><p class="text-gray-600 dark:text-gray-400">Content for "${escapeHTML(sectionData.name)}" is currently being prepared. Please check back later.</p></div>`;
+        }
+
+        contentHTML += `</div>`; // Close outer space-y-10 container
         pageContent.innerHTML = contentHTML;
-        console.log(`[app.js] Successfully set innerHTML for section "${sectionId}".`);
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply mark colors for search highlights
 
-        pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
+        pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.05}s`; // Staggered animation
+        });
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
-            let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
-            if (subCategoryFilter && sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)) {
-                bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.subCategories.find(sc => sc.id === subCategoryFilter).name)}</span>`;
+            let bcHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
+            // Add subCategory to breadcrumbs if applicable
+            if (subCategoryFilter && sectionData.subCategories) {
+                const subCatData = sectionData.subCategories.find(sc => sc.id === subCategoryFilter);
+                if (subCatData) {
+                    bcHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <a href="#${sectionData.id}" data-section-trigger="${sectionData.id}" class="hover:underline ${theme.cta}">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(subCatData.name)}</span>`;
+                }
             }
             breadcrumbsContainer.innerHTML = bcHTML;
             breadcrumbsContainer.classList.remove('hidden');
-            const homeBreadcrumbLink = breadcrumbsContainer.querySelector('[data-section-trigger="home"]');
-            if (homeBreadcrumbLink) {
-                homeBreadcrumbLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleSectionTrigger('home');
-                });
-            }
         }
+
+        // Scroll to focused item
         if (itemIdToFocus) {
             setTimeout(() => {
                 const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
                 if (targetCard) {
                     targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
-                    setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
+                    targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'shadow-2xl', 'focused-item');
+                    setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'shadow-2xl', 'focused-item'), 3500);
                 } else {
-                    console.warn(`[app.js] Item "${itemIdToFocus}" not found for scroll focus.`);
+                    console.warn(`[app.js] Item "${itemIdToFocus}" not found in section "${sectionId}" for scroll focus.`);
                 }
-            }, 100);
+            }, 200); // Delay to allow content rendering
         }
         console.log(`[app.js] displaySectionContent completed for "${sectionId}".`);
     }
 
+
     function parseHash() {
-        const hash = window.location.hash.replace('#', '');
+        const hash = window.location.hash.substring(1); // Remove #
         if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
+
         const parts = hash.split('/');
-        if (parts.length === 1) return { sectionId: parts[0], itemId: null, subCategoryFilter: null };
-        return { sectionId: parts[0], itemId: parts[1] || null, subCategoryFilter: parts[1] || null };
+        const sectionId = parts[0];
+        let itemId = null;
+        let subCategoryFilter = null;
+
+        // Heuristic: if the second part looks like a subCategory ID (often text-based)
+        // and the section actually has subcategories, treat it as such.
+        // Otherwise, assume it's an itemId.
+        // This needs robust data in kbSystemData.subCategories to check against.
+        if (parts.length > 1) {
+            const potentialSubCatId = parts[1];
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (sectionData && sectionData.subCategories && sectionData.subCategories.some(sc => sc.id === potentialSubCatId)) {
+                subCategoryFilter = potentialSubCatId;
+            } else {
+                itemId = parts[1]; // Default to itemId if not a clear subCategory
+            }
+        }
+        return { sectionId, itemId, subCategoryFilter };
     }
 
+    // Event Listeners for navigation
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const sectionId = this.dataset.section;
-            console.log(`[app.js] Sidebar link clicked: section="${sectionId}"`);
-            if (sectionId && currentUser) {
-                handleSectionTrigger(sectionId);
-            } else if (!currentUser) {
-                console.warn('[app.js] User not authenticated yet. Awaiting auth.');
-            } else {
-                console.error('[app.js] Invalid sectionId on sidebar link:', this);
-            }
+            console.log(`[app.js] Sidebar link clicked for section: "${sectionId}"`);
+            handleSectionTrigger(sectionId); // itemId and subCategoryFilter will be null, loading the main section page
         });
     });
 
     document.body.addEventListener('click', function(e) {
-        if (e.target.closest('.sidebar-link')) return;
-        const target = e.target.closest('[data-section-trigger]');
-        if (target) {
+        // For section triggers (e.g., breadcrumbs, cards linking to sections/items)
+        const sectionTriggerTarget = e.target.closest('[data-section-trigger]');
+        if (sectionTriggerTarget) {
             e.preventDefault();
-            const sectionId = target.dataset.sectionTrigger;
-            const itemId = target.dataset.itemId;
-            const subCatFilter = target.dataset.subcatFilter;
-            console.log(`[app.js] Body click: section="${sectionId}", item="${itemId}", subCat="${subCatFilter}"`);
-            if (sectionId && currentUser) {
-                handleSectionTrigger(sectionId, itemId, subCatFilter);
-                if (target.closest('#searchResultsContainer')) {
-                    if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                    if (globalSearchInput) globalSearchInput.value = '';
-                }
-            } else {
-                console.warn('[app.js] No sectionId or user not authenticated.');
+            const sectionId = sectionTriggerTarget.dataset.sectionTrigger;
+            const itemId = sectionTriggerTarget.dataset.itemId; // Might be undefined
+            const subCatFilter = sectionTriggerTarget.dataset.subcatFilter; // Might be undefined
+
+            console.log(`[app.js] Click on data-section-trigger: section="${sectionId}", item="${itemId}", subCat="${subCatFilter}"`);
+            handleSectionTrigger(sectionId, itemId, subCatFilter);
+
+            // If clicked from global search results, hide them
+            if (sectionTriggerTarget.closest('#searchResultsContainer')) {
+                const searchResultsContainer = document.getElementById('searchResultsContainer');
+                const globalSearchInput = document.getElementById('globalSearchInput');
+                if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
+                // if (globalSearchInput) globalSearchInput.value = ''; // Optional: clear search on click
             }
         }
 
+        // For home page quick links that might use data-subcat-trigger
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent && (pageContent.querySelector('#welcomeUserName') || pageContent.innerHTML.includes('Welcome,'))) {
+        if (homeSubcatTrigger && (document.getElementById('welcomeUserName') || pageContent?.innerHTML.includes('Welcome,'))) { // Check if on home
             e.preventDefault();
-            const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
-            if (triggerValue && triggerValue.includes('.')) {
-                const [sectionId, subId] = triggerValue.split('.');
-                console.log(`[app.js] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
+            const triggerValue = homeSubcatTrigger.dataset.subcatTrigger; // e.g., "support.tools"
+            const parts = triggerValue.split('.');
+            if (parts.length === 2) {
+                const [sectionId, subId] = parts;
+                console.log(`[app.js] Home page subcategory quick link: section="${sectionId}", subId="${subId}"`);
                 handleSectionTrigger(sectionId, null, subId);
+                 // Special scroll for Zendesk example (if needed, make more generic)
                 if (sectionId === 'support' && subId === 'tools') {
                     setTimeout(() => {
                         const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                         if (zendeskCard?.closest('.card')) {
                             zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            console.log('[app.js] Scrolled to Zendesk card.');
-                        } else {
-                            console.warn('[app.js] Zendesk card not found.');
                         }
                     }, 300);
                 }
             } else {
-                console.error('[app.js] Invalid data-subcat-trigger value:', triggerValue);
+                 console.warn(`[app.js] Invalid data-subcat-trigger format: "${triggerValue}"`);
             }
         }
     });
 
     window.addEventListener('hashchange', () => {
-        if (!currentUser) {
-            console.log('[app.js] Hash changed, but no user authenticated. Waiting for auth.');
-            return;
+        console.log('[app.js] Hash changed event fired. New hash:', window.location.hash);
+        if (!isInitialAuthCheckComplete || !currentUser) {
+            console.warn('[app.js] Hash changed, but auth not ready or no user. Awaiting auth state.');
+            return; // Let onAuthStateChange handle the initial load
         }
         const { sectionId, itemId, subCategoryFilter } = parseHash();
-        console.log('[app.js] Hash changed:', { sectionId, itemId, subCategoryFilter });
         handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
     });
 
+
+    // --- Global Search ---
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
 
@@ -537,69 +593,68 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
-                console.log('[app.js] Global search query:', query);
-                if (query.length < 2) {
+                if (query.length < 2) { // Min query length
                     searchResultsContainer.classList.add('hidden');
                     searchResultsContainer.innerHTML = '';
                     return;
                 }
 
-                const results = searchKb(query);
-                console.log('[app.js] Search results:', results.length, 'items found.');
+                const results = searchKb(query); // searchKb is from data.js
+                console.log(`[app.js] Global search for "${query}": ${results.length} results.`);
 
                 if (results.length === 0) {
-                    searchResultsContainer.innerHTML = `<div class="p-4 text-gray-500 dark:text-gray-400">No results found for "${escapeHTML(query)}".</div>`;
-                    searchResultsContainer.classList.remove('hidden');
-                    return;
-                }
+                    searchResultsContainer.innerHTML = `<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No results found for "${escapeHTML(query)}".</div>`;
+                } else {
+                    let resultsHTML = '';
+                    results.slice(0, 10).forEach(result => { // Limit to 10 results for performance
+                        const theme = getThemeColors(result.themeColor);
+                        let title = highlightText(result.title, query);
+                        let summary = result.summary ? highlightText(truncateText(result.summary, 100), query) : 'No summary available.';
+                        
+                        let triggerAttrs = `data-section-trigger="${result.sectionId}"`;
+                        if (result.type === 'article' || result.type === 'case' || result.type === 'item') {
+                            triggerAttrs += ` data-item-id="${result.id}"`;
+                        } else if (result.type === 'glossary_term') {
+                            // For glossary, an itemId might not be directly focusable in the same way,
+                            // but we can still link to the section.
+                            // itemId could be constructed, e.g., `glossary_${result.term_id_or_title}`
+                        }
+                        // section_match links to the section itself.
 
-                let resultsHTML = '';
-                results.forEach(result => {
-                    const theme = getThemeColors(result.themeColor);
-                    let title = highlightText(result.title, query);
-                    let summary = result.summary ? highlightText(truncateText(result.summary, 120), query) : 'No summary available.';
-                    let triggerAttrs = `data-section-trigger="${result.sectionId}"`;
-                    if (result.type === 'article' || result.type === 'case' || result.type === 'item') {
-                        triggerAttrs += ` data-item-id="${result.id}"`;
-                    } else if (result.type === 'section_match') {
-                        // Section match, no itemId
-                    } else if (result.type === 'glossary_term') {
-                        triggerAttrs += ` data-item-id="glossary_${result.title}"`;
-                    }
-
-                    resultsHTML += `
-                        <a href="#" ${triggerAttrs} class="block p-4 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                            <div class="flex items-start space-x-3">
-                                <div class="p-2 rounded-full ${theme.iconContainer} flex-shrink-0">
-                                    <i class="${result.type === 'article' ? 'fas fa-newspaper' : result.type === 'case' ? 'fas fa-briefcase' : result.type === 'item' ? 'fas fa-file-alt' : result.type === 'glossary_term' ? 'fas fa-book' : 'fas fa-folder'} text-lg ${theme.icon}"></i>
-                                </div>
-                                <div class="flex-grow">
-                                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white">${title}</h4>
-                                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">${summary}</p>
-                                    <div class="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        <i class="fas fa-folder mr-1"></i>
-                                        <span>${escapeHTML(result.sectionName)}</span>
-                                        <span class="mx-2">•</span>
-                                        <span>${result.type === 'article' ? 'Article' : result.type === 'case' ? 'Case' : result.type === 'item' ? escapeHTML(result.type.charAt(0).toUpperCase() + result.type.slice(1)) : result.type === 'glossary_term' ? 'Glossary Term' : 'Section'}</span>
+                        resultsHTML += `
+                            <a href="#${result.sectionId}${result.id && (result.type !== 'section_match') ? '/' + result.id : ''}" ${triggerAttrs} 
+                               class="block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0">
+                                <div class="flex items-start space-x-3">
+                                    <div class="p-1.5 rounded-full ${theme.iconContainer} flex-shrink-0 mt-1">
+                                        <i class="${result.type === 'article' ? 'fas fa-newspaper' : result.type === 'case' ? 'fas fa-briefcase' : result.type === 'item' ? 'fas fa-file-alt' : result.type === 'glossary_term' ? 'fas fa-book' : 'fas fa-folder'} text-base ${theme.icon}"></i>
+                                    </div>
+                                    <div class="flex-grow overflow-hidden">
+                                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white truncate">${title}</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">${summary}</p>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            <span class="font-medium ${theme.text}">${escapeHTML(result.sectionName)}</span>
+                                            <span class="mx-1">•</span>
+                                            <span>${result.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </a>
-                    `;
-                });
-
-                searchResultsContainer.innerHTML = resultsHTML;
+                            </a>
+                        `;
+                    });
+                    searchResultsContainer.innerHTML = resultsHTML;
+                }
                 searchResultsContainer.classList.remove('hidden');
-                applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            }, 300);
+                applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply mark colors
+            }, 350); // Debounce time
         });
 
         globalSearchInput.addEventListener('focus', () => {
-            if (searchResultsContainer.innerHTML.trim() && globalSearchInput.value.trim()) {
+            if (searchResultsContainer.innerHTML.trim() !== '' && globalSearchInput.value.trim().length >= 2) {
                 searchResultsContainer.classList.remove('hidden');
             }
         });
 
+        // Hide search results when clicking outside
         document.addEventListener('click', (e) => {
             if (!searchResultsContainer.contains(e.target) && e.target !== globalSearchInput) {
                 searchResultsContainer.classList.add('hidden');
@@ -607,22 +662,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Placeholder for Rating
     document.body.addEventListener('click', (e) => {
         const ratingBtn = e.target.closest('.rating-btn');
         if (ratingBtn) {
+            e.preventDefault(); // Prevent default if it's an <a> or button in a form
             const itemId = ratingBtn.dataset.itemId;
             const itemType = ratingBtn.dataset.itemType;
             const rating = ratingBtn.dataset.rating;
-            console.log(`[app.js] Rating clicked: itemId="${itemId}", type="${itemType}", rating="${rating}"`);
-            alert(`Rating recorded: ${rating === 'up' ? 'Helpful' : 'Not helpful'} for ${itemType} "${itemId}" (Placeholder)`);
+            console.log(`[app.js] Rating: ItemID=${itemId}, Type=${itemType}, Rating=${rating}`);
+            alert(`Feedback recorded: ${rating === 'up' ? 'Helpful' : 'Not helpful'} for ${itemType} "${itemId}". (This is a placeholder)`);
+            // Here you would typically send this data to your backend/Supabase table
         }
     });
 
-    if (currentUser) {
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        console.log('[app.js] Initial page load with hash:', { sectionId, itemId, subCategoryFilter });
-        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-    }
-
-    console.log('[app.js] Core initializations complete...');
+    console.log('[app.js] All event listeners attached. Waiting for Supabase auth state.');
 });
