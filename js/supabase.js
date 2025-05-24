@@ -1,7 +1,11 @@
 (function() {
-    // Check if the CDN import is available (for debugging purposes)
-    if (typeof createClient === 'undefined') {
-        console.error("Supabase SDK not loaded from CDN. Ensure the import works or use a local file.");
+    // Check if the CDN import's createClient function is available
+    if (typeof supabase === 'undefined' || typeof supabase.createClient === 'undefined') {
+        console.error("Supabase SDK (supabase.createClient) not loaded from CDN. Ensure the import works.");
+        // If createClient was expected to be global directly (less common for Supabase v2 CDN)
+        if (typeof createClient === 'undefined') {
+             console.error("Global createClient function also not found.");
+        }
         return;
     }
 
@@ -14,5 +18,7 @@
     }
 
     // Create the Supabase client and attach it to the window object
-    window.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // The CDN loads a 'supabase' object which has the 'createClient' method.
+    window.supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey); // Changed to window.supabaseClient
+    console.log("[supabase.js] Supabase client initialized and attached to window.supabaseClient");
 })();
