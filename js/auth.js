@@ -1,129 +1,185 @@
 // js/auth.js
+import { supabase } from './supabase.js'; // تأكد أن المسار صحيح
+
 const Auth = {
-    _users: JSON.parse(localStorage.getItem('kb_users')) || [
-        // Pre-seed a default user for easier testing if desired, ensure it uses the required domain
-        // { fullName: "Test User", email: "test@thecehfz.com", password: "hashed_password" }
-    ],
+    signup: async function(fullName, email, password) {
+        const normalizedEmail = email.trim().toLowerCase();
 
-    _saveUsers: function() {
-        localStorage.setItem('kb_users', JSON.stringify(this._users));
-    },
-
-    signup: function(fullName, email, password) {
-        // Email is already trimmed and lowercased by the calling script (signup.html)
-        const normalizedEmail = email; 
-        
         if (!fullName || !password) {
             alert('Full name and password are required for signup.');
             console.warn('Signup attempt with missing full name or password.');
-            return false;
+            return { user: null, error: { message: 'Full name and password are required.' }};
         }
 
-        const expectedDomain = '@thecehfz.com'; // Domain check is case-insensitive typically
-        if (!normalizedEmail.toLowerCase().endsWith(expectedDomain.toLowerCase())) { 
-             alert(`Please use a valid work email ending with ${expectedDomain}.`);
-             console.warn(`Signup attempt with invalid domain: ${normalizedEmail}`);
-             return false;
-        }
-        
-        if (this._users.find(user => user.email.toLowerCase() === normalizedEmail.toLowerCase())) {
-            alert('User with this email already exists. Please login.');
-            console.warn(`Signup attempt for existing email: ${normalizedEmail}`);
-            window.location.href = 'login.html';
-            return false;
+        const expectedDomain = '@thecehfz.com';
+        if (!normalizedEmail.endsWith(expectedDomain.toLowerCase())) {
+            alert(`Please use a valid work email ending with ${expectedDomain}.`);
+            console.warn(`Signup attempt with invalid domain: ${normalizedEmail}`);
+            return { user: null, error: { message: `Invalid email domain. Must be ${expectedDomain}.` }};
         }
 
-        // Simple "hashing" for demonstration. Use a proper library (e.g., bcrypt) in a real app.
-        const hashedPassword = 'hashed_' + password; 
-
-        const newUser = { fullName: fullName.trim(), email: normalizedEmail, password: hashedPassword };
-        this._users.push(newUser);
-        this._saveUsers();
-
-        alert('Signup successful! Please login.');
-        console.log('User signed up:', { fullName: newUser.fullName, email: newUser.email });
-        window.location.href = 'login.html';
-        return true;
-    },
-
-    login: function(email, password, rememberMe = false) {
-        const normalizedEmail = email.trim().toLowerCase();
-        const user = this._users.find(u => u.email.toLowerCase() === normalizedEmail);
-
-        // Simple "hashing" check.
-        if (user && user.password === 'hashed_' + password) {
-            console.log('Login successful for:', user.email);
-            const sessionDuration = rememberMe 
-                                    ? (7 * 24 * 60 * 60 * 1000) // 7 days
-                                    : (1 * 60 * 60 * 1000);   // 1 hour (adjust as needed)
-            const sessionData = {
-                token: 'fake-session-token-' + Date.now() + Math.random().toString(36).substring(2),
-                email: user.email,
-                fullName: user.fullName,
-                expires: Date.now() + sessionDuration 
-            };
-
-            if (rememberMe) {
-                localStorage.setItem('userSession', JSON.stringify(sessionData));
-                sessionStorage.removeItem('userSession'); // Clear any existing session storage
-            } else {
-                sessionStorage.setItem('userSession', JSON.stringify(sessionData));
-                localStorage.removeItem('userSession'); // Clear any existing local storage
+        // Supabase handles checking if user exists automatically during signUp
+        // The 'data' object in options will be stored in raw_user_meta_data in auth.users
+        // Our trigger will then use this to populate the 'name' column in public.users
+        const { data, error } = await supabase.auth.signUp({
+            email: normalizedEmail,
+            password: password,
+            options: {
+                data: {
+                    full_name: fullName.trim()
+                }
             }
-            window.location.href = 'index.html'; // Redirect to index, which then goes to dashboard
-        } else {
-            alert('Invalid email or password.');
-            console.warn('Login failed for:', normalizedEmail);
+        });
+
+        if (error) {
+            alert(`Signup failed: ${error.message}`);
+            console.error('Signup error:', error);
+            if (error.message.includes("User already registered")) {
+                 window.location.href = 'login.html'; // Redirect if user exists
+            }
+            return { user: null, error };
         }
+
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            // This case can happen if email confirmation is required and user is already "soft" registered
+            // but hasn't confirmed. Supabase might return a user object but indicate action is needed.
+            alert('A user with this email may already exist or require confirmation. Please try logging in or check your email.');
+            console.log('Signup response indicates possible existing user or confirmation needed:', data);
+             window.location.href = 'login.html';
+            return { user: data.user, error: { message: 'User may exist or require confirmation.'} };
+        }
+
+        // If email confirmation is enabled in Supabase Auth settings,
+        // data.user will be non-null, but data.session will be null.
+        if (data.user && !data.session) {
+             alert('Signup successful! Please check your email to confirm your account before logging in.');
+             console.log('User signed up, confirmation email sent:', data.user);
+             // No automatic login, user needs to confirm first.
+             // Redirect to login or a page saying "check your email".
+             window.location.href = 'login.html'; // Or a specific "check email" page
+             return { user: data.user, error: null };
+        }
+        
+        // If email confirmation is NOT required, or for some providers, session might be created.
+        // However, standard Supabase email/password signup often requires confirmation.
+        // The trigger `handle_new_user` will create the entry in `public.users`.
+        alert('Signup successful! Please login.'); // Or redirect to login
+        console.log('User signed up:', data.user);
+        window.location.href = 'login.html';
+        return { user: data.user, error: null };
     },
 
-    logout: function() {
-        localStorage.removeItem('userSession');
-        sessionStorage.removeItem('userSession');
-        console.log('User logged out. Redirecting to login.html');
+    login: async function(email, password) { // rememberMe is not directly used by Supabase client like this
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password: password,
+        });
+
+        if (error) {
+            alert(`Login failed: ${error.message}`);
+            console.error('Login error:', error);
+            return { user: null, session: null, error };
+        }
+
+        if (data.user && data.session) {
+            console.log('Login successful for:', data.user.email);
+            // Supabase client automatically handles session persistence (localStorage by default)
+            // No need for manual sessionData or rememberMe logic here for basic setup
+            window.location.href = 'index.html'; // Redirect to index, which should then go to dashboard
+            return { user: data.user, session: data.session, error: null };
+        }
+        // Should not happen if no error, but as a fallback
+        alert('Login failed. Please try again.');
+        return { user: null, session: null, error: { message: "Unknown login error."}};
+    },
+
+    logout: async function() {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Logout error:', error);
+            alert(`Logout failed: ${error.message}`);
+        } else {
+            console.log('User logged out. Redirecting to login.html');
+        }
+        // Always redirect to login page after attempting logout
         window.location.href = 'login.html';
     },
 
-    getCurrentUser: function() {
-        const localSession = localStorage.getItem('userSession');
-        const sessionSession = sessionStorage.getItem('userSession');
-        
-        const sessionString = localSession || sessionSession;
-
-        if (!sessionString) {
+    getCurrentUser: async function() {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            console.error("Error getting session:", sessionError.message);
+            return null;
+        }
+        if (!session) {
             // console.log('No active user session found.');
             return null;
         }
 
-        try {
-            const sessionData = JSON.parse(sessionString);
-            if (Date.now() > sessionData.expires) {
-                console.log('User session expired. Logging out.');
-                this.logout(); // This will cause a redirect
-                return null;   // Return null to indicate logged out state
-            }
-            // console.log('Active user session found for:', sessionData.email);
-            return { email: sessionData.email, fullName: sessionData.fullName };
-        } catch (error) {
-            console.error('Error parsing user session data:', error);
-            // Corrupted session data, treat as logged out
-            this.logout();
+        // Session exists, let's get the user object associated with it
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError) {
+            console.error('Error fetching user:', userError.message);
+            // Potentially invalid session, treat as logged out
+            // await this.logout(); // Could cause redirect loop if called from protectPage
             return null;
+        }
+        if (user) {
+             // console.log('Active user session found for:', user.email);
+             // The full_name should be in user_metadata if the trigger and signup options are correct
+            return {
+                id: user.id,
+                email: user.email,
+                fullName: user.user_metadata?.full_name || "User", // Fallback if not set
+                // You can add other fields from user object if needed
+            };
+        }
+        return null;
+    },
+
+    isAuthenticated: async function() {
+        const user = await this.getCurrentUser();
+        return user !== null;
+    },
+
+    // This function is intended for pages that require authentication
+    // Call it at the beginning of scripts for protected pages (e.g., dashboard.html, index.html if it's protected)
+    protectPage: async function() {
+        console.log('[auth.js] protectPage called. Checking authentication status.');
+        if (!(await this.isAuthenticated())) {
+            console.log('[auth.js] User not authenticated. Redirecting to login.');
+            window.location.href = 'login.html'; // Redirect if not authenticated
+        } else {
+            console.log('[auth.js] User is authenticated.');
         }
     },
 
-    isAuthenticated: function() {
-        return this.getCurrentUser() !== null;
+    // Function to check auth status and redirect from login/signup if already logged in
+    redirectIfAuthenticated: async function(targetPath = 'dashboard.html') {
+        if (await this.isAuthenticated()) {
+            console.log(`[auth.js] User already authenticated, redirecting to ${targetPath}.`);
+            window.location.href = targetPath;
+        }
     }
 };
 
-// This function is called by app.js to protect pages
-function protectPage() {
-    console.log('[auth.js] protectPage called. Checking authentication status.');
-    if (!Auth.isAuthenticated()) {
-        console.log('[auth.js] User not authenticated. Calling Auth.logout().');
-        Auth.logout(); // Auth.logout() handles the redirect to login.html
-    } else {
-        console.log('[auth.js] User is authenticated.');
-    }
-}
+// Make Auth globally available if you are not using modules in your HTML script tags for event handlers
+// If you use <script type="module"> for the inline scripts in HTML, this is not needed.
+window.Auth = Auth;
+
+// Example: If you have an index.html that should redirect to dashboard or login:
+//
+// On index.html:
+// <script type="module">
+//   import { Auth } from './js/auth.js'; // Adjust path
+//   (async () => {
+//     if (await Auth.isAuthenticated()) {
+//       window.location.href = 'dashboard.html';
+//     } else {
+//       window.location.href = 'login.html';
+//     }
+//   })();
+// </script>
