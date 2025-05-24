@@ -256,14 +256,14 @@
             </button>
         </form>
         <div class="links-footer">
-            Don't have an account? <a href="/signup.html">Sign up</a>
+            Don't have an account? <a href="/infini-base/signup.html">Sign up</a>
         </div>
     </div>
 
-    <!-- 1. Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 1. Supabase CDN: Using specific Supabase version -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
     <!-- 2. Your Supabase client initializer -->
-    <script src="/js/supabase.js"></script>
+    <script src="/infini-base/js/supabase.js"></script>
     <!-- 3. Page specific logic -->
     <script>
         let supabase; // Will be assigned window.supabaseClient
@@ -280,7 +280,7 @@
         const passwordErrorEl = document.getElementById('passwordError');
         const loginGeneralMessageEl = document.getElementById('loginGeneralMessage');
 
-        const REMEMBERED_EMAIL_KEY_INFINIBASE = 'infiniBaseRememberedEmail';
+        const REMEMBERED_EMAIL_KEY_INFINIBASE = 'infiniBaseRememberedEmail'; 
 
         function displayFieldError(element, message) {
             if (element) {
@@ -336,11 +336,10 @@
             supabase = window.supabaseClient; // Assign to local supabase variable
             console.log('[login.html] Supabase client (window.supabaseClient) ready.');
 
-            // Check if user is already logged in
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('[login.html] User already authenticated, redirecting to dashboard.');
-                    window.location.replace('/dashboard.html');
+                    window.location.replace('/infini-base/dashboard.html');
                 }
             });
 
@@ -367,8 +366,10 @@
                     passwordInput.focus();
                 }
             }
-
+            
             const urlParams = new URLSearchParams(window.location.search);
+            const currentPathWithoutQuery = window.location.pathname; // e.g., /infini-base/login.html
+            
             if (urlParams.get('signedup') === 'true') {
                 displayGeneralMessage("Signup successful! Please log in with your new account.", "success");
                 const signedUpEmail = urlParams.get('email');
@@ -376,14 +377,14 @@
                      emailInput.value = signedUpEmail;
                      if (passwordInput) passwordInput.focus();
                 }
-                window.history.replaceState({}, document.title, window.location.pathname);
+                window.history.replaceState({}, document.title, currentPathWithoutQuery);
             } else if (urlParams.get('needsconfirmation') === 'true') {
                 displayGeneralMessage("Account created! Please check your email to confirm your account, then log in.", "info");
                 const signedUpEmail = urlParams.get('email');
                  if (signedUpEmail && emailInput && !emailInput.value) {
                     emailInput.value = signedUpEmail;
                 }
-                window.history.replaceState({}, document.title, window.location.pathname);
+                window.history.replaceState({}, document.title, currentPathWithoutQuery);
             }
 
 
@@ -430,18 +431,17 @@
                         });
 
                         if (error) {
-                            throw error; // Let catch block handle it
+                            throw error;
                         }
 
                         if (data.user && data.session) {
                             console.log('Login successful for:', data.user.email);
                             displayGeneralMessage('Login successful! Redirecting to dashboard...', 'success');
                             setTimeout(() => {
-                                window.location.replace('/dashboard.html'); 
+                                window.location.replace('/infini-base/dashboard.html'); 
                             }, 1500);
                         } else {
-                             // This case might occur if there's an issue but no explicit error object (e.g. MFA required)
-                            throw new Error('Login successful but no user session data returned. Multi-Factor Authentication might be required or other issue.');
+                            throw new Error('Login successful but no user session data returned.');
                         }
                     } catch (error) {
                         console.error('Login error:', error);
@@ -450,18 +450,17 @@
                             if (error.message.toLowerCase().includes('invalid login credentials')) {
                                 errorMessage = 'Incorrect email or password.';
                             } else if (error.message.toLowerCase().includes('email not confirmed')) {
-                                errorMessage = 'Email not confirmed. Please check your inbox for a confirmation link.';
-                            } else if (error.status === 429) {
+                                errorMessage = 'Email not confirmed. Please check your inbox.';
+                            } else if (error.status === 429) { // Supabase often uses status for rate limiting
                                 errorMessage = "Too many login attempts. Please try again later.";
                             } else {
                                 errorMessage = `Login error: ${error.message}`;
                             }
                         }
                         displayGeneralMessage(errorMessage, "error");
-                        setButtonLoading(false); // Ensure button is re-enabled on error
+                        setButtonLoading(false); // Re-enable button on error if not redirecting
                     } 
-                    // Removed finally block that re-enabled button, as redirect or error should handle it.
-                    // Re-add specific condition for re-enabling if not redirecting.
+                    // Ensure button is re-enabled if not redirecting
                     if (!loginGeneralMessageEl.textContent.includes("Redirecting to dashboard...")) {
                          setButtonLoading(false);
                     }
@@ -481,18 +480,18 @@
                         return;
                     }
                     
-                    setButtonLoading(true); // Disable login button during this process
+                    setButtonLoading(true); 
                     displayGeneralMessage('Sending reset instructions...', 'info');
 
                     try {
                         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                            // redirectTo: window.location.origin + '/reset-password.html' // Optional: if you have a custom reset page
+                             //redirectTo: window.location.origin + '/infini-base/reset-password.html' // Example if you have one
                         });
                         if (error) throw error;
                         displayGeneralMessage('Password reset instructions sent to your email (if your account exists). Please check your inbox and spam folder.', 'success');
                     } catch (error) {
                         console.error('Password reset error:', error);
-                        displayGeneralMessage('If your email is registered, you will receive reset instructions. Please also check your spam folder.', 'success'); // Generic for privacy
+                        displayGeneralMessage('If your email is registered, you will receive reset instructions. Please also check your spam folder.', 'success');
                     } finally {
                         setButtonLoading(false);
                     }
@@ -501,7 +500,7 @@
         }
         
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initializePage, 200); // Delay to ensure supabase.js initializes window.supabaseClient
+            setTimeout(initializePage, 200); 
         });
 
     </script>
