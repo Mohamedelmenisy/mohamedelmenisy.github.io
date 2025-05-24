@@ -1,8 +1,3 @@
-// js/data.js
-
-// This will be expanded significantly.
-// For now, it's just a placeholder to show where data will live.
-
 const kbSystemData = {
     meta: {
         version: "0.1.2", // Updated version to reflect changes
@@ -220,10 +215,12 @@ function loadSectionContent(sectionId) {
 }
 
 function searchKb(query) {
+    if (!kbSystemData || !kbSystemData.sections) {
+        console.error('[data.js] kbSystemData or sections missing.');
+        return [];
+    }
     const lowerQuery = query.toLowerCase();
     const results = [];
-
-    if (!kbSystemData || !kbSystemData.sections) return results;
 
     kbSystemData.sections.forEach(section => {
         if (section.articles) {
@@ -236,7 +233,7 @@ function searchKb(query) {
                 }
             });
         }
-        if (section.cases) { // ADDED search for cases
+        if (section.cases) {
             section.cases.forEach(caseItem => {
                 if (caseItem.title.toLowerCase().includes(lowerQuery) ||
                     (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
