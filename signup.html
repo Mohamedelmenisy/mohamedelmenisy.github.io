@@ -11,48 +11,60 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f4f4f9;
+            background-color: #f5f7fa;
             margin: 0;
         }
         .container {
             max-width: 400px;
             width: 100%;
-            padding: 20px;
+            padding: 30px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
         .logo {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #333;
             margin-bottom: 20px;
         }
         h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
+            font-size: 22px;
+            margin-bottom: 10px;
             color: #333;
         }
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 25px;
+        }
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             text-align: left;
         }
         label {
             display: block;
             font-size: 14px;
-            color: #555;
+            color: #333;
             margin-bottom: 5px;
+            font-weight: 500;
         }
         input[type="text"],
         input[type="email"],
         input[type="password"] {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 5px;
             font-size: 14px;
             box-sizing: border-box;
+            background-color: #f7fafc;
+        }
+        input[type="text"]::placeholder,
+        input[type="email"]::placeholder,
+        input[type="password"]::placeholder {
+            color: #90caf9;
         }
         input[type="checkbox"] {
             margin-right: 5px;
@@ -61,7 +73,8 @@
             font-size: 14px;
             margin: 10px 0;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: 5px;
+            text-align: center;
         }
         .error {
             color: #d32f2f;
@@ -71,19 +84,47 @@
             color: #2e7d32;
             background-color: #e8f5e9;
         }
+        small {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+        .terms {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .terms a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+        .terms a:hover {
+            text-decoration: underline;
+        }
         button {
             width: 100%;
             padding: 12px;
             background-color: #1976d2;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
             margin-top: 10px;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #1565c0;
+        }
+        button:disabled {
+            background-color: #90caf9;
+            cursor: not-allowed;
+        }
+        .confidential {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
         }
         .login-link {
             margin-top: 15px;
@@ -102,35 +143,35 @@
     <div class="container">
         <div class="logo">InfiniBase</div>
         <h2>Create Your Account</h2>
-        <p>Join InfiniBase to access the knowledge base.</p>
-        <form id="signup-form">
+        <p class="subtitle">Join InfiniBase to access the knowledge base.</p>
+        <form id="signup-form" method="post">
             <div class="form-group">
                 <label for="full-name">Full Name</label>
-                <input type="text" id="full-name" name="full-name" required>
+                <input type="text" id="full-name" name="full-name" placeholder="Full Name" required>
             </div>
             <div class="form-group">
                 <label for="email">Work Email</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email" placeholder="Work Email" required>
                 <small>Must be a @thechefz.co email address.</small>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" placeholder="Password" required>
             </div>
             <div class="form-group">
                 <label for="confirm-password">Confirm Password</label>
-                <input type="password" id="confirm-password" name="confirm-password" required>
+                <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm Password" required>
             </div>
-            <div class="form-group">
+            <div class="terms">
                 <label>
                     <input type="checkbox" id="terms" name="terms" required>
                     I agree to the <a href="#terms" target="_blank">Terms of Service</a> and <a href="#privacy" target="_blank">Privacy Policy</a>
                 </label>
             </div>
             <div id="message" class="error" style="display: none;"></div>
-            <button type="submit">Create Account</button>
+            <button type="submit" id="submit-btn">Create Account</button>
         </form>
-        <p>Your information is kept confidential and secure.</p>
+        <p class="confidential">Your information is kept confidential and secure.</p>
         <div class="login-link">
             Already have an account? <a href="/login.html">Log in</a>
         </div>
@@ -145,6 +186,7 @@
 
         const form = document.getElementById('signup-form');
         const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submit-btn');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -156,8 +198,20 @@
             const terms = document.getElementById('terms').checked;
 
             // Client-side validation
+            if (!fullName) {
+                showMessage('Full name is required.', 'error');
+                return;
+            }
+            if (!email) {
+                showMessage('Email is required.', 'error');
+                return;
+            }
             if (!email.endsWith('@thechefz.co')) {
                 showMessage('Email must be a @thechefz.co address.', 'error');
+                return;
+            }
+            if (!password || password.length < 6) {
+                showMessage('Password must be at least 6 characters long.', 'error');
                 return;
             }
             if (password !== confirmPassword) {
@@ -168,6 +222,10 @@
                 showMessage('You must agree to the Terms of Service and Privacy Policy.', 'error');
                 return;
             }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
 
             try {
                 const { data, error } = await supabase.auth.signUp({
@@ -186,7 +244,14 @@
                 form.reset();
             } catch (error) {
                 console.error('Signup Error:', error);
-                showMessage(error.message || 'An error occurred during signup.', 'error');
+                if (error.message.includes('User already registered')) {
+                    showMessage('This email is already registered. Please log in or use a different email.', 'error');
+                } else {
+                    showMessage(error.message || 'An error occurred during signup. Please try again.', 'error');
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
             }
         });
 
