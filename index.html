@@ -45,31 +45,30 @@
         <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
     </div>
 
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Your Supabase client initializer -->
     <script src="/js/supabase.js"></script>
+    <!-- 3. Page specific logic -->
     <script>
-        // Function to redirect to signup.html as a fallback
         function redirectToSignup() {
-            console.log('[index.html] Redirecting to signup.html due to fallback.');
+            console.log('[index.html] Redirecting to signup.html');
             window.location.replace('/signup.html');
         }
 
-        // Check session function
-        async function checkSession() {
+        async function checkSessionAndRedirect() {
             try {
-                if (typeof window.supabase === 'undefined') {
-                    console.error('[index.html] Supabase SDK not loaded.');
-                    redirectToSignup();
+                if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
+                    console.error('[index.html] Supabase client (window.supabaseClient) not loaded or invalid.');
+                    redirectToSignup(); // Fallback to signup if client isn't ready
                     return;
                 }
 
-                const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-                const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
 
-                const { data: { session }, error } = await supabaseClient.auth.getSession();
                 if (error) {
                     console.error('[index.html] Error checking session:', error.message);
-                    redirectToSignup();
+                    redirectToSignup(); // Fallback to signup on error
                     return;
                 }
 
@@ -78,24 +77,19 @@
                     window.location.replace('/dashboard.html');
                 } else {
                     console.log('[index.html] No user session, redirecting to signup.html');
-                    window.location.replace('/signup.html');
+                    redirectToSignup();
                 }
             } catch (e) {
                 console.error('[index.html] Exception during session check:', e.message);
-                redirectToSignup();
+                redirectToSignup(); // Fallback to signup on exception
             }
         }
 
-        // Run on DOM load with timeout to ensure Supabase loads
         document.addEventListener('DOMContentLoaded', () => {
+            // Wait a short moment for supabase.js to initialize window.supabaseClient
             setTimeout(() => {
-                if (typeof window.supabase !== 'undefined') {
-                    checkSession();
-                } else {
-                    console.error('[index.html] Supabase SDK failed to load after delay.');
-                    redirectToSignup();
-                }
-            }, 1000); // 1-second delay
+                checkSessionAndRedirect();
+            }, 200); // Adjust delay if needed, 200ms should be sufficient
         });
     </script>
 </body>
