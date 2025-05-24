@@ -1,3 +1,4 @@
+
 // js/data.js
 
 // Stores access history in memory. For persistence, localStorage or a backend would be needed.
