@@ -1,19 +1,18 @@
 // js/data.js
 
-// This will be expanded significantly.
-// For now, it's just a placeholder to show where data will live.
+// Knowledge base system data, with cases initialized empty for Supabase integration.
 
 const kbSystemData = {
     meta: {
-        version: "0.1.2", // Updated version to reflect changes
-        lastGlobalUpdate: "2023-11-28T12:00:00Z" // Updated date
+        version: "0.1.2",
+        lastGlobalUpdate: "2023-11-28T12:00:00Z"
     },
     sections: [
         {
             id: "support",
             name: "Support",
             icon: "fas fa-headset",
-            themeColor: "blue", // Added for consistency with newer styling
+            themeColor: "blue",
             description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
             articles: [
                 {
@@ -21,7 +20,7 @@ const kbSystemData = {
                     title: "How to Handle a High Priority Ticket",
                     tags: ["high priority", "escalation", "critical issue"],
                     lastUpdated: "2023-10-27",
-                    contentPath: "articles/support/sup001.html", 
+                    contentPath: "articles/support/sup001.html",
                     summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively."
                 },
                 {
@@ -41,32 +40,7 @@ const kbSystemData = {
                     summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
                 }
             ],
-            cases: [ // ADDED Case Management Data
-                {
-                    id: "case001",
-                    title: "Frequent System Disconnects - User Alpha",
-                    tags: ["connectivity", "disconnect", "user report", "alpha client"],
-                    lastUpdated: "2023-11-20",
-                    summary: "User Alpha reports frequent disconnects from the main platform. Initial investigation points to network instability.",
-                    status: "Pending Investigation",
-                    assignedTo: "Support Team B",
-                    resolutionStepsPreview: "1. Check user's local network. 2. Review server logs...",
-                    type: "case",
-                    contentPath: "articles/support/cases/case001.html" 
-                },
-                {
-                    id: "case002",
-                    title: "Payment Gateway Error - Order #12345",
-                    tags: ["payment", "gateway", "error", "critical"],
-                    lastUpdated: "2023-11-22",
-                    summary: "Order #12345 failed at payment stage. Customer unable to complete purchase. Gateway: Stripe.",
-                    status: "Escalated to Tier 2",
-                    assignedTo: "Finance Support",
-                    resolutionStepsPreview: "1. Verify error code with Stripe. 2. Check for recent gateway updates...",
-                    type: "case",
-                    contentPath: "articles/support/cases/case002.html"
-                }
-            ],
+            cases: [], // Populated from Supabase
             subCategories: [
                 { id: "cases", name: "Case Management" },
                 { id: "escalation_procedures", name: "Escalation Procedures" },
@@ -81,10 +55,10 @@ const kbSystemData = {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
-            themeColor: "teal", // Added
+            themeColor: "teal",
             description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
             articles: [
-                 {
+                {
                     id: "pc001",
                     title: "Partner Onboarding Process",
                     tags: ["onboarding", "new partner", "checklist"],
@@ -92,191 +66,227 @@ const kbSystemData = {
                     contentPath: "articles/partner_care/pc001.html",
                     summary: "Detailed checklist and steps for successfully onboarding new partners into our ecosystem."
                 }
-            ]
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "logistics",
             name: "Logistics",
             icon: "fas fa-truck",
-            themeColor: "green", // Added
+            themeColor: "green",
             description: "Documentation related to logistics operations, supply chain management, and transportation.",
-            articles: []
+            articles: [],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "customer_care",
             name: "Customer Care",
             icon: "fas fa-users",
-            themeColor: "indigo", // Added
+            themeColor: "indigo",
             description: "Guidelines and best practices for providing excellent customer care and support.",
-            articles: []
+            articles: [],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "dist_follow_up",
             name: "Distribution & Follow up",
             icon: "fas fa-people-carry",
-            themeColor: "cyan", // Added
-            description: "Procedures for product distribution and post-delivery follow-up actions.",
-            articles: []
+            themeColor: "cyan",
+            description: "Procedures for product distribution and post-delivery follow-up with customers and partners.",
+            articles: [
+                {
+                    id: "df001",
+                    title: "Post-Delivery Follow-Up Protocol",
+                    tags: ["follow-up", "distribution", "customer satisfaction"],
+                    lastUpdated: "2023-11-15",
+                    contentPath: "articles/dist_follow_up/df001.html",
+                    summary: "Guidelines for conducting follow-up after product delivery to ensure customer satisfaction."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: [
+                { term: "POD", definition: "Proof of Delivery - Documentation confirming that a shipment has been delivered to the recipient." }
+            ]
         },
         {
             id: "logistics_driver",
             name: "Logistics (Driver Complaints)",
-            icon: "fas fa-shipping-fast",
-            themeColor: "lime", // Added
-            description: "Handling driver complaints and related logistical issues.",
-            articles: []
+            icon: "fas fa-truck-loading",
+            themeColor: "red",
+            description: "Resources for handling driver-related complaints and issues in logistics operations.",
+            articles: [
+                {
+                    id: "ld001",
+                    title: "Resolving Driver Complaints",
+                    tags: ["driver", "complaints", "logistics"],
+                    lastUpdated: "2023-11-01",
+                    contentPath: "articles/logistics_driver/ld001.html",
+                    summary: "Steps to address and resolve complaints from drivers effectively."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "logistics_3pl",
             name: "Logistics-3PL",
-            icon: "fas fa-boxes",
-            themeColor: "yellow", // Added
-            description: "Information specific to third-party logistics providers and collaborations.",
-            articles: []
+            icon: "fas fa-warehouse",
+            themeColor: "purple",
+            description: "Information on managing third-party logistics (3PL) providers and their integration.",
+            articles: [
+                {
+                    id: "l3pl001",
+                    title: "3PL Provider Onboarding",
+                    tags: ["3PL", "logistics", "onboarding"],
+                    lastUpdated: "2023-10-20",
+                    contentPath: "articles/logistics_3pl/l3pl001.html",
+                    summary: "Process for onboarding and integrating third-party logistics providers."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: [
+                { term: "3PL", definition: "Third-Party Logistics - Outsourcing logistics and supply chain operations to a third-party provider." }
+            ]
         },
         {
             id: "order_at_store",
-            name: "Order at store (Mac)",
+            name: "Order at Store (Mac)",
             icon: "fas fa-store",
-            themeColor: "pink", // Added
-            description: "Procedures for orders placed at physical store locations using Mac systems.",
-            articles: []
+            themeColor: "yellow",
+            description: "Guides for managing in-store orders, specifically for Mac-based systems.",
+            articles: [
+                {
+                    id: "os001",
+                    title: "Processing In-Store Orders",
+                    tags: ["in-store", "orders", "Mac"],
+                    lastUpdated: "2023-11-05",
+                    contentPath: "articles/order_at_store/os001.html",
+                    summary: "How to process customer orders using Mac-based systems in-store."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "logistics_admin",
             name: "Logistics-Admin",
-            icon: "fas fa-user-shield",
-            themeColor: "red", // Added
-            description: "Administrative tasks and oversight for logistics operations.",
-            articles: []
+            icon: "fas fa-clipboard-list",
+            themeColor: "gray",
+            description: "Administrative resources and procedures for logistics operations.",
+            articles: [
+                {
+                    id: "la001",
+                    title: "Logistics Reporting Guidelines",
+                    tags: ["reporting", "logistics", "admin"],
+                    lastUpdated: "2023-11-12",
+                    contentPath: "articles/logistics_admin/la001.html",
+                    summary: "Best practices for generating and submitting logistics reports."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "os",
             name: "Operating Systems",
-            icon: "fab fa-windows",
-            themeColor: "sky", // Added
-            description: "Guides and troubleshooting for supported operating systems.",
-            articles: []
+            icon: "fas fa-desktop",
+            themeColor: "sky",
+            description: "Documentation for operating systems used across the organization.",
+            articles: [
+                {
+                    id: "os001",
+                    title: "OS Configuration Guide",
+                    tags: ["operating systems", "configuration"],
+                    lastUpdated: "2023-10-30",
+                    contentPath: "articles/os/os001.html",
+                    summary: "Guide for configuring operating systems for organizational use."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: [
+                { term: "OS", definition: "Operating System - Software that manages computer hardware and software resources." }
+            ]
         },
         {
             id: "compensation",
             name: "Compensation Policies",
-            icon: "fas fa-hand-holding-usd",
-            themeColor: "amber", // Added
-            description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
-            articles: []
+            icon: "fas fa-money-check-alt",
+            themeColor: "lime",
+            description: "Policies and guidelines related to employee and partner compensation.",
+            articles: [
+                {
+                    id: "comp001",
+                    title: "Compensation Policy Overview",
+                    tags: ["compensation", "policy"],
+                    lastUpdated: "2023-11-08",
+                    contentPath: "articles/compensation/comp001.html",
+                    summary: "Overview of the organization's compensation policies for employees and partners."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "op_instructions",
             name: "Operational Instructions",
-            icon: "fas fa-clipboard-list",
-            themeColor: "slate", // Added
-            description: "General operational instructions and standard operating procedures (SOPs).",
-            articles: []
+            icon: "fas fa-book-open",
+            themeColor: "pink",
+            description: "Detailed operational instructions for various departments and processes.",
+            articles: [
+                {
+                    id: "oi001",
+                    title: "Standard Operating Procedures",
+                    tags: ["SOP", "operations"],
+                    lastUpdated: "2023-11-03",
+                    contentPath: "articles/op_instructions/oi001.html",
+                    summary: "Collection of standard operating procedures for daily operations."
+                }
+            ],
+            cases: [], // Populated from Supabase
+            subCategories: [],
+            glossary: []
         },
         {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
-            themeColor: "purple", // Added
-            description: "A centralized collection of frequently used forms, document templates, and checklists.",
-            items: [ 
+            themeColor: "amber",
+            description: "Collection of forms and templates for various organizational needs.",
+            articles: [],
+            cases: [], // Populated from Supabase
+            items: [
                 {
-                    id: "form001",
-                    title: "New Client Onboarding Checklist",
-                    type: "checklist", 
-                    url: "/templates/client_onboarding.pdf", 
-                    description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
-                    lastUpdated: "2023-09-15",
+                    id: "ft001",
+                    title: "Client Onboarding Checklist",
+                    type: "template",
+                    description: "Checklist for onboarding new clients.",
+                    url: "templates/client_onboarding_checklist.pdf"
                 },
                 {
-                    id: "form002",
-                    title: "Incident Report Form",
-                    type: "form", 
-                    url: "/templates/incident_report.docx", 
-                    description: "Form for reporting operational or security incidents.",
-                    lastUpdated: "2023-10-01",
-                },
-                {
-                    id: "temp001",
-                    title: "Standard Email Signature Template",
-                    type: "template", 
-                    url: "/templates/email_signature_guide.html", 
-                    description: "Official email signature template and usage guidelines for company communication.",
-                    lastUpdated: "2023-08-20",
+                    id: "ft002",
+                    title: "Support Ticket Form",
+                    type: "form",
+                    description: "Form for submitting support tickets.",
+                    url: "forms/support_ticket_form.pdf"
                 }
-            ]
+            ],
+            subCategories: [],
+            glossary: []
         }
-    ],
+    ]
 };
 
-function loadSectionContent(sectionId) {
-    // This function is less critical if displaySectionContent in app.js handles data fetching directly.
-    // However, searchKb still uses kbSystemData globally.
-    const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-    if (sectionData) {
-        console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
-        return sectionData; 
-    }
-    return null;
-}
-
-function searchKb(query) {
-    const lowerQuery = query.toLowerCase();
-    const results = [];
-
-    if (!kbSystemData || !kbSystemData.sections) return results;
-
-    kbSystemData.sections.forEach(section => {
-        if (section.articles) {
-            section.articles.forEach(article => {
-                if (article.title.toLowerCase().includes(lowerQuery) ||
-                    (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                    (article.summary && article.summary.toLowerCase().includes(lowerQuery))
-                ) {
-                    results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor });
-                }
-            });
-        }
-        if (section.cases) { // ADDED search for cases
-            section.cases.forEach(caseItem => {
-                if (caseItem.title.toLowerCase().includes(lowerQuery) ||
-                    (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                    (caseItem.summary && caseItem.summary.toLowerCase().includes(lowerQuery)) ||
-                    (caseItem.status && caseItem.status.toLowerCase().includes(lowerQuery))
-                ) {
-                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case', themeColor: section.themeColor });
-                }
-            });
-        }
-        if (section.items) {
-            section.items.forEach(item => {
-                if (item.title.toLowerCase().includes(lowerQuery) ||
-                    (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
-                    item.type.toLowerCase().includes(lowerQuery)
-                ) {
-                    results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item', themeColor: section.themeColor });
-                }
-            });
-        }
-        if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-            if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
-            }
-        }
-        if(section.glossary) {
-            section.glossary.forEach(term => {
-                if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
-                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor});
-                    }
-                }
-            });
-        }
-    });
-    results.sort((a, b) => {
-        const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
-        return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
-    });
-    return results;
-}
+export { kbSystemData };
