@@ -1,5 +1,3 @@
-// js/app.js
-
 // Supabase Client Setup
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
@@ -14,8 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
-        return str.replace(/[&<>"']/g, function (match) {
-            // السطر 20 هنا. تأكد من عدم وجود أي أحرف غريبة هنا عند اللصق
+        return str.replace(/[&<>"']/g, function(match) {
             return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
@@ -46,11 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event === 'SIGNED_OUT' || !session) {
             currentUser = null;
             const currentPathFile = window.location.pathname.split('/').pop();
-            // Check if not already on login.html or signup.html (or similar public pages)
             if (currentPathFile !== 'login.html' && currentPathFile !== 'signup.html') {
                 console.log('[app.js - Supabase] No session or signed out, redirecting to login.html');
-                // Construct path relative to the root, assuming login.html is at the root
-                const loginPath = window.location.origin + '/login.html'; // Adjust if login.html is in a subdirectory
+                const loginPath = window.location.origin + '/login.html';
                 window.location.replace(loginPath);
             }
             return;
@@ -70,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (userProfile) {
                     currentUser = { ...session.user, fullName: userProfile.full_name, role: userProfile.role };
                 } else {
-                    console.warn('[app.js - Supabase] User profile not found for:', session.user.id, '. Using email as name and default role.');
+                    console.warn('[app.js - Supabase] User profile not found for:', session.user.id);
                     currentUser = { ...session.user, fullName: session.user.email, role: 'user' };
                 }
             } catch (e) {
@@ -103,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
                 avatarImg.alt = `${userDisplayName}'s Avatar`;
             }
-            console.log('[app.js - Supabase] User-dependent UI initialized for:', userDisplayName, 'Role:', currentUser.role);
+            console.log('[app.js - Supabase] User-dependent UI initialized for:', userDisplayName);
         } else {
             if (userNameDisplay) userNameDisplay.textContent = 'User';
             if (welcomeUserName) welcomeUserName.textContent = 'Welcome!';
@@ -177,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) {
                 console.error('[app.js - Supabase] Error during sign out:', error);
             } else {
-                console.log('[app.js - Supabase] Sign out successful. Redirect will be handled by onAuthStateChange.');
+                console.log('[app.js - Supabase] Sign out successful.');
             }
         });
     }
@@ -313,6 +308,26 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
+        console.log('[app.js] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
+        if (!currentUser) {
+            console.warn('[app.js] No currentUser. Awaiting authentication.');
+            return;
+        }
+        if (typeof kbSystemData === 'undefined') {
+            console.error('[app.js] kbSystemData is undefined.');
+            return;
+        }
+        highlightSidebarLink(sectionId);
+        displaySectionContent(sectionId, itemId, subCategoryFilter);
+
+        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
+        if (window.location.hash !== `#${hash}`) {
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, '', `#${hash}`);
+            console.log(`[app.js] Updated URL hash to: #${hash}`);
+        }
+    }
+
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
         console.log(`[app.js] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
@@ -428,74 +443,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
                 } else {
-                    console.warn(`[app.js] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
+                    console.warn(`[app.js] Item "${itemIdToFocus}" not found for scroll focus.`);
                 }
-            }, 200);
+            }, 100);
         }
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-    }
-
-    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        console.log('[app.js] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
-        if (!currentUser) {
-            console.warn('[app.js] handleSectionTrigger called but no currentUser. Auth might be pending or failed. Aborting.');
-            return;
-        }
-        if (typeof kbSystemData === 'undefined') {
-            console.error('[app.js] kbSystemData undefined in handleSectionTrigger!');
-            return;
-        }
-        highlightSidebarLink(sectionId);
-        displaySectionContent(sectionId, itemId, subCategoryFilter);
-
-        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
-        if (window.location.hash !== `#${hash}`) {
-            window.history.replaceState(null, '', `#${hash}`); // Use replaceState to avoid adding to history stack for internal navigation
-            console.log(`[app.js] Updated URL hash to: #${hash}`);
-        }
+        console.log(`[app.js] displaySectionContent completed for "${sectionId}".`);
     }
 
     function parseHash() {
         const hash = window.location.hash.replace('#', '');
-        if (!hash) return { sectionId: 'home' };
+        if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
         const parts = hash.split('/');
-        return { sectionId: parts[0], itemId: parts[1], subCategoryFilter: parts[1] };
+        if (parts.length === 1) return { sectionId: parts[0], itemId: null, subCategoryFilter: null };
+        return { sectionId: parts[0], itemId: parts[1] || null, subCategoryFilter: parts[1] || null };
     }
 
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const sectionId = this.dataset.section;
-            console.log(`[app.js] Sidebar link click, data-section: "${sectionId}"`);
-            if (sectionId) {
+            console.log(`[app.js] Sidebar link clicked: section="${sectionId}"`);
+            if (sectionId && currentUser) {
                 handleSectionTrigger(sectionId);
+            } else if (!currentUser) {
+                console.warn('[app.js] User not authenticated yet. Awaiting auth.');
             } else {
-                console.error('[app.js] No data-section attribute found on sidebar link:', this);
+                console.error('[app.js] Invalid sectionId on sidebar link:', this);
             }
         });
     });
 
     document.body.addEventListener('click', function(e) {
+        if (e.target.closest('.sidebar-link')) return;
         const target = e.target.closest('[data-section-trigger]');
         if (target) {
             e.preventDefault();
             const sectionId = target.dataset.sectionTrigger;
             const itemId = target.dataset.itemId;
             const subCatFilter = target.dataset.subcatFilter;
-            console.log(`[app.js] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
-            if (sectionId) {
+            console.log(`[app.js] Body click: section="${sectionId}", item="${itemId}", subCat="${subCatFilter}"`);
+            if (sectionId && currentUser) {
                 handleSectionTrigger(sectionId, itemId, subCatFilter);
                 if (target.closest('#searchResultsContainer')) {
                     if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
                     if (globalSearchInput) globalSearchInput.value = '';
                 }
             } else {
-                console.error('[app.js] No data-section-trigger attribute found:', target);
+                console.warn('[app.js] No sectionId or user not authenticated.');
             }
         }
 
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent && (pageContent.querySelector('#welcomeUserName') || pageContent.innerHTML.includes('Welcome,'))) { // More robust check for home
+        if (homeSubcatTrigger && pageContent && (pageContent.querySelector('#welcomeUserName') || pageContent.innerHTML.includes('Welcome,'))) {
             e.preventDefault();
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             if (triggerValue && triggerValue.includes('.')) {
@@ -519,156 +518,111 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    window.addEventListener('hashchange', () => {
+        if (!currentUser) {
+            console.log('[app.js] Hash changed, but no user authenticated. Waiting for auth.');
+            return;
+        }
+        const { sectionId, itemId, subCategoryFilter } = parseHash();
+        console.log('[app.js] Hash changed:', { sectionId, itemId, subCategoryFilter });
+        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+    });
+
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
-    let searchDebounceTimer;
 
     if (globalSearchInput && searchResultsContainer) {
+        let debounceTimeout;
         globalSearchInput.addEventListener('input', () => {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
-                if (query.length > 1 && typeof searchKb === 'function') {
-                    renderGlobalSearchResults_enhanced(searchKb(query), query);
-                } else {
-                    searchResultsContainer.innerHTML = '';
+                console.log('[app.js] Global search query:', query);
+                if (query.length < 2) {
                     searchResultsContainer.classList.add('hidden');
+                    searchResultsContainer.innerHTML = '';
+                    return;
                 }
+
+                const results = searchKb(query);
+                console.log('[app.js] Search results:', results.length, 'items found.');
+
+                if (results.length === 0) {
+                    searchResultsContainer.innerHTML = `<div class="p-4 text-gray-500 dark:text-gray-400">No results found for "${escapeHTML(query)}".</div>`;
+                    searchResultsContainer.classList.remove('hidden');
+                    return;
+                }
+
+                let resultsHTML = '';
+                results.forEach(result => {
+                    const theme = getThemeColors(result.themeColor);
+                    let title = highlightText(result.title, query);
+                    let summary = result.summary ? highlightText(truncateText(result.summary, 120), query) : 'No summary available.';
+                    let triggerAttrs = `data-section-trigger="${result.sectionId}"`;
+                    if (result.type === 'article' || result.type === 'case' || result.type === 'item') {
+                        triggerAttrs += ` data-item-id="${result.id}"`;
+                    } else if (result.type === 'section_match') {
+                        // Section match, no itemId
+                    } else if (result.type === 'glossary_term') {
+                        triggerAttrs += ` data-item-id="glossary_${result.title}"`;
+                    }
+
+                    resultsHTML += `
+                        <a href="#" ${triggerAttrs} class="block p-4 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                            <div class="flex items-start space-x-3">
+                                <div class="p-2 rounded-full ${theme.iconContainer} flex-shrink-0">
+                                    <i class="${result.type === 'article' ? 'fas fa-newspaper' : result.type === 'case' ? 'fas fa-briefcase' : result.type === 'item' ? 'fas fa-file-alt' : result.type === 'glossary_term' ? 'fas fa-book' : 'fas fa-folder'} text-lg ${theme.icon}"></i>
+                                </div>
+                                <div class="flex-grow">
+                                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white">${title}</h4>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">${summary}</p>
+                                    <div class="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        <i class="fas fa-folder mr-1"></i>
+                                        <span>${escapeHTML(result.sectionName)}</span>
+                                        <span class="mx-2">•</span>
+                                        <span>${result.type === 'article' ? 'Article' : result.type === 'case' ? 'Case' : result.type === 'item' ? escapeHTML(result.type.charAt(0).toUpperCase() + result.type.slice(1)) : result.type === 'glossary_term' ? 'Glossary Term' : 'Section'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                });
+
+                searchResultsContainer.innerHTML = resultsHTML;
+                searchResultsContainer.classList.remove('hidden');
+                applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
             }, 300);
         });
-        document.addEventListener('click', (event) => {
-            if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
-                searchResultsContainer.classList.add('hidden');
-            }
-        });
+
         globalSearchInput.addEventListener('focus', () => {
-            if (globalSearchInput.value.trim().length > 1 && searchResultsContainer.children.length > 0) {
+            if (searchResultsContainer.innerHTML.trim() && globalSearchInput.value.trim()) {
                 searchResultsContainer.classList.remove('hidden');
             }
         });
-    } else {
-        console.warn('[app.js] Global search elements missing:', { globalSearchInput, searchResultsContainer });
-    }
 
-    function renderGlobalSearchResults_enhanced(results, query) {
-        if (!searchResultsContainer) return;
-        searchResultsContainer.innerHTML = '';
-        if (results.length === 0) {
-            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results for "${escapeHTML(query)}".</div>`;
-            searchResultsContainer.classList.remove('hidden');
-            return;
-        }
-        const ul = document.createElement('ul');
-        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
-        results.slice(0, 10).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
-            a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
-            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
-
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'font-semibold';
-            titleDiv.innerHTML = highlightText(result.title, query);
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
-            const sectionDiv = document.createElement('div');
-            const theme = getThemeColors(result.themeColor || 'gray');
-            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
-            a.appendChild(titleDiv);
-            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
-            a.appendChild(sectionDiv);
-            li.appendChild(a);
-            ul.appendChild(li);
-        });
-        searchResultsContainer.appendChild(ul);
-        searchResultsContainer.classList.remove('hidden');
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-    }
-
-    function renderSectionSearchResults(results, query, container, themeColor) {
-        if (!container) return;
-        container.innerHTML = '';
-        if (results.length === 0) {
-            container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results found for "${escapeHTML(query)}".</p>`;
-            return;
-        }
-        const ul = document.createElement('ul');
-        ul.className = 'space-y-2';
-        const theme = getThemeColors(themeColor);
-        results.slice(0, 5).forEach(result => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = `javascript:void(0);`;
-            a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
-            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
-
-            const titleDiv = document.createElement('div');
-            titleDiv.className = `font-semibold ${theme.text}`;
-            titleDiv.innerHTML = highlightText(result.title, query);
-            const summaryDiv = document.createElement('div');
-            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
-            const typeBadge = document.createElement('span');
-            typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
-            typeBadge.textContent = result.type.replace(/_/g, ' ');
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'flex items-center justify-between mb-1';
-            headerDiv.appendChild(titleDiv);
-            headerDiv.appendChild(typeBadge);
-            a.appendChild(headerDiv);
-            a.appendChild(summaryDiv);
-            li.appendChild(a);
-            ul.appendChild(li);
-        });
-        container.appendChild(ul);
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-    }
-
-    if (pageContent) {
-        pageContent.addEventListener('click', (e) => {
-            const ratingTarget = e.target.closest('.rating-btn');
-            if (ratingTarget) {
-                e.preventDefault();
-                const ratingContainer = ratingTarget.closest('.rating-container');
-                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks!</span>`;
-                return;
-            }
-            const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
-            if (sectionSearchBtn) {
-                e.preventDefault();
-                const input = pageContent.querySelector('#sectionSearchInput');
-                const currentSectionId = input?.dataset.sectionId;
-                const query = input?.value.trim();
-                if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                    const results = searchKb(query);
-                    const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
-                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                    if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
-                } else if (input) {
-                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
-                    if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Please enter a query with at least 2 characters.</p>`;
-                }
-                return;
+        document.addEventListener('click', (e) => {
+            if (!searchResultsContainer.contains(e.target) && e.target !== globalSearchInput) {
+                searchResultsContainer.classList.add('hidden');
             }
         });
-    } else {
-        console.error('[app.js] pageContent element not found on initialization.');
     }
 
-    window.addEventListener('hashchange', () => {
-        if (currentUser) {
-            const { sectionId, itemId, subCategoryFilter } = parseHash();
-            console.log('[app.js] Hash changed, user authenticated. Processing:', { sectionId, itemId, subCategoryFilter });
-            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-        } else {
-            console.log('[app.js] Hash changed, but currentUser is not set. Awaiting auth state or redirect.');
+    document.body.addEventListener('click', (e) => {
+        const ratingBtn = e.target.closest('.rating-btn');
+        if (ratingBtn) {
+            const itemId = ratingBtn.dataset.itemId;
+            const itemType = ratingBtn.dataset.itemType;
+            const rating = ratingBtn.dataset.rating;
+            console.log(`[app.js] Rating clicked: itemId="${itemId}", type="${itemType}", rating="${rating}"`);
+            alert(`Rating recorded: ${rating === 'up' ? 'Helpful' : 'Not helpful'} for ${itemType} "${itemId}" (Placeholder)`);
         }
     });
 
-    console.log('[app.js] Core initializations complete. Awaiting Supabase auth state to finalize page setup.');
+    if (currentUser) {
+        const { sectionId, itemId, subCategoryFilter } = parseHash();
+        console.log('[app.js] Initial page load with hash:', { sectionId, itemId, subCategoryFilter });
+        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+    }
+
+    console.log('[app.js] Core initializations complete...');
 });
