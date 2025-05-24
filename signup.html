@@ -75,6 +75,35 @@
         .form-title {
              font-family: 'Inter', sans-serif;
         }
+        .error-message { /* For field-specific errors */
+            font-size: 0.75rem; /* text-xs */
+            color: #EF4444; /* red-500 */
+            margin-top: 0.25rem; /* mt-1 */
+        }
+        .general-form-error { /* For general form errors */
+            background-color: #FEE2E2; /* red-100 */
+            color: #B91C1C; /* red-700 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 1rem; /* mb-4 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .success-message { /* For success messages */
+            background-color: #D1FAE5; /* green-100 */
+            color: #047857; /* green-700 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 1rem; /* mb-4 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        /* Loading state for button */
+        .loading .btn-text {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body class="h-full font-sans">
@@ -84,35 +113,43 @@
             <h2 class="text-3xl font-bold text-gray-800 form-title">Create Your Account</h2>
             <p class="text-gray-600 mt-1">Join InfiniBase and start organizing knowledge.</p>
         </div>
-        <form id="signupForm" class="space-y-6">
+
+        <div id="signupSuccessMessage" class="success-message" style="display: none;"></div>
+        <div id="signupGeneralError" class="general-form-error" style="display: none;"></div>
+
+        <form id="signupForm" class="space-y-6" novalidate>
             <div>
                 <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <div class="relative">
                     <span class="input-icon"><i class="fas fa-user"></i></span>
-                    <input type="text" id="fullName" name="fullName" placeholder="E.g., Jane Doe" required 
-                           class="input-field w-full p-3 text-gray-700 focus:outline-none">
+                    <input type="text" id="fullName" name="fullName" placeholder="E.g., Jane Doe" required
+                           class="input-field w-full p-3 text-gray-700 focus:outline-none" aria-describedby="fullNameError">
                 </div>
+                <div id="fullNameError" class="error-message"></div>
             </div>
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Work Email</label>
                 <div class="relative">
                     <span class="input-icon"><i class="fas fa-envelope"></i></span>
-                    <input type="email" id="email" name="email" placeholder="your.name@thecehfz.com" required 
-                           class="input-field w-full p-3 text-gray-700 focus:outline-none">
+                    <input type="email" id="email" name="email" placeholder="your.name@thechefz.co" required
+                           class="input-field w-full p-3 text-gray-700 focus:outline-none" aria-describedby="emailError signupGeneralError">
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Must be a <code class="bg-gray-200 p-0.5 rounded">@thecehfz.com</code> email address.</p>
+                <div id="emailError" class="error-message"></div>
+                <p class="text-xs text-gray-500 mt-1">Must be a <code class="bg-gray-200 p-0.5 rounded">@thechefz.co</code> email address.</p>
             </div>
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <div class="relative">
                     <span class="input-icon"><i class="fas fa-lock"></i></span>
-                    <input type="password" id="password" name="password" placeholder="Choose a strong password" required minlength="6"
-                           class="input-field w-full p-3 text-gray-700 focus:outline-none">
+                    <input type="password" id="password" name="password" placeholder="Choose a strong password" required minlength="8"
+                           class="input-field w-full p-3 text-gray-700 focus:outline-none" aria-describedby="passwordError">
                 </div>
-                 <p class="text-xs text-gray-500 mt-1">Minimum 6 characters.</p>
+                <div id="passwordError" class="error-message"></div>
+                 <p class="text-xs text-gray-500 mt-1">Minimum 8 characters.</p>
             </div>
-            <button type="submit" class="signup-btn w-full py-3 text-white font-semibold">
-                Sign Up <i class="fas fa-arrow-right ml-2"></i>
+            <button type="submit" id="submitButton" class="signup-btn w-full py-3 text-white font-semibold flex items-center justify-center">
+                <span class="btn-text">Sign Up <i class="fas fa-arrow-right ml-2"></i></span>
+                <span class="loading-spinner" style="display: none;"><i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...</span>
             </button>
         </form>
         <p class="text-center mt-6 text-sm text-gray-600">
@@ -120,46 +157,292 @@
         </p>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script>
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const fullName = document.getElementById('fullName').value.trim();
-            const email = document.getElementById('email').value.trim().toLowerCase(); // Normalize email
-            const password = document.getElementById('password').value;
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-            if (!fullName || !email || !password) {
-                alert('Please fill in all fields.');
-                return;
+        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+
+        let supabase;
+        try {
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized for signup.html using ES Modules');
+        } catch (error) {
+            console.error("Supabase client initialization failed:", error);
+            const supabaseErrorDiv = document.getElementById('signupGeneralError');
+            if (supabaseErrorDiv) {
+                 supabaseErrorDiv.textContent = "Error: Could not initialize authentication service. Signup is currently unavailable.";
+                 supabaseErrorDiv.style.display = 'block';
+            } else {
+                alert("Error connecting to services. Signup is currently unavailable.");
             }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                alert('Please enter a valid email address.');
-                return;
-            }
-            
-            const expectedDomain = '@thecehfz.com';
-            if (!email.endsWith(expectedDomain)) {
-                 alert(`Please use a valid work email ending with ${expectedDomain}.`);
-                 return;
-            }
-
-            if (password.length < 6) {
-                alert('Password must be at least 6 characters long.');
-                return;
-            }
-
-            // Auth.signup will handle if user exists and redirect
-            const signupSuccess = Auth.signup(fullName, email, password); 
-            // No need to do anything else here, Auth.signup handles alerts and redirection
-        });
-
-         // Redirect if already authenticated
-        if (Auth.isAuthenticated()) {
-            console.log('[signup.html] User already authenticated, redirecting to dashboard.');
-            window.location.href = 'dashboard.html';
+            const submitBtn = document.getElementById('submitButton');
+            if(submitBtn) submitBtn.disabled = true;
+            const signupFrm = document.getElementById('signupForm');
+            if(signupFrm) signupFrm.style.display = 'none';
+             const signupHeader = document.querySelector('.signup-container > .text-center.mb-8'); // More specific selector
+            if(signupHeader) signupHeader.style.display = 'none';
         }
+
+        // DOM Elements
+        const signupForm = document.getElementById('signupForm');
+        const fullNameInput = document.getElementById('fullName');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitButton = document.getElementById('submitButton');
+
+        const fullNameError = document.getElementById('fullNameError');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+        const signupGeneralError = document.getElementById('signupGeneralError');
+        const signupSuccessMessage = document.getElementById('signupSuccessMessage');
+
+        // Utility Functions
+        function displayError(element, message) {
+            if(element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+        function clearError(element) {
+            if(element) {
+                element.textContent = '';
+                element.style.display = 'none';
+            }
+        }
+        function displaySuccess(element, message) {
+            if(element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+        function setButtonLoading(isLoading) {
+            if (!submitButton) return;
+            submitButton.disabled = isLoading;
+            submitButton.classList.toggle('loading', isLoading);
+        }
+
+        if (signupForm && supabase) {
+            signupForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                [fullNameError, emailError, passwordError, signupGeneralError, signupSuccessMessage].forEach(clearError);
+                setButtonLoading(true);
+                localStorage.removeItem('appUser'); // Clean up any potential stale data at the start
+
+                const fullName = fullNameInput.value.trim();
+                const emailValue = emailInput.value.trim().toLowerCase();
+                const passwordValue = passwordInput.value;
+
+                let isValid = true;
+
+                if (!fullName) {
+                    displayError(fullNameError, "Full name is required.");
+                    isValid = false;
+                }
+                if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+                    displayError(emailError, "Please enter a valid email address.");
+                    isValid = false;
+                } else {
+                    const expectedDomain = '@thechefz.co';
+                    if (!emailValue.endsWith(expectedDomain)) {
+                         displayError(emailError, `Please use a valid work email ending with ${expectedDomain}.`);
+                         isValid = false;
+                    }
+                }
+
+                if (!passwordValue || passwordValue.length < 8) {
+                    displayError(passwordError, "Password must be at least 8 characters.");
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    setButtonLoading(false);
+                    return;
+                }
+
+                console.log(`Attempting signup for email: ${emailValue}`);
+
+                try {
+                    const { data: authData, error: authError } = await supabase.auth.signUp({
+                        email: emailValue,
+                        password: passwordValue,
+                        options: {
+                            data: {
+                                full_name: fullName
+                            }
+                        }
+                    });
+
+                    console.log("--- Supabase signUp Response ---");
+                    console.log("authData:", JSON.parse(JSON.stringify(authData || null)));
+                    console.log("authError:", JSON.parse(JSON.stringify(authError || null)));
+                    if (authData && authData.user) {
+                        console.log("authData.user details:", {
+                            id: authData.user.id, email: authData.user.email, created_at: authData.user.created_at,
+                            email_confirmed_at: authData.user.email_confirmed_at,
+                            identities: authData.user.identities ? JSON.parse(JSON.stringify(authData.user.identities)) : null
+                        });
+                         console.log("authData.session exists:", !!authData.session);
+                    }
+                    console.log("-----------------------------");
+
+                    if (authError) {
+                        if (!(authData && authData.user && authData.user.email === emailValue && authData.user.email_confirmed_at === null)) {
+                            console.log("AuthError received, throwing error to catch block:", authError.message);
+                            throw authError;
+                        }
+                        console.log("AuthError present, but user object also found for unconfirmed email. Proceeding to user handling.");
+                    }
+
+                    if (authData && authData.user) {
+                        console.log("Processing 'authData.user' exists branch.");
+
+                        if (!authData.session && authData.user.email_confirmed_at !== null) {
+                            console.log("User exists, email IS confirmed, but no session. User is already registered.");
+                            clearError(signupSuccessMessage);
+                            localStorage.removeItem('appUser');
+                            displayError(signupGeneralError, "This email is already registered and confirmed. Please log in.");
+                            return;
+                        }
+                        else if (!authData.session && authData.user.email_confirmed_at === null) {
+                            console.log("User exists, no session, email_confirmed_at is null. (Email confirmation pending).");
+                            localStorage.removeItem('appUser');
+
+                            const userCreatedAt = new Date(authData.user.created_at).getTime();
+                            const now = Date.now();
+                            const creationThreshold = 10 * 1000;
+
+                            console.log("Timestamps for unconfirmed check:", {
+                                userCreatedAt, now, diff_ms: now - userCreatedAt, threshold_ms: creationThreshold,
+                                isEmailConfirmed: authData.user.email_confirmed_at
+                            });
+
+                            if ( (now - userCreatedAt) > creationThreshold ) {
+                                console.log("Condition MET: User created > 10s ago and email not confirmed.");
+                                clearError(signupSuccessMessage);
+                                displayError(signupGeneralError, "This email is already registered but not yet confirmed. A confirmation email has been resent. Please check your inbox (and spam folder).");
+                            } else {
+                                console.log("Condition NOT MET: New user (or very recent retry) needing confirmation.");
+                                displaySuccess(signupSuccessMessage, "Signup successful! Please check your email to confirm your account.");
+                                signupForm.reset();
+                                if(fullNameInput) fullNameInput.focus();
+                            }
+                        } else if (authData.session) {
+                            console.log("User exists AND session is active (auto-confirmed or email verification disabled).");
+                            const isAdmin = (emailValue === "m.elsayed@thechefz.co");
+
+                            const appUser = {
+                                id: authData.user.id,
+                                email: authData.user.email,
+                                name: authData.user.user_metadata?.full_name || fullName,
+                                is_admin: isAdmin
+                            };
+
+                            const { error: insertError } = await supabase
+                                .from('users')
+                                .insert({
+                                    id: appUser.id,
+                                    name: appUser.name,
+                                    email: appUser.email,
+                                    is_admin: appUser.is_admin
+                                });
+
+                            if (insertError) {
+                                console.error("Error inserting user profile:", insertError);
+                                clearError(signupSuccessMessage);
+                                localStorage.removeItem('appUser');
+                                displayError(signupGeneralError, `Account created, but profile setup failed. Please contact support. (${insertError.message})`);
+                            } else {
+                                console.log('Attempting to set appUser to localStorage:', appUser);
+                                try {
+                                    localStorage.setItem('appUser', JSON.stringify(appUser));
+                                    console.log('appUser successfully set in localStorage.');
+                                } catch (e) {
+                                    console.error('Error setting item in localStorage:', e);
+                                    clearError(signupSuccessMessage);
+                                    localStorage.removeItem('appUser');
+                                    displayError(signupGeneralError, "Signup was successful, but failed to save session locally. Please try logging in or contact support.");
+                                    return;
+                                }
+
+                                displaySuccess(signupSuccessMessage, "Signup successful! Redirecting to login...");
+                                setTimeout(() => {
+                                    window.location.href = `login.html?email=${encodeURIComponent(emailValue)}&signedup=true`;
+                                }, 2000);
+                            }
+                        } else {
+                            console.warn("Reached an unexpected state in user/session processing. Treating as general error.");
+                            localStorage.removeItem('appUser');
+                            throw new Error("An unexpected issue occurred during signup processing. Please try again.");
+                        }
+                    } else {
+                        console.log("No authData.user and no authError (after initial check). Throwing custom error.");
+                        localStorage.removeItem('appUser');
+                        throw new Error("Signup process did not complete successfully: No user data or error was returned from the server. Please try again or contact support.");
+                    }
+
+                } catch (error) {
+                    console.error("--- Signup CATCH Block Error ---");
+                    console.error("Error Name:", error.name);
+                    console.error("Error Message:", error.message);
+                    console.error("Error Stack:", error.stack);
+                    console.error("Full Error Object:", JSON.parse(JSON.stringify(error)));
+                    console.error("--------------------------------");
+
+                    clearError(signupSuccessMessage);
+                    localStorage.removeItem('appUser');
+
+                    let errorMessage = "An unexpected error occurred during signup. Please try again.";
+
+                    if (error && error.message) {
+                        const lowerMessage = error.message.toLowerCase();
+                        if (lowerMessage.includes("this email is already registered. please log in") ||
+                            lowerMessage.includes("user already registered") ||
+                            lowerMessage.includes("email address is already registered") ||
+                            (error.status === 400 && lowerMessage.includes("user already exists"))) {
+                            errorMessage = "This email is already registered. Please log in.";
+                            displayError(signupGeneralError, errorMessage);
+                        } else if (lowerMessage.includes("email link is invalid or has expired")) {
+                            errorMessage = "The confirmation link for this email is invalid or has expired. Please try signing up again to receive a new link.";
+                            displayError(signupGeneralError, errorMessage);
+                        } else if (lowerMessage.includes("password should be at least")) {
+                            errorMessage = error.message;
+                            displayError(passwordError, errorMessage);
+                            clearError(signupGeneralError);
+                        } else if (lowerMessage.includes("rate limit exceeded") || (error.status === 429)) {
+                            errorMessage = "Too many signup attempts. Please try again later.";
+                            displayError(signupGeneralError, errorMessage);
+                        } else if (lowerMessage.includes("signup process did not complete successfully") ||
+                                   lowerMessage.includes("session could not be established") ||
+                                   lowerMessage.includes("an unexpected issue occurred during signup processing")) {
+                             errorMessage = error.message;
+                             displayError(signupGeneralError, errorMessage);
+                        }
+                         else {
+                            errorMessage = `Signup failed: ${error.message}`;
+                            displayError(signupGeneralError, errorMessage);
+                        }
+                    } else {
+                        displayError(signupGeneralError, errorMessage);
+                    }
+                } finally {
+                    if (!signupSuccessMessage.textContent.includes("Redirecting") ||
+                        (signupGeneralError.textContent.includes("failed to save session locally")) ||
+                        (signupGeneralError.textContent.includes("already registered but not yet confirmed")) ||
+                        (signupGeneralError.textContent.includes("already registered. Please log in")) ||
+                        (signupGeneralError.textContent.includes("This email is already registered and confirmed. Please log in."))
+                        ) {
+                        setButtonLoading(false);
+                    }
+                }
+            });
+        }
+
+        if (supabase && fullNameInput) {
+            fullNameInput.focus();
+        }
+        console.log("Signup page script loaded and initialized.");
     </script>
 </body>
 </html>
