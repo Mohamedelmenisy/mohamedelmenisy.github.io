@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Loading InfiniBase...</title>
+    <title>InfiniBase - Loading...</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
-        .loading-container { text-align: center; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; text-align: center; }
+        .loading-container { }
         .loading-spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
             width: 36px;
@@ -25,13 +26,47 @@
 <body>
     <div class="loading-container">
         <div class="loading-spinner"></div>
-        <p>Loading InfiniBase...</p>
+        <p>Checking authentication status...</p>
     </div>
+
     <script>
-        // Immediately redirect to the dashboard.
-        // The dashboard (via app.js) will handle authentication checks
-        // and redirect to login.html if necessary.
-        window.location.replace('dashboard.html');
+        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function checkAuthStatusAndRedirect() {
+            try {
+                // Check if there's an active session by trying to get the current session
+                // This method doesn't trigger onAuthStateChange immediately on load,
+                // so it's good for a quick check before deciding the initial redirect.
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError) {
+                    console.error('Error getting session in index.html:', sessionError);
+                    // Fallback to signup if there's an error fetching session,
+                    // assuming it's safer to treat as unauthenticated.
+                    window.location.replace('signup.html');
+                    return;
+                }
+
+                if (session) {
+                    // User is logged in
+                    console.log('User is authenticated (session exists in index.html). Redirecting to dashboard.html');
+                    window.location.replace('dashboard.html');
+                } else {
+                    // User is not logged in (no active session)
+                    console.log('User is not authenticated (no session in index.html). Redirecting to signup.html');
+                    window.location.replace('signup.html');
+                }
+            } catch (error) {
+                console.error('Critical error during auth check in index.html:', error);
+                // Fallback in case of any other unexpected error
+                window.location.replace('signup.html');
+            }
+        }
+
+        // Call the function to perform the check and redirect when the page loads
+        checkAuthStatusAndRedirect();
     </script>
 </body>
 </html>
