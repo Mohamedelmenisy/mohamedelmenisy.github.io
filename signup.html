@@ -118,6 +118,11 @@
             border-color: #86efac; /* Green-300 */
             color: #166534; /* Green-800 */
         }
+        .info-message { /* Added for needsconfirmation */
+            background-color: #e0f2fe; /* Light blue, e.g., sky-100 */
+            border-color: #7dd3fc; /* Sky-300 */
+            color: #075985; /* Sky-800 */
+        }
         .error-message.general-form-error {
             background-color: #fee2e2; /* Red-100 */
             border-color: #fca5a5; /* Red-300 */
@@ -222,22 +227,13 @@
         </div>
     </div>
 
-    <!-- Load Supabase SDK locally -->
-    <script src="/js/supabase.js"></script>    <script>
-        let supabase;
-
-        try {
-            supabase = window.supabase.createClient(
-                'https://aefiigottnlcmjzilqnh.supabase.co',
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4'
-            );
-            console.log('Supabase client initialized for InfiniBase signup.');
-        } catch (e) {
-            console.error("Failed to initialize Supabase client:", e);
-            displayGeneralMessage("Service unavailable. Please try again later.", "error");
-            const form = document.getElementById('signupForm');
-            if (form) form.style.display = 'none'; // Hide form if Supabase fails
-        }
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Your Supabase client initializer -->
+    <script src="/js/supabase.js"></script>
+    <!-- 3. Page specific logic -->
+    <script>
+        let supabase; // Will be assigned window.supabaseClient
 
         const signupForm = document.getElementById('signupForm');
         const fullNameInput = document.getElementById('fullName');
@@ -271,8 +267,10 @@
         function displayGeneralMessage(message, type = 'error') {
             if (signupGeneralMessageEl) {
                 signupGeneralMessageEl.textContent = message;
-                signupGeneralMessageEl.classList.remove('success-message', 'error-message', 'general-form-error');
-                signupGeneralMessageEl.classList.add(type === 'success' ? 'success-message' : 'error-message', 'general-form-error');
+                signupGeneralMessageEl.classList.remove('success-message', 'error-message', 'general-form-error', 'info-message');
+                if (type === 'success') signupGeneralMessageEl.classList.add('success-message');
+                else if (type === 'info') signupGeneralMessageEl.classList.add('info-message');
+                else signupGeneralMessageEl.classList.add('error-message', 'general-form-error');
                 signupGeneralMessageEl.style.display = 'block';
             }
         }
@@ -287,127 +285,155 @@
                 submitButton.classList.toggle('loading', isLoading);
             }
         }
+        
+        function initializePage() {
+            if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
+                console.error("[signup.html] Supabase client (window.supabaseClient) not available.");
+                displayGeneralMessage("Service unavailable. Please try again later.", "error");
+                if (signupForm) signupForm.style.display = 'none';
+                return;
+            }
+            supabase = window.supabaseClient; // Assign to local supabase variable
+            console.log('[signup.html] Supabase client (window.supabaseClient) ready.');
 
-        if (signupForm && supabase) {
-            signupForm.addEventListener('submit', async function(event) {
-                event.preventDefault();
-                clearGeneralMessage();
-                clearFieldError(fullNameErrorEl);
-                clearFieldError(emailErrorEl);
-                clearFieldError(passwordErrorEl);
-                setButtonLoading(true);
-
-                const fullName = fullNameInput.value.trim();
-                const email = emailInput.value.trim().toLowerCase();
-                const password = passwordInput.value;
-
-                let isValid = true;
-                if (!fullName) {
-                    displayFieldError(fullNameErrorEl, 'Full name is required.');
-                    isValid = false;
-                }
-                if (!email) {
-                    displayFieldError(emailErrorEl, 'Email is required.');
-                    isValid = false;
-                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    displayFieldError(emailErrorEl, 'Please enter a valid email address.');
-                    isValid = false;
-                } else {
-                    const expectedDomain = '@thechefz.co';
-                    if (!email.endsWith(expectedDomain)) {
-                        displayFieldError(emailErrorEl, `Must be a ${expectedDomain} email address.`);
-                        isValid = false;
-                    }
-                }
-                if (!password) {
-                    displayFieldError(passwordErrorEl, 'Password is required.');
-                    isValid = false;
-                } else if (password.length < 6) {
-                    displayFieldError(passwordErrorEl, 'Password must be at least 6 characters.');
-                    isValid = false;
-                }
-
-                if (!isValid) {
-                    setButtonLoading(false);
-                    return;
-                }
-
-                try {
-                    const { data: authResponse, error: signUpError } = await supabase.auth.signUp({
-                        email: email,
-                        password: password,
-                        options: { data: { full_name: fullName } }
-                    });
-
-                    if (signUpError) {
-                        console.error('Supabase signUp Error:', signUpError);
-                        if (signUpError.message.includes("User already registered") || (signUpError.status === 400 && signUpError.message.includes("user already exists"))) {
-                            displayGeneralMessage("This email is already registered. Please log in.", "error");
-                        } else if (signUpError.message.includes("Password should be at least 6 characters")) {
-                            displayFieldError(passwordErrorEl, "Password should be at least 6 characters.");
-                        } else if (signUpError.status === 429) {
-                            displayGeneralMessage("Too many signup attempts. Please try again later.", "error");
-                        } else {
-                            displayGeneralMessage(`Signup failed: ${signUpError.message}`, "error");
-                        }
-                        setButtonLoading(false);
-                        return;
-                    }
-
-                    if (authResponse.user) {
-                        const { error: profileError } = await supabase
-                            .from('users')
-                            .insert({
-                                id: authResponse.user.id,
-                                email: authResponse.user.email,
-                                full_name: fullName,
-                            });
-
-                        if (profileError) {
-                            console.error('Error inserting user profile into public.users:', profileError);
-                            const confirmEmailEnabled = true; // Adjust based on your Supabase settings
-                            if (confirmEmailEnabled && !authResponse.session) {
-                                displayGeneralMessage("Signup initiated! Please check your email to confirm your account. Profile setup will complete after confirmation.", "success");
-                            } else {
-                                displayGeneralMessage("Account created in authentication, but profile setup failed. Please contact support.", "error");
-                            }
-                        } else {
-                            const confirmEmailEnabled = authResponse.user.email_confirmed_at === null && !authResponse.session;
-                            if (confirmEmailEnabled) {
-                                displayGeneralMessage("Signup successful! Please check your email to confirm your account.", "success");
-                                signupForm.reset();
-                            } else {
-                                displayGeneralMessage("Signup successful! Redirecting to login...", "success");
-                                setTimeout(() => { window.location.href = `/login.html?email=${encodeURIComponent(email)}&signedup=true`; }, 2500);
-                            }
-                        }
-                    } else {
-                        displayGeneralMessage("Signup failed. Unexpected response from server.", "error");
-                    }
-
-                } catch (error) {
-                    console.error("General error during signup process:", error);
-                    displayGeneralMessage("An unexpected error occurred. Please try again.", "error");
-                } finally {
-                    if (!signupGeneralMessageEl.textContent.includes("Redirecting...") &&
-                        !(signupGeneralMessageEl.classList.contains('success-message') && signupGeneralMessageEl.textContent.includes("confirm your account"))
-                    ) {
-                        setButtonLoading(false);
-                    }
-                }
-            });
-        }
-
-        if (supabase) {
+            // Check if user is already logged in
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
-                    console.log('[InfiniBase Signup] User already authenticated, redirecting to dashboard.');
-                    window.location.href = '/dashboard.html';
+                    console.log('[signup.html] User already authenticated, redirecting to dashboard.');
+                    window.location.replace('/dashboard.html');
                 } else {
                     if (fullNameInput) fullNameInput.focus();
                 }
             });
+
+            if (signupForm) {
+                signupForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    clearGeneralMessage();
+                    clearFieldError(fullNameErrorEl);
+                    clearFieldError(emailErrorEl);
+                    clearFieldError(passwordErrorEl);
+                    setButtonLoading(true);
+
+                    const fullName = fullNameInput.value.trim();
+                    const email = emailInput.value.trim().toLowerCase();
+                    const password = passwordInput.value;
+
+                    let isValid = true;
+                    if (!fullName) {
+                        displayFieldError(fullNameErrorEl, 'Full name is required.');
+                        isValid = false;
+                    }
+                    if (!email) {
+                        displayFieldError(emailErrorEl, 'Email is required.');
+                        isValid = false;
+                    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        displayFieldError(emailErrorEl, 'Please enter a valid email address.');
+                        isValid = false;
+                    } else {
+                        const expectedDomain = '@thechefz.co';
+                        if (!email.endsWith(expectedDomain)) {
+                            displayFieldError(emailErrorEl, `Must be a ${expectedDomain} email address.`);
+                            isValid = false;
+                        }
+                    }
+                    if (!password) {
+                        displayFieldError(passwordErrorEl, 'Password is required.');
+                        isValid = false;
+                    } else if (password.length < 6) {
+                        displayFieldError(passwordErrorEl, 'Password must be at least 6 characters.');
+                        isValid = false;
+                    }
+
+                    if (!isValid) {
+                        setButtonLoading(false);
+                        return;
+                    }
+
+                    try {
+                        const { data: authResponse, error: signUpError } = await supabase.auth.signUp({
+                            email: email,
+                            password: password,
+                            options: { data: { full_name: fullName } }
+                        });
+
+                        if (signUpError) {
+                            console.error('Supabase signUp Error:', signUpError);
+                            if (signUpError.message.includes("User already registered") || (signUpError.status === 400 && signUpError.message.includes("user already exists"))) {
+                                displayGeneralMessage("This email is already registered. Please log in.", "error");
+                            } else if (signUpError.message.includes("Password should be at least 6 characters")) {
+                                displayFieldError(passwordErrorEl, "Password should be at least 6 characters.");
+                            } else if (signUpError.status === 429) {
+                                displayGeneralMessage("Too many signup attempts. Please try again later.", "error");
+                            } else {
+                                displayGeneralMessage(`Signup failed: ${signUpError.message}`, "error");
+                            }
+                            setButtonLoading(false);
+                            return;
+                        }
+
+                        // authResponse.user should exist if signUpError is null
+                        if (authResponse.user) {
+                            const { error: profileError } = await supabase
+                                .from('users') // Make sure 'users' table has RLS policies allowing authenticated users to insert their own profile, or service_role key for this.
+                                .insert({
+                                    id: authResponse.user.id,
+                                    email: authResponse.user.email,
+                                    full_name: fullName,
+                                });
+
+                            if (profileError) {
+                                console.error('Error inserting user profile into public.users:', profileError);
+                                // Even if profile insert fails, auth user is created.
+                                // Inform user about email confirmation if needed.
+                            }
+                            
+                            // Check if email confirmation is required by looking at session.
+                            // If session is null, email confirmation is pending.
+                            const emailConfirmationRequired = !authResponse.session && authResponse.user.email_confirmed_at === null;
+
+                            if (emailConfirmationRequired) {
+                                displayGeneralMessage("Signup initiated! Please check your email to confirm your account. Then, proceed to log in.", "info");
+                                signupForm.reset();
+                                setTimeout(() => {
+                                    window.location.href = `/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
+                                }, 3500);
+                            } else { // Signup complete, user might be auto-confirmed or confirmation is off
+                                displayGeneralMessage("Signup successful! Redirecting to login...", "success");
+                                setTimeout(() => {
+                                    window.location.href = `/login.html?email=${encodeURIComponent(email)}&signedup=true`;
+                                }, 2500);
+                            }
+                        } else {
+                             // This case should ideally be caught by signUpError.
+                             // However, if Supabase returns a successful response (no error) but no user object,
+                             // it might indicate that email confirmation is required and it's just an acknowledgment.
+                            console.warn("SignUp success but no user object in response, email confirmation might be required.");
+                            displayGeneralMessage("Signup request received. Please check your email to complete the process and then log in.", "info");
+                            signupForm.reset();
+                            setTimeout(() => {
+                                window.location.href = `/login.html?email=${encodeURIComponent(email)}&needsconfirmation=true`;
+                            }, 3500);
+                        }
+
+                    } catch (error) {
+                        console.error("General error during signup process:", error);
+                        displayGeneralMessage("An unexpected error occurred. Please try again.", "error");
+                    } finally {
+                        // Only set loading to false if not redirecting or showing a confirmation message
+                        const isRedirecting = signupGeneralMessageEl.textContent.includes("Redirecting to login...") ||
+                                              signupGeneralMessageEl.textContent.includes("confirm your account");
+                        if (!isRedirecting) {
+                            setButtonLoading(false);
+                        }
+                    }
+                });
+            }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializePage, 200); // Delay to ensure supabase.js initializes window.supabaseClient
+        });
     </script>
 </body>
 </html>
