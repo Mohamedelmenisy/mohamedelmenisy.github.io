@@ -41,15 +41,61 @@
     <div class="loading-container">
         <div class="spinner"></div>
         <p class="text-lg text-gray-700">Loading InfiniBase...</p>
-        <p class="text-sm text-gray-500 mt-2">Redirecting...</p>
+        <p class="text-sm text-gray-500 mt-2">Checking your session...</p>
         <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
     </div>
 
+    <script src="/js/supabase.js"></script>
     <script>
-        // Redirect immediately to signup.html
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('[index.html] Redirecting to signup.html');
+        // Function to redirect to signup.html as a fallback
+        function redirectToSignup() {
+            console.log('[index.html] Redirecting to signup.html due to fallback.');
             window.location.replace('/signup.html');
+        }
+
+        // Check session function
+        async function checkSession() {
+            try {
+                if (typeof window.supabase === 'undefined') {
+                    console.error('[index.html] Supabase SDK not loaded.');
+                    redirectToSignup();
+                    return;
+                }
+
+                const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+                const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                if (error) {
+                    console.error('[index.html] Error checking session:', error.message);
+                    redirectToSignup();
+                    return;
+                }
+
+                if (session) {
+                    console.log('[index.html] User is logged in, redirecting to dashboard.html');
+                    window.location.replace('/dashboard.html');
+                } else {
+                    console.log('[index.html] No user session, redirecting to signup.html');
+                    window.location.replace('/signup.html');
+                }
+            } catch (e) {
+                console.error('[index.html] Exception during session check:', e.message);
+                redirectToSignup();
+            }
+        }
+
+        // Run on DOM load with timeout to ensure Supabase loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (typeof window.supabase !== 'undefined') {
+                    checkSession();
+                } else {
+                    console.error('[index.html] Supabase SDK failed to load after delay.');
+                    redirectToSignup();
+                }
+            }, 1000); // 1-second delay
         });
     </script>
 </body>
