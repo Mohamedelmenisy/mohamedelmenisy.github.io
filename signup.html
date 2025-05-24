@@ -26,7 +26,7 @@
             max-width: 450px;
             width: 100%;
         }
-        .logo-container { /* Changed from .logo to avoid conflict if style.css is used */
+        .logo-container {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -41,7 +41,7 @@
             font-size: 1.875rem; /* 30px */
             font-weight: 700;
         }
-        .header-text { /* Changed from .signup-header */
+        .header-text {
             text-align: center;
             margin-bottom: 2rem; /* 32px */
         }
@@ -70,13 +70,13 @@
             display: flex;
             align-items: center;
         }
-        .input-icon-fa { /* Custom for Font Awesome */
+        .input-icon-fa {
             position: absolute;
             left: 0.75rem; /* 12px */
             color: #9ca3af; /* Gray-400 */
             font-size: 1rem; /* 16px */
         }
-        .input-field { /* Tailwind classes will mostly handle this but good for consistency */
+        .input-field {
             width: 100%;
             padding: 0.75rem 0.75rem 0.75rem 2.5rem; /* 12px, 12px, 12px, 40px for icon */
             border: 1px solid #d1d5db; /* Gray-300 */
@@ -90,7 +90,7 @@
             border-color: #4f46e5; /* Indigo-600 */
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); /* Indigo-600 with opacity */
         }
-        .input-field.error-border { /* Add this class on error */
+        .input-field.error-border {
              border-color: #ef4444; /* red-500 */
         }
         .input-field.error-border:focus {
@@ -103,7 +103,7 @@
             margin-top: 0.25rem; /* 4px */
             display: none; /* Hidden by default */
         }
-        .form-message { /* General success/error messages */
+        .form-message {
             padding: 0.75rem 1rem;
             margin-bottom: 1.5rem;
             border-radius: 0.375rem;
@@ -118,7 +118,7 @@
             border-color: #86efac; /* Green-300 */
             color: #166534; /* Green-800 */
         }
-        .error-message.general-form-error { /* Specific for general errors */
+        .error-message.general-form-error {
             background-color: #fee2e2; /* Red-100 */
             border-color: #fca5a5; /* Red-300 */
             color: #991b1b; /* Red-800 */
@@ -155,7 +155,7 @@
             animation: spin 1s ease-in-out infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .links-footer { /* Changed from .links */
+        .links-footer {
             text-align: center;
             margin-top: 1.5rem; /* 24px */
             font-size: 0.875rem;
@@ -207,7 +207,6 @@
                 <div class="input-wrapper">
                      <span class="input-icon-fa"><i class="fas fa-lock"></i></span>
                     <input type="password" id="password" name="password" minlength="6" required placeholder="Minimum 6 characters" class="input-field">
-                     {/* Password toggle can be added later if needed, similar to core-flow */}
                 </div>
                 <div id="passwordError" class="field-error-message"></div>
             </div>
@@ -219,19 +218,20 @@
         </form>
 
         <div class="links-footer">
-            Already have an account? <a href="login.html">Log in</a>
+            Already have an account? <a href="/login.html">Log in</a>
         </div>
     </div>
 
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+    <!-- Load Supabase SDK locally -->
+    <script src="/js/supabase.min.js"></script>
+    <script>
         let supabase;
 
         try {
-            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabase = window.supabase.createClient(
+                'https://aefiigottnlcmjzilqnh.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4'
+            );
             console.log('Supabase client initialized for InfiniBase signup.');
         } catch (e) {
             console.error("Failed to initialize Supabase client:", e);
@@ -255,7 +255,7 @@
             if (element) {
                 element.textContent = message;
                 element.style.display = 'block';
-                const inputField = element.previousElementSibling?.querySelector('input'); // Get to input-wrapper then input
+                const inputField = element.previousElementSibling?.querySelector('input');
                 if (inputField) inputField.classList.add('error-border');
             }
         }
@@ -268,6 +268,7 @@
                 if (inputField) inputField.classList.remove('error-border');
             }
         }
+
         function displayGeneralMessage(message, type = 'error') {
             if (signupGeneralMessageEl) {
                 signupGeneralMessageEl.textContent = message;
@@ -346,9 +347,8 @@
                         } else if (signUpError.message.includes("Password should be at least 6 characters")) {
                             displayFieldError(passwordErrorEl, "Password should be at least 6 characters.");
                         } else if (signUpError.status === 429) {
-                             displayGeneralMessage("Too many signup attempts. Please try again later.", "error");
-                        }
-                        else {
+                            displayGeneralMessage("Too many signup attempts. Please try again later.", "error");
+                        } else {
                             displayGeneralMessage(`Signup failed: ${signUpError.message}`, "error");
                         }
                         setButtonLoading(false);
@@ -362,30 +362,24 @@
                                 id: authResponse.user.id,
                                 email: authResponse.user.email,
                                 full_name: fullName,
-                                // role will default to 'viewer' as per table schema
                             });
 
                         if (profileError) {
                             console.error('Error inserting user profile into public.users:', profileError);
-                            // Decide how to handle this: user is in auth.users but not public.users
-                            // If email confirmation is ON, they get the email. If OFF, they might log in but app.js won't find their role.
-                            const confirmEmailEnabled = true; // Assume it's enabled, or get this from Supabase settings if possible
+                            const confirmEmailEnabled = true; // Adjust based on your Supabase settings
                             if (confirmEmailEnabled && !authResponse.session) {
                                 displayGeneralMessage("Signup initiated! Please check your email to confirm your account. Profile setup will complete after confirmation.", "success");
                             } else {
                                 displayGeneralMessage("Account created in authentication, but profile setup failed. Please contact support.", "error");
                             }
                         } else {
-                             // Check if email confirmation is required by Supabase settings
-                            // (This is a simplified check; Supabase client doesn't directly expose this setting easily)
                             const confirmEmailEnabled = authResponse.user.email_confirmed_at === null && !authResponse.session;
-
                             if (confirmEmailEnabled) {
                                 displayGeneralMessage("Signup successful! Please check your email to confirm your account.", "success");
                                 signupForm.reset();
-                            } else { // Email auto-confirmed (or "Confirm email" is OFF)
+                            } else {
                                 displayGeneralMessage("Signup successful! Redirecting to login...", "success");
-                                setTimeout(() => { window.location.href = `login.html?email=${encodeURIComponent(email)}&signedup=true`; }, 2500);
+                                setTimeout(() => { window.location.href = `/login.html?email=${encodeURIComponent(email)}&signedup=true`; }, 2500);
                             }
                         }
                     } else {
@@ -396,9 +390,9 @@
                     console.error("General error during signup process:", error);
                     displayGeneralMessage("An unexpected error occurred. Please try again.", "error");
                 } finally {
-                     if (!signupGeneralMessageEl.textContent.includes("Redirecting...") &&
+                    if (!signupGeneralMessageEl.textContent.includes("Redirecting...") &&
                         !(signupGeneralMessageEl.classList.contains('success-message') && signupGeneralMessageEl.textContent.includes("confirm your account"))
-                       ) {
+                    ) {
                         setButtonLoading(false);
                     }
                 }
@@ -409,9 +403,9 @@
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('[InfiniBase Signup] User already authenticated, redirecting to dashboard.');
-                    window.location.href = 'dashboard.html'; // Or your main app page
+                    window.location.href = '/dashboard.html';
                 } else {
-                    if(fullNameInput) fullNameInput.focus();
+                    if (fullNameInput) fullNameInput.focus();
                 }
             });
         }
