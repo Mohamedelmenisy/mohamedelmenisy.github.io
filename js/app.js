@@ -1,16 +1,32 @@
 import { supabase } from './supabase.js'; // Import Supabase client
 
+// انتظر تحميل الـ DOM بالكامل
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[app.js - FIX] DOMContentLoaded fired.');
+    console.log('[app.js - DEBUG] DOMContentLoaded fired.');
 
-    // Debug: Check if kbSystemData is loaded
-    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
+    // --- العناصر الأساسية ---
+    const pageContent = document.getElementById('pageContent');
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
+    const breadcrumbsContainer = document.getElementById('breadcrumbs');
+    const mainContent = document.querySelector('main');
+
+    // فحص وجود العناصر الأساسية
+    console.log('[app.js - CHECK] pageContent:', pageContent ? 'Found' : 'Not found');
+    console.log('[app.js - CHECK] sidebarLinks:', sidebarLinks.length, 'links found');
+    console.log('[app.js - CHECK] kbSystemData:', typeof kbSystemData !== 'undefined' ? 'Available' : 'Not available yet');
+
+    if (!pageContent) {
+        console.error('[app.js - CRITICAL] pageContent element (#pageContent) not found in DOM. Navigation will fail.');
+        document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Page content container (#pageContent) not found. Please check the HTML structure.</div>';
+        return;
+    }
 
     // --- Helper Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
@@ -169,25 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Sidebar Navigation & Content Loading ---
-    const sidebarLinks = document.querySelectorAll('.sidebar-link');
-    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
-    const breadcrumbsContainer = document.getElementById('breadcrumbs');
-    const pageContent = document.getElementById('pageContent');
-    const mainContent = document.querySelector('main');
-
-    console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
-    console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
-
-    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: Initial page content could not be loaded.</p>';
+    const initialPageContent = pageContent.innerHTML || '<p>Error: Initial page content could not be loaded.</p>';
 
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
-            console.log(`[app.js - FIX] Highlighted sidebar link for section: "${sectionId}"`);
+            console.log(`[app.js - DEBUG] Highlighted sidebar link for section: "${sectionId}"`);
         } else {
-            console.warn(`[app.js - FIX] No sidebar link found for section: "${sectionId}"`);
+            console.warn(`[app.js - DEBUG] No sidebar link found for section: "${sectionId}"`);
         }
     }
 
@@ -313,14 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
+        console.log(`[app.js - DEBUG] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
+
         if (!pageContent) {
-            console.error('[app.js - FIX] pageContent is NULL. Cannot display section.');
+            console.error('[app.js - CRITICAL] pageContent is NULL. Cannot display section.');
+            document.body.innerHTML += '<div class="p-6 text-center text-red-500">Error: Page content container (#pageContent) not found during content display.</div>';
             return;
         }
+
         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js - FIX] kbSystemData is UNDEFINED. Cannot display section.');
-            pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold">Error</h2><p>Knowledge base data is not available. Please try again later.</p></div>';
+            console.error('[app.js - CRITICAL] kbSystemData is UNDEFINED. Cannot display section.');
+            pageContent.innerHTML = '<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500 dark:text-red-400">Error</h2><p>Knowledge base data is not available. Please try again later or check if kbSystemData is loading correctly.</p></div>';
             return;
         }
 
@@ -350,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.animation = `fadeInUp 0.5s ease-out forwards ${(index + 1) * 0.1}s`;
             });
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            console.log('[app.js - FIX] Home page loaded.');
+            console.log('[app.js - DEBUG] Home page loaded.');
             return;
         }
 
@@ -362,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="text-red-500">Not Found</span>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            console.warn(`[app.js - FIX] Section "${sectionId}" not found in kbSystemData.`);
+            console.warn(`[app.js - DEBUG] Section "${sectionId}" not found in kbSystemData.`);
             return;
         }
 
@@ -478,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contentHTML += `</div>`;
 
         pageContent.innerHTML = contentHTML;
-        console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
+        console.log(`[app.js - DEBUG] Successfully set innerHTML for section "${sectionId}".`);
 
         pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
             card.style.opacity = 0;
@@ -519,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
                     setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
                 } else {
-                    console.warn(`[app.js - FIX] Item "${itemIdToFocus}" not found in section "${sectionId}" DOM for focusing.`);
+                    console.warn(`[app.js - DEBUG] Item "${itemIdToFocus}" not found in section "${sectionId}" DOM for focusing.`);
                 }
             }, 250);
         }
@@ -529,30 +539,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
         console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
 
-        if (!pageContent) {
-            console.error('[app.js - FIX] pageContent element not found. Navigation failed.');
-            return;
-        }
-
-        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger! Cannot proceed.');
-            pageContent.innerHTML = "<p class='text-red-500'>Error: Knowledge base data is missing. Navigation failed.</p>";
-            return;
-        }
-
-        highlightSidebarLink(sectionId);
-        displaySectionContent(sectionId, itemId, subCategoryFilter);
-
+        // تحديث الهاش أولاً حتى لو فيه مشكلة في تحميل المحتوى
         let hash = sectionId;
         if (itemId) {
             hash = `${sectionId}/${itemId}`;
         } else if (subCategoryFilter) {
             hash = `${sectionId}/${subCategoryFilter}`;
         }
+        try {
+            window.history.pushState({ sectionId, itemId, subCategoryFilter }, sectionId, `#${hash}`);
+            console.log(`[app.js - DEBUG] URL hash updated to: #${hash}`);
+        } catch (e) {
+            console.error('[app.js - CRITICAL] Failed to update URL hash:', e);
+        }
 
-        window.history.pushState({ sectionId, itemId, subCategoryFilter }, sectionId, `#${hash}`);
-        console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
+        // إضاءة الرابط في الشريط الجانبي
+        highlightSidebarLink(sectionId);
 
+        // تحميل المحتوى
+        displaySectionContent(sectionId, itemId, subCategoryFilter);
+
+        // التمرير لأعلى
         if (mainContent) {
             mainContent.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -597,61 +604,100 @@ document.addEventListener('DOMContentLoaded', () => {
         return { sectionId, itemId, subCategoryFilter };
     }
 
-    // Sidebar links
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const sectionId = this.dataset.section;
-            console.log(`[app.js - FIX] Sidebar link click, data-section: "${sectionId}"`);
-            if (sectionId) {
-                handleSectionTrigger(sectionId, null, null);
-            } else {
-                console.error('[app.js - FIX] No data-section attribute found on sidebar link:', this);
+    // دالة للانتظار حتى تتوفر kbSystemData
+    function waitForKbSystemData(callback) {
+        if (typeof kbSystemData !== 'undefined' && kbSystemData.sections) {
+            console.log('[app.js - DEBUG] kbSystemData is now available.');
+            callback();
+        } else {
+            console.warn('[app.js - DEBUG] kbSystemData not yet loaded, waiting...');
+            setTimeout(() => waitForKbSystemData(callback), 100);
+        }
+    }
+
+    // دالة لإضافة مستمعات الأحداث بعد التأكد من وجود العناصر
+    function initializeEventListeners() {
+        console.log('[app.js - DEBUG] Initializing event listeners...');
+
+        // مستمعات أحداث الشريط الجانبي
+        if (sidebarLinks.length === 0) {
+            console.error('[app.js - CRITICAL] No sidebar links (.sidebar-link) found in DOM. Navigation will not work.');
+            pageContent.innerHTML += '<div class="p-6 text-center text-red-500">Error: Sidebar links (.sidebar-link) not found. Please check the HTML structure.</div>';
+            return;
+        }
+
+        sidebarLinks.forEach(link => {
+            if (!link.dataset.section) {
+                console.warn('[app.js - DEBUG] Sidebar link missing data-section attribute:', link);
+                return;
             }
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.dataset.section;
+                console.log(`[app.js - DEBUG] Sidebar link clicked, data-section: "${sectionId}"`);
+                handleSectionTrigger(sectionId, null, null);
+            });
         });
-    });
 
-    // Centralized click listener for dynamic content
-    document.body.addEventListener('click', function(e) {
-        const triggerLink = e.target.closest('[data-section-trigger], [data-subcat-trigger]');
-        if (triggerLink) {
-            e.preventDefault();
+        // مستمع الأحداث الديناميكي للروابط الفرعية
+        document.body.addEventListener('click', function(e) {
+            const triggerLink = e.target.closest('[data-section-trigger], [data-subcat-trigger]');
+            if (triggerLink) {
+                e.preventDefault();
+                const sectionId = triggerLink.dataset.sectionTrigger;
+                const itemId = triggerLink.dataset.itemId;
+                const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter;
+                const subcatTriggerValue = triggerLink.dataset.subcatTrigger;
 
-            const sectionId = triggerLink.dataset.sectionTrigger;
-            const itemId = triggerLink.dataset.itemId;
-            const subcatFilterFromSectionTrigger = triggerLink.dataset.subcatFilter;
-            const subcatTriggerValue = triggerLink.dataset.subcatTrigger;
+                console.log('[app.js - DEBUG] Dynamic link clicked:', { sectionId, itemId, subcatFilterFromSectionTrigger, subcatTriggerValue });
 
-            console.log('[app.js - DEBUG] Dynamic link clicked:', { sectionId, itemId, subcatFilterFromSectionTrigger, subcatTriggerValue });
-
-            if (sectionId) {
-                handleSectionTrigger(sectionId, itemId, subcatFilterFromSectionTrigger);
-            } else if (subcatTriggerValue) {
-                if (subcatTriggerValue.includes('.')) {
-                    const [sId, subId] = subcatTriggerValue.split('.');
-                    handleSectionTrigger(sId, null, subId);
-                    if (sId === 'support' && subId === 'tools') {
-                        setTimeout(() => {
-                            const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
-                            if (zendeskCard && zendeskCard.closest('.card')) {
-                                zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                console.log('[app.js - FIX] Scrolled to Zendesk card from home quick link.');
-                            } else {
-                                console.warn('[app.js - FIX] Zendesk card not found after navigating to Support Tools.');
-                            }
-                        }, 300);
+                if (sectionId) {
+                    handleSectionTrigger(sectionId, itemId, subcatFilterFromSectionTrigger);
+                } else if (subcatTriggerValue) {
+                    if (subcatTriggerValue.includes('.')) {
+                        const [sId, subId] = subcatTriggerValue.split('.');
+                        handleSectionTrigger(sId, null, subId);
+                        if (sId === 'support' && subId === 'tools') {
+                            setTimeout(() => {
+                                const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
+                                if (zendeskCard && zendeskCard.closest('.card')) {
+                                    zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    console.log('[app.js - DEBUG] Scrolled to Zendesk card from home quick link.');
+                                } else {
+                                    console.warn('[app.js - DEBUG] Zendesk card not found after navigating to Support Tools.');
+                                }
+                            }, 300);
+                        }
+                    } else {
+                        console.error('[app.js - DEBUG] Invalid data-subcat-trigger value (must contain "."):', subcatTriggerValue);
                     }
-                } else {
-                    console.error('[app.js - FIX] Invalid data-subcat-trigger value (must contain "."):', subcatTriggerValue);
+                }
+
+                if (triggerLink.closest('#searchResultsContainer')) {
+                    const searchResultsContainer = document.getElementById('searchResultsContainer');
+                    const globalSearchInput = document.getElementById('globalSearchInput');
+                    if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
+                    if (globalSearchInput) globalSearchInput.value = '';
                 }
             }
+        });
 
-            if (triggerLink.closest('#searchResultsContainer')) {
-                if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
-                if (globalSearchInput) globalSearchInput.value = '';
-            }
-        }
-    });
+        // مستمع أحداث popstate
+        window.addEventListener('popstate', (event) => {
+            const { sectionId, itemId, subCategoryFilter } = parseHash();
+            console.log('[app.js - DEBUG] popstate event (hash changed via browser back/forward):', { sectionId, itemId, subCategoryFilter });
+            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+        });
+
+        // مستمع أحداث hashchange كإجراء احتياطي
+        window.addEventListener('hashchange', () => {
+            console.log('[app.js - DEBUG] hashchange event fired:', window.location.hash);
+            const { sectionId, itemId, subCategoryFilter } = parseHash();
+            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+        });
+
+        console.log('[app.js - DEBUG] Event listeners initialized successfully.');
+    }
 
     // Global Search
     const globalSearchInput = document.getElementById('globalSearchInput');
@@ -682,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else {
-        console.warn('[app.js - FIX] Global search input or results container missing.');
+        console.warn('[app.js - DEBUG] Global search input or results container missing.');
     }
 
     function renderGlobalSearchResults_enhanced(results, query) {
@@ -846,36 +892,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else {
-        console.error('[app.js - FIX] pageContent element not found on DOMContentLoaded. Dynamic event listeners will not be attached.');
+        console.error('[app.js - CRITICAL] pageContent element not found on DOMContentLoaded. Dynamic event listeners will not be attached.');
     }
 
-    window.addEventListener('popstate', (event) => {
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        console.log('[app.js - FIX] popstate event (hash changed via browser back/forward):', { sectionId, itemId, subCategoryFilter });
-        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-    });
-
-    window.addEventListener('hashchange', () => {
-        console.log('[app.js - DEBUG] hashchange event fired:', window.location.hash);
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-    });
-
-    function waitForKbSystemData(callback) {
-        if (typeof kbSystemData !== 'undefined' && kbSystemData.sections) {
-            callback();
-        } else {
-            console.warn('[app.js - FIX] Waiting for kbSystemData to load...');
-            setTimeout(() => waitForKbSystemData(callback), 100);
-        }
-    }
-
+    // التحميل الابتدائي للصفحة
     const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
-    console.log('[app.js - FIX] Initial page load hash parsing:', { initialSectionId, initialItemId, initialSubCategoryFilter });
+    console.log('[app.js - DEBUG] Initial page load hash parsing:', { initialSectionId, initialItemId, initialSubCategoryFilter });
 
+    // انتظر تحميل kbSystemData ثم نفذ التهيئة
     waitForKbSystemData(() => {
+        initializeEventListeners();
         handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
     });
 
-    console.log('[app.js - FIX] All initializations complete.');
+    console.log('[app.js - DEBUG] All initializations complete.');
 });
