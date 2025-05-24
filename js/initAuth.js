@@ -1,31 +1,18 @@
 // js/initAuth.js
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+const supabaseSdkUrl = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'; // تعريف الرابط هنا
 
-// دالة لإظهار رسالة خطأ إذا لم يتم تحميل Supabase
-function handleSupabaseLoadError() {
-    console.error('CRITICAL: Supabase SDK could not be initialized when initAuth.js was executed.');
+function handleSupabaseLoadError(specificError = "") {
+    let errorMessage = 'CRITICAL: Supabase SDK could not be initialized when initAuth.js was executed.';
+    if (specificError) {
+        errorMessage += ` Details: ${specificError}`;
+    }
+    console.error(errorMessage);
     const pElement = document.querySelector('.loading-container p');
     if (pElement) {
-        pElement.textContent = 'Error initializing application. Supabase SDK failed to load. Please check your internet connection and try refreshing.';
+        pElement.textContent = `Error initializing application. Failed to load Supabase SDK from ${supabaseSdkUrl}. Please check your internet connection and try refreshing.`;
     }
-    // لا تفعل شيئًا آخر إذا لم يتم تحميل Supabase
-}
-
-// تحقق من وجود كائن Supabase العالمي
-if (typeof Supabase === 'undefined' || typeof Supabase.createClient !== 'function') {
-    // إذا لم يكن Supabase متاحًا على الفور، انتظر قليلاً ثم حاول مرة أخرى.
-    // هذا حل بديل إذا كان DOMContentLoaded و defer لا يكفيان دائمًا لـ CDN.
-    console.warn('Supabase not immediately available, will retry after a short delay...');
-    setTimeout(() => {
-        if (typeof Supabase === 'undefined' || typeof Supabase.createClient !== 'function') {
-            handleSupabaseLoadError();
-            return; // لا تتابع إذا فشل التحميل
-        }
-        initializeApp();
-    }, 500); // انتظر نصف ثانية ثم حاول مرة أخرى
-} else {
-    initializeApp(); // إذا كان متاحًا، قم بتهيئة التطبيق مباشرة
 }
 
 function initializeApp() {
@@ -39,24 +26,50 @@ function initializeApp() {
 
             if (sessionError) {
                 console.error('Error getting session in initAuth.js:', sessionError.message);
-                // افترض أن الخطأ يعني عدم تسجيل الدخول وتوجه إلى signup
-                window.location.replace('signup.html'); // تأكد من أن هذا المسار صحيح
+                window.location.replace('signup.html');
                 return;
             }
 
             if (session) {
                 console.log('User is authenticated (session active). Redirecting to dashboard.html from initAuth.js');
-                window.location.replace('dashboard.html'); // تأكد من أن هذا المسار صحيح
+                window.location.replace('dashboard.html');
             } else {
                 console.log('User is NOT authenticated (no active session). Redirecting to signup.html from initAuth.js');
-                window.location.replace('signup.html'); // تأكد من أن هذا المسار صحيح
+                window.location.replace('signup.html');
             }
         } catch (error) {
             console.error('Critical error during auth check in initAuth.js:', error.message);
-            // كإجراء احتياطي، توجه إلى signup
             window.location.replace('signup.html');
         }
     }
-
     checkAuthStatusAndRedirect();
+}
+
+// ---- Main Execution Logic ----
+if (typeof Supabase === 'undefined' || typeof Supabase.createClient !== 'function') {
+    console.warn(`Supabase not immediately available. Checking if SDK script (from ${supabaseSdkUrl}) loaded. Will retry after a short delay...`);
+    
+    // محاولة إضافية للتحقق إذا كان السكريبت موجودًا في DOM ولكنه لم يُنفذ بعد
+    let sdkScriptLoaded = false;
+    const scripts = document.getElementsByTagName('script');
+    for (let i = 0; i < scripts.length; i++) {
+        if (scripts[i].src === supabaseSdkUrl) {
+            sdkScriptLoaded = true;
+            break;
+        }
+    }
+
+    if (!sdkScriptLoaded) {
+        handleSupabaseLoadError(`SDK script tag for ${supabaseSdkUrl} not found in DOM.`);
+    } else {
+        setTimeout(() => {
+            if (typeof Supabase === 'undefined' || typeof Supabase.createClient !== 'function') {
+                handleSupabaseLoadError('Supabase object still not available after delay.');
+            } else {
+                initializeApp();
+            }
+        }, 700); // زيادة طفيفة في التأخير
+    }
+} else {
+    initializeApp();
 }
