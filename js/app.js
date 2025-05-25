@@ -33,17 +33,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Authentication & Page Protection ---
     if (typeof protectPage === 'function') {
+        console.log('[app.js - FIX] Calling protectPage().');
         protectPage();
-    } else if (typeof Auth !== 'undefined' && Auth.isAuthenticated) {
-        if (!Auth.isAuthenticated()) {
-            Auth.logout();
-            return;
-        }
     } else {
-        console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
+        console.warn('[app.js - FIX] protectPage function not found. Checking Auth object.');
+        if (typeof Auth !== 'undefined' && Auth.isAuthenticated) {
+            if (!Auth.isAuthenticated()) {
+                console.log('[app.js - FIX] Auth.isAuthenticated is false, calling Auth.logout().');
+                Auth.logout();
+                return;
+            }
+            console.log('[app.js - FIX] User is authenticated via Auth object.');
+        } else {
+            console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
+        }
     }
 
-    const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { fullName: 'Guest', email: 'guest@example.com' };
+    const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
     console.log('[app.js - FIX] Current user:', currentUser);
 
     const userNameDisplay = document.getElementById('userNameDisplay');
@@ -53,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const footerKbVersionSpan = document.getElementById('footerKbVersion');
 
     if (currentUser) {
-        const userDisplayName = currentUser.fullName || currentUser.email || 'Guest';
+        const userDisplayName = currentUser.fullName || currentUser.email || 'User';
         if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
         if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
     }
@@ -114,13 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton && typeof Auth !== 'undefined' && Auth.logout) {
         logoutButton.addEventListener('click', () => {
-            Auth.logout().then(() => {
-                console.log('[app.js - FIX] Logout successful, redirecting...');
-                window.location.href = '/login'; // غير الرابط حسب احتياجاتك
-            }).catch(err => {
-                console.error('[app.js - FIX] Logout failed:', err);
-                alert('Logout failed, please try again.');
-            });
+            Auth.logout();
         });
     }
 
@@ -617,3 +617,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('[app.js - FIX] All initializations complete.');
 });
+
+// ------------------- Supabase Case Save -------------------
+async function saveCaseToSupabase() {
+    const title = document.getElementById('caseTitle').value.trim();
+    const summary = document.getElementById('caseSummary').value.trim();
+    const quill = window.quillEditor;
+    const resolution = quill ? quill.root.innerHTML : '';
+
+    if (!title || !summary || !resolution) {
+        alert("Please fill in all fields.");
+        return;
+    }
+
+    const user = Auth.getCurrentUser();
+    const createdBy = user?.email || 'anonymous';
+
+    const { data, error } = await supabase
+        .from('cases')
+        .insert([
+            {
+                title,
+                summary,
+                resolution_steps: resolution,
+                status: 'New',
+                created_by: createdBy
+            }
+        ]);
+
+    if (error) {
+        console.error('Error saving case:', error);
+        alert('Error saving case.');
+    } else {
+        alert('Case saved successfully!');
+        closeCaseEditor();
+    }
+}
+
+// ------------------- Supabase View Logger -------------------
+async function logView(itemId, itemType = 'article') {
+    const user = Auth.getCurrentUser();
+    const viewedBy = user?.email || 'anonymous';
+
+    await supabase.from('views_log').insert([
+        {
+            item_id: itemId,
+            item_type: itemType,
+            viewed_by: viewedBy,
+            viewed_at: new Date().toISOString()
+        }
+    ]);
+}
