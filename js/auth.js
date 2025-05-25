@@ -1,34 +1,66 @@
 // js/auth.js
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://aefiigottnlcmjzilqnh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from './supabase.js';
 
 const Auth = {
-    isAuthenticated: () => {
-        return supabase.auth.getSession().then(({ data }) => !!data.session);
+    isAuthenticated: async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const isAuthenticated = !!session;
+            console.log('[auth.js] isAuthenticated:', isAuthenticated);
+            return isAuthenticated;
+        } catch (error) {
+            console.error('[auth.js] Error in isAuthenticated:', error);
+            return false;
+        }
     },
-    getCurrentUser: () => {
-        return supabase.auth.getUser().then(({ data }) => {
-            if (data.user) {
+
+    getCurrentUser: async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                console.log('[auth.js] getCurrentUser retrieved user:', user);
                 return {
-                    email: data.user.email,
-                    fullName: data.user.user_metadata?.full_name || data.user.email.split('@')[0]
+                    email: user.email,
+                    fullName: user.user_metadata?.full_name || user.email.split('@')[0] // Fallback to email prefix if no full_name
                 };
             }
+            console.warn('[auth.js] No user found in getCurrentUser.');
             return null;
-        });
+        } catch (error) {
+            console.error('[auth.js] Error in getCurrentUser:', error);
+            return null;
+        }
     },
-    logout: () => {
-        return supabase.auth.signOut().then(() => {
-            alert("Logged out");
-            window.location.href = '/login.html';
-        });
+
+    logout: async () => {
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('[auth.js] Logout failed:', error);
+                throw error;
+            }
+            console.log('[auth.js] Logout successful.');
+            alert('You have been logged out successfully.');
+            window.location.href = '/login.html'; // Redirect to login page
+        } catch (error) {
+            console.error('[auth.js] Error during logout:', error);
+            alert('Logout failed, please try again.');
+            throw error;
+        }
     },
-    protectPage: () => {
-        if (!Auth.isAuthenticated()) {
-            alert("You are not authorized.");
+
+    protectPage: async () => {
+        try {
+            const isAuthenticated = await Auth.isAuthenticated();
+            if (!isAuthenticated) {
+                console.warn('[auth.js] User not authenticated, redirecting to login.');
+                alert('You are not authorized. Please log in.');
+                window.location.href = '/login.html';
+            } else {
+                console.log('[auth.js] protectPage: User is authenticated.');
+            }
+        } catch (error) {
+            console.error('[auth.js] Error in protectPage:', error);
             window.location.href = '/login.html';
         }
     }
