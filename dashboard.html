@@ -60,9 +60,9 @@
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/supabase.js"></script>
+  <script type="module" src="js/supabase.js"></script> {/* MODIFIED: Added type="module" */}
   
-  <script> // Quill Editor Initialization (moved before main app logic as per reordering)
+  <script> // Quill Editor Initialization
     document.addEventListener("DOMContentLoaded", () => {
         if (document.querySelector('#quillEditor')) {
             window.quillEditor = new Quill('#quillEditor', {
@@ -72,7 +72,7 @@
     });
   </script>
 
-  <script> // Main Application Logic (formerly app.js, now the last script)
+  <script> // Main Application Logic
     document.addEventListener('DOMContentLoaded', () => {
         console.log('[app.js - FIX] DOMContentLoaded fired.');
 
@@ -116,11 +116,12 @@
                 if (!Auth.isAuthenticated()) {
                     console.log('[app.js - FIX] Auth.isAuthenticated is false, calling Auth.logout().');
                     Auth.logout();
-                    return;
+                    return; // Stop further execution if logout is called
                 }
                 console.log('[app.js - FIX] User is authenticated via Auth object.');
             } else {
                 console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
+                // Potentially redirect to login or show an error message if auth is critical
             }
         }
 
@@ -164,6 +165,7 @@
                 if (themeText) themeText.textContent = 'Dark Mode';
             }
             const isDark = htmlElement.classList.contains('dark');
+            // Ensure mark elements are styled correctly after theme change
             document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark').forEach(mark => {
                 if (isDark) {
                     mark.style.backgroundColor = '#78350f';
@@ -189,7 +191,7 @@
                 applyTheme(newTheme);
             });
         }
-        loadTheme();
+        loadTheme(); // Load theme on initial page load
 
         // --- Logout Button ---
         const logoutButton = document.getElementById('logoutButton');
@@ -201,9 +203,10 @@
 
         // --- Report an Error Button ---
         const reportErrorBtn = document.getElementById('reportErrorBtn');
+        const currentSectionTitleEl_forError = document.getElementById('currentSectionTitle'); // Renamed to avoid conflict
         if (reportErrorBtn) {
             reportErrorBtn.addEventListener('click', () => {
-                const sectionTitleText = currentSectionTitleEl ? currentSectionTitleEl.textContent : 'Current Page';
+                const sectionTitleText = currentSectionTitleEl_forError ? currentSectionTitleEl_forError.textContent : 'Current Page';
                 const pageUrl = window.location.href;
                 alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}\n(Placeholder)`);
             });
@@ -213,13 +216,12 @@
         const sidebarLinks = document.querySelectorAll('.sidebar-link');
         const currentSectionTitleEl = document.getElementById('currentSectionTitle');
         const breadcrumbsContainer = document.getElementById('breadcrumbs');
-        const pageContent = document.getElementById('pageContent'); // Critical Element
+        const pageContent = document.getElementById('pageContent'); 
 
-        // Debug: Check if critical elements exist
         console.log('[app.js - DEBUG] pageContent (after getElementById):', pageContent ? 'Found' : 'Not found');
         console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
 
-        const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load, or content could not be captured.</p>';
+        const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent element was not found, or its content could not be captured initially.</p>';
 
 
         function highlightSidebarLink(sectionId) {
@@ -336,33 +338,35 @@
 
         function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
             console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
-            if (!pageContent) { // Check if pageContent (from outer scope) is null
+            if (!pageContent) { 
                 console.error('[app.js - FIX] pageContent is NULL. Cannot display section content.');
-                // Attempt to provide a graceful fallback if possible, or ensure this doesn't crash.
-                // For now, just log and return to prevent .innerHTML on null.
                 return; 
             }
             if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
                 console.error('[app.js - FIX] kbSystemData is UNDEFINED.');
-                pageContent.innerHTML = '<p>Error: Data missing.</p>'; // Safe if pageContent exists
+                pageContent.innerHTML = '<p>Error: Knowledge base data is missing.</p>'; 
                 return;
             }
 
             if (sectionId === 'home') {
-                pageContent.innerHTML = initialPageContent; // This line requires pageContent to be non-null
+                pageContent.innerHTML = initialPageContent; 
                 if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
                 if (breadcrumbsContainer) {
                     breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                     breadcrumbsContainer.classList.remove('hidden');
                 }
-                const welcomeUserEl = document.getElementById('welcomeUserName');
+                // Re-fetch welcomeUserName as it might have been overwritten by pageContent.innerHTML = initialPageContent
+                const welcomeUserEl = document.getElementById('welcomeUserName'); 
                 if (currentUser && welcomeUserEl) welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
+                
+                // Re-fetch kbVersion and lastKbUpdate as they might have been overwritten
                 const kbVersionEl = document.getElementById('kbVersion');
                 const lastKbUpdateEl = document.getElementById('lastKbUpdate');
-                if (kbSystemData.meta) {
+                if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) { // Check kbSystemData again
                     if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
                     if (lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
                 }
+
                 const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
                 initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
                 applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
@@ -384,7 +388,7 @@
             contentHTML += `<div class="flex justify-between items-center"><h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
             contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
 
-            contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask about ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border rounded-l-md dark:bg-gray-700" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
+            contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask about ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border rounded-l-md dark:bg-gray-700 dark:border-gray-600" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
 
             let hasContent = false;
             if (sectionData.articles && sectionData.articles.length > 0) {
@@ -417,20 +421,21 @@
                 hasContent = true;
             }
             if (!hasContent && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
-                contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl mb-4"></i><h3 class="text-xl font-semibold">No content yet</h3><p>Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
+                contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl mb-4 text-gray-400 dark:text-gray-500"></i><h3 class="text-xl font-semibold">No content yet</h3><p class="text-gray-600 dark:text-gray-300">Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
             }
             contentHTML += `</div>`;
 
-            pageContent.innerHTML = contentHTML; // This line requires pageContent to be non-null
+            pageContent.innerHTML = contentHTML; 
             console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
 
             pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
 
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
             if (breadcrumbsContainer) {
-                let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
+                let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
                 if (subCategoryFilter && sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)) {
-                    bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.subCategories.find(sc => sc.id === subCategoryFilter).name)}</span>`;
+                    const subCatName = sectionData.subCategories.find(sc => sc.id === subCategoryFilter).name;
+                    bcHTML += ` <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text}">${escapeHTML(subCatName)}</span>`;
                 }
                 breadcrumbsContainer.innerHTML = bcHTML;
                 breadcrumbsContainer.classList.remove('hidden');
@@ -444,7 +449,8 @@
             }
             if (itemIdToFocus) {
                 setTimeout(() => {
-                    const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`); // Requires pageContent
+                    if (!pageContent) return; 
+                    const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`); 
                     if (targetCard) {
                         targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
@@ -465,21 +471,23 @@
             }
             highlightSidebarLink(sectionId);
             displaySectionContent(sectionId, itemId, subCategoryFilter);
-            // Update URL hash
             const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
-            window.history.replaceState(null, '', `#${hash}`);
+            // Avoid pushing same hash multiple times if already there
+            if (window.location.hash !== `#${hash}`) {
+                 window.history.pushState(null, '', `#${hash}`); // pushState for better history
+            } else {
+                 window.history.replaceState(null, '', `#${hash}`); // replace if same to avoid clutter
+            }
             console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
         }
 
-        // Parse URL hash
         function parseHash() {
             const hash = window.location.hash.replace('#', '');
-            if (!hash) return { sectionId: 'home' };
-            const [sectionId, itemId, subCategoryFilter] = hash.split('/');
-            return { sectionId, itemId, subCategoryFilter };
+            if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null }; // Ensure all parts are returned
+            const parts = hash.split('/');
+            return { sectionId: parts[0], itemId: parts[1] || null, subCategoryFilter: parts[1] || null }; // Adjust logic if itemId and subCategoryFilter are distinct
         }
 
-        // Sidebar links
         sidebarLinks.forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -493,7 +501,6 @@
             });
         });
 
-        // Body click listener for dynamic links
         document.body.addEventListener('click', function(e) {
             const target = e.target.closest('[data-section-trigger]');
             if (target) {
@@ -504,9 +511,11 @@
                 console.log(`[app.js - FIX] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
                 if (sectionId) {
                     handleSectionTrigger(sectionId, itemId, subCatFilter);
-                    if (target.closest('#searchResultsContainer')) {
+                    if (target.closest('#searchResultsContainer') || target.closest('#sectionSearchResults')) {
                         if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
                         if (globalSearchInput) globalSearchInput.value = '';
+                        const sectionSearchResultsEl = pageContent ? pageContent.querySelector('#sectionSearchResults') : null;
+                        if(sectionSearchResultsEl) sectionSearchResultsEl.innerHTML = '';
                     }
                 } else {
                     console.error('[app.js - FIX] No data-section-trigger attribute found:', target);
@@ -514,16 +523,17 @@
             }
 
             const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-            if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) { // Check pageContent exists
+             // Check if pageContent exists and if we are on the home page (welcomeUserName is a proxy for home)
+            if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) { 
                 e.preventDefault();
                 const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
                 if (triggerValue && triggerValue.includes('.')) {
                     const [sectionId, subId] = triggerValue.split('.');
                     console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
-                    handleSectionTrigger(sectionId, null, subId);
+                    handleSectionTrigger(sectionId, null, subId); // Pass subId as subCategoryFilter
                     if (sectionId === 'support' && subId === 'tools') {
                         setTimeout(() => {
-                            if (!pageContent) return; // Guard against null pageContent
+                            if (!pageContent) return; 
                             const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
                             if (zendeskCard?.closest('.card')) {
                                 zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -539,9 +549,8 @@
             }
         });
 
-        // Global Search
-        const globalSearchInput = document.getElementById('globalSearchInput'); // Critical Element
-        const searchResultsContainer = document.getElementById('searchResultsContainer'); // Critical Element
+        const globalSearchInput = document.getElementById('globalSearchInput'); 
+        const searchResultsContainer = document.getElementById('searchResultsContainer'); 
         let searchDebounceTimer;
 
         if (globalSearchInput && searchResultsContainer) {
@@ -550,7 +559,12 @@
                 searchDebounceTimer = setTimeout(() => {
                     const query = globalSearchInput.value.trim();
                     if (query.length > 1 && typeof searchKb === 'function') {
-                        renderGlobalSearchResults_enhanced(searchKb(query), query);
+                         // Ensure kbSystemData is available for searchKb
+                        if (typeof kbSystemData !== 'undefined') {
+                            renderGlobalSearchResults_enhanced(searchKb(query, kbSystemData), query);
+                        } else {
+                            console.warn("[app.js] kbSystemData not available for global search.");
+                        }
                     } else {
                         searchResultsContainer.innerHTML = '';
                         searchResultsContainer.classList.add('hidden');
@@ -578,7 +592,7 @@
             if (!searchResultsContainer) return;
             searchResultsContainer.innerHTML = '';
             if (results.length === 0) {
-                searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results for "${escapeHTML(query)}".</div>`;
+                searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400">No results for "${escapeHTML(query)}".</div>`;
                 searchResultsContainer.classList.remove('hidden');
                 return;
             }
@@ -587,30 +601,33 @@
             results.slice(0, 10).forEach(result => {
                 const li = document.createElement('li');
                 const a = document.createElement('a');
-                a.href = `javascript:void(0);`;
+                a.href = `javascript:void(0);`; // Let event listener handle navigation
                 a.dataset.sectionTrigger = result.sectionId;
-                if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
+                // Ensure itemId is only set for item types, not section or glossary matches
+                if (result.type === 'article' || result.type === 'item' || result.type === 'case') {
+                     a.dataset.itemId = result.id;
+                }
                 a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
 
                 const titleDiv = document.createElement('div');
-                titleDiv.className = 'font-semibold';
+                titleDiv.className = 'font-semibold text-gray-800 dark:text-white';
                 titleDiv.innerHTML = highlightText(result.title, query);
                 const summaryDiv = document.createElement('div');
-                summaryDiv.className = 'text-xs text-gray-500 mt-0.5';
-                summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
+                summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
+                summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : (result.type === 'glossary_term' ? highlightText(truncateText(result.definition,100), query) : '');
                 const sectionDiv = document.createElement('div');
-                const theme = getThemeColors(result.themeColor || 'gray');
+                const theme = getThemeColors(result.themeColor || 'gray'); // Use result's themeColor
                 sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
                 sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
                 a.appendChild(titleDiv);
-                if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
+                if (summaryDiv.innerHTML) a.appendChild(summaryDiv); // Only add if summary/definition exists
                 a.appendChild(sectionDiv);
                 li.appendChild(a);
                 ul.appendChild(li);
             });
             searchResultsContainer.appendChild(ul);
             searchResultsContainer.classList.remove('hidden');
-            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply theme for mark colors
         }
 
         function renderSectionSearchResults(results, query, container, themeColor) {
@@ -626,9 +643,11 @@
             results.slice(0, 5).forEach(result => {
                 const li = document.createElement('li');
                 const a = document.createElement('a');
-                a.href = `javascript:void(0);`;
+                a.href = `javascript:void(0);`; // Let event listener handle navigation
                 a.dataset.sectionTrigger = result.sectionId;
-                if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
+                 if (result.type === 'article' || result.type === 'item' || result.type === 'case') {
+                    a.dataset.itemId = result.id;
+                }
                 a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
 
                 const titleDiv = document.createElement('div');
@@ -636,10 +655,10 @@
                 titleDiv.innerHTML = highlightText(result.title, query);
                 const summaryDiv = document.createElement('div');
                 summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
-                summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
+                summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : (result.type === 'glossary_term' ? highlightText(truncateText(result.definition,80), query) : 'Click to view.');
                 const typeBadge = document.createElement('span');
                 typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
-                typeBadge.textContent = result.type.replace(/_/g, ' ');
+                typeBadge.textContent = result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); // Capitalize type
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'flex items-center justify-between mb-1';
                 headerDiv.appendChild(titleDiv);
@@ -650,61 +669,64 @@
                 ul.appendChild(li);
             });
             container.appendChild(ul);
-            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply theme for mark colors
         }
 
-        if (pageContent) { // Guard event listener attachment
+        if (pageContent) { 
             pageContent.addEventListener('click', (e) => {
                 const ratingTarget = e.target.closest('.rating-btn');
                 if (ratingTarget) {
                     e.preventDefault();
                     const ratingContainer = ratingTarget.closest('.rating-container');
                     if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks!</span>`;
+                    // Here you would typically log the rating, e.g., to Supabase
+                    // logRating(ratingTarget.dataset.itemId, ratingTarget.dataset.itemType, ratingTarget.dataset.rating);
                     return;
                 }
                 const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
                 if (sectionSearchBtn) {
                     e.preventDefault();
-                    const input = pageContent.querySelector('#sectionSearchInput'); // Requires pageContent
+                    if (!pageContent) return;
+                    const input = pageContent.querySelector('#sectionSearchInput'); 
                     const currentSectionId = input?.dataset.sectionId;
                     const query = input?.value.trim();
                     if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                        const results = searchKb(query);
-                        const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
-                        const resultsContainerEl = pageContent.querySelector('#sectionSearchResults'); // Requires pageContent
-                        if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
+                         if (typeof kbSystemData !== 'undefined') {
+                            const results = searchKb(query, kbSystemData, currentSectionId); // Pass currentSectionId for section-specific search
+                            const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
+                            const resultsContainerEl = pageContent.querySelector('#sectionSearchResults'); 
+                            if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
+                        } else {
+                             console.warn("[app.js] kbSystemData not available for section search.");
+                        }
                     } else if (input) {
-                        const resultsContainerEl = pageContent.querySelector('#sectionSearchResults'); // Requires pageContent
+                        const resultsContainerEl = pageContent.querySelector('#sectionSearchResults'); 
                         if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Please enter a query with at least 2 characters.</p>`;
                     }
                     return;
                 }
             });
         } else {
-            console.error('[app.js - FIX] pageContent element not found on initialization. Event listeners not attached to pageContent.');
+            console.error('[app.js - FIX] pageContent element not found on initialization. Event listeners for ratings and section search not attached to pageContent.');
         }
 
-        // Handle URL hash on page load and hash change
         window.addEventListener('hashchange', () => {
             const { sectionId, itemId, subCategoryFilter } = parseHash();
             console.log('[app.js - FIX] Hash changed:', { sectionId, itemId, subCategoryFilter });
             handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
         });
 
-        // Initial load with hash support
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        console.log('[app.js - FIX] Initial hash load:', { sectionId, itemId, subCategoryFilter });
-        // Ensure pageContent is available before trying to display content
-        if (pageContent || sectionId === 'home') { // Home might try to set initialPageContent which could be problematic if pageContent was null
-            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-        } else if (!pageContent && sectionId !== 'home') {
-             console.error('[app.js - FIX] Cannot perform initial trigger for non-home section because pageContent is null.');
+        const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash();
+        console.log('[app.js - FIX] Initial hash load:', { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter });
+        
+        // Defer initial trigger slightly if critical elements like pageContent might not be ready
+        // This is a fallback, ideally DOMContentLoaded handles this.
+        // If pageContent is null here and it's not home, it's an issue with HTML structure.
+        if (pageContent || initialSectionId === 'home') { 
+            handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
         } else {
-            // If pageContent is null and it's home, initialPageContent would also be problematic.
-            // This scenario should be handled by ensuring pageContent exists.
-            console.error('[app.js - FIX] Initial load could not proceed properly due to missing pageContent.');
+             console.error('[app.js - FIX] Cannot perform initial trigger because pageContent is null and section is not home. Check HTML for #pageContent.');
         }
-
 
         console.log('[app.js - FIX] All initializations complete.');
     });
@@ -713,51 +735,99 @@
     async function saveCaseToSupabase() {
         const title = document.getElementById('caseTitle').value.trim();
         const summary = document.getElementById('caseSummary').value.trim();
-        const quill = window.quillEditor;
+        const quill = window.quillEditor; // Assumes quillEditor is globally available
         const resolution = quill ? quill.root.innerHTML : '';
 
-        if (!title || !summary || !resolution) {
-            alert("Please fill in all fields.");
+        if (!title || !summary || !resolution || resolution === '<p><br></p>') { // Check for empty Quill editor
+            alert("Please fill in all fields, including the resolution steps.");
             return;
         }
 
+        if (typeof Auth === 'undefined' || !Auth.getCurrentUser) {
+            alert("Error: Authentication module not available. Cannot save case.");
+            return;
+        }
         const user = Auth.getCurrentUser();
         const createdBy = user?.email || 'anonymous';
 
-        const { data, error } = await supabase
-            .from('cases')
-            .insert([
-                {
-                    title,
-                    summary,
-                    resolution_steps: resolution,
-                    status: 'New',
-                    created_by: createdBy
-                }
-            ]);
+        if (typeof supabase === 'undefined') {
+             alert("Error: Supabase client not available. Cannot save case.");
+            return;
+        }
 
-        if (error) {
-            console.error('Error saving case:', error);
-            alert('Error saving case.');
-        } else {
-            alert('Case saved successfully!');
-            closeCaseEditor();
+        try {
+            const { data, error } = await supabase
+                .from('cases')
+                .insert([
+                    {
+                        title,
+                        summary,
+                        resolution_steps: resolution,
+                        status: 'New', // Default status
+                        created_by: createdBy,
+                        // created_at: new Date().toISOString() // Supabase can handle this with default now()
+                    }
+                ])
+                .select(); // Optionally select to get the inserted data back
+
+            if (error) {
+                console.error('Error saving case:', error);
+                alert(`Error saving case: ${error.message}`);
+            } else {
+                alert('Case saved successfully!');
+                console.log('Case saved:', data);
+                closeCaseEditor(); // Assuming closeCaseEditor is defined elsewhere
+                // Optionally, refresh the cases view or add the new case to the UI
+            }
+        } catch (e) {
+             console.error('Exception during saveCaseToSupabase:', e);
+             alert('An unexpected error occurred while saving the case.');
         }
     }
 
     // ------------------- Supabase View Logger -------------------
     async function logView(itemId, itemType = 'article') {
+        if (typeof Auth === 'undefined' || !Auth.getCurrentUser) {
+            console.warn("Auth module not available. Cannot log view.");
+            return;
+        }
         const user = Auth.getCurrentUser();
         const viewedBy = user?.email || 'anonymous';
 
-        await supabase.from('views_log').insert([
-            {
-                item_id: itemId,
-                item_type: itemType,
-                viewed_by: viewedBy,
-                viewed_at: new Date().toISOString()
+        if (typeof supabase === 'undefined') {
+            console.warn("Supabase client not available. Cannot log view.");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('views_log').insert([
+                {
+                    item_id: itemId,
+                    item_type: itemType,
+                    viewed_by: viewedBy,
+                    // viewed_at: new Date().toISOString() // Supabase can handle this
+                }
+            ]);
+            if (error) {
+                console.error('Error logging view:', error);
+            } else {
+                console.log(`View logged for ${itemType} ${itemId}`);
             }
-        ]);
+        } catch (e) {
+            console.error('Exception during logView:', e);
+        }
+    }
+
+    // Assuming closeCaseEditor is defined or will be defined globally
+    function closeCaseEditor() {
+        const modal = document.getElementById('caseEditorModal');
+        if (modal) modal.classList.add('hidden');
+        // Clear fields
+        const titleInput = document.getElementById('caseTitle');
+        const summaryInput = document.getElementById('caseSummary');
+        if (titleInput) titleInput.value = '';
+        if (summaryInput) summaryInput.value = '';
+        if (window.quillEditor) window.quillEditor.setText('');
     }
   </script>
 </body>
