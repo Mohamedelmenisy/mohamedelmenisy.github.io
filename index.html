@@ -17,11 +17,20 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .dark body { background-color: #111827; color: #d1d5db; }
-        body:not(.dark) { background-color: #f3f4f6; color: #1f2937; }
+        /* Updated body backgrounds with gradients */
+        .dark body {
+            background-image: linear-gradient(to bottom right, #111827, #1f2937); /* from-gray-900 to-gray-800 */
+            background-color: #111827; /* Fallback */
+            color: #d1d5db;
+        }
+        body:not(.dark) {
+            background-image: linear-gradient(to bottom right, #ffffff, #e5e7eb); /* from-white to-gray-200 */
+            background-color: #f3f4f6; /* Fallback */
+            color: #1f2937;
+        }
 
         .sidebar {
-            width: 260px;
+            width: 16rem; /* Changed from 260px to 16rem (256px) */
             position: fixed;
             top: 0;
             left: 0;
@@ -79,7 +88,7 @@
         body:not(.dark) .sidebar-section-title { color: #9ca3af; }
 
         .content-wrapper {
-            margin-left: 260px;
+            margin-left: 16rem; /* Changed from 260px to 16rem (256px) */
             height: 100vh;
             overflow-y: auto;
             transition: margin-left 0.3s ease-in-out;
@@ -120,7 +129,7 @@
             border-radius: 0.75rem;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 48rem;
+            max-width: 48rem; /* Max width for content modal */
             transform: scale(0.95);
             opacity: 0;
             transition: transform 0.2s ease-out, opacity 0.2s ease-out;
@@ -131,6 +140,11 @@
             transform: scale(1);
             opacity: 1;
         }
+        /* Smaller max-width for confirmation modal */
+        .modal-content-sm { 
+            max-width: 28rem; /* For confirmation modals like logout */
+        }
+
 
         .quill-editor-container { height: 200px; margin-bottom: 1rem; border-radius: 0.375rem; overflow: hidden; }
         .dark .quill-editor-container .ql-toolbar { background: #374151; border-color: #4b5563 !important; }
@@ -206,6 +220,20 @@
                     <label class="block text-sm font-medium mb-1">Resolution Steps (for Case)</label>
                     <div id="quillEditor" class="quill-editor-container"></div>
                 </div>
+                <!-- Case Attachments -->
+                <div class="mb-4 hidden" id="caseAttachmentsContainer">
+                    <label class="block text-sm font-medium mb-1">Attachments (Optional)</label>
+                    <div class="space-y-3 mt-2 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700/30">
+                        <div>
+                            <label for="caseFileUpload" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Upload File (PDF, DOCX, TXT, Images)</label>
+                            <input type="file" id="caseFileUpload" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-gray-300 dark:file:border-gray-600 file:text-sm file:font-semibold file:bg-gray-100 dark:file:bg-gray-600 file:text-gray-700 dark:file:text-gray-200 hover:file:bg-gray-200 dark:hover:file:bg-gray-500 transition-colors">
+                        </div>
+                        <div>
+                            <label for="caseDriveLink" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Or Paste External Link (e.g., Google Drive)</label>
+                            <input type="url" id="caseDriveLink" placeholder="https://docs.google.com/document/d/..." class="mt-1 p-2.5 w-full border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button type="button" id="cancelAddContentBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
                     <button type="submit" id="saveContentBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
@@ -213,6 +241,22 @@
             </form>
         </div>
     </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay hidden">
+      <div class="modal-content modal-content-sm"> <!-- Used modal-content-sm for smaller width -->
+        <div class="text-center">
+            <i class="fas fa-exclamation-triangle text-yellow-400 text-4xl mb-4"></i>
+            <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Confirm Logout</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to log out?</p>
+            <div class="flex justify-center space-x-4">
+              <button id="cancelLogoutBtn" class="px-6 py-2.5 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md font-medium dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200">Cancel</button>
+              <button id="confirmLogoutBtn" class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium">Logout</button>
+            </div>
+        </div>
+      </div>
+    </div>
+
 
     <div class="flex h-screen">
         <!-- Sidebar -->
@@ -242,7 +286,7 @@
                 <a href="#forms_templates" class="sidebar-link" data-section="forms_templates"><i class="fas fa-file-alt text-purple-400"></i>Forms/Templates</a>
             </nav>
             <div class="absolute bottom-6 left-0 right-0 px-6">
-                <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm border border-gray-600 hover:bg-gray-700">
+                <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
                     <i id="themeIcon" class="fas fa-moon mr-2"></i> <span id="themeText">Dark Mode</span>
                 </button>
                 <button id="logoutButton" class="w-full mt-3 flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm bg-red-600 hover:bg-red-700 text-white">
@@ -297,7 +341,9 @@
                         </div>
                         <div class="card">
                             <h3 class="text-lg font-semibold mb-3">Recent Updates</h3>
-                            <ul id="recentUpdatesList" class="space-y-2 text-sm"></ul>
+                            <div class="h-60 overflow-y-auto p-1 rounded-lg bg-gray-50 dark:bg-gray-800/50 shadow-sm">
+                                <ul id="recentUpdatesList" class="space-y-1 text-sm"></ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card">
@@ -332,8 +378,9 @@
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. v<span id="footerKbVersion"></span></span>
-                <button id="reportErrorBtn" class="ml-4 text-xs text-red-500 hover:underline">Report an Issue</button>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    © <script>document.write(new Date().getFullYear())</script> InfiniBase.elmenisy. All rights reserved. v<span id="footerKbVersion"></span>
+                </p>
             </footer>
         </div>
     </div>
@@ -347,7 +394,8 @@
                     if (table === 'views_log') {
                         return { data: [
                             { id: 1, item_id: 'case001', item_type: 'case_created', user_identifier: 'user1@sim.com', viewed_at: '2025-05-25T10:00:00Z' },
-                            { id: 2, item_id: 'sup001', item_type: 'article_view', user_identifier: 'user2@sim.com', viewed_at: '2025-05-25T11:00:00Z' }
+                            { id: 2, item_id: 'sup001', item_type: 'article_view', user_identifier: 'user2@sim.com', viewed_at: '2025-05-25T11:00:00Z' },
+                            { id: 3, item_id: 'home', item_type: 'navigation', user_identifier: 'user1@sim.com', viewed_at: '2025-05-25T09:00:00Z' },
                         ], error: null };
                     }
                     if (table === 'cases') return { data: [], error: null };
@@ -375,7 +423,7 @@
         const Auth = {
             isAuthenticated: () => true,
             getCurrentUser: () => ({ email: 'testuser@example.com', fullName: 'Test User', role: 'admin' }),
-            logout: () => { alert('Logged out'); window.location.reload(); },
+            logout: () => { alert('Logged out (Simulated)'); window.location.reload(); }, // Original alert for now, modal handles UI
             protectPage: () => { if (!Auth.isAuthenticated()) { alert('Not Authorized'); window.location.href = '/login.html'; throw 'Stop Execution'; } }
         };
 
@@ -428,7 +476,7 @@
         if (currentUser) {
             const displayName = currentUser.fullName || currentUser.email || 'User';
             userNameDisplayHeader.textContent = displayName;
-            welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`;
+            welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`; // This is correct
             userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=4f46e5&color=fff&rounded=true`;
         }
         if (kbSystemData.meta) {
@@ -486,9 +534,22 @@
             });
         });
 
-        // Logout
-        document.getElementById('logoutButton').addEventListener('click', () => Auth.logout());
-        document.getElementById('reportErrorBtn').addEventListener('click', () => alert('Report Error (Placeholder)'));
+        // Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('hidden');
+        });
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.add('hidden');
+        });
+        confirmLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.add('hidden');
+            Auth.logout();
+        });
+
 
         // Add Content Modal
         const addContentModalOverlay = document.getElementById('addContentModalOverlay');
@@ -498,21 +559,37 @@
         const contentTypeSelect = document.getElementById('contentType');
         const contentUrlContainer = document.getElementById('contentUrlContainer');
         const resolutionStepsContainer = document.getElementById('resolutionStepsContainer');
+        const caseAttachmentsContainer = document.getElementById('caseAttachmentsContainer'); // New
 
         function openAddContentModal(sectionId) {
-            currentSectionId = sectionId;
+            currentSectionId = sectionId; // Set context for saving
             addContentModalOverlay.classList.remove('hidden');
+            
             if (!contentEditorQuill) {
                 contentEditorQuill = new Quill('#quillEditor', {
                     theme: 'snow',
-                    modules: { toolbar: [[{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered' }, { 'list': 'bullet' }]] },
+                    modules: {
+                        toolbar: [ // Enhanced toolbar
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link', 'image', 'video'],
+                            ['clean']
+                        ]
+                    },
                     placeholder: 'Resolution steps...'
                 });
             }
             addContentForm.reset();
-            contentEditorQuill.setText('');
-            contentUrlContainer.classList.add('hidden');
-            resolutionStepsContainer.classList.remove('hidden');
+            if (contentEditorQuill) contentEditorQuill.setText('');
+            const fileInput = document.getElementById('caseFileUpload');
+            if (fileInput) fileInput.value = ''; // Reset file input
+
+            // Set default type and trigger visibility update
+            contentTypeSelect.value = 'case'; // Default to 'case'
+            contentTypeSelect.dispatchEvent(new Event('change')); // Trigger change event to set visibility
+
             document.getElementById('contentTitle').focus();
         }
         function closeAddContentModal() {
@@ -524,9 +601,11 @@
             if (type === 'case') {
                 contentUrlContainer.classList.add('hidden');
                 resolutionStepsContainer.classList.remove('hidden');
+                caseAttachmentsContainer.classList.remove('hidden'); // Show attachments for case
             } else {
                 contentUrlContainer.classList.remove('hidden');
                 resolutionStepsContainer.classList.add('hidden');
+                caseAttachmentsContainer.classList.add('hidden'); // Hide attachments for others
             }
         });
 
@@ -546,6 +625,8 @@
             if (type === 'case') {
                 contentData.resolution_steps = contentEditorQuill.root.innerHTML;
                 contentData.status = 'New';
+                // Note: File upload (caseFileUpload) and link (caseDriveLink) data is not being saved here yet as per constraints.
+                // To save them, you would typically upload the file to storage and save the URL/link.
             } else {
                 contentData.url = document.getElementById('contentUrl').value.trim();
                 if (!contentData.url) {
@@ -559,6 +640,8 @@
             contentData.created_by_name = user.fullName;
 
             const section = kbSystemData.sections.find(s => s.id === currentSectionId);
+            let savedItemData;
+
             if (type === 'case') {
                 const { data, error } = await supabase.from(TABLES.CASES).insert([contentData]).select();
                 if (error) {
@@ -566,18 +649,55 @@
                     console.error(error);
                     return;
                 }
-                section.cases.push({ ...data[0], id: data[0].id.toString() });
-                logUserView(data[0].id, 'case_created');
+                savedItemData = data[0];
+                section.cases.push({ ...savedItemData, id: savedItemData.id.toString() });
+                logUserView(savedItemData.id, 'case_created');
             } else {
                 if (!section.items) section.items = [];
                 const newId = `item_${Date.now()}`;
-                section.items.push({ ...contentData, id: newId });
-                logUserView(newId, 'item_added');
+                savedItemData = { ...contentData, id: newId };
+                section.items.push(savedItemData);
+                logUserView(newId, 'item_added'); // Or a more specific type like 'sheet_added'
             }
 
             alert('Content saved!');
             closeAddContentModal();
-            displaySectionContent(currentSectionId);
+            displaySectionContent(currentSectionId); // Re-render current section content
+
+            // Dynamic update for dashboard's recent updates if a case was added
+            if (type === 'case' && savedItemData) {
+                const newCaseLogEntry = {
+                    item_id: savedItemData.id.toString(),
+                    item_type: 'case_created',
+                    user_identifier: user.email,
+                    viewed_at: new Date().toISOString()
+                };
+                if (recentUpdatesList && dashboardOverviewContainer && !dashboardOverviewContainer.classList.contains('hidden')) {
+                    const newLi = document.createElement('li');
+                    newLi.className = "py-2 px-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0";
+                    let iconClass = 'fas fa-plus-circle text-green-500';
+                    let actionText = 'created case';
+                    newLi.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <i class="${iconClass} text-base text-gray-400 dark:text-gray-500"></i>
+                            <div class="flex-1">
+                                <span class="text-gray-800 dark:text-gray-200">
+                                    <strong class="font-medium">${escapeHTML(newCaseLogEntry.user_identifier)}</strong> ${actionText}
+                                    <strong class="font-medium">${escapeHTML(newCaseLogEntry.item_id)}</strong>
+                                </span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block">${new Date(newCaseLogEntry.viewed_at).toLocaleString()}</span>
+                            </div>
+                        </div>`;
+                    if (recentUpdatesList.firstChild) {
+                        recentUpdatesList.insertBefore(newLi, recentUpdatesList.firstChild);
+                    } else {
+                        recentUpdatesList.appendChild(newLi);
+                    }
+                    while (recentUpdatesList.children.length > 10) {
+                        recentUpdatesList.removeChild(recentUpdatesList.lastChild);
+                    }
+                }
+            }
         }
 
         // Chart Initialization
@@ -618,7 +738,7 @@
             if (casesChartInstance) casesChartInstance.destroy();
             const casesCtx = document.getElementById('casesChart')?.getContext('2d');
             if (casesCtx) {
-                const caseViews = viewData.filter(v => v.item_type === 'case_created').reduce((acc, view) => {
+                const caseViews = viewData.filter(v => v.item_type === 'case_created' || v.item_type === 'case_viewed').reduce((acc, view) => { // Include case_viewed if you log that
                     acc[view.item_id] = (acc[view.item_id] || 0) + 1;
                     return acc;
                 }, {});
@@ -626,18 +746,49 @@
                     type: 'pie',
                     data: {
                         labels: Object.keys(caseViews),
-                        datasets: [{ data: Object.values(caseViews), backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+                        datasets: [{ data: Object.values(caseViews), backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'] }]
                     },
                     options: chartOptions('pie')
                 });
             }
 
             // Update Recent Updates
-            recentUpdatesList.innerHTML = viewData.map(v => `
-                <li class="text-gray-400 dark:text-gray-500">
-                    ${v.user_identifier} ${v.item_type === 'case_created' ? 'created a case' : 'viewed'} ${v.item_id} on ${new Date(v.viewed_at).toLocaleString()}
-                </li>
-            `).join('');
+            recentUpdatesList.innerHTML = viewData
+                .sort((a,b) => new Date(b.viewed_at) - new Date(a.viewed_at)) // Sort by date descending
+                .slice(0, 10) // Take top 10
+                .map(v => {
+                    let iconClass = 'fas fa-eye text-gray-400';
+                    let actionText = 'viewed';
+                    let itemStrong = `<strong class="font-medium">${escapeHTML(v.item_id)}</strong>`;
+
+                    if (v.item_type === 'case_created') {
+                        iconClass = 'fas fa-plus-circle text-green-500';
+                        actionText = 'created case';
+                    } else if (v.item_type === 'navigation') {
+                        iconClass = 'fas fa-route text-blue-500';
+                        actionText = 'navigated to';
+                    } else if (v.item_type === 'item_added') {
+                        iconClass = 'fas fa-file-medical text-purple-500';
+                        actionText = 'added item';
+                    } else if (v.item_type === 'article_view') {
+                         iconClass = 'fas fa-file-alt text-yellow-500';
+                         actionText = 'viewed article';
+                    }
+                    // Add more specific icons if needed
+
+                    return `
+                        <li class="py-2 px-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                            <div class="flex items-center space-x-3">
+                                <i class="${iconClass} text-base dark:text-gray-500"></i>
+                                <div class="flex-1">
+                                    <span class="text-gray-800 dark:text-gray-200">
+                                        <strong class="font-medium">${escapeHTML(v.user_identifier)}</strong> ${actionText} ${itemStrong}
+                                    </span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 block">${new Date(v.viewed_at).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </li>`;
+            }).join('');
         }
 
         // Filters
@@ -669,7 +820,7 @@
         // Helper Functions
         function escapeHTML(str) {
             if (typeof str !== 'string') return '';
-            return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+            return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
         }
         function highlightText(text, query) {
             if (!text) return '';
@@ -769,7 +920,11 @@
             if (user.role === 'super_admin') return true;
             if (user.role === 'admin' && !['logistics_admin'].includes(sectionId)) return true;
             if (user.role === 'viewer' && ['support', 'partner_care', 'customer_care'].includes(sectionId)) return true;
-            return false;
+            // Allow home for all roles that pass Auth.protectPage
+            if (sectionId === 'home') return true; 
+            // Deny by default if no specific allow rule matched for restricted sections
+            if (user.role === 'viewer' && !['support', 'partner_care', 'customer_care', 'home'].includes(sectionId)) return false;
+            return false; // Tighten default for non-super_admin/admin if no specific rule allows
         }
 
         // Content Display
@@ -816,7 +971,6 @@
             let contentHTML = `<div class="space-y-8">`;
             const theme = getThemeColors(sectionData.themeColor);
 
-            // Add Content Button (for admin and super_admin)
             if (['admin', 'super_admin'].includes(currentUser.role)) {
                 contentHTML += `
                 <div class="flex justify-end">
@@ -828,28 +982,29 @@
 
             const articles = (sectionData.articles || []).filter(a => !subCategoryFilter || a.tags?.includes(subCategoryFilter));
             const cases = (sectionData.cases || []).filter(c => !subCategoryFilter || c.tags?.includes(subCategoryFilter));
-            const items = (sectionData.items || []).filter(i => !subCategoryFilter || i.type === subCategoryFilter);
+            const items = (sectionData.items || []).filter(i => !subCategoryFilter || i.type === subCategoryFilter); // Assuming item.type can match subCategoryFilter for items
 
+            // Updated grid gap to gap-x-10 gap-y-8
             if (articles.length) {
-                contentHTML += `<h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                contentHTML += `<h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-8">`;
                 articles.forEach(article => contentHTML += renderArticleCard(article, sectionData));
                 contentHTML += `</div>`;
             }
             if (cases.length) {
-                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-8">`;
                 cases.forEach(caseItem => contentHTML += renderCaseCard(caseItem, sectionData));
                 contentHTML += `</div>`;
             }
             if (items.length) {
-                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Resources</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Resources</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-8">`;
                 items.forEach(item => contentHTML += renderItemCard(item, sectionData));
                 contentHTML += `</div>`;
             }
             if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
-                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-10 gap-y-8">`; // Updated gap
                 sectionData.subCategories.forEach(subCat => {
-                    contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card text-center hover:border-indigo-500 border-transparent border-2">
-                        <i class="${sectionData.icon || 'fas fa-folder-open'} text-3xl mb-2 ${theme.icon}"></i>
+                    contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card text-center hover:border-indigo-500 border-transparent border-2 transition-all duration-150 ease-in-out py-6">
+                        <i class="${sectionData.icon || 'fas fa-folder-open'} text-3xl mb-3 ${theme.icon}"></i>
                         <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
                     </a>`;
                 });
@@ -923,8 +1078,8 @@
                 results.slice(0, 5).forEach(r => {
                     const li = document.createElement('a');
                     li.href = `#${r.sectionId}/${r.id}`;
-                    li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-600';
-                    li.innerHTML = `<div class="font-medium">${highlightText(r.title, query)} <span class="text-xs text-gray-500">(${r.type} in ${r.sectionName})</span></div><p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(r.summary, 50), query)}</p>`;
+                    li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150';
+                    li.innerHTML = `<div class="font-medium">${highlightText(r.title, query)} <span class="text-xs text-gray-500 dark:text-gray-400">(${r.type} in ${r.sectionName})</span></div><p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(stripHtml(r.summary || ''), 50), query)}</p>`;
                     searchResultsContainer.appendChild(li);
                 });
                 searchResultsContainer.classList.remove('hidden');
@@ -952,8 +1107,11 @@
             await supabase.from(TABLES.VIEWS_LOG).insert([viewData]);
         }
 
+        // Make openAddContentModal globally accessible for the onclick attribute
+        window.openAddContentModal = openAddContentModal;
+
         window.addEventListener('hashchange', handleNavigation);
-        handleNavigation();
+        handleNavigation(); // Initial page load
 
         console.log('InfiniBase App Initialized');
     </script>
