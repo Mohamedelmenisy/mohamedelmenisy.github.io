@@ -1,343 +1,293 @@
 // js/app.js
-import { supabase } from './supabase.js'; // استيراد العميل من supabase.js
+import { supabase } from './supabase.js';
 
 // --- Global Variables & Constants ---
-const USER_DATA_KEY = 'infiniBaseUserData'; // لتخزين بيانات المستخدم محليًا
+const USER_DATA_KEY = 'infiniBaseUserData';
+let currentUser = null;
+let activeCaseQuillEditor = null; // محرر Quill للحالات
+let currentSectionForCase = null; // لتخزين القسم الحالي عند إضافة/تعديل كيس
 
+// --- DOM Elements (يتم تهيئتها بعد DOMContentLoaded) ---
+let userNameDisplay, welcomeUserName, kbVersionSpan, lastKbUpdateSpan, footerKbVersionSpan,
+    pageContent, currentSectionTitleEl, breadcrumbsContainer, sidebarLinks,
+    accessTrackingReportContainer, globalSearchInput, searchResultsContainer,
+    themeSwitcher, themeIcon, themeText, htmlElement, logoutButton, reportErrorBtn,
+    genericModal, modalTitleEl, modalContentEl, modalActionsEl, closeModalBtnGeneric,
+    caseEditorModal, caseEditorTitle, caseTitleInput, caseSummaryInput,
+    caseStatusSelect, caseTagsInput, caseQuillEditorDiv, saveCaseButton,
+    caseEditorCaseIdInput, caseEditorSectionIdInput;
+
+
+// --- Helper Functions ---
+function escapeHTML(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[&<>"']/g, function (match) {
+        return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
+    });
+}
+
+function highlightText(text, query) {
+    if (!text) return '';
+    const safeText = escapeHTML(text);
+    if (!query) return safeText;
+    try {
+        const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const regex = new RegExp(`(${escapedQuery})`, 'gi');
+        return safeText.replace(regex, '<mark>$1</mark>');
+    } catch (e) {
+        console.error('[app.js] Error in highlightText regex:', e);
+        return safeText;
+    }
+}
+
+function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+function showToast(message, type = 'success') {
+    const toastNotification = document.getElementById('toastNotification'); // أعدنا تعريفه هنا لضمان وجوده
+    const toastMessage = document.getElementById('toastMessage');
+    if (!toastNotification || !toastMessage) {
+        console.warn("Toast elements not found, logging to console:", message, type);
+        alert(`${type.toUpperCase()}: ${message}`);
+        return;
+    }
+    toastMessage.textContent = message;
+    toastNotification.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-blue-500');
+    if (type === 'success') {
+        toastNotification.classList.add('bg-green-500');
+    } else if (type === 'error') {
+        toastNotification.classList.add('bg-red-500');
+    } else {
+        toastNotification.classList.add('bg-blue-500');
+    }
+    toastNotification.classList.remove('hidden');
+    setTimeout(() => {
+        toastNotification.classList.add('hidden');
+    }, 3000);
+}
+
+function getThemeColors(themeColor = 'gray') {
+    const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
+    const colorMap = {
+        blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' },
+        teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' },
+        green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' },
+        indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-600 dark:text-indigo-400', iconContainer: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-indigo-500', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300', statusBg: 'bg-indigo-100 dark:bg-indigo-500/20', statusText: 'text-indigo-700 dark:text-indigo-400' },
+        // ... أكمل باقي الألوان من الكود السابق ...
+        gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }
+    };
+    return colorMap[color] || colorMap.gray;
+}
+
+// --- Modal Functions ---
+function openGenericModal(title, contentHTML, actionsHTML = '') {
+    if (!genericModal || !modalTitleEl || !modalContentEl || !modalActionsEl) {
+        console.error('Generic Modal elements not found');
+        return;
+    }
+    modalTitleEl.textContent = title;
+    modalContentEl.innerHTML = contentHTML;
+    if (actionsHTML) {
+        modalActionsEl.innerHTML = actionsHTML;
+        modalActionsEl.classList.remove('hidden');
+    } else {
+        modalActionsEl.innerHTML = '';
+        modalActionsEl.classList.add('hidden');
+    }
+    genericModal.classList.remove('hidden');
+    const focusableElements = genericModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusableElements.length) focusableElements[0].focus();
+}
+
+function closeGenericModal() {
+    if (genericModal) genericModal.classList.add('hidden');
+    if (modalContentEl) modalContentEl.innerHTML = '';
+    if (modalActionsEl) modalActionsEl.innerHTML = '';
+}
+
+// --- Theme Functions ---
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        htmlElement.classList.add('dark');
+        if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
+        if (themeText) themeText.textContent = 'Light Mode';
+    } else {
+        htmlElement.classList.remove('dark');
+        if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
+        if (themeText) themeText.textContent = 'Dark Mode';
+    }
+    const isDark = htmlElement.classList.contains('dark');
+    document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark, .modal-content-view mark').forEach(mark => {
+        if (isDark) {
+            mark.style.backgroundColor = '#78350f'; mark.style.color = '#f3f4f6';
+        } else {
+            mark.style.backgroundColor = '#fde047'; mark.style.color = '#1f2937';
+        }
+    });
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+}
+
+// --- Card Renderers ---
+function renderArticleCard_enhanced(article, sectionData) {
+    // (انسخ الكود من الرد السابق)
+    const theme = getThemeColors(sectionData.themeColor);
+    const cardIconClass = sectionData.icon || 'fas fa-file-alt';
+    return `
+        <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article" data-section-id="${sectionData.id}">
+            <div class="flex items-center mb-3">
+                <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                     <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                </div>
+                <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
+                <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + '/infini-base/dashboard.html#' + '${sectionData.id}/${article.id}'); showToast('Link copied!', 'info');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
+                    <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                </a>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(article.summary) || 'No summary available.'}</p>
+            ${article.tags && article.tags.length > 0 ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div class="rating-container text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                    <span class="mr-1">Helpful?</span>
+                    <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
+                    <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
+                </div>
+                <a href="javascript:void(0);" data-action="view-details" data-item-id="${article.id}" data-item-type="article" data-section-id="${sectionData.id}" class="text-sm font-medium ${theme.cta} group">
+                    Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
+                </a>
+            </div>
+        </div>
+    `;
+}
+function renderItemCard_enhanced(item, sectionData) {
+    // (انسخ الكود من الرد السابق)
+    const theme = getThemeColors(sectionData.themeColor);
+    const cardIconClass = sectionData.icon || 'fas fa-file-alt';
+    return `
+        <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item" data-section-id="${sectionData.id}">
+             <div class="flex items-center mb-3">
+                <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                     <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                </div>
+                <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
+                <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + '/infini-base/dashboard.html#' + '${sectionData.id}/${item.id}'); showToast('Link copied!', 'info');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
+                    <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                </a>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(item.description) || 'No description available.'}</p>
+            <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold tracking-wide">${escapeHTML(item.type)}</span>
+                <a href="javascript:void(0);" data-action="view-details" data-item-id="${item.id}" data-item-type="item" data-section-id="${sectionData.id}" class="text-sm font-medium ${theme.cta} group">
+                    Open <i class="fas fa-external-link-alt ml-1 text-xs opacity-75 group-hover:scale-110 transition-transform duration-200"></i>
+                </a>
+            </div>
+        </div>
+    `;
+}
+function renderCaseCard_enhanced(caseItem, sectionData) {
+    // (انسخ الكود من الرد السابق، مع التأكد أنه يعتمد على isSupabaseCase إذا لزم الأمر)
+    const theme = getThemeColors(sectionData.themeColor);
+    const caseIcon = 'fas fa-briefcase';
+    const itemId = caseItem.id;
+
+    let actions = '';
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
+        actions += `<button data-action="edit-case" data-case-id="${itemId}" data-section-id="${sectionData.id}" class="text-xs text-blue-500 hover:underline mr-2"><i class="fas fa-edit"></i> Edit</button>`;
+    }
+
+    return `
+        <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${itemId}" data-item-type="case" data-section-id="${sectionData.id}">
+            <div class="flex items-center mb-3">
+                <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                     <i class="${caseIcon} text-xl ${theme.icon}"></i>
+                </div>
+                <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
+                 <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + '/infini-base/dashboard.html#' + '${sectionData.id}/${itemId}'); showToast('Link copied!', 'info');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
+                    <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                </a>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
+            ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Preview: ${escapeHTML(truncateText(caseItem.resolutionStepsPreview, 100))}</p>` : ''}
+            ${caseItem.tags && Array.isArray(caseItem.tags) && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
+                <div>
+                    ${actions}
+                    <a href="javascript:void(0);" data-action="view-details" data-item-id="${itemId}" data-item-type="case" data-section-id="${sectionData.id}" class="text-sm font-medium ${theme.cta} group">
+                        Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+// --- Main Application Logic ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[app.js] DOMContentLoaded fired.');
-
-    // --- Initial Checks ---
-    if (!supabase) {
-        console.error("[app.js] CRITICAL: Supabase client is not available. Halting application.");
-        document.body.innerHTML = '<p style="color:red;text-align:center;padding:2em;">Application critical error: Backend service not available. Please contact support.</p>';
-        return;
-    }
-    console.log('[app.js] Supabase client loaded successfully.');
-
-    if (typeof kbSystemData === 'undefined') {
-        console.error("[app.js] CRITICAL: kbSystemData is not available. Halting application.");
-        document.body.innerHTML = '<p style="color:red;text-align:center;padding:2em;">Application critical error: Core data (kbSystemData) not found. Please contact support.</p>';
-        return;
-    }
-    console.log('[app.js] kbSystemData loaded successfully.');
-
-
-    // --- Authentication & User Handling ---
-    let currentUser = null;
-    let activeCaseQuillEditor = null; // محرر Quill للحالات
-
-    async function initializeAuthAndUser() {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-            console.error('[app.js] Error getting session:', sessionError.message);
-            redirectToLogin(true); // توجيه مع رسالة خطأ
-            return null;
-        }
-
-        if (!session) {
-            console.log('[app.js] No active session, redirecting to login.');
-            redirectToLogin();
-            return null;
-        }
-
-        console.log('[app.js] Active session found for user:', session.user.id);
-        // محاولة جلب تفاصيل المستخدم من localStorage أولاً، ثم من Supabase
-        let userData = JSON.parse(localStorage.getItem(USER_DATA_KEY));
-
-        if (userData && userData.id === session.user.id) {
-            console.log('[app.js] User data found in localStorage:', userData);
-            currentUser = userData;
-        } else {
-            // جلب تفاصيل المستخدم من جدول 'users'
-            const { data: profile, error: profileError } = await supabase
-                .from('users')
-                .select('id, name, email, role') // تأكد أن لديك عمود 'role'
-                .eq('id', session.user.id)
-                .single();
-
-            if (profileError && profileError.code !== 'PGRST116') { // PGRST116: 0 rows, not necessarily error if profile not yet created
-                console.error('[app.js] Error fetching user profile from DB:', profileError.message);
-                // يمكن تسجيل خروج المستخدم أو استخدام دور افتراضي
-                // await supabase.auth.signOut();
-                // redirectToLogin(true, "Profile error. Please login again.");
-                // return null;
-                 currentUser = { // استخدام دور افتراضي إذا فشل جلب الملف الشخصي لكن الجلسة موجودة
-                    id: session.user.id,
-                    email: session.user.email,
-                    name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-                    role: 'viewer' // دور افتراضي آمن
-                };
-                console.warn("[app.js] Using default role 'viewer' due to profile fetch issue.");
-            } else if (profile) {
-                currentUser = profile;
-                localStorage.setItem(USER_DATA_KEY, JSON.stringify(currentUser));
-                console.log('[app.js] User profile fetched from DB and cached:', currentUser);
-            } else {
-                // إذا لم يكن هناك ملف شخصي، قد يكون مستخدمًا جديدًا لم يتم إنشاء سجله في جدول users بعد
-                // هذا يجب أن يتم التعامل معه أثناء عملية التسجيل (signup.html)
-                console.warn('[app.js] User profile not found in DB for session user. Redirecting to login for re-sync or error.');
-                // يمكنك محاولة إنشاء الملف الشخصي هنا إذا لم يكن موجودًا، أو ببساطة إعادة التوجيه
-                await supabase.auth.signOut(); // تسجيل الخروج لفرض إعادة مزامنة
-                localStorage.removeItem(USER_DATA_KEY);
-                redirectToLogin(true, "User profile sync error. Please login again.");
-                return null;
-            }
-        }
-        return currentUser;
-    }
-
-    function redirectToLogin(sessionExpired = false, message = null) {
-        let url = '/infini-base/login.html';
-        if (sessionExpired) {
-            url += '?session_expired=true';
-            if (message) {
-                url += '&message=' + encodeURIComponent(message);
-            }
-        }
-        window.location.replace(url);
-    }
-
-    currentUser = await initializeAuthAndUser();
-    if (!currentUser) {
-        // إذا لم يتم تعيين currentUser (بسبب خطأ أو إعادة توجيه)، أوقف تنفيذ باقي السكربت
-        console.log("[app.js] Halting further execution as currentUser is not set.");
-        return;
-    }
-
-    console.log('[app.js] Final Current user with role:', currentUser);
-
-    // --- DOM Elements ---
-    // (نفس تعريف عناصر DOM من ردود سابقة)
-    const userNameDisplay = document.getElementById('userNameDisplay');
-    const welcomeUserName = document.getElementById('welcomeUserName');
-    const kbVersionSpan = document.getElementById('kbVersion');
-    const lastKbUpdateSpan = document.getElementById('lastKbUpdate');
-    const footerKbVersionSpan = document.getElementById('footerKbVersion');
-    const pageContent = document.getElementById('pageContent');
-    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
-    const breadcrumbsContainer = document.getElementById('breadcrumbs');
-    const sidebarLinks = document.querySelectorAll('.sidebar-link');
-    const accessTrackingReportContainer = document.getElementById('accessTrackingReportContainer');
-    const globalSearchInput = document.getElementById('globalSearchInput');
-    const searchResultsContainer = document.getElementById('searchResultsContainer');
-    const themeSwitcher = document.getElementById('themeSwitcher');
-    const themeIcon = document.getElementById('themeIcon');
-    const themeText = document.getElementById('themeText');
-    const htmlElement = document.documentElement;
-    const logoutButton = document.getElementById('logoutButton');
-    const reportErrorBtn = document.getElementById('reportErrorBtn');
-
-    // --- Generic Modal Elements ---
-    const genericModal = document.getElementById('genericModal');
-    const modalTitleEl = document.getElementById('modalTitle');
-    const modalContentEl = document.getElementById('modalContent');
-    const modalActionsEl = document.getElementById('modalActions');
-    const closeModalBtnGeneric = document.getElementById('closeModalBtn'); // زر الإغلاق للمودال العام
-
-    // --- Case Editor Modal Elements ---
-    const caseEditorModal = document.getElementById('caseEditorModal');
-    const caseEditorTitle = document.getElementById('caseEditorTitle');
-    const caseTitleInput = document.getElementById('caseTitleInput');
-    const caseSummaryInput = document.getElementById('caseSummaryInput');
-    const caseStatusSelect = document.getElementById('caseStatusSelect');
-    const caseTagsInput = document.getElementById('caseTagsInput');
-    const caseQuillEditorDiv = document.getElementById('caseQuillEditor'); // الـ div الذي سيحتوي Quill
-    const saveCaseButton = document.getElementById('saveCaseButton');
-    const caseEditorCaseIdInput = document.getElementById('caseEditorCaseId');
-    const caseEditorSectionIdInput = document.getElementById('caseEditorSectionId');
+    // ... (تهيئة المتغيرات العالمية لعناصر DOM هنا كما في الرد السابق)
+    userNameDisplay = document.getElementById('userNameDisplay');
+    welcomeUserName = document.getElementById('welcomeUserName');
+    kbVersionSpan = document.getElementById('kbVersion');
+    lastKbUpdateSpan = document.getElementById('lastKbUpdate');
+    footerKbVersionSpan = document.getElementById('footerKbVersion');
+    pageContent = document.getElementById('pageContent');
+    currentSectionTitleEl = document.getElementById('currentSectionTitle');
+    breadcrumbsContainer = document.getElementById('breadcrumbs');
+    sidebarLinks = document.querySelectorAll('.sidebar-link');
+    accessTrackingReportContainer = document.getElementById('accessTrackingReportContainer');
+    globalSearchInput = document.getElementById('globalSearchInput');
+    searchResultsContainer = document.getElementById('searchResultsContainer');
+    themeSwitcher = document.getElementById('themeSwitcher');
+    themeIcon = document.getElementById('themeIcon');
+    themeText = document.getElementById('themeText');
+    htmlElement = document.documentElement;
+    logoutButton = document.getElementById('logoutButton');
+    reportErrorBtn = document.getElementById('reportErrorBtn');
+    genericModal = document.getElementById('genericModal');
+    modalTitleEl = document.getElementById('modalTitle');
+    modalContentEl = document.getElementById('modalContent');
+    modalActionsEl = document.getElementById('modalActions');
+    closeModalBtnGeneric = document.getElementById('closeModalBtn'); // تأكد من أن هذا هو ID زر الإغلاق في المودال العام
+    caseEditorModal = document.getElementById('caseEditorModal');
+    caseEditorTitle = document.getElementById('caseEditorTitle');
+    caseTitleInput = document.getElementById('caseTitleInput');
+    caseSummaryInput = document.getElementById('caseSummaryInput');
+    caseStatusSelect = document.getElementById('caseStatusSelect');
+    caseTagsInput = document.getElementById('caseTagsInput');
+    caseQuillEditorDiv = document.getElementById('caseQuillEditor');
+    saveCaseButton = document.getElementById('saveCaseButton');
+    caseEditorCaseIdInput = document.getElementById('caseEditorCaseId');
+    caseEditorSectionIdInput = document.getElementById('caseEditorSectionId');
 
 
-    // --- Initial UI Updates ---
-    const userDisplayName = currentUser.name || currentUser.email.split('@')[0];
-    if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
-    const avatarImg = document.querySelector('#userProfileButton img');
-    if (avatarImg) {
-        avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
-        avatarImg.alt = userDisplayName;
-    }
-    if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
+    // ... (الكود الذي يبدأ من `console.log('[app.js] DOMContentLoaded fired.');` حتى نهاية الملف من الرد السابق،
+    // مع التأكد من تضمين جميع الدوال التي تم نسخها أعلاه (displaySectionContent, showItemDetailsModal, الخ)
+    // ودوال Case Editor)
 
-
-    if (kbSystemData.meta) {
-        if (kbVersionSpan) kbVersionSpan.textContent = kbSystemData.meta.version;
-        if (footerKbVersionSpan) footerKbVersionSpan.textContent = kbSystemData.meta.version;
-        if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-    }
-
-    // --- Helper & Core Functions (showToast, Modal, Theme, Card Renderers, etc.) ---
-    // (انسخ الدوال المساعدة من الردود السابقة: escapeHTML, highlightText, truncateText, showToast, getThemeColors)
-    // (انسخ دوال العرض: renderArticleCard_enhanced, renderItemCard_enhanced, renderCaseCard_enhanced)
-    // (انسخ دوال الـ Modal العامة: openModal, closeModal - مع تعديل closeModalBtnGeneric)
-    // ... (هذه الدوال موجودة في الردود السابقة، قم بنسخها هنا)
-
-    // --- Event Listeners (Logout, Theme, Report Error) ---
-    // (نفس كود event listeners من الردود السابقة)
-    // ...
-
-    // --- Case Editor Functions ---
-    function initializeCaseStatusOptions() {
-        if (caseStatusSelect && typeof caseStatusOptions !== 'undefined' && caseStatusOptions.length > 0) {
-            caseStatusSelect.innerHTML = caseStatusOptions.map(s => `<option value="${s}">${s}</option>`).join('');
-        } else if (caseStatusSelect) {
-            // خيارات افتراضية إذا لم يتم تحميل caseStatusOptions
-            ['New', 'In Progress', 'Resolved', 'Closed'].forEach(s => {
-                const option = document.createElement('option');
-                option.value = s;
-                option.textContent = s;
-                caseStatusSelect.appendChild(option);
-            });
-        }
-    }
-    initializeCaseStatusOptions(); // استدعاء لملء خيارات الحالة عند التحميل
-
-    window.openCaseEditor = async (sectionId, caseIdToEdit = null) => { // جعلها متاحة عالميًا
-        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-            showToast("You do not have permission to manage cases.", "error");
-            return;
-        }
-        currentSectionForCase = sectionId; // متغير عام لتخزين القسم الحالي للكيس
-        caseEditorSectionIdInput.value = sectionId;
-
-        if (caseIdToEdit) {
-            caseEditorTitle.textContent = "Edit Case";
-            caseEditorCaseIdInput.value = caseIdToEdit;
-            // جلب بيانات الكيس للتعديل
-            const { data: caseData, error } = await supabase.from('cases').select('*').eq('id', caseIdToEdit).single();
-            if (error || !caseData) {
-                showToast("Error loading case data for editing.", "error");
-                console.error("Error loading case for edit:", error);
-                return;
-            }
-            caseTitleInput.value = caseData.title;
-            caseSummaryInput.value = caseData.summary;
-            caseStatusSelect.value = caseData.status;
-            caseTagsInput.value = Array.isArray(caseData.tags) ? caseData.tags.join(', ') : (caseData.tags || '');
-            if (!activeCaseQuillEditor) {
-                activeCaseQuillEditor = new Quill(caseQuillEditorDiv, { theme: 'snow', modules: { toolbar: [/*...config toolbar...*/] } });
-            }
-            activeCaseQuillEditor.root.innerHTML = caseData.content || "";
-        } else {
-            caseEditorTitle.textContent = "Add New Case";
-            caseEditorCaseIdInput.value = ""; // مسح ID عند إضافة كيس جديد
-            caseTitleInput.value = "";
-            caseSummaryInput.value = "";
-            caseStatusSelect.value = (typeof caseStatusOptions !== 'undefined' && caseStatusOptions.length > 0) ? caseStatusOptions[0] : 'New';
-            caseTagsInput.value = "";
-            if (!activeCaseQuillEditor) {
-                activeCaseQuillEditor = new Quill(caseQuillEditorDiv, {
-                    theme: 'snow',
-                    placeholder: 'Enter detailed content, steps, logs etc. Use rich text formatting.',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            ['link', 'blockquote', 'code-block', 'image', 'video'], // إضافة image و video
-                            [{ 'script': 'sub'}, { 'script': 'super' }],
-                            [{ 'indent': '-1'}, { 'indent': '+1' }],
-                            [{ 'color': [] }, { 'background': [] }],
-                            [{ 'align': [] }],
-                            ['clean']
-                        ]
-                    }
-                });
-            }
-            activeCaseQuillEditor.root.innerHTML = ""; // مسح المحرر
-        }
-        if(caseEditorModal) caseEditorModal.classList.remove('hidden');
-    };
-
-    window.closeCaseEditor = () => { // جعلها متاحة عالميًا
-        if(caseEditorModal) caseEditorModal.classList.add('hidden');
-        // لا تقم بتدمير محرر Quill هنا، فقط امسح محتواه عند فتح المحرر مرة أخرى
-    };
-
-    if (saveCaseButton) {
-        saveCaseButton.addEventListener('click', async () => {
-            const caseId = caseEditorCaseIdInput.value;
-            const sectionId = caseEditorSectionIdInput.value;
-            const title = caseTitleInput.value.trim();
-            const summary = caseSummaryInput.value.trim();
-            const status = caseStatusSelect.value;
-            const tagsString = caseTagsInput.value.trim();
-            const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-            const content = activeCaseQuillEditor ? activeCaseQuillEditor.root.innerHTML : "";
-
-            if (!title || !summary || !sectionId) {
-                showToast("Title, Summary, and Section are required.", "error");
-                return;
-            }
-
-            const casePayload = {
-                section_id: sectionId,
-                title,
-                summary,
-                content,
-                status,
-                tags,
-                updated_at: new Date().toISOString(),
-            };
-
-            let responseData, dbError, actionType;
-            saveCaseButton.disabled = true;
-            saveCaseButton.textContent = caseId ? "Saving..." : "Adding...";
-
-            try {
-                if (caseId) { // تعديل كيس موجود
-                    actionType = 'update_case';
-                    casePayload.created_by = undefined; // لا نغير created_by عند التعديل
-                    const { data, error } = await supabase.from('cases').update(casePayload).eq('id', caseId).select().single();
-                    responseData = data; dbError = error;
-                } else { // إضافة كيس جديد
-                    actionType = 'create_case';
-                    casePayload.created_by = currentUser.id; // أو email
-                    casePayload.created_at = new Date().toISOString();
-                    const { data, error } = await supabase.from('cases').insert(casePayload).select().single();
-                    responseData = data; dbError = error;
-                }
-
-                if (dbError) throw dbError;
-
-                showToast(`Case successfully ${caseId ? 'updated' : 'added'}!`, 'success');
-                closeCaseEditor();
-
-                const itemId = responseData ? responseData.id : null;
-                if (itemId) {
-                    await supabase.from('activity_log').insert({
-                        user_id: currentUser.id, // استخدام user_id بدلاً من email
-                        user_email: currentUser.email, // يمكنك الاحتفاظ به إذا أردت
-                        action: actionType,
-                        item_id: itemId,
-                        item_type: 'case',
-                        details: { title: title, section: sectionId, status: status }
-                    });
-                }
-                // إعادة تحميل محتوى القسم لإظهار التغييرات
-                handleSectionTrigger(sectionId, itemId);
-            } catch (err) {
-                showToast(`Error saving case: ${err.message}`, 'error');
-                console.error("Error saving case:", err);
-            } finally {
-                saveCaseButton.disabled = false;
-                saveCaseButton.textContent = "Save Case";
-            }
-        });
-    }
-
-
-    // --- Section Navigation & Content Display ---
-    // (دالة displaySectionContent مع تعديلات لجلب cases و sub_categories من Supabase وإضافة زر Add Case)
-    // (دالة showItemDetailsModal مع تعديلات لجلب case details من Supabase وتسجيل المشاهدة)
-    // (دالة handleSectionTrigger و parseHash كما هي تقريبًا)
-    // ...
-    // [هذه الدوال موجودة في الردود السابقة، قم بدمجها وتعديلها هنا]
-    // ...
+    // [كل الكود من الرد السابق لـ app.js يجب أن يكون هنا، مع استبدال/تحديث الدوال كما هو موضح أعلاه]
+    // تأكد من نسخ ولصق محتوى app.js السابق بالكامل هنا، مع الانتباه إلى أن الدوال المساعدة
+    // ودوال العرض أصبحت الآن خارج دالة DOMContentLoaded الرئيسية ولكنها ضمن نفس نطاق الملف.
 
     // --- Initial Page Load from Hash ---
-    // (نفس الكود من الردود السابقة)
-    // ...
+    const { sectionId: initialSectionId, itemId: initialItemId, subCategoryFilter: initialSubCategoryFilter } = parseHash(); // تأكد من وجود دالة parseHash
+    console.log('[app.js] Initial hash load:', { initialSectionId, initialItemId, initialSubCategoryFilter });
+    if (handleSectionTrigger) { // تأكد من وجود دالة handleSectionTrigger
+        handleSectionTrigger(initialSectionId || 'home', initialItemId, initialSubCategoryFilter);
+    } else {
+        console.error("handleSectionTrigger is not defined!");
+    }
 
     console.log('[app.js] All initializations and event listeners are set up.');
 });
+
+// *** تأكد من نسخ ولصق جميع الدوال الأخرى المتبقية من `app.js` السابق هنا ***
+// مثل: displaySectionContent, showItemDetailsModal, renderAccessTrackingReport,
+// openSubsectionModal (إذا كنت ستستخدمها), handleSectionTrigger, parseHash,
+// وجميع event listeners.
