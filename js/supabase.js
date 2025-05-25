@@ -11,11 +11,7 @@ try {
     console.log('[supabase.js] Supabase client initialized and exported.');
 } catch (error) {
     console.error("[supabase.js] Supabase client initialization failed:", error);
-    // يمكنك رمي الخطأ مرة أخرى ليتم التعامل معه في الملفات التي تستورده
-    // أو تصدير null والسماح للملفات المستوردة بالتحقق.
-    // رمي الخطأ يوقف التنفيذ مبكرًا وهو أفضل.
     throw new Error(`Failed to initialize Supabase client: ${error.message}`);
 }
 
-// قم بتصدير العميل المهيأ
 export const supabase = supabaseInstance;
