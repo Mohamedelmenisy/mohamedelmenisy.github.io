@@ -7,11 +7,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabaseInstance;
 
 try {
-  supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log('[supabase.js] Supabase client initialized and exported.');
+    supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[supabase.js] Supabase client initialized successfully.');
 } catch (error) {
-  console.error("[supabase.js] Supabase client initialization failed:", error);
-  throw new Error(`Failed to initialize Supabase client: ${error.message}`); // Corrected line
+    console.error('[supabase.js] Supabase client initialization failed:', error);
+    throw new Error(`Failed to initialize Supabase client: ${error.message}`);
 }
 
 export const supabase = supabaseInstance;
