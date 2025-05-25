@@ -1,8 +1,3 @@
-// js/data.js
-
-// This will be expanded significantly.
-// For now, it's just a placeholder to show where data will live.
-
 const kbSystemData = {
     meta: {
         version: "0.1.2", // Updated version to reflect changes
