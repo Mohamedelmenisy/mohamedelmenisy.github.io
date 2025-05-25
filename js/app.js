@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
         });
     }
 
@@ -49,45 +49,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
             // Potentially redirect to login or show error message
-            // window.location.href = 'login.html';
+            // window.location.href = 'login.html'; // Example redirect
             // return;
         }
     }
 
     let currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
-    
-    if (currentUser) {
+
+    if (currentUser && supabase) { // Ensure supabase is available
         try {
             console.log('[app.js - FIX] Fetching user role for:', currentUser.email);
             const { data: userProfile, error: profileError } = await supabase
-                .from('users')
+                .from('users') // Assuming 'users' table has 'email' and 'role'
                 .select('role')
                 .eq('email', currentUser.email)
                 .single();
 
-            if (profileError && profileError.code !== 'PGRST116') { // PGRST116: "single" row not found
+            if (profileError && profileError.code !== 'PGRST116') { // PGRST116: "single" row not found, not necessarily an error here
                 console.error('[app.js - FIX] Error fetching user profile:', profileError);
-                currentUser.role = 'viewer'; // Default on error
+                currentUser.role = 'viewer'; // Default role on error
             } else if (userProfile) {
                 currentUser.role = userProfile.role;
                 console.log('[app.js - FIX] User role set to:', currentUser.role);
             } else {
-                currentUser.role = 'viewer'; // Default if no profile found
+                currentUser.role = 'viewer'; // Default role if no profile found
                 console.warn('[app.js - FIX] No user profile found in Supabase for role, defaulting to viewer.');
             }
         } catch (e) {
             console.error('[app.js - FIX] Exception fetching user role:', e);
-            currentUser.role = 'viewer';
+            currentUser.role = 'viewer'; // Default role on exception
         }
-    } else {
-        // If currentUser is null after Auth checks, it means user is not authenticated
-        // and protectPage or Auth.logout should have redirected.
-        // If we reach here and currentUser is null, something is wrong with auth flow.
+    } else if (!currentUser) {
         console.error('[app.js - FIX] CRITICAL: currentUser is null after authentication checks. Auth flow issue.');
-        // It's possible protectPage() or Auth.logout() initiated a redirect but script execution continued.
-        // Depending on browser behavior, a return here might be redundant but safe.
-        return;
+        // protectPage or Auth.logout should have redirected.
+        // If script execution continues, it's a problem.
+        return; // Stop execution if user is not authenticated and somehow script continues
     }
+
 
     console.log('[app.js - FIX] Current user with role:', currentUser);
 
@@ -111,21 +109,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         console.warn('[app.js - FIX] kbSystemData or kbSystemData.meta not available for version info.');
     }
-    
+
     // --- Toast Notification ---
     const toastNotification = document.getElementById('toastNotification');
     const toastMessage = document.getElementById('toastMessage');
 
     function showToast(message, type = 'success') {
-        if (!toastNotification || !toastMessage) return;
+        if (!toastNotification || !toastMessage) {
+            console.warn("Toast elements not found, logging to console:", message, type);
+            alert(`${type.toUpperCase()}: ${message}`); // Fallback alert
+            return;
+        }
         toastMessage.textContent = message;
         toastNotification.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-blue-500');
         if (type === 'success') {
             toastNotification.classList.add('bg-green-500');
         } else if (type === 'error') {
             toastNotification.classList.add('bg-red-500');
-        } else {
-            toastNotification.classList.add('bg-blue-500'); // Info
+        } else { // 'info' or other
+            toastNotification.classList.add('bg-blue-500');
         }
         toastNotification.classList.remove('hidden');
         setTimeout(() => {
@@ -140,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalContentEl = document.getElementById('modalContent');
     const modalActionsEl = document.getElementById('modalActions');
     const closeModalBtn = document.getElementById('closeModalBtn');
-    let activeQuillEditor = null; // To store the Quill instance for the active modal
+    let activeQuillEditor = null;
 
     function openModal(title, contentHTML, actionsHTML = '') {
         if (!genericModal || !modalTitleEl || !modalContentEl || !modalActionsEl) {
@@ -148,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         modalTitleEl.textContent = title;
-        modalContentEl.innerHTML = contentHTML;
+        modalContentEl.innerHTML = contentHTML; // Injects HTML, ensure it's safe or sanitized
         if (actionsHTML) {
             modalActionsEl.innerHTML = actionsHTML;
             modalActionsEl.classList.remove('hidden');
@@ -157,35 +159,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalActionsEl.classList.add('hidden');
         }
         genericModal.classList.remove('hidden');
-        // Trap focus within modal - basic implementation
-        // Consider a more robust library for accessibility if needed
         const focusableElements = genericModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length) focusableElements[0].focus();
     }
 
     function closeModal() {
         if (activeQuillEditor) {
-            // If you need to do any cleanup specific to Quill, do it here
-            // For example, if Quill was dynamically created and needs to be destroyed
-            // However, if the #quillEditor div is part of modalContentEl's innerHTML,
-            // it will be removed when modalContentEl is cleared.
-            activeQuillEditor = null; 
+            // Quill instance cleanup is usually handled by its own destroy method if needed,
+            // but if the editor div is simply removed from DOM, that's often enough.
+            activeQuillEditor = null;
         }
         if (genericModal) genericModal.classList.add('hidden');
-        if (modalContentEl) modalContentEl.innerHTML = ''; // Clear content to avoid issues with Quill re-initialization
+        if (modalContentEl) modalContentEl.innerHTML = ''; // Clear content
         if (modalActionsEl) modalActionsEl.innerHTML = '';
     }
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-    // Close modal on escape key
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && genericModal && !genericModal.classList.contains('hidden')) {
             closeModal();
         }
     });
-     // Close modal if clicked outside content
     if (genericModal) {
         genericModal.addEventListener('click', (event) => {
-            if (event.target === genericModal) { // Check if the click is on the backdrop itself
+            if (event.target === genericModal) {
                 closeModal();
             }
         });
@@ -211,11 +207,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isDark = htmlElement.classList.contains('dark');
         document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark, .modal-content-view mark').forEach(mark => {
             if (isDark) {
-                mark.style.backgroundColor = '#78350f'; // Darker yellow/orange for dark mode
-                mark.style.color = '#f3f4f6'; // Light gray text
+                mark.style.backgroundColor = '#78350f';
+                mark.style.color = '#f3f4f6';
             } else {
-                mark.style.backgroundColor = '#fde047'; // Tailwind yellow-400
-                mark.style.color = '#1f2937'; // Dark gray text
+                mark.style.backgroundColor = '#fde047';
+                mark.style.color = '#1f2937';
             }
         });
     }
@@ -251,8 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sectionTitleText = currentSectionTitleEl ? currentSectionTitleEl.textContent : 'Current Page';
             const pageUrl = window.location.href;
             showToast(`Reporting issue for: ${sectionTitleText} (Placeholder)`, 'info');
-            // Example: You could open a mailto link or a dedicated feedback modal
-            // window.location.href = `mailto:support@example.com?subject=Issue Report: ${sectionTitleText}&body=Page URL: ${pageUrl}%0A%0ADescribe the issue:`;
         });
     }
 
@@ -267,7 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
     console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
 
-    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>'; // Keep the static welcome content for home
+    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
 
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
@@ -301,7 +295,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderArticleCard_enhanced(article, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-        // MODIFIED: Read More link to trigger modal
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article" data-section-id="${sectionData.id}">
                 <div class="flex items-center mb-3">
@@ -332,7 +325,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderItemCard_enhanced(item, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-        // MODIFIED: Open link to trigger modal
         return `
             <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item" data-section-id="${sectionData.id}">
                  <div class="flex items-center mb-3">
@@ -358,13 +350,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderCaseCard_enhanced(caseItem, sectionData, isSupabaseCase = false) {
         const theme = getThemeColors(sectionData.themeColor);
         const caseIcon = 'fas fa-briefcase';
-        // MODIFIED: Details link to trigger modal. Use caseItem.id (which should be UUID from Supabase if isSupabaseCase is true)
-        const itemId = isSupabaseCase ? caseItem.id : caseItem.id; // caseItem.id is already the Supabase ID if fetched from there
+        const itemId = caseItem.id; // Supabase uses 'id' (UUID typically)
 
         let actions = '';
         if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
             actions += `<button data-action="edit-case" data-case-id="${itemId}" data-section-id="${sectionData.id}" class="text-xs text-blue-500 hover:underline mr-2"><i class="fas fa-edit"></i> Edit</button>`;
-            // Add delete button if needed later
         }
 
         return `
@@ -379,8 +369,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
-                ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Steps: ${escapeHTML(caseItem.resolutionStepsPreview)}</p>` : ''}
-                ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Preview: ${escapeHTML(truncateText(caseItem.resolutionStepsPreview, 100))}</p>` : ''}
+                ${caseItem.tags && Array.isArray(caseItem.tags) && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
                     <div>
@@ -393,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
     }
-    
+
     async function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
         console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
@@ -401,26 +391,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (document.getElementById('pageContent')) document.getElementById('pageContent').innerHTML = '<p>Error: pageContent element not found.</p>';
             return;
         }
-         if (accessTrackingReportContainer) accessTrackingReportContainer.classList.add('hidden'); // Hide access tracking by default
+         if (accessTrackingReportContainer) accessTrackingReportContainer.classList.add('hidden');
 
         if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-            console.error('[app.js - FIX] kbSystemData is UNDEFINED.');
-            pageContent.innerHTML = '<p>Error: Data missing.</p>';
+            console.error('[app.js - FIX] kbSystemData (static data) is UNDEFINED.');
+            pageContent.innerHTML = '<p>Error: Core data missing.</p>';
             return;
         }
 
         if (sectionId === 'home') {
-            pageContent.innerHTML = initialPageContent; // Restore original home content
+            pageContent.innerHTML = initialPageContent;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
             if (breadcrumbsContainer) {
                 breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            const welcomeUserEl = document.getElementById('welcomeUserName'); // Re-fetch after innerHTML change
+            const welcomeUserEl = document.getElementById('welcomeUserName');
             if (currentUser && welcomeUserEl) welcomeUserEl.textContent = `Welcome, ${currentUser.fullName || currentUser.email}!`;
-            
-            const kbVersionEl = document.getElementById('kbVersion'); // Re-fetch
-            const lastKbUpdateEl = document.getElementById('lastKbUpdate'); // Re-fetch
+
+            const kbVersionEl = document.getElementById('kbVersion');
+            const lastKbUpdateEl = document.getElementById('lastKbUpdate');
             if (kbSystemData.meta) {
                 if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
                 if (lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
@@ -428,8 +418,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
             initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
-            
-            await renderAccessTrackingReport(); // Display access tracking on home page
+
+            if (currentUser && supabase) await renderAccessTrackingReport(); // Only if user and supabase are available
 
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
             console.log('[app.js - FIX] Home page loaded.');
@@ -448,7 +438,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         contentHTML += `<div class="flex justify-between items-center"><h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
         contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
 
-        // Section-specific actions (Add Case, Add Subsection)
         if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
             contentHTML += `<div class="mb-6 flex space-x-3">
                 <button id="addCaseBtnInSection" data-section-id="${sectionData.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded inline-flex items-center">
@@ -459,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </button>
             </div>`;
         }
-        
+
         contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask about ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border rounded-l-md dark:bg-gray-700" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
 
         let hasContent = false;
@@ -470,27 +459,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             hasContent = true;
         }
 
-        // Fetch and render cases from Supabase
-        try {
-            const { data: cases, error: casesError } = await supabase
-                .from('cases')
-                .select('*')
-                .eq('section_id', sectionId)
-                .order('created_at', { ascending: false });
+        if (supabase) { // Fetch cases from Supabase
+            try {
+                const { data: cases, error: casesError } = await supabase
+                    .from('cases')
+                    .select('*') // Select all columns
+                    .eq('section_id', sectionId) // Ensure your 'cases' table has a 'section_id' column
+                    .order('created_at', { ascending: false });
 
-            if (casesError) throw casesError;
+                if (casesError) throw casesError;
 
-            if (cases && cases.length > 0) {
-                contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-                cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData, true)); // Pass true for Supabase case
-                contentHTML += `</div>`;
-                hasContent = true;
+                if (cases && cases.length > 0) {
+                    contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+                    cases.forEach(caseItem => {
+                        // Add a preview for resolution steps if the full content is long
+                        if (caseItem.content && typeof caseItem.content === 'string') {
+                             // Basic preview, assuming content is HTML. For plain text, adjust accordingly.
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = caseItem.content;
+                            caseItem.resolutionStepsPreview = truncateText(tempDiv.textContent || tempDiv.innerText || "", 150);
+                        }
+                        contentHTML += renderCaseCard_enhanced(caseItem, sectionData, true);
+                    });
+                    contentHTML += `</div>`;
+                    hasContent = true;
+                }
+            } catch (error) {
+                console.error(`[app.js - FIX] Error fetching cases for section ${sectionId}:`, error);
+                contentHTML += `<p class="text-red-500">Error loading cases. Check console.</p>`;
             }
-        } catch (error) {
-            console.error(`[app.js - FIX] Error fetching cases for section ${sectionId}:`, error);
-            contentHTML += `<p class="text-red-500">Error loading cases. Check console.</p>`;
+        } else if (sectionData.cases && sectionData.cases.length > 0) { // Fallback to static cases if Supabase not available
+             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases (Static)</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData, false)); // isSupabaseCase = false
+            contentHTML += `</div>`;
+            hasContent = true;
         }
-        
+
+
         if (sectionData.items && sectionData.items.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
             sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
@@ -498,41 +503,56 @@ document.addEventListener('DOMContentLoaded', async () => {
             hasContent = true;
         }
 
-        // Fetch and render subcategories from Supabase
-        try {
-            const { data: subCategories, error: subCatError } = await supabase
-                .from('sub_categories')
-                .select('*')
-                .eq('section_id', sectionId)
-                .order('name', { ascending: true });
+        if (supabase) { // Fetch subcategories from Supabase
+            try {
+                const { data: subCategories, error: subCatError } = await supabase
+                    .from('sub_categories') // Ensure your table is named 'sub_categories'
+                    .select('*')
+                    .eq('section_id', sectionId) // And has 'section_id'
+                    .order('name', { ascending: true });
 
-            if (subCatError) throw subCatError;
-            
-            if (subCategories && subCategories.length > 0) {
-                 contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
-                subCategories.forEach(subCat => {
-                    let subCatActions = '';
-                     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
-                        subCatActions = `<div class="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                           <button data-action="edit-subsection" data-subsection-id="${subCat.id}" data-section-id="${sectionData.id}" class="text-xs text-blue-500 hover:underline p-1"><i class="fas fa-edit"></i></button>
-                                         </div>`;
-                     }
-                    contentHTML += `<div class="relative sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center">
-                                        ${subCatActions}
-                                        <a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" >
-                                            <i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i>
-                                            <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
-                                            ${subCat.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHTML(subCat.description)}</p>` : ''}
-                                        </a>
-                                    </div>`;
-                });
-                contentHTML += `</div>`;
-                hasContent = true; // Even if other content is missing, subcategories count
+                if (subCatError) throw subCatError;
+
+                if (subCategories && subCategories.length > 0) {
+                    contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+                    subCategories.forEach(subCat => {
+                        let subCatActions = '';
+                        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
+                            subCatActions = `<div class="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                               <button data-action="edit-subsection" data-subsection-id="${subCat.id}" data-section-id="${sectionData.id}" class="text-xs text-blue-500 hover:underline p-1"><i class="fas fa-edit"></i></button>
+                                             </div>`;
+                        }
+                        contentHTML += `<div class="relative sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center">
+                                            ${subCatActions}
+                                            <a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" >
+                                                <i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i>
+                                                <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
+                                                ${subCat.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHTML(subCat.description)}</p>` : ''}
+                                            </a>
+                                        </div>`;
+                    });
+                    contentHTML += `</div>`;
+                    hasContent = true;
+                }
+            } catch (error) {
+                console.error(`[app.js - FIX] Error fetching subcategories for section ${sectionId}:`, error);
+                contentHTML += `<p class="text-red-500">Error loading sub-categories. Check console.</p>`;
             }
-        } catch (error) {
-            console.error(`[app.js - FIX] Error fetching subcategories for section ${sectionId}:`, error);
-            contentHTML += `<p class="text-red-500">Error loading sub-categories. Check console.</p>`;
+        } else if (sectionData.subCategories && sectionData.subCategories.length > 0) { // Fallback to static
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories (Static)</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+            sectionData.subCategories.forEach(subCat => {
+                contentHTML += `<div class="relative sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center">
+                                    <a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" >
+                                        <i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i>
+                                        <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
+                                        ${subCat.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHTML(subCat.description)}</p>` : ''}
+                                    </a>
+                                </div>`;
+            });
+            contentHTML += `</div>`;
+            hasContent = true;
         }
+
 
         if (sectionData.glossary && sectionData.glossary.length > 0) {
             contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
@@ -540,26 +560,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             contentHTML += `</div>`;
             hasContent = true;
         }
-        if (!hasContent) { // Check if any content was actually rendered
+        if (!hasContent) {
             contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl text-gray-400 dark:text-gray-500 mb-4"></i><h3 class="text-xl font-semibold">No content yet</h3><p>Content for "${escapeHTML(sectionData.name)}" is being prepared, or no items match the current filter.</p></div>`;
         }
         contentHTML += `</div>`;
 
         pageContent.innerHTML = contentHTML;
-
         pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
             let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
-            if (subCategoryFilter) {
-                // Attempt to get subcategory name if subCategoryFilter is active.
-                // This requires sub_categories to be available or fetched.
-                // Assuming subCategories were fetched earlier if subCategoryFilter is set.
-                const subCatName = (await supabase.from('sub_categories').select('name').eq('id', subCategoryFilter).eq('section_id', sectionId).single()).data?.name;
-                if (subCatName) {
-                     bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(subCatName)}</span>`;
+            if (subCategoryFilter && supabase) {
+                try {
+                    const { data: subCatInfo, error: subCatInfoError } = await supabase
+                        .from('sub_categories')
+                        .select('name')
+                        .eq('id', subCategoryFilter)
+                        .eq('section_id', sectionId) // Important: ensure subcategory belongs to current section
+                        .single();
+                    if (subCatInfoError && subCatInfoError.code !== 'PGRST116') throw subCatInfoError;
+                    if (subCatInfo) {
+                        bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(subCatInfo.name)}</span>`;
+                    }
+                } catch (err) {
+                    console.warn("Could not fetch subcategory name for breadcrumbs:", err);
                 }
+            } else if (subCategoryFilter && sectionData.subCategories) { // Fallback for static subcategories
+                 const subCat = sectionData.subCategories.find(sc => sc.id === subCategoryFilter);
+                 if(subCat) bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(subCat.name)}</span>`;
             }
             breadcrumbsContainer.innerHTML = bcHTML;
             breadcrumbsContainer.classList.remove('hidden');
@@ -582,8 +611,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 200);
         }
         applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-        
-        // Add event listeners for new buttons
+
+        // Add event listeners for new buttons after content is rendered
         const addCaseBtnInSection = document.getElementById('addCaseBtnInSection');
         if (addCaseBtnInSection) {
             addCaseBtnInSection.addEventListener('click', () => openCaseModal(addCaseBtnInSection.dataset.sectionId));
@@ -593,17 +622,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             addSubsectionBtnInSection.addEventListener('click', () => openSubsectionModal(addSubsectionBtnInSection.dataset.sectionId));
         }
     }
-    
+
     // --- View Details Modal ---
     async function showItemDetailsModal(itemId, itemType, sectionId) {
-        if (!currentUser) return; // Should not happen if page is protected
+        if (!currentUser || (!supabase && itemType === 'case') ) { // Check if Supabase needed and available
+            showToast("Cannot load details at this time.", "error");
+            return;
+        }
         let title = 'Details';
-        let contentHTML = '<p>Loading details...</p>';
+        let contentHTML = '<p class="text-center py-4">Loading details...</p>';
         let itemData;
 
         try {
             const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-            if (!sectionData) throw new Error('Section data not found');
+            if (!sectionData) throw new Error('Section data not found for modal');
 
             if (itemType === 'article') {
                 itemData = sectionData.articles.find(a => a.id === itemId);
@@ -614,13 +646,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Last Updated: ${new Date(itemData.lastUpdated).toLocaleDateString()}</p>
                                  ${itemData.tags && itemData.tags.length > 0 ? `<div class="mb-3">${itemData.tags.map(tag => `<span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full mr-1 mb-1 inline-block">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                                  <p class="mb-4">${escapeHTML(itemData.summary)}</p>`;
-                if (itemData.contentPath && itemData.contentPath.endsWith('.html')) {
+                // Using itemData.details directly if contentPath is not used for HTML files
+                if(itemData.details){
+                     contentHTML += `<hr class="my-4 dark:border-gray-600"><div class="prose dark:prose-invert max-w-none">${itemData.details.replace(/\n/g, '<br>')}</div>`; // Basic formatting for newlines
+                } else if (itemData.contentPath && itemData.contentPath.endsWith('.html')) { // Fallback if you still use contentPath for some
                     try {
                         const response = await fetch(itemData.contentPath);
                         if (response.ok) {
                             const articleHtmlContent = await response.text();
-                            const sanitizedArticleHtml = articleHtmlContent; // TODO: Sanitize this HTML
-                            contentHTML += `<hr class="my-4 dark:border-gray-600"><div class="prose dark:prose-invert max-w-none">${sanitizedArticleHtml}</div>`;
+                            contentHTML += `<hr class="my-4 dark:border-gray-600"><div class="prose dark:prose-invert max-w-none">${articleHtmlContent}</div>`;
                         } else {
                              contentHTML += `<p class="text-sm text-gray-500">Full content could not be loaded (path: ${escapeHTML(itemData.contentPath)}).</p>`;
                         }
@@ -641,8 +675,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                  <a href="${itemData.url}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline">Open Item/File <i class="fas fa-external-link-alt ml-1"></i></a>
                                </div>`;
             } else if (itemType === 'case') {
+                if (!supabase) throw new Error("Supabase client not available for fetching case details.");
                 const { data: caseDetail, error } = await supabase.from('cases').select('*').eq('id', itemId).single();
-                if (error || !caseDetail) throw error || new Error('Case not found in Supabase');
+                if (error) throw error;
+                if (!caseDetail) throw new Error('Case not found in Supabase');
                 itemData = caseDetail;
                 title = itemData.title;
                 contentHTML = `<div class="modal-content-view">
@@ -650,22 +686,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Status: <span class="font-semibold ${getThemeColors(sectionData.themeColor).statusText} px-2 py-0.5 rounded-full ${getThemeColors(sectionData.themeColor).statusBg}">${escapeHTML(itemData.status)}</span></p>
                                 ${itemData.assigned_to ? `<p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Assigned to: ${escapeHTML(itemData.assigned_to)}</p>` : ''}
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Last Updated: ${new Date(itemData.updated_at).toLocaleString()}</p>
-                                ${itemData.tags && itemData.tags.length > 0 ? `<div class="mb-3">${itemData.tags.map(tag => `<span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full mr-1 mb-1 inline-block">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                                ${itemData.summary ? `<p class="mb-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">${escapeHTML(itemData.summary)}</p>` : ''}
+                                ${itemData.tags && Array.isArray(itemData.tags) && itemData.tags.length > 0 ? `<div class="mb-3">${itemData.tags.map(tag => `<span class="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full mr-1 mb-1 inline-block">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                                ${itemData.summary ? `<div class="mb-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md"><h5 class="font-semibold text-sm mb-1">Summary:</h5>${escapeHTML(itemData.summary)}</div>` : ''}
                                 <hr class="my-4 dark:border-gray-600">
                                 <h5 class="font-semibold mb-2 text-gray-700 dark:text-gray-300">Details/Content:</h5>
                                 <div class="prose dark:prose-invert max-w-none p-3 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900/30">${itemData.content || '<p>No detailed content provided.</p>'}</div>
-                             </div>`; 
+                             </div>`;
             }
             openModal(title, contentHTML);
+            applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light'); // Re-apply theme for modal content marks
 
-            const { error: logError } = await supabase.from('views_log').insert({
-                user_email: currentUser.email,
-                section_id: sectionId,
-                item_id: itemId,
-                item_type: itemType,
-            });
-            if (logError) console.error('Error logging view:', logError);
+            if (supabase && currentUser) {
+                const { error: logError } = await supabase.from('views_log').insert({
+                    user_email: currentUser.email,
+                    section_id: sectionId,
+                    item_id: itemId,
+                    item_type: itemType,
+                });
+                if (logError) console.error('Error logging view:', logError);
+            }
 
         } catch (error) {
             console.error('Error showing item details:', error);
@@ -673,13 +712,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+
     // --- Access Tracking Report ---
     async function renderAccessTrackingReport() {
-        if (!accessTrackingReportContainer) return;
-        if (!currentUser) {
-             accessTrackingReportContainer.innerHTML = '<p class="text-sm text-gray-500">Login to see access tracking.</p>';
-             accessTrackingReportContainer.classList.remove('hidden');
-             return;
+        if (!accessTrackingReportContainer || !supabase || !currentUser) {
+            if (accessTrackingReportContainer) {
+                accessTrackingReportContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-300">Access tracking unavailable.</p>';
+                accessTrackingReportContainer.classList.remove('hidden');
+            }
+            return;
         }
 
         accessTrackingReportContainer.innerHTML = '<p class="text-center py-4">Loading access report...</p>';
@@ -689,19 +730,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data: logs, error } = await supabase
                 .from('views_log')
                 .select(`
-                    user_email, 
-                    section_id, 
-                    item_id, 
-                    item_type, 
+                    user_email,
+                    section_id,
+                    item_id,
+                    item_type,
                     viewed_at
                 `)
                 .order('viewed_at', { ascending: false })
-                .limit(20);
+                .limit(10); // Keep limit reasonable
 
             if (error) throw error;
 
             if (!logs || logs.length === 0) {
-                accessTrackingReportContainer.innerHTML = '<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg card-animate"><h3 class="text-xl font-semibold mb-3">Access Tracking</h3><p>No access activity recorded yet.</p></div>';
+                accessTrackingReportContainer.innerHTML = '<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg card-animate"><h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-white">Access Tracking</h3><p class="text-gray-600 dark:text-gray-300">No access activity recorded yet.</p></div>';
                 return;
             }
 
@@ -718,11 +759,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">`;
-            
+
             for (const log of logs) {
-                let itemName = log.item_id; 
+                let itemName = log.item_id || 'N/A';
                 const sectionInfo = kbSystemData.sections.find(s => s.id === log.section_id);
-                let sectionName = sectionInfo ? sectionInfo.name : log.section_id;
+                let sectionName = sectionInfo ? sectionInfo.name : (log.section_id || 'Unknown Section');
 
                 if (log.item_type === 'article' && sectionInfo && sectionInfo.articles) {
                     const article = sectionInfo.articles.find(a => a.id === log.item_id);
@@ -730,15 +771,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else if (log.item_type === 'item' && sectionInfo && sectionInfo.items) {
                     const item = sectionInfo.items.find(i => i.id === log.item_id);
                     if (item) itemName = item.title;
-                } else if (log.item_type === 'case') {
-                     itemName = `Case ID: ${log.item_id ? log.item_id.substring(0,8) + '...' : 'N/A'}`;
-                } else if (log.item_type === 'section_match' || !log.item_id) { 
-                    itemName = sectionName; 
+                } else if (log.item_type === 'case' && log.item_id) {
+                     // For cases, we could fetch title from Supabase, but to avoid N+1 here,
+                     // we'll show ID. If titles are crucial, join in the initial query or batch fetch.
+                     itemName = `Case: ${log.item_id.substring(0,8)}...`;
+                } else if (log.item_type === 'section_match' || !log.item_id) {
+                    itemName = sectionName;
                 }
+
 
                 reportHTML += `<tr>
                                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${escapeHTML(log.user_email)}</td>
-                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${escapeHTML(log.item_type.replace('_', ' '))}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${escapeHTML(log.item_type.replace(/_/g, ' '))}</td>
                                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300" title="${log.item_id || 'N/A'} in ${sectionName}">${truncateText(escapeHTML(itemName), 40)}</td>
                                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">${new Date(log.viewed_at).toLocaleString()}</td>
                                </tr>`;
@@ -750,19 +794,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (error) {
             console.error('Error rendering access tracking report:', error);
-            accessTrackingReportContainer.innerHTML = '<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold mb-3">Access Tracking</h3><p class="text-red-500">Could not load access report.</p></div>';
+            accessTrackingReportContainer.innerHTML = '<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-white">Access Tracking</h3><p class="text-red-500">Could not load access report.</p></div>';
         }
     }
 
-    // --- Add/Edit Case Modal & Logic ---
+
+    // --- Add/Edit Case Modal & Logic (Supabase Integrated) ---
     async function openCaseModal(sectionId, caseIdToEdit = null) {
-        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-            showToast('Access denied.', 'error');
+        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role) || !supabase) {
+            showToast('Access denied or Supabase not available.', 'error');
             return;
         }
 
         const modalTitle = caseIdToEdit ? 'Edit Case' : 'Add New Case';
-        let caseData = { title: '', summary: '', content: '', status: 'New', tags: [] }; 
+        let caseData = { title: '', summary: '', content: '', status: (typeof caseStatusOptions !== 'undefined' && caseStatusOptions.length > 0 ? caseStatusOptions[0] : 'New'), tags: [] };
 
         if (caseIdToEdit) {
             const { data, error } = await supabase.from('cases').select('*').eq('id', caseIdToEdit).single();
@@ -772,10 +817,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             caseData = data;
+            // Ensure tags is an array for proper join
+            if (caseData.tags && !Array.isArray(caseData.tags)) {
+                caseData.tags = typeof caseData.tags === 'string' ? caseData.tags.split(',').map(t => t.trim()) : [];
+            } else if (!caseData.tags) {
+                caseData.tags = [];
+            }
         }
-        
-        const caseStatuses = ['New', 'Pending Investigation', 'Active', 'Escalated to Tier 2', 'Awaiting Customer', 'Resolved', 'Closed'];
-        let statusOptionsHTML = caseStatuses.map(s => `<option value="${s}" ${caseData.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
+        // Use caseStatusOptions from data.js if available
+        const statusesToUse = (typeof caseStatusOptions !== 'undefined' && caseStatusOptions.length > 0)
+            ? caseStatusOptions
+            : ['New', 'Pending Investigation', 'Active', 'Resolved', 'Closed']; // Fallback statuses
+
+        let statusOptionsHTML = statusesToUse.map(s => `<option value="${s}" ${caseData.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
 
         const contentHTML = `
             <form id="caseForm" class="space-y-4">
@@ -800,43 +856,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Content/Resolution Steps</label>
                     <div id="quillEditorContainer" class="mt-1 rounded-md shadow-sm">
-                         <div id="quillEditor"></div>
+                         <div id="quillEditor"></div> <!-- Quill will attach here -->
                     </div>
                 </div>
             </form>
         `;
         const actionsHTML = `
-            <button id="cancelCaseBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">Cancel</button>
-            <button id="saveCaseBtn" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">${caseIdToEdit ? 'Update' : 'Save'} Case</button>
+            <button id="cancelCaseBtn" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">Cancel</button>
+            <button id="saveCaseBtn" type="button" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">${caseIdToEdit ? 'Update' : 'Save'} Case</button>
         `;
         openModal(modalTitle, contentHTML, actionsHTML);
 
+        // Initialize Quill
         activeQuillEditor = new Quill('#quillEditor', {
             modules: {
                 toolbar: [
                     [{ 'header': [1, 2, 3, false] }],
                     ['bold', 'italic', 'underline', 'strike'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link', 'blockquote', 'code-block'],
+                    ['link', 'blockquote', 'code-block'], [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'color': [] }, { 'background': [] }],
                     [{ 'align': [] }],
                     ['clean']
                 ]
             },
             theme: 'snow',
-            placeholder: 'Enter detailed content, steps, logs etc...'
+            placeholder: 'Enter detailed content, steps, logs etc. Use HTML or rich text formatting.'
         });
         if (caseData.content) {
-            activeQuillEditor.root.innerHTML = caseData.content; 
+            activeQuillEditor.root.innerHTML = caseData.content; // Set existing HTML content
         }
-        
+
         document.getElementById('cancelCaseBtn').addEventListener('click', closeModal);
         document.getElementById('saveCaseBtn').addEventListener('click', async () => {
             const title = document.getElementById('caseTitle').value.trim();
             const summary = document.getElementById('caseSummary').value.trim();
             const status = document.getElementById('caseStatus').value;
-            const content = activeQuillEditor.root.innerHTML;
+            const content = activeQuillEditor.root.innerHTML; // Get HTML content from Quill
             const tagsString = document.getElementById('caseTags').value.trim();
             const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+
 
             if (!title || !summary) {
                 showToast('Title and Summary are required.', 'error');
@@ -844,36 +904,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const casePayload = {
-                section_id: sectionId,
+                section_id: sectionId, // Make sure your 'cases' table has this column
                 title,
                 summary,
-                content,
+                content, // Store HTML content
                 status,
-                tags,
+                tags, // Supabase typically stores arrays as JSONB or text[]
+                // assigned_to: caseData.assigned_to || null, // Preserve or set assignment
                 created_by: caseIdToEdit ? caseData.created_by : currentUser.email,
                 updated_at: new Date().toISOString()
             };
 
-            let response, error, actionType;
+            let responseData, dbError, actionType;
 
-            if (caseIdToEdit) {
-                actionType = 'update_case';
-                ({ data: response, error } = await supabase.from('cases').update(casePayload).eq('id', caseIdToEdit).select());
-            } else {
-                actionType = 'create_case';
-                casePayload.created_at = new Date().toISOString();
-                ({ data: response, error } = await supabase.from('cases').insert(casePayload).select());
-            }
+            try {
+                if (caseIdToEdit) {
+                    actionType = 'update_case';
+                    const { data, error } = await supabase.from('cases').update(casePayload).eq('id', caseIdToEdit).select().single();
+                    responseData = data;
+                    dbError = error;
+                } else {
+                    actionType = 'create_case';
+                    casePayload.created_at = new Date().toISOString(); // Set created_at only for new cases
+                    const { data, error } = await supabase.from('cases').insert(casePayload).select().single();
+                    responseData = data;
+                    dbError = error;
+                }
 
-            if (error) {
-                showToast(`Error saving case: ${error.message}`, 'error');
-                console.error("Error saving case:", error);
-            } else {
+                if (dbError) throw dbError;
+
                 showToast(`Case successfully ${caseIdToEdit ? 'updated' : 'added'}!`, 'success');
                 closeModal();
-                const itemId = response && response.length > 0 ? response[0].id : (caseIdToEdit || null);
-                if (itemId) {
-                    await supabase.from('activity_log').insert({
+
+                const itemId = responseData ? responseData.id : (caseIdToEdit || null);
+                if (itemId && currentUser) {
+                    await supabase.from('activity_log').insert({ // Assuming 'activity_log' table exists
                         user_email: currentUser.email,
                         action: actionType,
                         item_id: itemId,
@@ -881,15 +946,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         details: { title: title, section: sectionId, status: status }
                     });
                 }
-                handleSectionTrigger(sectionId, itemId); 
+                handleSectionTrigger(sectionId, itemId); // Refresh section, focus on the case
+            } catch (err) {
+                showToast(`Error saving case: ${err.message}`, 'error');
+                console.error("Error saving case:", err);
             }
         });
     }
-    
-    // --- Add/Edit Subsection Modal & Logic ---
+
+    // --- Add/Edit Subsection Modal & Logic (Supabase Integrated) ---
     async function openSubsectionModal(sectionId, subsectionIdToEdit = null) {
-        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-            showToast('Access denied.', 'error');
+        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role) || !supabase) {
+            showToast('Access denied or Supabase not available.', 'error');
             return;
         }
         const modalTitle = subsectionIdToEdit ? 'Edit Subsection' : 'Add New Subsection';
@@ -899,6 +967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data, error } = await supabase.from('sub_categories').select('*').eq('id', subsectionIdToEdit).single();
             if (error || !data) {
                 showToast('Failed to load subsection data.', 'error');
+                console.error("Error loading subsection for edit:", error);
                 return;
             }
             subsectionData = data;
@@ -912,13 +981,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div>
                     <label for="subsectionDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
-                    <textarea id="subsectionDescription" name="subsectionDescription" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm p-2">${escapeHTML(subsectionData.description)}</textarea>
+                    <textarea id="subsectionDescription" name="subsectionDescription" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm p-2">${escapeHTML(subsectionData.description || '')}</textarea>
                 </div>
             </form>
         `;
         const actionsHTML = `
-            <button id="cancelSubsectionBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">Cancel</button>
-            <button id="saveSubsectionBtn" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">${subsectionIdToEdit ? 'Update' : 'Save'} Subsection</button>
+            <button id="cancelSubsectionBtn" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">Cancel</button>
+            <button id="saveSubsectionBtn" type="button" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">${subsectionIdToEdit ? 'Update' : 'Save'} Subsection</button>
         `;
         openModal(modalTitle, contentHTML, actionsHTML);
 
@@ -932,76 +1001,108 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             const subsectionPayload = {
-                section_id: sectionId,
+                section_id: sectionId, // Ensure your 'sub_categories' table has this
                 name,
                 description,
                 created_by: subsectionIdToEdit ? subsectionData.created_by : currentUser.email,
                 updated_at: new Date().toISOString()
             };
 
-            let response, error, actionType;
-            if (subsectionIdToEdit) {
-                actionType = 'update_subsection';
-                ({ data: response, error } = await supabase.from('sub_categories').update(subsectionPayload).eq('id', subsectionIdToEdit).select());
-            } else {
-                actionType = 'create_subsection';
-                subsectionPayload.created_at = new Date().toISOString();
-                ({ data: response, error } = await supabase.from('sub_categories').insert(subsectionPayload).select());
-            }
+            let responseData, dbError, actionType;
+            try {
+                if (subsectionIdToEdit) {
+                    actionType = 'update_subsection';
+                    const { data, error } = await supabase.from('sub_categories').update(subsectionPayload).eq('id', subsectionIdToEdit).select().single();
+                    responseData = data;
+                    dbError = error;
+                } else {
+                    actionType = 'create_subsection';
+                    subsectionPayload.created_at = new Date().toISOString();
+                    const { data, error } = await supabase.from('sub_categories').insert(subsectionPayload).select().single();
+                    responseData = data;
+                    dbError = error;
+                }
 
-            if (error) {
-                showToast(`Error saving subsection: ${error.message}`, 'error');
-            } else {
+                if (dbError) throw dbError;
+
                 showToast(`Subsection successfully ${subsectionIdToEdit ? 'updated' : 'added'}!`, 'success');
                 closeModal();
-                const itemId = response && response.length > 0 ? response[0].id : (subsectionIdToEdit || null);
-                 if (itemId) {
+
+                const itemId = responseData ? responseData.id : (subsectionIdToEdit || null);
+                 if (itemId && currentUser) {
                     await supabase.from('activity_log').insert({
                         user_email: currentUser.email,
                         action: actionType,
-                        item_id: itemId,
+                        item_id: itemId, // This is the subsection's ID
                         item_type: 'subsection',
                         details: { name: name, section: sectionId }
                     });
                 }
-                handleSectionTrigger(sectionId, null, itemId); 
+                // Refresh current section, potentially highlighting the new/updated subcategory list
+                handleSectionTrigger(sectionId, null, itemId);
+            } catch (err) {
+                showToast(`Error saving subsection: ${err.message}`, 'error');
+                console.error("Error saving subsection:", err);
             }
         });
     }
 
+
     function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
         if (typeof kbSystemData === 'undefined') {
-            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger!');
+            console.error('[app.js - FIX] kbSystemData (static) undefined in handleSectionTrigger!');
+            // Potentially show an error to the user or try to fetch primary sections if those are also dynamic
             return;
         }
         highlightSidebarLink(sectionId);
         displaySectionContent(sectionId, itemId, subCategoryFilter); // This is async
-        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
+        
+        let hash = sectionId || 'home';
+        if (subCategoryFilter) {
+            hash += `/${subCategoryFilter}`;
+            if (itemId) { // If an item is also specified within a subcategory
+                hash += `/${itemId}`;
+            }
+        } else if (itemId) {
+            hash += `/${itemId}`;
+        }
         window.history.replaceState(null, '', `#${hash}`);
     }
 
     function parseHash() {
         const hash = window.location.hash.replace('#', '');
         if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
-        
+
         const parts = hash.split('/');
         const sectionId = parts[0] || 'home';
         let itemId = null;
         let subCategoryFilter = null;
 
+        // Logic to differentiate between #section/item and #section/subcategory and #section/subcategory/item
         if (parts.length === 2) {
-            // This part could be an item ID or a subcategory ID.
-            // For simplicity in parsing, we'll assume it's an itemId first.
-            // displaySectionContent or handleSectionTrigger might need to differentiate
-            // if a subcategory filter is intended by a two-part hash.
-            itemId = parts[1];
-        } else if (parts.length > 2) {
-            // Assumes structure #sectionId/subCategoryFilter/itemId
+            // Could be an item ID or a subcategory ID.
+            // We need a way to distinguish. For now, assume it could be an item OR a subcategory.
+            // displaySectionContent will need to handle this ambiguity, or we rely on specific data attributes from links.
+            // Let's assume parts[1] is itemId if no subCategoryFilter is explicitly set by other means.
+            // If it's a subcategory, links should ideally set data-subcat-filter.
+            // A common pattern: if parts[1] is found in sub_categories for sectionId, it's a subCat. Otherwise, an item.
+            // This check would be better inside displaySectionContent or if handleSectionTrigger becomes async and checks.
+            // For now, we'll pass it and let displaySectionContent determine.
+            // Let's assume the second part is an item ID unless a subCategoryFilter has already been determined (e.g. from a specific link).
+            itemId = parts[1]; // Could also be a subcategory ID if the link structure implies it.
+                               // For direct URL parsing, it's ambiguous without checking DB or kbSystemData.subCategories.
+        } else if (parts.length === 3) {
+            // Assumed structure: #sectionId/subCategoryId/itemId
             subCategoryFilter = parts[1];
             itemId = parts[2];
         }
+        // This parsing is basic. A more robust solution might involve checking parts[1] against known subcategory IDs for the given sectionId.
+        // For instance, if kbSystemData.sections[sectionId].subCategories.find(sc => sc.id === parts[1]), then it's a subcategory.
+        // However, subCategories might now come from Supabase, so this check becomes async.
+
         return { sectionId, itemId, subCategoryFilter };
     }
+
 
     // Sidebar links
     sidebarLinks.forEach(link => {
@@ -1009,16 +1110,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const sectionId = this.dataset.section;
             if (sectionId) {
-                handleSectionTrigger(sectionId); // For sidebar links, typically no itemId or subCategoryFilter initially
+                handleSectionTrigger(sectionId, null, null); // Default to section view without specific item or subcat
             }
         });
     });
 
-    // Body click listener for dynamic links (data-action, data-section-trigger)
+    // Body click listener for dynamic links
     document.body.addEventListener('click', async function(e) {
         const actionTarget = e.target.closest('[data-action]');
         if (actionTarget) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default for all actions handled here
             const action = actionTarget.dataset.action;
             const itemId = actionTarget.dataset.itemId;
             const itemType = actionTarget.dataset.itemType;
@@ -1033,38 +1134,58 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (action === 'edit-subsection' && subsectionId && sectionId) {
                 await openSubsectionModal(sectionId, subsectionId);
             }
-            return; 
+            return; // Action handled, no further processing for this click
         }
+
 
         const sectionTriggerTarget = e.target.closest('[data-section-trigger]');
         if (sectionTriggerTarget) {
             e.preventDefault();
             const sectionId = sectionTriggerTarget.dataset.sectionTrigger;
-            const itemId = sectionTriggerTarget.dataset.itemId; 
-            const subCatFilter = sectionTriggerTarget.dataset.subcatFilter;
+            // itemId from data-item-id could be an actual item's ID or a subcategory's ID if the link is for a subcategory.
+            const itemIdFromLink = sectionTriggerTarget.dataset.itemId;
+            const subCatFilterFromLink = sectionTriggerTarget.dataset.subcatFilter; // Explicit subcategory filter
 
             if (sectionId) {
-                handleSectionTrigger(sectionId, itemId, subCatFilter);
-                if (searchResultsContainer && sectionTriggerTarget.closest('#searchResultsContainer')) {
+                // If subCatFilter is explicitly set, use it. itemIdFromLink would be for an item within that subcategory.
+                // If only itemIdFromLink is set, it might be an item OR a subcategory.
+                // The handleSectionTrigger will receive these; displaySectionContent needs to be smart.
+                handleSectionTrigger(sectionId, itemIdFromLink, subCatFilterFromLink);
+
+                if (globalSearchInput && searchResultsContainer && sectionTriggerTarget.closest('#searchResultsContainer, #sectionSearchResults')) {
                     searchResultsContainer.classList.add('hidden');
-                    if (globalSearchInput) globalSearchInput.value = '';
+                    if(pageContent.querySelector('#sectionSearchResults')) pageContent.querySelector('#sectionSearchResults').innerHTML = '';
+                    globalSearchInput.value = '';
                 }
             }
-            return;
+            return; // Section trigger handled
         }
 
-        const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) { 
+        // This was for home page specific quick links.
+        // data-subcat-trigger="support.tools" implies sectionId=support, subCategoryFilter=tools
+        // This can be handled by the general data-section-trigger and data-subcat-filter logic above
+        // if those links are updated to use data-section-trigger="support" data-subcat-filter="tools_guides" (matching ID in sub_categories)
+        const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]'); // Example: data-subcat-trigger="support.tools_guides"
+        if (homeSubcatTrigger) { // Ensure this doesn't conflict with the more general data-section-trigger
+            // Check if we are on the home page, or if this is a specific type of link
+            // that should always behave this way.
+            // The current HTML for home quick links uses data-section-trigger and data-subcat-filter, so this specific block might be redundant
+            // or needs to be carefully scoped.
+            // For now, let's assume the data-section-trigger logic above is preferred.
+            // If you have links ONLY with data-subcat-trigger like `support.tools_guides`, this would be needed:
+            /*
             e.preventDefault();
             const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
             if (triggerValue && triggerValue.includes('.')) {
-                const [sectionId, subId] = triggerValue.split('.');
-                handleSectionTrigger(sectionId, null, subId);
+                const [parsedSectionId, parsedSubId] = triggerValue.split('.');
+                handleSectionTrigger(parsedSectionId, null, parsedSubId);
             }
+            return;
+            */
         }
     });
 
-    // Global Search
+    // Global Search (searchKb needs update for Supabase data)
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     let searchDebounceTimer;
@@ -1075,6 +1196,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             searchDebounceTimer = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
                 if (query.length > 1 && typeof searchKb === 'function') {
+                    // IMPORTANT: searchKb currently only searches kbSystemData.
+                    // For full Supabase integration, searchKb needs to be async and query Supabase tables
+                    // or you implement a server-side search endpoint.
+                    // For now, results will be from static data only.
                     renderGlobalSearchResults_enhanced(searchKb(query), query);
                 } else {
                     searchResultsContainer.innerHTML = '';
@@ -1107,15 +1232,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         results.slice(0, 10).forEach(result => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `javascript:void(0);`; 
+            a.href = `javascript:void(0);`;
             a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
-            
-            // If search result is a subcategory, its ID should be passed as subCatFilter
-            if (result.type === 'sub_category') { // Assuming searchKb can return 'sub_category' type
+
+            // If search result is a subcategory from kbSystemData, its ID for filtering
+            if (result.type === 'sub_category_match_static') { // Assuming searchKb can identify static subcategories
                 a.dataset.subcatFilter = result.id;
-                a.removeAttribute('data-item-id'); // Clear itemId if it's a subcategory link
+            } else if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                 a.dataset.itemId = result.id;
             }
+
 
             a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
 
@@ -1128,7 +1254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sectionDiv = document.createElement('div');
             const theme = getThemeColors(result.themeColor || 'gray');
             sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
-            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
+            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`; // sectionName comes from searchKb result
             a.appendChild(titleDiv);
             if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
             a.appendChild(sectionDiv);
@@ -1150,17 +1276,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ul = document.createElement('ul');
         ul.className = 'space-y-2';
         const theme = getThemeColors(themeColor);
-        results.slice(0, 5).forEach(result => {
+        results.slice(0, 5).forEach(result => { // Display top 5 results in section search
             const li = document.createElement('li');
             const a = document.createElement('a');
             a.href = `javascript:void(0);`;
             a.dataset.sectionTrigger = result.sectionId;
-            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
 
-            if (result.type === 'sub_category') {
+            if (result.type === 'sub_category_match_static') {
                 a.dataset.subcatFilter = result.id;
-                a.removeAttribute('data-item-id');
+            } else if (result.type !== 'section_match' && result.type !== 'glossary_term') {
+                a.dataset.itemId = result.id;
             }
+
             a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
 
             const titleDiv = document.createElement('div');
@@ -1171,7 +1298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
             const typeBadge = document.createElement('span');
             typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
-            typeBadge.textContent = result.type.replace(/_/g, ' ');
+            typeBadge.textContent = result.type.replace(/_/g, ' ').replace('match static', '').trim(); // Clean up type name
             const headerDiv = document.createElement('div');
             headerDiv.className = 'flex items-center justify-between mb-1';
             headerDiv.appendChild(titleDiv);
@@ -1186,12 +1313,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (pageContent) {
-        pageContent.addEventListener('click', async (e) => { 
+        pageContent.addEventListener('click', async (e) => {
             const ratingTarget = e.target.closest('.rating-btn');
             if (ratingTarget) {
                 e.preventDefault();
                 const ratingContainer = ratingTarget.closest('.rating-container');
-                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks!</span>`;
+                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks for your feedback!</span>`;
+                // Here you could log the rating to Supabase if desired
+                // const itemId = ratingTarget.dataset.itemId;
+                // const itemType = ratingTarget.dataset.itemType;
+                // const rating = ratingTarget.dataset.rating;
+                // Log rating logic...
                 return;
             }
             const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
@@ -1201,7 +1333,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const currentSectionId = input?.dataset.sectionId;
                 const query = input?.value.trim();
                 if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
-                    const results = searchKb(query); 
+                    // As mentioned, searchKb needs update for Supabase dynamic data.
+                    const results = searchKb(query); // This searches static kbSystemData
                     const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
                     const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
                     if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
