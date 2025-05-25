@@ -1,16 +1,21 @@
 // js/supabase.js
-const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co'; // استخدم الـ URL الخاص بك
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4'; // استخدم مفتاح ANON الخاص بك
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// 'supabase' هنا يشير إلى الكائن العام من مكتبة Supabase CDN
-if (typeof supabase === 'undefined' || typeof supabase.createClient === 'undefined') {
-    console.error("Supabase client library (from CDN) not found. Make sure it's loaded BEFORE supabase.js");
-    // يمكنك اختيار إما رمي خطأ لمنع app.js من الاستمرار بدون عميل،
-    // أو تصدير null والسماح لـ app.js بالتعامل مع ذلك (وهو ما يفعله الكود الحالي بالفعل).
-    // الطريقة الأفضل هي رمي خطأ إذا كان Supabase ضروريًا.
-    // export const supabaseClient = null; //  app.js سيتحقق من هذا
-    throw new Error("Supabase client library (CDN) is required but not loaded.");
+const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+
+let supabaseInstance;
+
+try {
+    supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[supabase.js] Supabase client initialized and exported.');
+} catch (error) {
+    console.error("[supabase.js] Supabase client initialization failed:", error);
+    // يمكنك رمي الخطأ مرة أخرى ليتم التعامل معه في الملفات التي تستورده
+    // أو تصدير null والسماح للملفات المستوردة بالتحقق.
+    // رمي الخطأ يوقف التنفيذ مبكرًا وهو أفضل.
+    throw new Error(`Failed to initialize Supabase client: ${error.message}`);
 }
 
-// قم بتصدير العميل المهيأ باسم مختلف، على سبيل المثال 'supabaseClient'
-export const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// قم بتصدير العميل المهيأ
+export const supabase = supabaseInstance;
