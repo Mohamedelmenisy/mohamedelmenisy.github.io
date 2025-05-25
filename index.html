@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Knowledge Base</title>
-    <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/919/919820.png"> <!-- Favicon لقاعدة المعرفة (يمكن تغيير المسار) -->
+    <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/919/919820.png"> <!-- Favicon لقاعدة المعرفة -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -82,7 +82,6 @@
     </style>
 </head>
 <body>
-    <!-- Add New Content Modal -->
     <div id="addContentModalOverlay" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between items-center mb-6">
@@ -127,7 +126,6 @@
     </div>
 
     <div class="flex h-screen">
-        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <i class="fas fa-database mr-3 text-indigo-400"></i> InfiniBase
@@ -318,9 +316,6 @@
         const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
         const userAvatar = document.getElementById('userAvatar');
         const welcomeUserNameDashboard = document.getElementById('welcomeUserNameDashboard');
-        const kbVersionDashboard = document.getElementById('kbVersionDashboard');
-        const lastKbUpdateDashboard = document.getElementById('lastKbUpdateDashboard');
-        const footerKbVersion = document.getElementById('footerKbVersion');
         const recentUpdatesList = document.getElementById('recentUpdatesList');
 
         // Initial Setup
@@ -332,11 +327,6 @@
             userNameDisplayHeader.textContent = displayName;
             welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`;
             userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=4f46e5&color=fff&rounded=true`;
-        }
-        if (kbSystemData.meta) {
-            kbVersionDashboard.textContent = kbSystemData.meta.version;
-            lastKbUpdateDashboard.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-            footerKbVersion.textContent = kbSystemData.meta.version;
         }
 
         // Theme Switcher
@@ -384,6 +374,7 @@
         sidebar.querySelectorAll('.sidebar-link').forEach(link => {
             link.addEventListener('click', () => {
                 if (window.innerWidth < 768) sidebar.classList.remove('open');
+                window.location.hash = link.getAttribute('data-section');
             });
         });
 
@@ -759,9 +750,19 @@
         async function handleNavigation() {
             const hash = window.location.hash.substring(1) || 'home';
             const parts = hash.split('/');
-            const sectionId = parts[0] || 'home';
-            const subCategoryFilter = (parts.length > 1 && kbSystemData.sections.find(s => s.id === sectionId)?.subCategories?.find(sc => sc.id === parts[1])) ? parts[1] : null;
-            const itemIdToFocus = subCategoryFilter ? (parts[2] || null) : (parts[1] || null);
+            let sectionId = parts[0] || 'home';
+            let subCategoryFilter = null;
+            let itemIdToFocus = null;
+
+            if (parts.length > 1) {
+                const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+                if (sectionData && sectionData.subCategories?.some(sc => sc.id === parts[1])) {
+                    subCategoryFilter = parts[1];
+                    itemIdToFocus = parts[2] || null;
+                } else {
+                    itemIdToFocus = parts[1];
+                }
+            }
 
             highlightSidebarLink(sectionId);
             await displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
