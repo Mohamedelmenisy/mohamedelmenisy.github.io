@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark"> <!-- Default to dark, JS can toggle -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Dashboard</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (Using the CDN you provided) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,1095 +14,834 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <style>
+        /* Reset and Base Styles - More akin to Tailwind's preflight but simplified */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-            color: #e2e8f0;
-            margin: 0;
-            height: 100vh;
-            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* Dark Theme (Applied by default via html class) */
+        .dark body { background-color: #111827; color: #d1d5db; } /* bg-gray-900 text-gray-300 */
+        /* Light Theme */
+        body:not(.dark) { background-color: #f3f4f6; color: #1f2937; } /* bg-gray-100 text-gray-800 */
+
+        /* Sidebar Styling - Inspired by original Tailwind design */
         .sidebar {
-            width: 260px;
-            background: #2d3748;
-            height: 100vh;
+            width: 288px; /* w-72 */
             position: fixed;
             top: 0;
             left: 0;
-            padding-top: 20px;
+            height: 100vh;
+            padding: 1.5rem; /* p-6 */
+            overflow-y: auto;
             transition: transform 0.3s ease-in-out;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 40; /* Higher than content, lower than modal overlay */
         }
-        .sidebar.closed {
-            transform: translateX(-260px);
+        .dark .sidebar { background-color: #000000; color: #9ca3af; border-right: 1px solid #374151;} /* bg-black text-gray-400 border-gray-700 */
+        body:not(.dark) .sidebar { background-color: #1f2937; color: #d1d5db; border-right: 1px solid #374151;} /* bg-gray-800 text-gray-300 */
+
+        .sidebar-header {
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700; /* font-bold */
+            margin-bottom: 2rem; /* mb-8 */
+            padding-bottom: 1rem; /* pb-4 */
+            display: flex;
+            align-items: center;
         }
-        .content {
-            margin-left: 260px;
-            padding: 20px;
+        .dark .sidebar-header { color: #ffffff; border-color: #4b5563; } /* text-white border-gray-600 */
+        body:not(.dark) .sidebar-header { color: #ffffff; border-color: #4b5563; } /* text-white border-gray-700 */
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0.75rem; /* py-3 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-weight: 500; /* font-medium */
+        }
+        .dark .sidebar-link { color: #9ca3af; } /* text-gray-400 */
+        body:not(.dark) .sidebar-link { color: #d1d5db; } /* text-gray-300 */
+
+        .dark .sidebar-link:hover { background-color: #374151; color: #ffffff; } /* hover:bg-gray-700 hover:text-white */
+        body:not(.dark) .sidebar-link:hover { background-color: #4b5563; color: #ffffff; } /* hover:bg-gray-700 hover:text-white */
+
+        .sidebar-link.active { font-weight: 600; /* font-semibold */ }
+        .dark .sidebar-link.active { background-color: #1f2937; color: #ffffff; } /* dark:bg-gray-800 (adjust if needed) */
+        body:not(.dark) .sidebar-link.active { background-color: #374151; color: #ffffff; } /* active:bg-gray-700 */
+
+        .sidebar-link i { margin-right: 0.75rem; width: 1.25rem; text-align: center; }
+
+        .sidebar-section-title {
+            padding-left: 0.75rem; /* px-3 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 600; /* font-semibold */
+            text-transform: uppercase;
+            letter-spacing: 0.05em; /* tracking-wider */
+            margin-top: 1.5rem; /* mt-6 */
+            margin-bottom: 0.5rem; /* mb-2 */
+        }
+        .dark .sidebar-section-title { color: #6b7280; } /* text-gray-500 */
+        body:not(.dark) .sidebar-section-title { color: #9ca3af; } /* text-gray-400 */
+
+
+        /* Main Content Area */
+        .content-wrapper {
+            margin-left: 288px; /* w-72 */
             height: 100vh;
             overflow-y: auto;
             transition: margin-left 0.3s ease-in-out;
         }
-        .sidebar-toggle {
-            position: fixed;
-            left: 260px;
-            top: 20px;
-            z-index: 1000;
-            background: #4a5568;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            display: none;
-            border-radius: 50%;
-        }
-        .sidebar.closed + .content .sidebar-toggle {
-            display: block;
-        }
-        .card {
-            background: #2d3748;
-            border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-        }
-        .case-editor {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #2d3748;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            width: 90%;
-            max-width: 600px;
-        }
-        .case-editor.open {
-            display: block;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
+        /* Header within content */
+        .content-header {
+            position: sticky;
             top: 0;
-            left: 0;
+            padding: 1.25rem 2.5rem; /* py-5 md:px-10 */
+            margin-bottom: 2rem; /* mb-8 */
+            z-index: 20;
+            backdrop-filter: blur(8px);
+        }
+        .dark .content-header { background-color: rgba(17, 24, 39, 0.85); border-bottom: 1px solid #374151; } /* dark:bg-gray-900/85 dark:border-gray-700 */
+        body:not(.dark) .content-header { background-color: rgba(243, 244, 246, 0.85); border-bottom: 1px solid #e5e7eb; } /* bg-gray-100/85 border-gray-200 */
+
+        /* Cards */
+        .card {
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .dark .card { background-color: #1f2937; } /* dark:bg-gray-800 */
+        body:not(.dark) .card { background-color: #ffffff; } /* bg-white */
+        .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+
+        /* Case Editor Modal (Tailwind style) */
+        .case-editor-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 1rem;
+        }
+        .case-editor-modal-content {
+            padding: 1.5rem; /* p-6 */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
             width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
+            max-width: 48rem; /* max-w-3xl */
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
         }
-        .overlay.open {
-            display: block;
+        .dark .case-editor-modal-content { background-color: #1f2937; } /* dark:bg-gray-800 */
+        body:not(.dark) .case-editor-modal-content { background-color: #ffffff; }
+
+        .case-editor-modal-overlay:not(.hidden) .case-editor-modal-content {
+            transform: scale(1);
+            opacity: 1;
         }
-        .quill {
-            height: 200px;
-            margin-bottom: 10px;
-        }
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .sidebar-link {
-            display: flex;
-            align-items: center;
-            padding: 10px 20px;
-            color: #a0aec0;
-            transition: all 0.3s ease;
-        }
-        .sidebar-link:hover {
-            background: #4a5568;
-            color: #ffffff;
-        }
-        .sidebar-link.active {
-            background: #4a5568;
-            color: #ffffff;
-            border-left: 4px solid #3b82f6;
-        }
-        .sidebar-link i {
-            margin-right: 10px;
-        }
-        .header {
-            background: #2d3748;
-            padding: 10px 20px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
+        .quill-editor-container { height: 200px; margin-bottom: 1rem; border-radius: 0.375rem; overflow: hidden; }
+        .dark .quill-editor-container .ql-toolbar { background: #374151; border-color: #4b5563 !important;}
+        .dark .quill-editor-container .ql-container { background: #2d3748; border-color: #4b5563 !important; color: #d1d5db;}
+        .dark .quill-editor-container .ql-editor { color: #d1d5db; }
+        body:not(.dark) .quill-editor-container .ql-toolbar { background: #f9fafb; border-color: #d1d5db !important;}
+        body:not(.dark) .quill-editor-container .ql-container { background: #ffffff; border-color: #d1d5db !important; color: #1f2937;}
+
+
+        /* Chart styling */
         .chart-container {
-            height: 120px !important;
-            width: 100% !important;
+            position: relative;
+            /* height: 280px; /* Control height */
+            /* width: 100%; */
+            padding: 1rem;
+            border-radius: 0.75rem;
+        }
+        .dark .chart-container { background-color: #1f2937; }
+        body:not(.dark) .chart-container { background-color: #ffffff; }
+
+
+        /* Responsive Sidebar Toggle (You'll need a button for this in HTML if you want it) */
+        .sidebar-toggle-button {
+            /* Styles for a burger menu button if you add one */
+            display: none; /* Hidden by default, shown on small screens */
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            z-index: 60;
         }
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-260px);
-            }
-            .sidebar.open {
-                transform: translateX(0);
-            }
-            .content {
-                margin-left: 0;
-            }
-            .sidebar-toggle {
-                display: block;
-            }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .content-wrapper { margin-left: 0; }
+            .sidebar-toggle-button { display: block; }
         }
+
+        /* Utility for hidden */
+        .hidden { display: none !important; }
+
+        /* Focus Rings for accessibility */
+        input:focus, button:focus, select:focus, textarea:focus, a:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Tailwind's ring-blue-500 */
+        }
+        .dark input:focus, .dark button:focus, .dark select:focus, .dark textarea:focus, .dark a:focus {
+             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.6); /* Tailwind's ring-blue-400 */
+        }
+
+        /* Search results highlighting */
+        mark { padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold; }
+        .dark mark { background-color: #78350f; color: #f3f4f6; }
+        body:not(.dark) mark { background-color: #fde047; color: #1f2937; }
+
     </style>
 </head>
 <body>
-    <div id="overlay" class="overlay"></div>
-    <div id="caseEditorModal" class="case-editor">
-        <h2 class="text-2xl font-bold mb-4">New Case</h2>
-        <form id="caseForm">
-            <div class="mb-4">
-                <label for="caseTitle" class="block text-sm font-medium text-gray-300">Title</label>
-                <input type="text" id="caseTitle" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white" required>
-            </div>
-            <div class="mb-4">
-                <label for="caseSummary" class="block text-sm font-medium text-gray-300">Summary</label>
-                <textarea id="caseSummary" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white" rows="3" required></textarea>
-            </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-300">Resolution Steps</label>
-                <div id="quillEditor" class="quill"></div>
-            </div>
-            <div class="flex justify-end gap-4">
-                <button type="button" id="cancelCaseBtn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cancel</button>
-                <button type="submit" id="saveCaseBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="sidebar" id="sidebar">
-        <h2 class="text-xl font-bold mb-4 px-4 text-white flex items-center">
-            <i class="fas fa-book mr-2"></i> InfiniBase
-        </h2>
-        <ul class="space-y-2">
-            <li><a href="#home" class="sidebar-link" data-section="home"><i class="fas fa-home"></i> Home</a></li>
-            <li><a href="#support" class="sidebar-link" data-section="support"><i class="fas fa-headset"></i> Support</a></li>
-            <li><a href="#partner_care" class="sidebar-link" data-section="partner_care"><i class="fas fa-handshake"></i> Partner Care</a></li>
-            <li><a href="#logistics" class="sidebar-link" data-section="logistics"><i class="fas fa-truck"></i> Logistics</a></li>
-            <li><a href="#customer_care" class="sidebar-link" data-section="customer_care"><i class="fas fa-users"></i> Customer Care</a></li>
-            <li><a href="#dist_follow_up" class="sidebar-link" data-section="dist_follow_up"><i class="fas fa-people-carry"></i> Distribution & Follow-up</a></li>
-            <li><a href="#logistics_driver" class="sidebar-link" data-section="logistics_driver"><i class="fas fa-shipping-fast"></i> Logistics (Driver Complaints)</a></li>
-            <li><a href="#logistics_3pl" class="sidebar-link" data-section="logistics_3pl"><i class="fas fa-boxes"></i> Logistics-3PL</a></li>
-            <li><a href="#order_at_store" class="sidebar-link" data-section="order_at_store"><i class="fas fa-store"></i> Order at Store (Mac)</a></li>
-            <li><a href="#logistics_admin" class="sidebar-link" data-section="logistics_admin"><i class="fas fa-user-shield"></i> Logistics-Admin</a></li>
-            <li><a href="#os" class="sidebar-link" data-section="os"><i class="fab fa-windows"></i> Operating Systems</a></li>
-            <li><a href="#compensation" class="sidebar-link" data-section="compensation"><i class="fas fa-hand-holding-usd"></i> Compensation Policies</a></li>
-            <li><a href="#op_instructions" class="sidebar-link" data-section="op_instructions"><i class="fas fa-clipboard-list"></i> Operational Instructions</a></li>
-            <li><a href="#forms_templates" class="sidebar-link" data-section="forms_templates"><i class="fas fa-file-alt"></i> Forms/Templates</a></li>
-        </ul>
-    </div>
-
-    <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
-
-    <div class="content" id="content">
-        <header class="header mb-6">
-            <div class="flex items-center">
-                <h1 class="text-lg font-semibold text-white mr-4">Welcome, <span id="userNameDisplay"></span></h1>
-            </div>
-            <div class="flex items-center space-x-2">
-                <input type="text" id="globalSearchInput" placeholder="Search..." class="p-1 border rounded-md bg-gray-700 border-gray-600 text-white text-sm">
-                <button id="themeSwitcher" class="p-1 bg-gray-700 rounded-md hover:bg-gray-600">
-                    <i id="themeIcon" class="fas fa-moon text-sm"></i>
+    <!-- Case Editor Modal (New Structure) -->
+    <div id="caseEditorModalOverlay" class="case-editor-modal-overlay hidden">
+        <div class="case-editor-modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">New Case</h2>
+                <button id="closeCaseModalBtn" class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i class="fas fa-times text-xl"></i>
                 </button>
-                <button id="logoutButton" class="p-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">Logout</button>
-                <button id="newCaseBtn" class="p-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">New Case</button>
             </div>
-        </header>
+            <form id="caseForm">
+                <div class="mb-4">
+                    <label for="caseTitle" class="block text-sm font-medium mb-1">Title</label>
+                    <input type="text" id="caseTitle" class="mt-1 p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="caseSummary" class="block text-sm font-medium mb-1">Summary</label>
+                    <textarea id="caseSummary" class="mt-1 p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500" rows="3" required></textarea>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1">Resolution Steps</label>
+                    <div id="quillEditor" class="quill-editor-container"></div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" id="cancelCaseBtn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">Cancel</button>
+                    <button type="submit" id="saveCaseBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Save Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        <main>
-            <div id="dashboardSection" class="mb-6">
-                <h2 class="text-xl font-bold text-white mb-4 flex items-center"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard Overview</h2>
-                <div class="dashboard-grid">
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-white mb-2">User Activity</h3>
-                        <canvas id="usersChart" class="chart-container"></canvas>
-                    </div>
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-white mb-2">Most Viewed Cases</h3>
-                        <canvas id="casesChart" class="chart-container"></canvas>
-                    </div>
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-white mb-2">Recent Updates</h3>
-                        <ul id="recentUpdatesList" class="text-gray-400 text-sm">
-                            <li>Case #001 Updated - 2025-05-25</li>
-                            <li>Article #003 Added - 2025-05-24</li>
-                            <li>Support Section Updated - 2025-05-23</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-white mb-2">Advanced Filters</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <div>
-                            <label for="filterDate" class="block text-sm font-medium text-gray-300">Filter by Date</label>
-                            <input type="date" id="filterDate" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white text-sm">
-                        </div>
-                        <div>
-                            <label for="filterUser" class="block text-sm font-medium text-gray-300">Filter by User</label>
-                            <select id="filterUser" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white text-sm">
-                                <option value="">All Users</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="filterInteraction" class="block text-sm font-medium text-gray-300">Filter by Interaction</label>
-                            <select id="filterInteraction" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white text-sm">
-                                <option value="">All Interactions</option>
-                                <option value="high">High</option>
-                                <option value="medium">Medium</option>
-                                <option value="low">Low</option>
-                            </select>
-                        </div>
-                        <div class="self-end">
-                            <button id="applyFilterBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">Apply Filters</button>
-                        </div>
-                    </div>
-                </div>
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-database mr-3 text-indigo-400"></i> InfiniBase
             </div>
-            <div id="pageContent">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg text-white mb-2">Support</h3>
-                        <p class="text-gray-400">Resources for the Support team</p>
-                        <a href="#support/cases" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="support.cases">View Cases</a>
-                    </div>
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg text-white mb-2">Partner Care</h3>
-                        <p class="text-gray-400">Manage partner relationships.</p>
-                        <a href="#partner_care/onboarding" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="partner_care.onboarding">Onboarding Guide</a>
-                    </div>
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg text-white mb-2">Logistics</h3>
-                        <p class="text-gray-400">Logistics operations overview.</p>
-                        <a href="#logistics" class="text-blue-400 hover:underline mt-2 block" data-section-trigger="logistics">Explore</a>
-                    </div>
-                </div>
-            </div>
-        </main>
+            <nav id="navigationMenu">
+                <div class="sidebar-section-title">Main</div>
+                <a href="#" class="sidebar-link" data-section="home"><i class="fas fa-home text-gray-400"></i>Home</a>
 
-        <footer class="mt-6 p-4 bg-gray-800 text-center text-sm text-gray-400 rounded-lg">
-            <span>Knowledge Base Version | Last Updated: <span id="lastKbUpdate"></span></span>
-            <button id="reportErrorBtn" class="ml-4 px-2 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm">Report an Error</button>
-        </footer>
+                <div class="sidebar-section-title">Knowledge Areas</div>
+                <a href="#" class="sidebar-link" data-section="support"><i class="fas fa-headset text-blue-400"></i>Support</a>
+                <a href="#" class="sidebar-link" data-section="partner_care"><i class="fas fa-handshake text-teal-400"></i>Partner Care</a>
+                <a href="#" class="sidebar-link" data-section="logistics"><i class="fas fa-truck text-green-400"></i>Logistics</a>
+                <a href="#" class="sidebar-link" data-section="customer_care"><i class="fas fa-users text-indigo-400"></i>Customer Care</a>
+                <a href="#" class="sidebar-link" data-section="dist_follow_up"><i class="fas fa-people-carry text-cyan-400"></i>Distribution & Follow-up</a>
+                <a href="#" class="sidebar-link" data-section="logistics_driver"><i class="fas fa-shipping-fast text-lime-400"></i>Logistics (Driver Complaints)</a>
+                <a href="#" class="sidebar-link" data-section="logistics_3pl"><i class="fas fa-boxes text-yellow-400"></i>Logistics-3PL</a>
+                <a href="#" class="sidebar-link" data-section="order_at_store"><i class="fas fa-store text-pink-400"></i>Order at Store (Mac)</a>
+                <a href="#" class="sidebar-link" data-section="logistics_admin"><i class="fas fa-user-shield text-red-400"></i>Logistics-Admin</a>
+                <a href="#" class="sidebar-link" data-section="os"><i class="fab fa-windows text-sky-400"></i>Operating Systems</a>
+
+                <div class="sidebar-section-title">Resources & Policies</div>
+                <a href="#" class="sidebar-link" data-section="compensation"><i class="fas fa-hand-holding-usd text-amber-400"></i>Compensation Policies</a>
+                <a href="#" class="sidebar-link" data-section="op_instructions"><i class="fas fa-clipboard-list text-slate-400"></i>Operational Instructions</a>
+                <a href="#" class="sidebar-link" data-section="forms_templates"><i class="fas fa-file-alt text-purple-400"></i>Forms/Templates</a>
+                
+                <div class="mt-6 pt-4 border-t border-gray-700 dark:border-gray-600">
+                    <button id="openNewCaseModalBtn" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-plus-circle mr-2"></i> New Case
+                    </button>
+                </div>
+            </nav>
+            <div class="absolute bottom-6 left-0 right-0 px-6">
+                 <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm border border-gray-600 hover:bg-gray-700">
+                    <i id="themeIcon" class="fas fa-moon mr-2"></i> <span id="themeText">Dark Mode</span>
+                </button>
+                <button id="logoutButton" class="w-full mt-3 flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm bg-red-600 hover:bg-red-700 text-white">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Sidebar Toggle Button (Example) -->
+        <button id="mobileSidebarToggle" class="sidebar-toggle-button p-2 rounded-md bg-gray-700 text-white md:hidden">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+
+        <div class="content-wrapper" id="contentWrapper">
+            <header class="content-header">
+                <div class="flex justify-between items-center w-full">
+                    <div>
+                        <h1 id="currentSectionTitle" class="text-2xl md:text-3xl font-bold">Welcome</h1>
+                        <div id="breadcrumbs" class="text-sm mt-1 text-gray-500 dark:text-gray-400">Home</div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="search" id="globalSearchInput" placeholder="Search KB..." class="py-2.5 pl-10 pr-4 w-64 md:w-96 border rounded-full bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fas fa-search text-gray-400"></i></span>
+                            <div id="searchResultsContainer" class="hidden absolute mt-1 w-full max-h-80 overflow-y-auto rounded-md shadow-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 z-10"></div>
+                        </div>
+                        <div id="userProfileContainer" class="flex items-center space-x-2">
+                            <img id="userAvatar" src="https://ui-avatars.com/api/?name=U&size=36&background=4f46e5&color=fff&rounded=true" alt="User" class="w-9 h-9 rounded-full">
+                            <span id="userNameDisplayHeader" class="font-medium hidden sm:block">User</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-6 md:p-10" id="pageContentArea">
+                <!-- Content will be injected here -->
+                 <div id="dashboardOverviewContainer" class="hidden space-y-8">
+                    <!-- Welcome Message (can be dynamic) -->
+                     <div class="card bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                        <h2 class="text-3xl font-bold mb-2" id="welcomeUserNameDashboard">Welcome, User!</h2>
+                        <p class="text-indigo-200">Overview of knowledge base activity.</p>
+                        <p class="text-sm text-indigo-300 mt-1">InfiniBase v<span id="kbVersionDashboard"></span> | Last Update: <span id="lastKbUpdateDashboard"></span></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="card chart-container h-72 md:h-80"> <h3 class="text-lg font-semibold mb-2 text-center">User Activity (Sample)</h3> <canvas id="usersChart"></canvas> </div>
+                            <div class="card chart-container h-72 md:h-80"> <h3 class="text-lg font-semibold mb-2 text-center">Case Views (Sample)</h3> <canvas id="casesChart"></canvas> </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-3">Recent Updates</h3>
+                            <ul id="recentUpdatesList" class="space-y-2 text-sm">
+                                <li class="text-gray-400 dark:text-gray-500">No updates to show yet.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-xl font-semibold mb-4">Advanced Data Filters</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label for="filterDate" class="block text-sm font-medium mb-1">Date</label>
+                                <input type="date" id="filterDate" class="p-2 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                            </div>
+                            <div>
+                                <label for="filterUser" class="block text-sm font-medium mb-1">User</label>
+                                <select id="filterUser" class="p-2 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600"><option value="">All Users</option></select>
+                            </div>
+                            <div>
+                                <label for="filterInteraction" class="block text-sm font-medium mb-1">Interaction Type</label>
+                                <select id="filterInteraction" class="p-2 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                                    <option value="">All Types</option><option value="article_view">Article View</option><option value="case_created">Case Created</option>
+                                </select>
+                            </div>
+                            <button id="applyFilterBtn" class="px-4 py-2.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 h-10">Apply</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="standardSectionContentPlaceholder" class="space-y-8">
+                    <!-- Fallback for other sections -->
+                </div>
+            </main>
+
+            <footer class="mt-auto p-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. v<span id="footerKbVersion"></span></span>
+                <button id="reportErrorBtn" class="ml-4 text-xs text-red-500 hover:underline">Report an Issue</button>
+            </footer>
+        </div>
     </div>
 
     <script type="module">
-        // Simulated Supabase Client (Placeholder)
-        const supabase = {
+        // --- SIMULATED MODULES (Replace with actual imports for production) ---
+        const supabase = { // Simulated Supabase
             from: (table) => ({
-                select: () => ({
-                    data: [
-                        { id: 1, user_identifier: "user1@example.com" },
-                        { id: 2, user_identifier: "user2@example.com" }
-                    ],
-                    error: null
-                }),
-                insert: () => ({ data: [{ id: 1 }], error: null })
+                select: async (columns = '*') => {
+                    console.log(`Simulated Supabase: SELECT ${columns} FROM ${table}`);
+                    if (table === 'views_log') return { data: [{ user_identifier: "user1@sim.com" }, { user_identifier: "user2@sim.com" }], error: null };
+                    if (table === 'cases') return { data: [], error: null }; // For initial load of cases if needed
+                    return { data: [], error: null };
+                },
+                insert: async (records) => {
+                    console.log(`Simulated Supabase: INSERT INTO ${table}`, records);
+                    const newId = Math.floor(Math.random() * 10000);
+                    return { data: [{ id: newId, ...records[0] }], error: null };
+                },
+                rpc: async (fnName, params) => { // Simulate RPC for distinct viewers
+                    if (fnName === 'get_distinct_viewers') {
+                         return { data: [{ user_identifier: "user1@sim.com" }, { user_identifier: "user2@sim.com" }, {user_identifier: "test@sim.com"}], error: null };
+                    }
+                    return {data: null, error: {message: "RPC not found"}};
+                }
             })
         };
 
-        // Auth Module
-        const Auth = {
-            isAuthenticated: () => true,
-            getCurrentUser: async () => ({
-                email: "user@example.com",
-                fullName: "John Doe",
-                role: "admin"
-            }),
-            logout: async () => {
-                alert("Logged out");
-                window.location.href = "login.html";
-            },
-            protectPage: async () => {
-                if (!Auth.isAuthenticated()) {
-                    alert("You are not authorized.");
-                    window.location.href = "login.html";
-                }
-            }
+        const Auth = { // Simulated Auth
+            isAuthenticated: () => true, // Assume always authenticated for this combined file
+            getCurrentUser: () => ({ email: "testuser@example.com", fullName: "Test User", role: "admin" }),
+            logout: () => { alert("Simulated Logout"); window.location.reload(); },
+            protectPage: () => { if (!Auth.isAuthenticated()) { alert("Not Authorized (Simulated)"); window.location.href = "/login.html"; throw "Stop Execution"; } }
         };
 
-        // Data Module
-        const kbSystemData = {
-            meta: {
-                version: "0.1.2",
-                lastGlobalUpdate: "2023-11-28T12:00:00Z"
-            },
-            sections: [
-                {
-                    id: "support",
-                    name: "Support",
-                    icon: "fas fa-headset",
-                    themeColor: "blue",
-                    description: "Resources and procedures for the Support team, including ticket handling, escalation, and tool usage.",
-                    articles: [
-                        {
-                            id: "sup001",
-                            title: "How to Handle a High Priority Ticket",
-                            tags: ["high priority", "escalation", "critical issue"],
-                            lastUpdated: "2023-10-27",
-                            contentPath: "articles/support/sup001.html",
-                            summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively."
-                        },
-                        {
-                            id: "sup002",
-                            title: "Standard Ticket Resolution Workflow",
-                            tags: ["workflow", "standard procedure", "tickets"],
-                            lastUpdated: "2023-11-02",
-                            contentPath: "articles/support/sup002.html",
-                            summary: "Overview of the standard workflow for handling all types of support tickets from creation to resolution."
-                        },
-                        {
-                            id: "sup003",
-                            title: "Using the Zendesk Integration",
-                            tags: ["zendesk", "tools", "integration"],
-                            lastUpdated: "2023-10-15",
-                            contentPath: "articles/support/sup003.html",
-                            summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
-                        }
-                    ],
-                    cases: [
-                        {
-                            id: "case001",
-                            title: "Frequent System Disconnects - User Alpha",
-                            tags: ["connectivity", "disconnect", "user report", "alpha client"],
-                            lastUpdated: "2023-11-20",
-                            summary: "User Alpha reports frequent disconnects from the main platform. Initial investigation points to network instability.",
-                            status: "Pending Investigation",
-                            assignedTo: "Support Team B",
-                            resolutionStepsPreview: "1. Check user's local network. 2. Review server logs...",
-                            type: "case",
-                            contentPath: "articles/support/cases/case001.html"
-                        },
-                        {
-                            id: "case002",
-                            title: "Payment Gateway Error - Order #12345",
-                            tags: ["payment", "gateway", "error", "critical"],
-                            lastUpdated: "2023-11-22",
-                            summary: "Order #12345 failed at payment stage. Customer unable to complete purchase. Gateway: Stripe.",
-                            status: "Escalated to Tier 2",
-                            assignedTo: "Finance Support",
-                            resolutionStepsPreview: "1. Verify error code with Stripe. 2. Check for recent gateway updates...",
-                            type: "case",
-                            contentPath: "articles/support/cases/case002.html"
-                        }
-                    ],
-                    subCategories: [
-                        { id: "cases", name: "Case Management" },
-                        { id: "escalation_procedures", name: "Escalation Procedures" },
-                        { id: "tools", name: "Support Tools" }
-                    ],
-                    glossary: [
-                        { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client regarding service quality, availability, responsibilities." },
-                        { term: "P1", definition: "Priority 1 - A critical issue affecting multiple users or core functionality, requiring immediate attention." }
-                    ]
-                },
-                {
-                    id: "partner_care",
-                    name: "Partner Care",
-                    icon: "fas fa-handshake",
-                    themeColor: "teal",
-                    description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
-                    articles: [
-                        {
-                            id: "pc001",
-                            title: "Partner Onboarding Process",
-                            tags: ["onboarding", "new partner", "checklist"],
-                            lastUpdated: "2023-11-10",
-                            contentPath: "articles/partner_care/pc001.html",
-                            summary: "Detailed checklist and steps for successfully onboarding new partners into our ecosystem."
-                        }
-                    ]
-                },
-                {
-                    id: "logistics",
-                    name: "Logistics",
-                    icon: "fas fa-truck",
-                    themeColor: "green",
-                    description: "Documentation related to logistics operations, supply chain management, and transportation.",
-                    articles: []
-                },
-                {
-                    id: "customer_care",
-                    name: "Customer Care",
-                    icon: "fas fa-users",
-                    themeColor: "indigo",
-                    description: "Guidelines and best practices for providing excellent customer care and support.",
-                    articles: []
-                },
-                {
-                    id: "dist_follow_up",
-                    name: "Distribution & Follow up",
-                    icon: "fas fa-people-carry",
-                    themeColor: "cyan",
-                    description: "Procedures for product distribution and post-delivery follow-up actions.",
-                    articles: []
-                },
-                {
-                    id: "logistics_driver",
-                    name: "Logistics (Driver Complaints)",
-                    icon: "fas fa-shipping-fast",
-                    themeColor: "lime",
-                    description: "Handling driver complaints and related logistical issues.",
-                    articles: []
-                },
-                {
-                    id: "logistics_3pl",
-                    name: "Logistics-3PL",
-                    icon: "fas fa-boxes",
-                    themeColor: "yellow",
-                    description: "Information specific to third-party logistics providers and collaborations.",
-                    articles: []
-                },
-                {
-                    id: "order_at_store",
-                    name: "Order at store (Mac)",
-                    icon: "fas fa-store",
-                    themeColor: "pink",
-                    description: "Procedures for orders placed at physical store locations using Mac systems.",
-                    articles: []
-                },
-                {
-                    id: "logistics_admin",
-                    name: "Logistics-Admin",
-                    icon: "fas fa-user-shield",
-                    themeColor: "red",
-                    description: "Administrative tasks and oversight for logistics operations.",
-                    articles: []
-                },
-                {
-                    id: "os",
-                    name: "Operating Systems",
-                    icon: "fab fa-windows",
-                    themeColor: "sky",
-                    description: "Guides and troubleshooting for supported operating systems.",
-                    articles: []
-                },
-                {
-                    id: "compensation",
-                    name: "Compensation Policies",
-                    icon: "fas fa-hand-holding-usd",
-                    themeColor: "amber",
-                    description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
-                    articles: []
-                },
-                {
-                    id: "op_instructions",
-                    name: "Operational Instructions",
-                    icon: "fas fa-clipboard-list",
-                    themeColor: "slate",
-                    description: "General operational instructions and standard operating procedures (SOPs).",
-                    articles: []
-                },
-                {
-                    id: "forms_templates",
-                    name: "Forms/Templates",
-                    icon: "fas fa-file-alt",
-                    themeColor: "purple",
-                    description: "A centralized collection of frequently used forms, document templates, and checklists.",
-                    items: [
-                        {
-                            id: "form001",
-                            title: "New Client Onboarding Checklist",
-                            type: "checklist",
-                            url: "/templates/client_onboarding.pdf",
-                            description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
-                            lastUpdated: "2023-09-15",
-                        },
-                        {
-                            id: "form002",
-                            title: "Incident Report Form",
-                            type: "form",
-                            url: "/templates/incident_report.docx",
-                            description: "Form for reporting operational or security incidents.",
-                            lastUpdated: "2023-10-01",
-                        },
-                        {
-                            id: "temp001",
-                            title: "Standard Email Signature Template",
-                            type: "template",
-                            url: "/templates/email_signature_guide.html",
-                            description: "Official email signature template and usage guidelines for company communication.",
-                            lastUpdated: "2023-08-20",
-                        }
-                    ]
-                }
-            ]
+        const kbSystemData = { /* ... PASTE YOUR FULL kbSystemData OBJECT HERE ... (from your data.js.txt or the one I provided) */
+            meta: { version: "0.1.2", lastGlobalUpdate: "2023-11-28T12:00:00Z" },
+            sections: [ { id: "support", name: "Support", icon: "fas fa-headset", themeColor: "blue", description: "Support resources.", articles: [{ id: "sup001", title: "High Priority Ticket", summary: "Handling P1s.", tags: ["p1"], contentPath:"#"}], cases: [{id: "case001", title:"User Alpha Disconnects", summary: "Frequent disconnects.", status:"Pending", tags:["connectivity"]}], subCategories: [{id:"tools", name:"Tools"}], glossary:[{term:"SLA", definition:"Service Level Agreement"}]}, {id:"partner_care", name:"Partner Care", icon:"fas fa-handshake", themeColor:"teal", description:"Partner support.", articles:[] } /* Add all other sections */ ]
         };
+        // --- END OF SIMULATED MODULES ---
 
-        function searchKb(query) {
-            const lowerQuery = query.toLowerCase();
-            const results = [];
+        // --- START OF APP LOGIC (Adapted from previous app.js) ---
+        let caseEditorQuill;
+        let usersChartInstance, casesChartInstance;
+        const TABLES = { CASES: 'cases', VIEWS_LOG: 'views_log' };
 
-            if (!kbSystemData || !kbSystemData.sections) return results;
+        // DOM Elements
+        const sidebar = document.getElementById('sidebar');
+        const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+        const contentWrapper = document.getElementById('contentWrapper');
+        const pageContentArea = document.getElementById('pageContentArea');
+        const dashboardOverviewContainer = document.getElementById('dashboardOverviewContainer');
+        const standardSectionContentPlaceholder = document.getElementById('standardSectionContentPlaceholder');
+        const currentSectionTitleEl = document.getElementById('currentSectionTitle');
+        const breadcrumbsContainer = document.getElementById('breadcrumbs');
+        
+        const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
+        const userAvatar = document.getElementById('userAvatar');
+        const welcomeUserNameDashboard = document.getElementById('welcomeUserNameDashboard');
+        const kbVersionDashboard = document.getElementById('kbVersionDashboard');
+        const lastKbUpdateDashboard = document.getElementById('lastKbUpdateDashboard');
+        const footerKbVersion = document.getElementById('footerKbVersion');
 
-            kbSystemData.sections.forEach(section => {
-                if (section.articles) {
-                    section.articles.forEach(article => {
-                        if (article.title.toLowerCase().includes(lowerQuery) ||
-                            (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                            (article.summary && article.summary.toLowerCase().includes(lowerQuery))
-                        ) {
-                            results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor });
-                        }
-                    });
-                }
-                if (section.cases) {
-                    section.cases.forEach(caseItem => {
-                        if (caseItem.title.toLowerCase().includes(lowerQuery) ||
-                            (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
-                            (caseItem.summary && caseItem.summary.toLowerCase().includes(lowerQuery)) ||
-                            (caseItem.status && caseItem.status.toLowerCase().includes(lowerQuery))
-                        ) {
-                            results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case', themeColor: section.themeColor });
-                        }
-                    });
-                }
-                if (section.items) {
-                    section.items.forEach(item => {
-                        if (item.title.toLowerCase().includes(lowerQuery) ||
-                            (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
-                            item.type.toLowerCase().includes(lowerQuery)
-                        ) {
-                            results.push({ ...item, sectionName: section.name, sectionId: section.id, type: 'item', themeColor: section.themeColor });
-                        }
-                    });
-                }
-                if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
-                    if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
-                        results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor });
-                    }
-                }
-                if (section.glossary) {
-                    section.glossary.forEach(term => {
-                        if (term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)) {
-                            if (!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)) {
-                                results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor });
-                            }
-                        }
-                    });
-                }
-            });
-            results.sort((a, b) => {
-                const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
-                return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
-            });
-            return results;
+        // Initial Setup
+        Auth.protectPage();
+        const currentUser = Auth.getCurrentUser();
+
+        if (currentUser) {
+            const displayName = currentUser.fullName || currentUser.email || "User";
+            if (userNameDisplayHeader) userNameDisplayHeader.textContent = displayName;
+            if (welcomeUserNameDashboard) welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`;
+            if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=4f46e5&color=fff&rounded=true`;
         }
+        if (kbSystemData.meta) {
+            if (kbVersionDashboard) kbVersionDashboard.textContent = kbSystemData.meta.version;
+            if (lastKbUpdateDashboard) lastKbUpdateDashboard.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+            if (footerKbVersion) footerKbVersion.textContent = kbSystemData.meta.version;
+        }
+        
+        // Theme Switcher
+        const themeSwitcher = document.getElementById('themeSwitcher');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeText = document.getElementById('themeText');
+        const htmlElement = document.documentElement;
 
-        // App Logic
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('[app.js] DOMContentLoaded fired.');
-
-            // Sidebar Toggle
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const content = document.getElementById('content');
-
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('closed');
-                content.classList.toggle('closed');
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                htmlElement.classList.add('dark');
+                if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
+                if (themeText) themeText.textContent = 'Light Mode';
+            } else {
+                htmlElement.classList.remove('dark');
+                if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
+                if (themeText) themeText.textContent = 'Dark Mode';
+            }
+             // Update chart colors if they exist
+            [usersChartInstance, casesChartInstance].forEach(chart => {
+                if (chart) {
+                    chart.options.plugins.legend.labels.color = theme === 'dark' ? '#e2e8f0' : '#1a202c';
+                    if (chart.options.scales && chart.options.scales.y) { // Bar chart has scales
+                        chart.options.scales.y.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568';
+                        chart.options.scales.y.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb';
+                        chart.options.scales.x.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568';
+                        chart.options.scales.x.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb';
+                    }
+                    chart.update();
+                }
             });
+        }
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(savedTheme);
+        }
+        if (themeSwitcher) {
+            themeSwitcher.addEventListener('click', () => {
+                const newTheme = htmlElement.classList.contains('dark') ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        }
+        loadTheme(); // Load theme on init
 
-            // Quill Editor
-            let caseEditorQuill;
-            if (document.getElementById('quillEditor')) {
+        // Mobile Sidebar Toggle
+        if (mobileSidebarToggle && sidebar) {
+            mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+            // Close sidebar when a link is clicked on mobile
+            sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 768) sidebar.classList.remove('open');
+                });
+            });
+        }
+        
+        // Logout
+        document.getElementById('logoutButton')?.addEventListener('click', () => Auth.logout());
+        // Report Error
+        document.getElementById('reportErrorBtn')?.addEventListener('click', () => alert('Report Error (Placeholder)'));
+
+        // Case Editor Modal
+        const caseEditorModalOverlay = document.getElementById('caseEditorModalOverlay');
+        const openNewCaseModalBtn = document.getElementById('openNewCaseModalBtn');
+        const closeCaseModalBtn = document.getElementById('closeCaseModalBtn');
+        const caseForm = document.getElementById('caseForm');
+        const cancelCaseBtn = document.getElementById('cancelCaseBtn');
+
+        function openCaseEditor() {
+            caseEditorModalOverlay.classList.remove('hidden');
+            if (!caseEditorQuill) {
                 caseEditorQuill = new Quill('#quillEditor', {
                     theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            ['link', 'image'],
-                            ['clean']
-                        ]
-                    },
-                    placeholder: 'Describe the resolution steps or details...'
+                    modules: { toolbar: [[{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }]] },
+                    placeholder: 'Resolution steps...'
                 });
             }
+            caseForm.reset();
+            if(caseEditorQuill) caseEditorQuill.setText('');
+            document.getElementById('caseTitle')?.focus();
+        }
+        function closeCaseEditor() { caseEditorModalOverlay.classList.add('hidden'); }
 
-            // Case Editor Functions
-            function openCaseEditor() {
-                document.getElementById('caseEditorModal').classList.add('open');
-                document.getElementById('overlay').classList.add('open');
-                document.getElementById('caseTitle').value = '';
-                document.getElementById('caseSummary').value = '';
-                if (caseEditorQuill) caseEditorQuill.setText('');
-                document.getElementById('caseTitle').focus();
+        if(openNewCaseModalBtn) openNewCaseModalBtn.addEventListener('click', openCaseEditor);
+        if(closeCaseModalBtn) closeCaseModalBtn.addEventListener('click', closeCaseEditor);
+        if(cancelCaseBtn) cancelCaseBtn.addEventListener('click', closeCaseEditor);
+        if(caseForm) caseForm.addEventListener('submit', async e => { e.preventDefault(); await saveCaseToSupabase(); });
+
+        async function saveCaseToSupabase() {
+            const title = document.getElementById('caseTitle').value.trim();
+            const summary = document.getElementById('caseSummary').value.trim();
+            const resolution_steps = caseEditorQuill ? caseEditorQuill.root.innerHTML : '';
+            if (!title || !summary) { alert("Title and Summary are required."); return; }
+
+            const user = Auth.getCurrentUser();
+            const caseData = { title, summary, resolution_steps, status: 'New', created_by_email: user.email, created_by_name: user.fullName };
+            const { data, error } = await supabase.from(TABLES.CASES).insert([caseData]).select();
+            if (error) { alert(`Error saving case: ${error.message}`); console.error(error); }
+            else {
+                alert('Case saved!'); closeCaseEditor(); logUserView(data[0].id, 'case_created');
+                // Add to local data and refresh if on relevant page (simplified)
+                const currentSectionId = window.location.hash.split('/')[0].substring(1);
+                const section = kbSystemData.sections.find(s => s.id === currentSectionId);
+                if(section && section.cases) {
+                    section.cases.unshift({ ...data[0], id: data[0].id.toString()}); // Make sure ID is string
+                    displaySectionContent(currentSectionId);
+                }
             }
+        }
 
-            function closeCaseEditor() {
-                document.getElementById('caseEditorModal').classList.remove('open');
-                document.getElementById('overlay').classList.remove('open');
-            }
+        // Chart Initialization
+        function initCharts(viewData = []) {
+            const isDark = htmlElement.classList.contains('dark');
+            const legendColor = isDark ? '#e2e8f0' : '#1a202c';
+            const ticksColor = isDark ? '#94a3b8' : '#4a5568';
+            const gridColor = isDark ? '#374151' : '#e5e7eb';
 
-            document.getElementById('newCaseBtn').addEventListener('click', openCaseEditor);
-            document.getElementById('cancelCaseBtn').addEventListener('click', closeCaseEditor);
-            document.getElementById('overlay').addEventListener('click', closeCaseEditor);
-            document.getElementById('caseForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await saveCaseToSupabase();
+            const chartOptions = (type) => ({
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: legendColor } } },
+                scales: type === 'bar' ? {
+                    y: { ticks: { color: ticksColor, beginAtZero: true }, grid: { color: gridColor } },
+                    x: { ticks: { color: ticksColor }, grid: { color: gridColor } }
+                } : {}
             });
+            // Process viewData to get actual chart data - This is highly dependent on your views_log structure
+            // Example: Count views per user for usersChart
+            const userCounts = viewData.reduce((acc, view) => {
+                acc[view.user_identifier] = (acc[view.user_identifier] || 0) + 1;
+                return acc;
+            }, {});
 
-            // Helper Functions
-            function escapeHTML(str) {
-                if (typeof str !== 'string') return '';
-                return str.replace(/[&<>"']/g, function (match) {
-                    return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
-                });
-            }
-
-            function highlightText(text, query) {
-                if (!text) return '';
-                const safeText = escapeHTML(text);
-                if (!query) return safeText;
-                try {
-                    const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                    const regex = new RegExp(`(${escapedQuery})`, 'gi');
-                    return safeText.replace(regex, '<mark>$1</mark>');
-                } catch (e) {
-                    console.error('Error in highlightText regex:', e);
-                    return safeText;
-                }
-            }
-
-            function truncateText(text, maxLength) {
-                if (!text || text.length <= maxLength) return text;
-                return text.substring(0, maxLength) + '...';
-            }
-
-            function getThemeColors(themeColor = 'gray') {
-                const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
-                const colorMap = {
-                    blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' },
-                    teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' },
-                    green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' },
-                    indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-600 dark:text-indigo-400', iconContainer: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-indigo-500', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300', statusBg: 'bg-indigo-100 dark:bg-indigo-500/20', statusText: 'text-indigo-700 dark:text-indigo-400' },
-                    cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900', text: 'text-cyan-600 dark:text-cyan-400', iconContainer: 'bg-cyan-100 dark:bg-cyan-800/50', icon: 'text-cyan-500 dark:text-cyan-400', cta: 'text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300', border: 'border-cyan-500', tagBg: 'bg-cyan-100 dark:bg-cyan-500/20', tagText: 'text-cyan-700 dark:text-cyan-300', statusBg: 'bg-cyan-100 dark:bg-cyan-500/20', statusText: 'text-cyan-700 dark:text-cyan-400' },
-                    lime: { bg: 'bg-lime-100 dark:bg-lime-900', text: 'text-lime-600 dark:text-lime-400', iconContainer: 'bg-lime-100 dark:bg-lime-800/50', icon: 'text-lime-500 dark:text-lime-400', cta: 'text-lime-600 hover:text-lime-700 dark:text-lime-400 dark:hover:text-lime-300', border: 'border-lime-500', tagBg: 'bg-lime-100 dark:bg-lime-500/20', tagText: 'text-lime-700 dark:text-lime-300', statusBg: 'bg-lime-100 dark:bg-lime-500/20', statusText: 'text-lime-700 dark:text-lime-400' },
-                    yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-400', iconContainer: 'bg-yellow-100 dark:bg-yellow-800/50', icon: 'text-yellow-500 dark:text-yellow-400', cta: 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300', border: 'border-yellow-500', tagBg: 'bg-yellow-100 dark:bg-yellow-500/20', tagText: 'text-yellow-700 dark:text-yellow-300', statusBg: 'bg-yellow-100 dark:bg-yellow-500/20', statusText: 'text-yellow-700 dark:text-yellow-400' },
-                    pink: { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-600 dark:text-pink-400', iconContainer: 'bg-pink-100 dark:bg-pink-800/50', icon: 'text-pink-500 dark:text-pink-400', cta: 'text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300', border: 'border-pink-500', tagBg: 'bg-pink-100 dark:bg-pink-500/20', tagText: 'text-pink-700 dark:text-pink-300', statusBg: 'bg-pink-100 dark:bg-pink-500/20', statusText: 'text-pink-700 dark:text-pink-400' },
-                    red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400' },
-                    sky: { bg: 'bg-sky-100 dark:bg-sky-900', text: 'text-sky-600 dark:text-sky-400', iconContainer: 'bg-sky-100 dark:bg-sky-800/50', icon: 'text-sky-500 dark:text-sky-400', cta: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300', border: 'border-sky-500', tagBg: 'bg-sky-100 dark:bg-sky-500/20', tagText: 'text-sky-700 dark:text-sky-300', statusBg: 'bg-sky-100 dark:bg-sky-500/20', statusText: 'text-sky-700 dark:text-sky-400' },
-                    amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400' },
-                    purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-400', iconContainer: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', cta: 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300', border: 'border-purple-500', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300', statusBg: 'bg-purple-100 dark:bg-purple-500/20', statusText: 'text-purple-700 dark:text-purple-400' },
-                    slate: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-700/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-200 dark:bg-slate-700', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-200 dark:bg-slate-600', statusText: 'text-slate-700 dark:text-slate-300' },
-                    gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }
-                };
-                return colorMap[color] || colorMap.gray;
-            }
-
-            // Main Logic
-            (async () => {
-                await Auth.protectPage();
-                const currentUser = await Auth.getCurrentUser();
-                const role = currentUser?.role || 'viewer';
-                const userNameDisplay = document.getElementById('userNameDisplay');
-                if (userNameDisplay && currentUser) {
-                    userNameDisplay.textContent = currentUser.fullName || currentUser.email || 'User';
-                }
-
-                if (role === 'viewer') {
-                    document.getElementById('newCaseBtn').style.display = 'none';
-                } else if (role === 'admin' || role === 'super_admin') {
-                    document.getElementById('newCaseBtn').style.display = 'inline-block';
-                }
-
-                if (kbSystemData.meta) {
-                    document.getElementById('lastKbUpdate').textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-                }
-
-                // Initialize Charts
-                const usersChart = new Chart(document.getElementById('usersChart').getContext('2d'), {
+            if(usersChartInstance) usersChartInstance.destroy();
+            const usersCtx = document.getElementById('usersChart')?.getContext('2d');
+            if (usersCtx) {
+                usersChartInstance = new Chart(usersCtx, {
                     type: 'bar',
-                    data: {
-                        labels: ['User1', 'User2', 'User3'],
-                        datasets: [{
-                            label: 'Active Users',
-                            data: [10, 20, 15],
-                            backgroundColor: 'rgba(59, 130, 246, 0.5)'
-                        }]
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { color: '#e2e8f0' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                            },
-                            x: {
-                                ticks: { color: '#e2e8f0' },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                            }
-                        }
-                    }
+                    data: { labels: Object.keys(userCounts), datasets: [{ label: 'User Views', data: Object.values(userCounts), backgroundColor: 'rgba(59, 130, 246, 0.7)' }] },
+                    options: chartOptions('bar')
                 });
-
-                const casesChart = new Chart(document.getElementById('casesChart').getContext('2d'), {
+            }
+            if(casesChartInstance) casesChartInstance.destroy();
+            const casesCtx = document.getElementById('casesChart')?.getContext('2d');
+            if (casesCtx) { // Sample data for cases pie chart
+                casesChartInstance = new Chart(casesCtx, {
                     type: 'pie',
-                    data: {
-                        labels: ['Case1', 'Case2', 'Case3'],
-                        datasets: [{
-                            data: [30, 20, 10],
-                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
-                        }]
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false 
-                    }
-                });
-
-                // Fetch views log for filters
-                const { data: views, error } = await supabase.from('views_log').select('*');
-                if (views) {
-                    const userSelect = document.getElementById('filterUser');
-                    const uniqueUsers = [...new Set(views.map(v => v.user_identifier))];
-                    uniqueUsers.forEach(user => {
-                        const option = document.createElement('option');
-                        option.value = user;
-                        option.textContent = user;
-                        userSelect.appendChild(option);
-                    });
-                }
-
-                // Apply Filters
-                document.getElementById('applyFilterBtn').addEventListener('click', () => {
-                    const filterDate = document.getElementById('filterDate').value;
-                    const filterUser = document.getElementById('filterUser').value;
-                    const filterInteraction = document.getElementById('filterInteraction').value;
-                    console.log('Filters applied:', { filterDate, filterUser, filterInteraction });
-                    filterCases(filterDate, filterUser, filterInteraction);
-                });
-            })();
-
-            // Theme Switcher
-            const themeSwitcher = document.getElementById('themeSwitcher');
-            const themeIcon = document.getElementById('themeIcon');
-            const htmlElement = document.documentElement;
-
-            function applyTheme(theme) {
-                if (theme === 'dark') {
-                    htmlElement.classList.add('dark');
-                    themeIcon.classList.replace('fa-moon', 'fa-sun');
-                } else {
-                    htmlElement.classList.remove('dark');
-                    themeIcon.classList.replace('fa-sun', 'fa-moon');
-                }
-            }
-
-            function loadTheme() {
-                const savedTheme = localStorage.getItem('theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
-            }
-
-            if (themeSwitcher) {
-                themeSwitcher.addEventListener('click', () => {
-                    const isDarkMode = htmlElement.classList.toggle('dark');
-                    const newTheme = isDarkMode ? 'dark' : 'light';
-                    localStorage.setItem('theme', newTheme);
-                    applyTheme(newTheme);
+                    data: { labels: ['Support Cases', 'Partner Cases', 'Logistics Issues'], datasets: [{ data: [15, 10, 5], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] },
+                    options: chartOptions('pie')
                 });
             }
-            loadTheme();
-
-            // Logout Button
-            const logoutButton = document.getElementById('logoutButton');
-            if (logoutButton) {
-                logoutButton.addEventListener('click', async () => {
-                    await Auth.logout();
-                });
+        }
+        
+        // Filters
+        const filterUserSelect = document.getElementById('filterUser');
+        async function populateUserFilter() {
+            const { data, error } = await supabase.rpc('get_distinct_viewers');
+            if (error) { console.error("Error fetching distinct viewers:", error); return; }
+            if (data && filterUserSelect) {
+                filterUserSelect.innerHTML = '<option value="">All Users</option>';
+                data.forEach(u => filterUserSelect.add(new Option(u.user_identifier, u.user_identifier)));
             }
-
-            // Report Error Button
-            const reportErrorBtn = document.getElementById('reportErrorBtn');
-            if (reportErrorBtn) {
-                reportErrorBtn.addEventListener('click', () => {
-                    const sectionTitleText = document.getElementById('currentSectionTitle')?.textContent || 'Current Page';
-                    const pageUrl = window.location.href;
-                    alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}`);
-                });
-            }
-
-            // Sidebar Navigation
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            const pageContent = document.getElementById('pageContent');
-            const dashboardSection = document.getElementById('dashboardSection');
-
-            function highlightSidebarLink(sectionId) {
-                sidebarLinks.forEach(l => l.classList.remove('active'));
-                const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
-                if (activeLink) activeLink.classList.add('active');
-            }
-
-            function renderArticleCard_enhanced(article, sectionData) {
-                const theme = getThemeColors(sectionData.themeColor);
-                const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-                return `
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
-                        <div class="flex items-center mb-3">
-                            <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                                <i class="${cardIconClass} text-xl ${theme.icon}"></i>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
-                            <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${article.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
-                                <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                            </a>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(article.summary) || 'No summary available.'}</p>
-                        ${article.tags && article.tags.length > 0 ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                        <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <div class="rating-container text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                                <span class="mr-1">Helpful?</span>
-                                <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
-                                <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
-                            </div>
-                            <a href="${article.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">
-                                Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }
-
-            function renderItemCard_enhanced(item, sectionData) {
-                const theme = getThemeColors(sectionData.themeColor);
-                const cardIconClass = sectionData.icon || 'fas fa-file-alt';
-                return `
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
-                        <div class="flex items-center mb-3">
-                            <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                                <i class="${cardIconClass} text-xl ${theme.icon}"></i>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
-                            <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${item.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
-                                <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                            </a>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(item.description) || 'No description available.'}</p>
-                        <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold tracking-wide">${escapeHTML(item.type)}</span>
-                            <a href="${item.url}" target="_blank" class="text-sm font-medium ${theme.cta} group">
-                                Open <i class="fas fa-external-link-alt ml-1 text-xs opacity-75 group-hover:scale-110 transition-transform duration-200"></i>
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }
-
-            function renderCaseCard_enhanced(caseItem, sectionData) {
-                const theme = getThemeColors(sectionData.themeColor);
-                const caseIcon = 'fas fa-briefcase';
-                return `
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
-                        <div class="flex items-center mb-3">
-                            <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
-                                <i class="${caseIcon} text-xl ${theme.icon}"></i>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
-                            <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
-                                <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
-                            </a>
-                        </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
-                        ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Steps: ${escapeHTML(caseItem.resolutionStepsPreview)}</p>` : ''}
-                        ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                        <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
-                            ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
-                        </div>
-                    </div>
-                `;
-            }
-
-            function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-                if (!pageContent) {
-                    console.error('pageContent element is null.');
-                    return;
-                }
-
-                if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-                    pageContent.innerHTML = '<p class="text-red-500 p-4">Error: Knowledge base data is missing.</p>';
-                    return;
-                }
-
-                // Show or hide dashboard section
-                if (sectionId === 'home') {
-                    dashboardSection.style.display = 'block';
-                    pageContent.style.display = 'none';
-                    return;
-                }
-
-                dashboardSection.style.display = 'none';
-                pageContent.style.display = 'block';
-
-                const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-                if (!sectionData) {
-                    pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-white">Section not found</h2><p>"${sectionId}" does not exist.</p></div>`;
-                    return;
-                }
-
-                const theme = getThemeColors(sectionData.themeColor);
-                let contentHTML = `<div class="space-y-10">`;
-                contentHTML += `<div class="flex justify-between items-center"><h2 class="text-2xl font-bold text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
-                contentHTML += `<p class="text-gray-300 mt-1 mb-6 text-sm">${escapeHTML(sectionData.description)}</p>`;
-
-                if (sectionData.articles && sectionData.articles.length > 0) {
-                    contentHTML += `<h3 class="text-lg font-semibold mb-5 text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-                    sectionData.articles.forEach(article => contentHTML += renderArticleCard_enhanced(article, sectionData));
-                    contentHTML += `</div>`;
-                }
-                if (sectionData.cases && sectionData.cases.length > 0) {
-                    contentHTML += `<h3 class="text-lg font-semibold mt-10 mb-5 text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-                    sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
-                    contentHTML += `</div>`;
-                }
-                if (sectionData.items && sectionData.items.length > 0) {
-                    contentHTML += `<h3 class="text-lg font-semibold mt-10 mb-5 text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
-                    sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
-                    contentHTML += `</div>`;
-                }
-                contentHTML += `</div>`;
-                pageContent.innerHTML = contentHTML;
-
-                if (itemIdToFocus) {
-                    const element = document.querySelector(`[data-item-id="${itemIdToFocus}"]`);
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-
-            function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-                highlightSidebarLink(sectionId);
-                displaySectionContent(sectionId, itemId, subCategoryFilter);
-                window.history.replaceState(null, '', `#${sectionId}${itemId ? `/${itemId}` : ''}${subCategoryFilter ? `/${subCategoryFilter}` : ''}`);
-            }
-
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const sectionId = link.dataset.section;
-                    handleSectionTrigger(sectionId);
-                });
-            });
-
-            document.body.addEventListener('click', (e) => {
-                const target = e.target.closest('[data-section-trigger]');
-                if (target) {
-                    e.preventDefault();
-                    const sectionId = target.dataset.sectionTrigger;
-                    const itemId = target.dataset.itemId;
-                    const subCatFilter = target.dataset.subcatFilter;
-                    handleSectionTrigger(sectionId, itemId, subCatFilter);
-                }
-
-                const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-                if (homeSubcatTrigger) {
-                    e.preventDefault();
-                    const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
-                    if (triggerValue && triggerValue.includes('.')) {
-                        const [sectionId, subId] = triggerValue.split('.');
-                        handleSectionTrigger(sectionId, null, subId);
-                    }
-                }
-            });
-
-            // Handle hash change
-            window.addEventListener('hashchange', () => {
-                const hash = window.location.hash.replace('#', '').split('/');
-                const sectionId = hash[0] || 'home';
-                const itemId = hash[1] || null;
-                const subCategoryFilter = hash[2] || null;
-                handleSectionTrigger(sectionId, itemId, subCategoryFilter);
-            });
-
-            async function saveCaseToSupabase() {
-                const title = document.getElementById('caseTitle').value.trim();
-                const summary = document.getElementById('caseSummary').value.trim();
-                const resolution_steps = caseEditorQuill ? caseEditorQuill.root.innerHTML : '';
-
-                if (!title || !summary) {
-                    alert('Please fill in at least Case Title and Summary.');
-                    return;
-                }
-
-                const user = await Auth.getCurrentUser();
-                const created_by_email = user ? user.email : 'anonymous';
-                const created_by_name = user ? (user.fullName || user.email) : 'Anonymous User';
-
-                const caseData = {
-                    title,
-                    summary,
-                    resolution_steps,
-                    status: 'New',
-                    created_by_email,
-                    created_by_name
-                };
-
-                try {
-                    const { data, error } = await supabase
-                        .from('cases')
-                        .insert([caseData])
-                        .select();
-
-                    if (error) {
-                        console.error('Error saving case to Supabase:', error);
-                        alert(`Error saving case: ${error.message}`);
-                    } else {
-                        alert('Case saved successfully!');
-                        closeCaseEditor();
-                        await logUserView(data[0].id, 'case', null, 'created');
-                    }
-                } catch (err) {
-                    console.error('Unexpected error during saveCaseToSupabase:', err);
-                    alert('An unexpected error occurred while saving the case.');
-                }
-            }
-
-            async function logUserView(itemId, itemType, sectionId = null, details = null) {
-                const user = await Auth.getCurrentUser();
-                const user_identifier = user ? (user.email || user.id || 'unknown_user') : 'anonymous_user';
-
-                const viewData = {
-                    item_id: itemId,
-                    item_type: itemType,
-                    user_identifier: user_identifier,
-                    viewed_at: new Date().toISOString(),
-                    section_id: sectionId,
-                    details_text: details
-                };
-
-                try {
-                    const { error } = await supabase.from('views_log').insert([viewData]);
-                    if (error) {
-                        console.error('Error logging view to Supabase:', error);
-                    }
-                } catch (err) {
-                    console.error('Unexpected error logging view:', err);
-                }
-            }
-
-            function filterCases(date, user, interaction) {
-                console.log('Filtering cases with:', { date, user, interaction });
-                // Placeholder for filtering logic
-            }
-
-            // Handle initial page load based on URL hash
-            const hash = window.location.hash.replace('#', '').split('/');
-            const initialSection = hash[0] || 'home';
-            handleSectionTrigger(initialSection, hash[1], hash[2]);
+        }
+        document.getElementById('applyFilterBtn')?.addEventListener('click', async () => {
+            const date = document.getElementById('filterDate').value;
+            const user = filterUserSelect.value;
+            const interaction = document.getElementById('filterInteraction').value;
+            console.log("Filtering with:", {date, user, interaction});
+            // Actual data fetching and chart update based on filters
+            let query = supabase.from(TABLES.VIEWS_LOG).select('*');
+            if(date) query = query.gte('viewed_at', `${date}T00:00:00Z`).lte('viewed_at', `${date}T23:59:59Z`);
+            if(user) query = query.eq('user_identifier', user);
+            if(interaction) query = query.eq('item_type', interaction);
+            const {data: filteredData, error} = await query;
+            if(error) console.error("Error fetching filtered data:", error);
+            else initCharts(filteredData || []); // Re-init charts
         });
+
+        // Helper Functions (escapeHTML, highlightText, truncateText, stripHtml, getThemeColors)
+        function escapeHTML(str) { if (typeof str !== 'string') return ''; return str.replace(/[&<>"']/g, m=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[m]));}
+        function highlightText(text, query) { if (!text) return ''; const safeText=escapeHTML(text); if(!query) return safeText; try { const rgx=new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')})`, 'gi'); return safeText.replace(rgx, '<mark>$1</mark>');} catch(e){return safeText;}}
+        function truncateText(text, len) { if(!text || text.length <= len) return text; return text.substring(0,len)+'...';}
+        function stripHtml(html){ const tmp=document.createElement("DIV"); tmp.innerHTML=html; return tmp.textContent||tmp.innerText||""; }
+        function getThemeColors(themeColor = 'gray') {
+            const color = typeof themeColor === 'string' ? themeColor.toLowerCase() : 'gray';
+            const colorMap = { /* ... Same as your provided colorMap ... */ 
+            blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' }, teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' }, /* ... add all other colors from your previous correct version */ 
+            gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }};
+            return colorMap[color] || colorMap.gray;
+        }
+
+
+        // Card Rendering (using the more detailed Tailwind versions)
+        function renderArticleCard(article, sectionData) { /* Similar to previous detailed renderArticleCard_enhanced */ 
+            const theme = getThemeColors(sectionData.themeColor);
+            const cardIconClass = sectionData.icon || 'fas fa-file-alt';
+            return `
+            <div class="card card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${cardIconClass} text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(article.title)}</h3>
+                </div>
+                <p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(article.summary) || 'No summary.'}</p>
+                ${article.tags && article.tags.length > 0 ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div><!-- Rating Placeholder --></div>
+                    <a href="${escapeHTML(article.contentPath || '#')}" target="_blank" class="text-sm font-medium ${theme.cta}">Read More <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+        function renderCaseCard(caseItem, sectionData) { /* Similar to previous detailed renderCaseCard_enhanced */
+             const theme = getThemeColors(sectionData.themeColor);
+             return `
+             <div class="card card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="fas fa-briefcase text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(caseItem.title)}</h3>
+                </div>
+                <p class="text-sm mb-2 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
+                ${caseItem.resolutionStepsPreview ? `<p class="text-xs italic mb-3 text-gray-500 dark:text-gray-500">Preview: ${escapeHTML(truncateText(caseItem.resolutionStepsPreview,100))}</p>`:''}
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
+                    <a href="${escapeHTML(caseItem.contentPath || '#')}" target="_blank" class="text-sm font-medium ${theme.cta}">Details <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+        function renderItemCard(item, sectionData) { /* Similar to previous detailed renderItemCard_enhanced */
+            const theme = getThemeColors(sectionData.themeColor);
+            return `
+            <div class="card card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${sectionData.icon || 'fas fa-archive'} text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(item.title)}</h3>
+                </div>
+                <p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(item.description) || 'No description.'}</p>
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold">${escapeHTML(item.type)}</span>
+                    <a href="${escapeHTML(item.url)}" target="_blank" class="text-sm font-medium ${theme.cta}">Open <i class="fas fa-external-link-alt ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+
+        // Content Display
+        function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
+            dashboardOverviewContainer.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden'); // Show the placeholder for section content
+            standardSectionContentPlaceholder.innerHTML = ''; // Clear previous content
+
+            if (sectionId === 'home') {
+                dashboardOverviewContainer.classList.remove('hidden');
+                standardSectionContentPlaceholder.classList.add('hidden');
+                if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Dashboard Overview';
+                if (breadcrumbsContainer) breadcrumbsContainer.innerHTML = `<span class="font-medium">Home</span>`;
+                initCharts(); // Pass actual data if available
+                populateUserFilter();
+                return;
+            }
+
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!sectionData) {
+                standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section Not Found: ${escapeHTML(sectionId)}</h2></div>`;
+                if(currentSectionTitleEl) currentSectionTitleEl.textContent = "Not Found";
+                return;
+            }
+
+            if(currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
+            // Breadcrumbs logic (simplified, can be expanded)
+            if (breadcrumbsContainer) {
+                let bcHTML = `<a href="#" data-section="home" class="hover:underline">Home</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(sectionData.name)}</span>`;
+                if(subCategoryFilter) {
+                    const subCatName = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)?.name || subCategoryFilter;
+                    bcHTML = `<a href="#" data-section="home" class="hover:underline">Home</a> <span class="mx-1">></span> <a href="#" data-section="${sectionData.id}" class="hover:underline">${escapeHTML(sectionData.name)}</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(subCatName)}</span>`;
+                }
+                breadcrumbsContainer.innerHTML = bcHTML;
+            }
+            
+            let contentHTML = `<div class="space-y-8">`;
+            const theme = getThemeColors(sectionData.themeColor);
+            
+            // Header for section (already in main header, but can add sub-header here if needed)
+            // contentHTML += `<h2 class="text-3xl font-bold mb-6">${escapeHTML(sectionData.name)}</h2>`;
+            // contentHTML += `<p class="text-lg text-gray-600 dark:text-gray-400 mb-8">${escapeHTML(sectionData.description)}</p>`;
+
+            const articles = (sectionData.articles || []).filter(a => !subCategoryFilter || a.tags?.includes(subCategoryFilter));
+            const cases = (sectionData.cases || []).filter(c => !subCategoryFilter || c.tags?.includes(subCategoryFilter));
+            const items = (sectionData.items || []).filter(i => !subCategoryFilter || i.type === subCategoryFilter);
+
+            if(articles.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                articles.forEach(article => contentHTML += renderArticleCard(article, sectionData));
+                contentHTML += `</div>`;
+            }
+            if(cases.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                cases.forEach(caseItem => contentHTML += renderCaseCard(caseItem, sectionData));
+                contentHTML += `</div>`;
+            }
+            if(items.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                items.forEach(item => contentHTML += renderItemCard(item, sectionData));
+                contentHTML += `</div>`;
+            }
+            // Sub-categories (if not filtering by one)
+            if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+                sectionData.subCategories.forEach(subCat => {
+                    contentHTML += `<a href="#" data-section="${sectionData.id}" data-subcat-filter="${subCat.id}" class="card card-animate text-center hover:border-indigo-500 border-transparent border-2">
+                        <i class="${sectionData.icon || 'fas fa-folder-open'} text-3xl mb-2 ${theme.icon}"></i>
+                        <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
+                    </a>`;
+                });
+                contentHTML += `</div>`;
+            }
+
+            if (!articles.length && !cases.length && !items.length && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) {
+                 contentHTML += `<div class="text-center py-10"><p class="text-xl text-gray-500">No content found for this section/filter.</p></div>`;
+            }
+
+            contentHTML += `</div>`;
+            standardSectionContentPlaceholder.innerHTML = contentHTML;
+
+            // Animate cards
+            standardSectionContentPlaceholder.querySelectorAll('.card-animate').forEach((card, index) => {
+                card.style.opacity = '0'; card.style.transform = 'translateY(20px)';
+                setTimeout(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; card.style.transition = 'opacity 0.5s ease, transform 0.5s ease'; card.style.transitionDelay = `${index * 0.07}s`; }, 50);
+            });
+
+             if (itemIdToFocus) { // Scroll to focused item
+                setTimeout(() => {
+                    const targetCard = standardSectionContentPlaceholder.querySelector(`[data-item-id="${itemIdToFocus}"]`);
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetCard.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)'; // Focus ring
+                        setTimeout(() => targetCard.style.boxShadow = '', 3000);
+                    }
+                }, 300);
+            }
+        }
+
+        // Navigation and Routing
+        function highlightSidebarLink(sectionId) {
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active', 'bg-gray-700', 'dark:bg-gray-600', 'text-white'));
+            const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+            if (activeLink) activeLink.classList.add('active', 'bg-gray-700', 'dark:bg-gray-600', 'text-white');
+        }
+
+        function handleNavigation() {
+            const hash = window.location.hash.substring(1);
+            const parts = hash.split('/');
+            const sectionId = parts[0] || 'home';
+            const subCategoryFilter = (parts.length > 1 && kbSystemData.sections.find(s=>s.id===sectionId)?.subCategories?.find(sc=>sc.id===parts[1])) ? parts[1] : null;
+            const itemIdToFocus = subCategoryFilter ? (parts[2] || null) : (parts[1] || null) ;
+            
+            highlightSidebarLink(sectionId);
+            displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
+            logUserView(sectionId, 'navigation', subCategoryFilter || itemIdToFocus);
+        }
+        
+        document.querySelectorAll('.sidebar-link, [data-section], [data-subcat-filter]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                const subcat = link.dataset.subcatFilter;
+                let newHash = section;
+                if(subcat) newHash += `/${subcat}`;
+                window.location.hash = newHash;
+                // handleNavigation will be called by 'hashchange' listener
+            });
+        });
+         // Global search
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        globalSearchInput?.addEventListener('input', () => {
+            const query = globalSearchInput.value.trim().toLowerCase();
+            if (query.length < 2) { searchResultsContainer.classList.add('hidden'); return; }
+            // Simplified search (implement your searchKb logic if it's more complex)
+            const results = [];
+            kbSystemData.sections.forEach(s => {
+                s.articles?.forEach(a => { if(a.title.toLowerCase().includes(query) || a.summary?.toLowerCase().includes(query)) results.push({...a, type:'article', sectionId:s.id, sectionName:s.name});});
+                s.cases?.forEach(c => { if(c.title.toLowerCase().includes(query) || c.summary?.toLowerCase().includes(query)) results.push({...c, type:'case', sectionId:s.id, sectionName:s.name});});
+            });
+            searchResultsContainer.innerHTML = '';
+            if(results.length) {
+                results.slice(0,5).forEach(r => {
+                    const li = document.createElement('a');
+                    li.href = `#${r.sectionId}/${r.id}`;
+                    li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-600';
+                    li.innerHTML = `<div class="font-medium">${highlightText(r.title, query)} <span class="text-xs text-gray-500">(${r.type} in ${r.sectionName})</span></div><p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(r.summary, 50),query)}</p>`;
+                    searchResultsContainer.appendChild(li);
+                });
+                searchResultsContainer.classList.remove('hidden');
+            } else {
+                searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results.</div>`;
+                searchResultsContainer.classList.remove('hidden');
+            }
+        });
+        document.addEventListener('click', e => { // Hide search on outside click
+            if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+                searchResultsContainer.classList.add('hidden');
+            }
+        });
+
+
+        async function logUserView(itemId, itemType, details) {
+            const user = Auth.getCurrentUser();
+            const viewData = { item_id: itemId, item_type: itemType, user_identifier: user.email, details_text: details, viewed_at: new Date().toISOString() };
+            await supabase.from(TABLES.VIEWS_LOG).insert([viewData]);
+        }
+
+        window.addEventListener('hashchange', handleNavigation);
+        handleNavigation(); // Initial load
+
+        console.log("InfiniBase App Initialized (Single File Version)");
+        // --- END OF APP LOGIC ---
     </script>
 </body>
 </html>
