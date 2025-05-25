@@ -1,72 +1,29 @@
 // js/app.js
 
-// لا حاجة لدالة loadKbData منفصلة إذا كان data.js يعرف kbSystemData عالميًا.
-// kbSystemData سيتم الوصول إليه مباشرة من النطاق العام الذي تم إنشاؤه بواسطة data.js.
+// Supabase Client Setup
+const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
+// supabase object is globally available from the CDN script included in dash.html
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentUser = null;
-let isInitialAuthCheckComplete = false;
+let currentUser = null; // Will hold Supabase user session + profile data (full_name, role)
 
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[app.js] DOMContentLoaded fired.');
-
-    // التحقق من kbSystemData (يفترض أنه معرف عالميًا بواسطة data.js)
-    if (typeof kbSystemData === 'undefined' || !kbSystemData || typeof kbSystemData.sections === 'undefined' || !kbSystemData.meta) {
-        console.error('[app.js] CRITICAL: Global `kbSystemData` (expected from data.js) is not defined or incomplete. App cannot initialize.');
-        const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
-        if (loadingOverlay) {
-            loadingOverlay.innerHTML = `
-                <div class="text-center p-4">
-                    <p class="text-red-500 text-lg">Failed to load essential application data.</p>
-                    <p class="text-gray-600 dark:text-gray-400">Please ensure '<strong>data.js</strong>' is loaded correctly and defines 'kbSystemData'.</p>
-                    <p class="text-gray-600 dark:text-gray-400 mt-2">Try <a href="javascript:window.location.reload(true);" class="underline text-indigo-600 dark:text-indigo-400">refreshing</a> the page. If the problem persists, contact support.</p>
-                </div>`;
-        }
-        const pageContent = document.getElementById('pageContent');
-        if (pageContent) pageContent.innerHTML = '<p class="p-4 text-red-500">Error: Knowledge base data is not available. Cannot render content.</p>';
-        const mainPageContainer = document.querySelector('.flex.h-screen');
-        if (mainPageContainer) mainPageContainer.style.visibility = 'visible'; // إظهار رسالة الخطأ على الأقل
-        return;
-    } else {
-        console.log('[app.js] Global `kbSystemData` from data.js is available and seems complete.');
-    }
-
-    // التحقق من Supabase Client
-    if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
-        console.error('[app.js] window.supabaseClient is not available. App cannot initialize properly.');
-        const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
-        if (loadingOverlay) {
-            loadingOverlay.innerHTML = `
-                <div class="text-center p-4">
-                    <p class="text-red-500 text-lg">Error: Authentication service failed to load.</p>
-                    <p class="text-gray-600 dark:text-gray-400">Please check your internet connection and try refreshing the page. If the problem persists, contact support.</p>
-                </div>`;
-        }
-        const mainPageContainer = document.querySelector('.flex.h-screen');
-        if (mainPageContainer) mainPageContainer.style.visibility = 'visible'; // إظهار رسالة الخطأ
-        return;
-    }
-    const supabase = window.supabaseClient;
-
-    console.log('[app.js] Using global kbSystemData:', kbSystemData); // Log the data to confirm
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[app.js - FIX] DOMContentLoaded fired.');
+    console.log('[app.js - DEBUG] kbSystemData:', typeof kbSystemData !== 'undefined' ? kbSystemData : 'undefined');
 
     // --- Helper Functions ---
     function escapeHTML(str) {
-        if (typeof str !== 'string') return String(str || '');
-        return str.replace(/[&<>"']/g, function(match) {
-            return {
-                '&': '&',
-                '<': '<',
-                '>': '>',
-                '"': '"',
-                "'": '''
-            }[match];
+        if (typeof str !== 'string') return '';
+        return str.replace(/[&<>"']/g, function (match) {
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
     function highlightText(text, query) {
         if (!text) return '';
         const safeText = escapeHTML(text);
-        if (!query || query.length < 1) return safeText;
+        if (!query) return safeText;
         try {
             const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             const regex = new RegExp(`(${escapedQuery})`, 'gi');
@@ -82,78 +39,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         return text.substring(0, maxLength) + '...';
     }
 
-    // --- Authentication & Page Protection ---
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[app.js - Supabase] onAuthStateChange event:', event, 'session:', session ? `exists (User ID: ${session.user.id})` : 'null');
-
-        const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
-        const mainPageContainer = document.querySelector('.flex.h-screen');
+    // --- Authentication & Page Protection (Supabase) ---
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        console.log('[app.js - Supabase] onAuthStateChange event:', event, 'session:', session ? 'exists' : 'null');
 
         if (event === 'SIGNED_OUT' || !session) {
             currentUser = null;
-            isInitialAuthCheckComplete = true;
-            const loginPageName = 'login.html';
-            const signupPageName = 'signup.html';
+            // Redirect to login.html if not already on a public page (like login or signup)
+            // This assumes login.html and signup.html are at the root.
             const currentPath = window.location.pathname;
-
-            const isOnLoginPage = currentPath.endsWith(loginPageName) || currentPath.endsWith('/' + loginPageName);
-            const isOnSignupPage = currentPath.endsWith(signupPageName) || currentPath.endsWith('/' + signupPageName);
-
-            if (!isOnLoginPage && !isOnSignupPage) {
-                console.log('[app.js - Supabase] No session or signed out, and not on auth page. Redirecting to login.html');
-                if (loadingOverlay) loadingOverlay.style.display = 'flex';
-                let basePath = window.location.origin;
-                if (currentPath.includes('/infini-base/')) {
-                    basePath += '/infini-base/';
-                } else {
-                    basePath += '/';
-                }
-                const loginPath = basePath + loginPageName + '?reason=session_ended_app';
-                window.location.replace(loginPath);
-            } else {
-                console.log('[app.js - Supabase] No session or signed out, but already on an auth page.');
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
-                if (mainPageContainer) mainPageContainer.style.visibility = 'visible';
+            if (!currentPath.endsWith('login.html') && !currentPath.endsWith('signup.html')) {
+                console.log('[app.js - Supabase] No session or signed out, redirecting to login.html');
+                window.location.replace('login.html'); // Adjust if login page is elsewhere
             }
             return;
         }
 
         if (session) {
+            // User is logged in. Fetch profile from 'public.users' table.
             try {
-                const { data: userProfile, error: profileError } = await supabase
-                    .from('users')
-                    .select('name, role, is_admin')
+                const { data: userProfile, error: profileError } = await supabaseClient
+                    .from('users') // Your table name for user profiles
+                    .select('full_name, role') // Columns for full name and role
                     .eq('id', session.user.id)
                     .single();
 
-                if (profileError && profileError.code !== 'PGRST116') {
+                if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means 0 rows found, not a server error.
                     console.error('[app.js - Supabase] Error fetching user profile:', profileError);
-                    currentUser = { id: session.user.id, email: session.user.email, fullName: session.user.user_metadata?.full_name || session.user.email.split('@')[0], role: 'user' };
+                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // Fallback
                 } else if (userProfile) {
-                    currentUser = { id: session.user.id, email: session.user.email, fullName: userProfile.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0], role: userProfile.role || (userProfile.is_admin ? 'admin' : 'user') };
+                    currentUser = { ...session.user, fullName: userProfile.full_name, role: userProfile.role };
                 } else {
-                    console.warn(`[app.js - Supabase] User profile NOT FOUND for ID: ${session.user.id}. Using fallbacks.`);
-                    currentUser = { id: session.user.id, email: session.user.email, fullName: session.user.user_metadata?.full_name || session.user.email.split('@')[0], role: 'user' };
+                    console.warn('[app.js - Supabase] User profile not found for:', session.user.id, '. Using email as name and default role.');
+                    currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // Fallback for missing profile
                 }
             } catch (e) {
-                console.error('[app.js - Supabase] Exception during user profile fetch:', e);
-                currentUser = { id: session.user.id, email: session.user.email, fullName: session.user.email.split('@')[0], role: 'user' };
+                console.error('[app.js - Supabase] Exception fetching user profile:', e);
+                currentUser = { ...session.user, fullName: session.user.email, role: 'user' }; // General fallback
             }
 
-            console.log('[app.js - Supabase] Current user session active:', currentUser);
-            initializeUserDependentUI();
-            isInitialAuthCheckComplete = true;
+            console.log('[app.js - Supabase] Current user set:', currentUser);
+            initializeUserDependentUI(); // Update UI elements that show user info
 
-            if (loadingOverlay) loadingOverlay.style.display = 'none';
-            if (mainPageContainer) mainPageContainer.style.visibility = 'visible';
-
-            if (!document.body.dataset.initialLoadDone) {
-                console.log('[app.js] Auth confirmed (event:', event, '), processing initial section load.');
+            // Handle initial page load based on hash, only once after auth is confirmed
+            if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && !document.body.dataset.initialLoadDone) {
                 const { sectionId, itemId, subCategoryFilter } = parseHash();
+                console.log('[app.js - FIX] Initial hash load (after auth):', { sectionId, itemId, subCategoryFilter });
                 handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
-                document.body.dataset.initialLoadDone = 'true';
-            } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                console.log('[app.js] Auth token refreshed or user updated. UI should be current.');
+                document.body.dataset.initialLoadDone = 'true'; // Mark initial load as done
             }
         }
     });
@@ -161,22 +94,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeUserDependentUI() {
         const userNameDisplay = document.getElementById('userNameDisplay');
         const welcomeUserName = document.getElementById('welcomeUserName');
-        const avatarImg = document.querySelector('#userProfileButton img#userAvatar');
+        const avatarImg = document.querySelector('#userProfileButton img');
+
         if (currentUser) {
-            const userDisplayName = escapeHTML(currentUser.fullName) || escapeHTML(currentUser.email) || 'User';
+            const userDisplayName = currentUser.fullName || currentUser.email || 'User';
             if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
-            if (welcomeUserName) welcomeUserName.innerHTML = `Welcome, <span class="font-bold">${userDisplayName}</span>!`;
+            if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
             if (avatarImg) {
                 avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
                 avatarImg.alt = `${userDisplayName}'s Avatar`;
             }
+            console.log('[app.js - Supabase] User-dependent UI initialized for:', userDisplayName, 'Role:', currentUser.role);
         } else {
-            const defaultName = 'User';
-            if (userNameDisplay) userNameDisplay.textContent = defaultName;
-            if (welcomeUserName) welcomeUserName.innerHTML = `Welcome!`;
+            // This state should ideally be brief due to redirection
+            if (userNameDisplay) userNameDisplay.textContent = 'User';
+            if (welcomeUserName) welcomeUserName.textContent = 'Welcome!';
             if (avatarImg) {
-                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultName)}&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
-                avatarImg.alt = `${defaultName}'s Avatar`;
+                avatarImg.src = `https://ui-avatars.com/api/?name=User+Name&background=6366F1&color=fff&size=36&font-size=0.45&rounded=true`;
+                avatarImg.alt = 'User Avatar';
             }
         }
     }
@@ -185,18 +120,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lastKbUpdateSpan = document.getElementById('lastKbUpdate');
     const footerKbVersionSpan = document.getElementById('footerKbVersion');
 
-    // kbSystemData is now guaranteed to be defined if we reach this point
-    if (kbSystemData.meta) {
-        if (kbVersionSpan) kbVersionSpan.textContent = escapeHTML(kbSystemData.meta.version);
-        if (footerKbVersionSpan) footerKbVersionSpan.textContent = escapeHTML(kbSystemData.meta.version);
+    if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) {
+        if (kbVersionSpan) kbVersionSpan.textContent = kbSystemData.meta.version;
+        if (footerKbVersionSpan) footerKbVersionSpan.textContent = kbSystemData.meta.version;
         if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
     } else {
-        console.warn('[app.js] kbSystemData.meta not available for version info.');
-        if (kbVersionSpan) kbVersionSpan.textContent = 'N/A';
-        if (footerKbVersionSpan) footerKbVersionSpan.textContent = 'N/A';
-        if (lastKbUpdateSpan) lastKbUpdateSpan.textContent = 'N/A';
+        console.warn('[app.js - FIX] kbSystemData or kbSystemData.meta not available for version info.');
     }
 
+    // --- Theme Switcher ---
     const themeSwitcher = document.getElementById('themeSwitcher');
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
@@ -213,9 +145,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (themeText) themeText.textContent = 'Dark Mode';
         }
         const isDark = htmlElement.classList.contains('dark');
-        document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark, #pageContent mark').forEach(mark => {
-            mark.style.backgroundColor = isDark ? '#78350f' : '#fde047';
-            mark.style.color = isDark ? '#f3f4f6' : '#1f2937';
+        document.querySelectorAll('#searchResultsContainer mark, #sectionSearchResults mark').forEach(mark => {
+            if (isDark) {
+                mark.style.backgroundColor = '#78350f';
+                mark.style.color = '#f3f4f6';
+            } else {
+                mark.style.backgroundColor = '#fde047';
+                mark.style.color = '#1f2937';
+            }
         });
     }
 
@@ -227,53 +164,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (themeSwitcher) {
         themeSwitcher.addEventListener('click', () => {
-            const newTheme = htmlElement.classList.toggle('dark') ? 'dark' : 'light';
+            const isDarkMode = htmlElement.classList.toggle('dark');
+            const newTheme = isDarkMode ? 'dark' : 'light';
             localStorage.setItem('theme', newTheme);
             applyTheme(newTheme);
         });
     }
     loadTheme();
 
+    // --- Logout Button ---
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', async () => {
-            const loadingOverlay = document.getElementById('dashboardLoadingOverlay');
-            if (loadingOverlay) loadingOverlay.style.display = 'flex';
-            const { error } = await supabase.auth.signOut();
+            console.log('[app.js - Supabase] Logout button clicked.');
+            const { error } = await supabaseClient.auth.signOut();
             if (error) {
                 console.error('[app.js - Supabase] Error during sign out:', error);
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
-                alert('Logout failed: ' + error.message);
+            } else {
+                console.log('[app.js - Supabase] Sign out successful. Redirect will be handled by onAuthStateChange.');
+                // currentUser is set to null and redirection happens in onAuthStateChange
             }
-            // onAuthStateChange will handle redirect
         });
     }
 
+    // --- Report an Error Button ---
     const reportErrorBtn = document.getElementById('reportErrorBtn');
     if (reportErrorBtn) {
         reportErrorBtn.addEventListener('click', () => {
-            const sectionTitleText = document.getElementById('currentSectionTitle')?.textContent || 'Current Page';
-            alert(`Report an issue for: ${escapeHTML(sectionTitleText)}\nURL: ${escapeHTML(window.location.href)}\n\n(This is a placeholder. Please describe the issue to your administrator.)`);
+            const sectionTitleText = currentSectionTitleEl ? currentSectionTitleEl.textContent : 'Current Page';
+            const pageUrl = window.location.href;
+            alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}\n(Placeholder)`);
         });
     }
 
+    // --- Sidebar Navigation & Content Loading ---
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     const currentSectionTitleEl = document.getElementById('currentSectionTitle');
     const breadcrumbsContainer = document.getElementById('breadcrumbs');
     const pageContent = document.getElementById('pageContent');
-    const initialPageContent = pageContent?.innerHTML || '<p class="text-red-500 p-4">Error: Initial page content could not be captured.</p>';
+
+    console.log('[app.js - DEBUG] pageContent:', pageContent ? 'Found' : 'Not found');
+    console.log('[app.js - DEBUG] sidebarLinks:', sidebarLinks.length, 'links found');
+
+    const initialPageContent = pageContent ? pageContent.innerHTML : '<p>Error: pageContent missing on load.</p>';
 
     function highlightSidebarLink(sectionId) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
+            console.log(`[app.js - FIX] Highlighted sidebar link for section: "${sectionId}"`);
         } else {
-            const homeLink = document.querySelector('.sidebar-link[data-section="home"]');
-            // kbSystemData is guaranteed to be defined here
-            if (homeLink && (sectionId === 'home' || !sectionId || !kbSystemData.sections.find(s => s.id === sectionId))) {
-                homeLink.classList.add('active');
-            }
+            console.warn(`[app.js - FIX] No sidebar link found for section: "${sectionId}"`);
         }
     }
 
@@ -302,380 +244,449 @@ document.addEventListener('DOMContentLoaded', async () => {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
         return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${escapeHTML(article.id)}" data-item-type="article">
+            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
                 <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0"><i class="${cardIconClass} text-xl ${theme.icon}"></i></div>
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                    </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(article.title)}</h3>
-                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${escapeHTML(sectionData.id)}/${escapeHTML(article.id)}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article"><i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i></a>
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${article.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this article">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(article.summary) || 'No summary available.'}</p>
-                ${article.tags?.length ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                ${article.tags && article.tags.length > 0 ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <div class="rating-container text-xs text-gray-500 dark:text-gray-400 flex items-center">
                         <span class="mr-1">Helpful?</span>
-                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${escapeHTML(article.id)}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
-                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${escapeHTML(article.id)}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
+                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="up" title="Helpful"><i class="fas fa-thumbs-up text-green-500"></i></button>
+                        <button class="rating-btn p-1 hover:opacity-75" data-item-id="${article.id}" data-item-type="article" data-rating="down" title="Not helpful"><i class="fas fa-thumbs-down text-red-500"></i></button>
                     </div>
-                    <a href="${escapeHTML(article.contentPath)}" target="_blank" class="text-sm font-medium ${theme.cta} group">Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>
+                    <a href="${article.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">
+                        Read More <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i>
+                    </a>
                 </div>
-            </div>`;
+            </div>
+        `;
     }
 
     function renderItemCard_enhanced(item, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const cardIconClass = sectionData.icon || 'fas fa-file-alt';
         return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${escapeHTML(item.id)}" data-item-type="item">
-                <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0"><i class="${cardIconClass} text-xl ${theme.icon}"></i></div>
+            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
+                 <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                         <i class="${cardIconClass} text-xl ${theme.icon}"></i>
+                    </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(item.title)}</h3>
-                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${escapeHTML(sectionData.id)}/${escapeHTML(item.id)}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item"><i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i></a>
+                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${item.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this item">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">${escapeHTML(item.description) || 'No description available.'}</p>
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold tracking-wide">${escapeHTML(item.type)}</span>
-                    <a href="${escapeHTML(item.url)}" target="_blank" class="text-sm font-medium ${theme.cta} group">Open <i class="fas fa-external-link-alt ml-1 text-xs opacity-75 group-hover:scale-110 transition-transform duration-200"></i></a>
+                    <a href="${item.url}" target="_blank" class="text-sm font-medium ${theme.cta} group">
+                        Open <i class="fas fa-external-link-alt ml-1 text-xs opacity-75 group-hover:scale-110 transition-transform duration-200"></i>
+                    </a>
                 </div>
-            </div>`;
+            </div>
+        `;
     }
 
     function renderCaseCard_enhanced(caseItem, sectionData) {
         const theme = getThemeColors(sectionData.themeColor);
         const caseIcon = 'fas fa-briefcase';
         return `
-            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${escapeHTML(caseItem.id)}" data-item-type="case">
+            <div class="card bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 card-animate border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
                 <div class="flex items-center mb-3">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0"><i class="${caseIcon} text-xl ${theme.icon}"></i></div>
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4 flex-shrink-0">
+                         <i class="${caseIcon} text-xl ${theme.icon}"></i>
+                    </div>
                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white leading-tight">${escapeHTML(caseItem.title)}</h3>
-                    <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${escapeHTML(sectionData.id)}/${escapeHTML(caseItem.id)}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case"><i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i></a>
+                     <a href="javascript:void(0);" onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '#${sectionData.id}/${caseItem.id}'); alert('Link copied!');" class="bookmark-link ml-auto pl-2" title="Copy link to this case">
+                        <i class="fas fa-link text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300"></i>
+                    </a>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 flex-grow">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
                 ${caseItem.resolutionStepsPreview ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">Steps: ${escapeHTML(caseItem.resolutionStepsPreview)}</p>` : ''}
-                ${caseItem.tags?.length ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                ${caseItem.tags && caseItem.tags.length > 0 ? `<div class="mb-3">${caseItem.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 inline-block font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
-                    ${caseItem.contentPath ? `<a href="${escapeHTML(caseItem.contentPath)}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
+                    ${caseItem.contentPath ? `<a href="${caseItem.contentPath}" target="_blank" class="text-sm font-medium ${theme.cta} group">Details <i class="fas fa-arrow-right ml-1 text-xs opacity-75 group-hover:translate-x-1 transition-transform duration-200"></i></a>` : `<div class="w-16"></div>`}
                 </div>
-            </div>`;
-    }
-
-    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
-        // kbSystemData is guaranteed to be defined here
-        if (!isInitialAuthCheckComplete || !currentUser) {
-            console.warn('[app.js] handleSectionTrigger: Auth check not complete or no user. Aborting.');
-            return;
-        }
-        // kbSystemData.sections is also guaranteed
-        console.log('[app.js] handleSectionTrigger called:', { sectionId, itemId, subCategoryFilter });
-
-        highlightSidebarLink(sectionId || 'home');
-        displaySectionContent(sectionId || 'home', itemId, subCategoryFilter);
-
-        const hashSuffix = itemId ? `${sectionId}/${itemId}` : (subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId);
-        const newHash = `#${hashSuffix || 'home'}`;
-        if (window.location.hash !== newHash) {
-            try {
-                window.history.pushState({ sectionId, itemId, subCategoryFilter }, document.title || "InfiniBase", newHash);
-                console.log('[app.js] URL hash updated to:', newHash);
-            } catch (e) {
-                console.warn('[app.js] Error using pushState, falling back to location.hash:', e);
-                window.location.hash = newHash;
-            }
-        }
+            </div>
+        `;
     }
 
     function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-        // kbSystemData is guaranteed here, pageContent is also checked
+        console.log(`[app.js - FIX] displaySectionContent CALLED for sectionId: "${sectionId}", item: "${itemIdToFocus}", subCat: "${subCategoryFilter}"`);
         if (!pageContent) {
-            console.error('[app.js] CRITICAL: pageContent element is NULL.');
-            document.body.innerHTML = '<div class="w-screen h-screen flex items-center justify-center"><p class="text-2xl text-red-600 p-10">Critical Error: UI cannot be rendered.</p></div>';
+            console.error('[app.js - FIX] pageContent is NULL.');
+            if(document.body) document.body.innerHTML = '<p>Critical Error: pageContent element not found. UI cannot be rendered.</p>';
+            return;
+        }
+        if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
+            console.error('[app.js - FIX] kbSystemData is UNDEFINED.');
+            pageContent.innerHTML = '<p>Error: Data missing.</p>';
             return;
         }
 
-        if (sectionId === 'home' || !sectionId) {
-            pageContent.innerHTML = initialPageContent;
+        if (sectionId === 'home') {
+            pageContent.innerHTML = initialPageContent; // Restore initial home content
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
             if (breadcrumbsContainer) {
-                breadcrumbsContainer.innerHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
+                breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a>`;
                 breadcrumbsContainer.classList.remove('hidden');
             }
-            initializeUserDependentUI();
-            const homeKbVersionEl = pageContent.querySelector('#kbVersion') || document.getElementById('kbVersion');
-            const homeLastKbUpdateEl = pageContent.querySelector('#lastKbUpdate') || document.getElementById('lastKbUpdate');
+            // Re-initialize user-specific and KB meta data for home page
+            initializeUserDependentUI(); // Ensure welcome message is correct
+            const kbVersionEl = document.getElementById('kbVersion'); // these might be on the initialPageContent
+            const lastKbUpdateEl = document.getElementById('lastKbUpdate');
             if (kbSystemData.meta) {
-                if (homeKbVersionEl) homeKbVersionEl.textContent = escapeHTML(kbSystemData.meta.version);
-                if (homeLastKbUpdateEl) homeLastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+                if (kbVersionEl) kbVersionEl.textContent = kbSystemData.meta.version;
+                if (lastKbUpdateEl) lastKbUpdateEl.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
             }
-            pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
-                card.style.animationDelay = `${(index + 1) * 0.05}s`;
-                card.classList.remove('fadeInUp'); void card.offsetWidth; card.classList.add('fadeInUp');
-            });
+
+            const initialCards = pageContent.querySelectorAll('.grid > .card-animate');
+            initialCards.forEach((card, index) => card.style.animationDelay = `${(index + 1) * 0.1}s`);
             applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            console.log('[app.js] Home page content displayed.');
+            console.log('[app.js - FIX] Home page loaded.');
             return;
         }
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
-            pageContent.innerHTML = `<div class="p-6 text-center card-animate"><h2 class="text-2xl font-semibold text-red-500">Section Not Found</h2><p>The section you requested ("${escapeHTML(sectionId)}") does not exist.</p><a href="#home" data-section-trigger="home" class="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Go to Home</a></div>`;
+            pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section not found</h2><p>"${escapeHTML(sectionId)}" does not exist.</p></div>`;
             if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Not Found';
-            if (breadcrumbsContainer) breadcrumbsContainer.innerHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> Not Found`;
+            console.warn(`[app.js - FIX] Section "${sectionId}" not found in kbSystemData.`);
             return;
         }
 
         const theme = getThemeColors(sectionData.themeColor);
-        let contentHTML = `<div class="space-y-10">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 card-animate">
-                <div class="flex items-center mb-3 sm:mb-0">
-                    <span class="p-3 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex items-center justify-center shadow-sm"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>
-                    <div><h2 class="text-3xl font-bold text-gray-800 dark:text-white">${escapeHTML(sectionData.name)}</h2><p class="text-gray-600 dark:text-gray-300 mt-1 text-base">${escapeHTML(sectionData.description)}</p></div>
-                </div>
-            </div>`;
 
-        let hasRenderedContent = false;
-        if (sectionData.subCategories?.length) {
-            contentHTML += `<div class="card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
-            sectionData.subCategories.forEach(subCat => {
-                contentHTML += `<a href="#${escapeHTML(sectionData.id)}/${escapeHTML(subCat.id)}" data-section-trigger="${escapeHTML(sectionData.id)}" data-subcat-filter="${escapeHTML(subCat.id)}" class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center text-center transform hover:-translate-y-1 border-t-4 ${theme.border}">
-                    <div class="p-3 rounded-full ${theme.iconContainer} mb-3"><i class="fas fa-folder-open text-3xl ${theme.icon}"></i></div>
-                    <h4 class="font-semibold text-lg text-gray-800 dark:text-white">${escapeHTML(subCat.name)}</h4>
-                    ${subCat.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHTML(truncateText(subCat.description, 50))}</p>` : ''}</a>`;
-            });
-            contentHTML += `</div></div>`; hasRenderedContent = true;
+        let contentHTML = `<div class="space-y-10">`;
+        contentHTML += `<div class="flex justify-between items-center"><h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center"><span class="p-2.5 rounded-lg ${theme.iconContainer} mr-4 hidden sm:inline-flex"><i class="${sectionData.icon || 'fas fa-folder'} text-2xl ${theme.icon}"></i></span>${escapeHTML(sectionData.name)}</h2></div>`;
+        contentHTML += `<p class="text-gray-600 dark:text-gray-300 mt-1 mb-6 text-lg">${escapeHTML(sectionData.description)}</p>`;
+
+        contentHTML += `<div class="my-6 p-4 bg-white dark:bg-gray-800/70 rounded-lg shadow-md card-animate"><label for="sectionSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ask about ${escapeHTML(sectionData.name)}:</label><div class="flex"><input type="text" id="sectionSearchInput" data-section-id="${sectionData.id}" class="flex-grow p-2.5 border rounded-l-md dark:bg-gray-700" placeholder="Type your question..."><button id="sectionSearchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md flex items-center"><i class="fas fa-search mr-2"></i>Ask</button></div><div id="sectionSearchResults" class="mt-4 max-h-96 overflow-y-auto space-y-2"></div></div>`;
+
+        let hasContent = false;
+        if (sectionData.articles && sectionData.articles.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.articles.forEach(article => contentHTML += renderArticleCard_enhanced(article, sectionData));
+            contentHTML += `</div>`;
+            hasContent = true;
         }
-        if (sectionData.articles?.length) {
-            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-newspaper mr-3 ${theme.text}"></i> Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">${sectionData.articles.map(article => renderArticleCard_enhanced(article, sectionData)).join('')}</div></div>`; hasRenderedContent = true;
+        if (sectionData.cases && sectionData.cases.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.cases.forEach(caseItem => contentHTML += renderCaseCard_enhanced(caseItem, sectionData));
+            contentHTML += `</div>`;
+            hasContent = true;
         }
-        if (sectionData.cases?.length) {
-            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-briefcase mr-3 ${theme.text}"></i> Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">${sectionData.cases.map(caseItem => renderCaseCard_enhanced(caseItem, sectionData)).join('')}</div></div>`; hasRenderedContent = true;
+        if (sectionData.items && sectionData.items.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">`;
+            sectionData.items.forEach(item => contentHTML += renderItemCard_enhanced(item, sectionData));
+            contentHTML += `</div>`;
+            hasContent = true;
         }
-        if (sectionData.items?.length) {
-            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-archive mr-3 ${theme.text}"></i> ${escapeHTML(sectionData.name)} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">${sectionData.items.map(item => renderItemCard_enhanced(item, sectionData)).join('')}</div></div>`; hasRenderedContent = true;
+        if (sectionData.subCategories && sectionData.subCategories.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-sitemap mr-3 ${theme.text}"></i> Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+            sectionData.subCategories.forEach(subCat => contentHTML += `<a href="#" data-section-trigger="${sectionData.id}" data-subcat-filter="${subCat.id}" class="sub-category-link bg-white dark:bg-gray-800 p-5 rounded-lg shadow-md hover:shadow-lg card-animate group border-l-4 ${theme.border} text-center"><i class="fas fa-folder-open text-3xl mb-3 ${theme.icon}"></i><h4 class="font-medium">${escapeHTML(subCat.name)}</h4></a>`);
+            contentHTML += `</div>`;
         }
-        if (sectionData.glossary?.length) {
-            contentHTML += `<div class="mt-10 card-animate"><h3 class="text-2xl font-semibold mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">${sectionData.glossary.map(entry => `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow border-l-4 ${theme.border}"><strong class="${theme.text} font-medium">${escapeHTML(entry.term)}:</strong> ${escapeHTML(entry.definition)}</div>`).join('')}</div></div>`; hasRenderedContent = true;
+        if (sectionData.glossary && sectionData.glossary.length > 0) {
+            contentHTML += `<h3 class="text-2xl font-semibold mt-10 mb-5 text-gray-700 dark:text-gray-200 border-b-2 pb-3 ${theme.border} flex items-center"><i class="fas fa-book mr-3 ${theme.text}"></i> Glossary</h3><div class="space-y-4">`;
+            sectionData.glossary.forEach(entry => contentHTML += `<div class="bg-white dark:bg-gray-800 p-5 rounded-lg shadow card-animate border-l-4 ${theme.border}"><strong class="${theme.text}">${escapeHTML(entry.term)}:</strong> ${escapeHTML(entry.definition)}</div>`);
+            contentHTML += `</div>`;
+            hasContent = true;
         }
-        if (!hasRenderedContent) {
-            contentHTML += `<div class="p-10 text-center bg-white dark:bg-gray-800 rounded-lg shadow-md card-animate"><i class="fas fa-info-circle text-4xl ${theme.text} mb-4"></i><h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">No Content Yet</h3><p class="text-gray-600 dark:text-gray-400">Content for "${escapeHTML(sectionData.name)}" is currently being prepared.</p></div>`;
+        if (!hasContent && !(sectionData.subCategories && sectionData.subCategories.length > 0)) {
+            contentHTML += `<div class="p-10 text-center card-animate"><i class="fas fa-info-circle text-4xl mb-4"></i><h3 class="text-xl font-semibold">No content yet</h3><p>Content for "${escapeHTML(sectionData.name)}" is being prepared.</p></div>`;
         }
         contentHTML += `</div>`;
+
         pageContent.innerHTML = contentHTML;
-        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-        pageContent.querySelectorAll('.card-animate').forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.05}s`;
-            card.classList.remove('fadeInUp'); void card.offsetWidth; card.classList.add('fadeInUp');
-        });
+        console.log(`[app.js - FIX] Successfully set innerHTML for section "${sectionId}".`);
+
+        pageContent.querySelectorAll('.card-animate').forEach((card, index) => card.style.animationDelay = `${index * 0.07}s`);
 
         if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
         if (breadcrumbsContainer) {
-            let bcHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(sectionData.name)}</span>`;
-            if (subCategoryFilter && sectionData.subCategories) {
-                const subCatData = sectionData.subCategories.find(sc => sc.id === subCategoryFilter);
-                if (subCatData) {
-                    bcHTML = `<a href="#home" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <a href="#${escapeHTML(sectionData.id)}" data-section-trigger="${escapeHTML(sectionData.id)}" class="hover:underline ${theme.cta}">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400 dark:text-gray-500">></span> <span class="${theme.text} font-medium">${escapeHTML(subCatData.name)}</span>`;
-                }
+            let bcHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-indigo-600 dark:text-indigo-400">Home</a> <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.name)}</span>`;
+            if (subCategoryFilter && sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)) {
+                bcHTML += ` <span class="mx-1">></span> <span class="${theme.text}">${escapeHTML(sectionData.subCategories.find(sc => sc.id === subCategoryFilter).name)}</span>`;
             }
             breadcrumbsContainer.innerHTML = bcHTML;
             breadcrumbsContainer.classList.remove('hidden');
+            const homeBreadcrumbLink = breadcrumbsContainer.querySelector('[data-section-trigger="home"]');
+            if (homeBreadcrumbLink) {
+                homeBreadcrumbLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleSectionTrigger('home');
+                });
+            }
         }
-
         if (itemIdToFocus) {
             setTimeout(() => {
                 const targetCard = pageContent.querySelector(`[data-item-id="${itemIdToFocus}"]`);
                 if (targetCard) {
                     targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'shadow-2xl', 'focused-item'); // Added dark mode ring
-                    setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'shadow-2xl', 'focused-item'), 3500);
+                    targetCard.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item');
+                    setTimeout(() => targetCard.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-500', 'dark:ring-indigo-400', 'focused-item'), 3500);
+                } else {
+                    console.warn(`[app.js - FIX] Item "${itemIdToFocus}" not found for section "${sectionId}".`);
                 }
             }, 200);
+        }
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
+        console.log('[app.js - DEBUG] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
+        if (!currentUser) {
+            console.warn('[app.js - DEBUG] handleSectionTrigger called but no currentUser. Auth might be pending or failed. Aborting.');
+            // Supabase onAuthStateChange should redirect if not authenticated.
+            // If on login page, this is fine. If on dashboard and this happens, it's an issue.
+            return;
+        }
+        if (typeof kbSystemData === 'undefined') {
+            console.error('[app.js - FIX] kbSystemData undefined in handleSectionTrigger!');
+            return;
+        }
+        highlightSidebarLink(sectionId);
+        displaySectionContent(sectionId, itemId, subCategoryFilter);
+
+        const hash = itemId ? `${sectionId}/${itemId}` : subCategoryFilter ? `${sectionId}/${subCategoryFilter}` : sectionId;
+        // Only update hash if it's different to avoid redundant `hashchange` events if already on correct hash
+        if (window.location.hash !== `#${hash}`) {
+            window.history.replaceState(null, '', `#${hash}`);
+            console.log(`[app.js - FIX] Updated URL hash to: #${hash}`);
         }
     }
 
     function parseHash() {
-        const hash = window.location.hash.substring(1);
-        if (!hash) return { sectionId: 'home', itemId: null, subCategoryFilter: null };
+        const hash = window.location.hash.replace('#', '');
+        if (!hash) return { sectionId: 'home' }; // Default to home
         const parts = hash.split('/');
-        const sectionId = parts[0] || 'home';
-        let itemId = null, subCategoryFilter = null;
-        if (parts.length > 1 && parts[1]) {
-            const potentialSubCatId = parts[1];
-            // kbSystemData is guaranteed here
-            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-            if (sectionData?.subCategories?.some(sc => sc.id === potentialSubCatId)) {
-                subCategoryFilter = potentialSubCatId;
-            } else {
-                itemId = parts[1];
-            }
-        }
-        return { sectionId, itemId, subCategoryFilter };
+        // Basic parsing: sectionId/itemId or sectionId/subCategoryFilter
+        // More robust parsing might be needed if hashes get more complex
+        return { sectionId: parts[0], itemId: parts[1], subCategoryFilter: parts[1] }; // Assuming itemId and subCategoryFilter can share the second part for now
     }
 
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            handleSectionTrigger(this.dataset.section);
+            const sectionId = this.dataset.section;
+            console.log(`[app.js - FIX] Sidebar link click, data-section: "${sectionId}"`);
+            if (sectionId) {
+                handleSectionTrigger(sectionId);
+            } else {
+                console.error('[app.js - FIX] No data-section attribute found on sidebar link:', this);
+            }
         });
     });
 
     document.body.addEventListener('click', function(e) {
-        const sectionTriggerTarget = e.target.closest('[data-section-trigger]');
-        if (sectionTriggerTarget) {
+        const target = e.target.closest('[data-section-trigger]');
+        if (target) {
             e.preventDefault();
-            handleSectionTrigger(sectionTriggerTarget.dataset.sectionTrigger, sectionTriggerTarget.dataset.itemId, sectionTriggerTarget.dataset.subcatFilter);
-            if (sectionTriggerTarget.closest('#searchResultsContainer')) {
-                document.getElementById('searchResultsContainer')?.classList.add('hidden');
-                const searchInput = document.getElementById('globalSearchInput');
-                if (searchInput) searchInput.value = '';
+            const sectionId = target.dataset.sectionTrigger;
+            const itemId = target.dataset.itemId;
+            const subCatFilter = target.dataset.subcatFilter;
+            console.log(`[app.js - FIX] Body click, data-section-trigger: "${sectionId}", item: "${itemId}", subCat: "${subCatFilter}"`);
+            if (sectionId) {
+                handleSectionTrigger(sectionId, itemId, subCatFilter);
+                if (target.closest('#searchResultsContainer')) {
+                    if (searchResultsContainer) searchResultsContainer.classList.add('hidden');
+                    if (globalSearchInput) globalSearchInput.value = '';
+                }
+            } else {
+                console.error('[app.js - FIX] No data-section-trigger attribute found:', target);
             }
         }
+
         const homeSubcatTrigger = e.target.closest('[data-subcat-trigger]');
-        if (homeSubcatTrigger && (pageContent?.querySelector('#welcomeUserName') || initialPageContent.includes('Welcome,'))) {
+        if (homeSubcatTrigger && pageContent && pageContent.querySelector('#welcomeUserName')) { // Ensure it's on home page
             e.preventDefault();
-            const [sectionId, subId] = homeSubcatTrigger.dataset.subcatTrigger.split('.');
-            if (sectionId && subId) handleSectionTrigger(sectionId, null, subId);
-            // Example of specific focusing within a subcategory
-            if (sectionId === 'support' && subId === 'tools') {
-                setTimeout(() => {
-                    const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
-                    if (zendeskCard?.closest('.card')) {
-                        const cardElement = zendeskCard.closest('.card');
-                        cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        cardElement.classList.add('ring-2', 'ring-indigo-500'); // Visual cue
-                        setTimeout(() => cardElement.classList.remove('ring-2', 'ring-indigo-500'), 2500);
-                    }
-                }, 300);
+            const triggerValue = homeSubcatTrigger.dataset.subcatTrigger;
+            if (triggerValue && triggerValue.includes('.')) {
+                const [sectionId, subId] = triggerValue.split('.');
+                console.log(`[app.js - FIX] Home subcat trigger: section="${sectionId}", subId="${subId}"`);
+                handleSectionTrigger(sectionId, null, subId); // Pass subId as subCategoryFilter
+                if (sectionId === 'support' && subId === 'tools') {
+                    setTimeout(() => {
+                        const zendeskCard = Array.from(pageContent.querySelectorAll('.card h3')).find(h3 => h3.textContent.toLowerCase().includes('zendesk'));
+                        if (zendeskCard?.closest('.card')) {
+                            zendeskCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            console.log('[app.js - FIX] Scrolled to Zendesk card.');
+                        } else {
+                            console.warn('[app.js - FIX] Zendesk card not found.');
+                        }
+                    }, 300);
+                }
+            } else {
+                console.error('[app.js - FIX] Invalid data-subcat-trigger value:', triggerValue);
             }
         }
-        const ratingBtn = e.target.closest('.rating-btn');
-        if (ratingBtn) {
-            e.preventDefault();
-            alert(`Feedback: ${ratingBtn.dataset.rating === 'up' ? 'Helpful' : 'Not helpful'} for ${ratingBtn.dataset.itemType} "${ratingBtn.dataset.itemId}". (Placeholder)`);
-            ratingBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            ratingBtn.parentElement.querySelectorAll('.rating-btn').forEach(btn => btn.disabled = true);
-        }
     });
 
-    window.addEventListener('hashchange', () => {
-        if (!isInitialAuthCheckComplete || !currentUser) return;
-        const { sectionId, itemId, subCategoryFilter } = parseHash();
-        handleSectionTrigger(sectionId, itemId, subCategoryFilter);
-    });
-
+    // Global Search
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
-
-    function searchKb(query) { // This function uses the globally defined kbSystemData
-        const lowerQuery = query.toLowerCase();
-        const results = [];
-        // kbSystemData is guaranteed to be defined here
-        kbSystemData.sections.forEach(section => {
-            const commonResultProps = { sectionId: section.id, sectionName: section.name, themeColor: section.themeColor || 'gray' };
-            if (section.name.toLowerCase().includes(lowerQuery) || section.description?.toLowerCase().includes(lowerQuery)) {
-                results.push({ id: section.id, title: section.name, summary: section.description || `Section: ${section.name}`, type: 'section_match', ...commonResultProps });
-            }
-            section.articles?.forEach(article => {
-                if (article.title.toLowerCase().includes(lowerQuery) || article.summary?.toLowerCase().includes(lowerQuery) || article.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))) {
-                    results.push({ ...article, type: 'article', ...commonResultProps });
-                }
-            });
-            section.cases?.forEach(caseItem => {
-                if (caseItem.title.toLowerCase().includes(lowerQuery) || caseItem.summary?.toLowerCase().includes(lowerQuery) || caseItem.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))) {
-                    results.push({ ...caseItem, type: 'case', ...commonResultProps });
-                }
-            });
-            section.items?.forEach(item => {
-                if (item.title.toLowerCase().includes(lowerQuery) || item.description?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ ...item, type: 'item', ...commonResultProps });
-                }
-            });
-            section.glossary?.forEach(term => {
-                if (term.term.toLowerCase().includes(lowerQuery) || term.definition?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ id: `glossary_${term.term.replace(/\s+/g, '-')}`, title: term.term, summary: term.definition, type: 'glossary_term', ...commonResultProps });
-                }
-            });
-            section.subCategories?.forEach(subCat => {
-                if (subCat.name.toLowerCase().includes(lowerQuery) || subCat.description?.toLowerCase().includes(lowerQuery)) {
-                    results.push({ id: subCat.id, title: `${section.name} > ${subCat.name}`, summary: subCat.description || `Sub-category in ${section.name}`, type: 'subcategory_match', subCategoryId: subCat.id, ...commonResultProps });
-                }
-            });
-        });
-        // Simple sort, can be improved for relevance
-        results.sort((a,b) => (a.title.toLowerCase() > b.title.toLowerCase()) ? 1 : ((b.title.toLowerCase() > a.title.toLowerCase()) ? -1 : 0));
-        return results;
-    }
+    let searchDebounceTimer;
 
     if (globalSearchInput && searchResultsContainer) {
-        let debounceTimeout;
         globalSearchInput.addEventListener('input', () => {
-            clearTimeout(debounceTimeout);
-            debounceTimeout = setTimeout(() => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
                 const query = globalSearchInput.value.trim();
-                if (query.length < 2) {
-                    searchResultsContainer.classList.add('hidden');
-                    searchResultsContainer.innerHTML = '';
-                    return;
-                }
-                const results = searchKb(query);
-                console.log(`[app.js] Global search for "${query}": ${results.length} results.`);
-                if (results.length === 0) {
-                    searchResultsContainer.innerHTML = `<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No results found for "${escapeHTML(query)}".</div>`;
+                if (query.length > 1 && typeof searchKb === 'function') {
+                    renderGlobalSearchResults_enhanced(searchKb(query), query);
                 } else {
-                    let resultsHTML = results.slice(0, 10).map(result => { // Limit to 10 results
-                        const theme = getThemeColors(result.themeColor);
-                        let itemPath = result.sectionId;
-                        if (result.type === 'subcategory_match' && result.subCategoryId) itemPath += `/${result.subCategoryId}`;
-                        else if (result.id && result.type !== 'section_match') itemPath += `/${result.id}`;
-
-                        let triggerAttrs = `data-section-trigger="${result.sectionId}"`;
-                        if (result.type === 'subcategory_match' && result.subCategoryId) triggerAttrs += ` data-subcat-filter="${result.subCategoryId}"`;
-                        else if (result.id && result.type !== 'section_match') triggerAttrs += ` data-item-id="${result.id}"`;
-
-                        const iconMap = { article: 'fa-newspaper', case: 'fa-briefcase', item: 'fa-file-alt', glossary_term: 'fa-book', section_match: 'fa-folder', subcategory_match: 'fa-sitemap' };
-                        const iconClass = iconMap[result.type] || 'fa-question-circle'; // Default icon
-
-                        return `
-                            <a href="#${itemPath}" ${triggerAttrs} 
-                               class="block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-                                <div class="flex items-start space-x-3">
-                                    <div class="p-1.5 rounded-full ${theme.iconContainer} flex-shrink-0 mt-1">
-                                        <i class="fas ${iconClass} text-base ${theme.icon}"></i>
-                                    </div>
-                                    <div class="flex-grow overflow-hidden">
-                                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white truncate">${highlightText(result.title, query)}</h4>
-                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">${highlightText(truncateText(result.summary, 100), query)}</p>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            <span class="font-medium ${theme.text}">${escapeHTML(result.sectionName)}</span>
-                                            <span class="mx-1">•</span>
-                                            <span>${result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </a>`;
-                    }).join('');
-                    searchResultsContainer.innerHTML = resultsHTML;
+                    searchResultsContainer.innerHTML = '';
+                    searchResultsContainer.classList.add('hidden');
                 }
-                searchResultsContainer.classList.remove('hidden');
-                applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
-            }, 350);
+            }, 300);
         });
-        globalSearchInput.addEventListener('focus', () => {
-            if (searchResultsContainer.innerHTML.trim() !== '' && globalSearchInput.value.trim().length >= 2) {
-                searchResultsContainer.classList.remove('hidden');
-            }
-        });
-        document.addEventListener('click', (e) => {
-            // Ensure searchResultsContainer is defined before trying to access its methods
-            if (searchResultsContainer && !searchResultsContainer.contains(e.target) && e.target !== globalSearchInput) {
+        document.addEventListener('click', (event) => {
+            if (globalSearchInput && searchResultsContainer && !globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
                 searchResultsContainer.classList.add('hidden');
             }
         });
+        globalSearchInput.addEventListener('focus', () => {
+            if (globalSearchInput.value.trim().length > 1 && searchResultsContainer.children.length > 0) {
+                searchResultsContainer.classList.remove('hidden');
+            }
+        });
+    } else {
+        console.warn('[app.js - FIX] Global search elements missing:', { globalSearchInput, searchResultsContainer });
     }
-    
-    // --- Initial Page Load Logic ---
-    // This needs to happen after all functions are defined and auth check potentially ran
-    const initialHashState = parseHash();
-    handleSectionTrigger(initialHashState.sectionId || 'home', initialHashState.itemId, initialHashState.subCategoryFilter);
 
+    function renderGlobalSearchResults_enhanced(results, query) {
+        if (!searchResultsContainer) return;
+        searchResultsContainer.innerHTML = '';
+        if (results.length === 0) {
+            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results for "${escapeHTML(query)}".</div>`;
+            searchResultsContainer.classList.remove('hidden');
+            return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'divide-y divide-gray-200 dark:divide-gray-700';
+        results.slice(0, 10).forEach(result => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `javascript:void(0);`; // Will be handled by body click listener
+            a.dataset.sectionTrigger = result.sectionId;
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
+            a.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors global-search-result-link';
 
-    console.log('[app.js] All event listeners attached. App initialization complete.');
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'font-semibold';
+            titleDiv.innerHTML = highlightText(result.title, query);
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'text-xs text-gray-500 mt-0.5';
+            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 100), query) : '';
+            const sectionDiv = document.createElement('div');
+            const theme = getThemeColors(result.themeColor || 'gray');
+            sectionDiv.className = `text-xs ${theme.text} mt-1 font-medium`;
+            sectionDiv.textContent = `In: ${escapeHTML(result.sectionName || 'Unknown')}`;
+            a.appendChild(titleDiv);
+            if (result.summary && result.type !== 'section_match') a.appendChild(summaryDiv);
+            a.appendChild(sectionDiv);
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+        searchResultsContainer.appendChild(ul);
+        searchResultsContainer.classList.remove('hidden');
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    function renderSectionSearchResults(results, query, container, themeColor) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (results.length === 0) {
+            container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">No results found for "${escapeHTML(query)}".</p>`;
+            return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'space-y-2';
+        const theme = getThemeColors(themeColor);
+        results.slice(0, 5).forEach(result => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `javascript:void(0);`; // Will be handled by body click listener
+            a.dataset.sectionTrigger = result.sectionId;
+            if (result.type !== 'section_match' && result.type !== 'glossary_term') a.dataset.itemId = result.id;
+            a.className = `block p-3 bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md shadow-sm border-l-4 ${theme.border} transition-all quick-link-button`;
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = `font-semibold ${theme.text}`;
+            titleDiv.innerHTML = highlightText(result.title, query);
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5';
+            summaryDiv.innerHTML = result.summary ? highlightText(truncateText(result.summary, 80), query) : 'Click to view.';
+            const typeBadge = document.createElement('span');
+            typeBadge.className = `text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-2 font-medium`;
+            typeBadge.textContent = result.type.replace(/_/g, ' ');
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex items-center justify-between mb-1';
+            headerDiv.appendChild(titleDiv);
+            headerDiv.appendChild(typeBadge);
+            a.appendChild(headerDiv);
+            a.appendChild(summaryDiv);
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+        container.appendChild(ul);
+        applyTheme(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    if (pageContent) {
+        pageContent.addEventListener('click', (e) => {
+            const ratingTarget = e.target.closest('.rating-btn');
+            if (ratingTarget) {
+                e.preventDefault();
+                const ratingContainer = ratingTarget.closest('.rating-container');
+                if (ratingContainer) ratingContainer.innerHTML = `<span class="text-xs text-green-500">Thanks!</span>`;
+                return;
+            }
+            const sectionSearchBtn = e.target.closest('#sectionSearchBtn');
+            if (sectionSearchBtn) {
+                e.preventDefault();
+                const input = pageContent.querySelector('#sectionSearchInput');
+                const currentSectionId = input?.dataset.sectionId;
+                const query = input?.value.trim();
+                if (query && query.length > 1 && typeof searchKb === 'function' && currentSectionId) {
+                    const results = searchKb(query); // searchKb is from data.js
+                    const sectionData = kbSystemData.sections.find(s => s.id === currentSectionId);
+                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
+                    if (resultsContainerEl) renderSectionSearchResults(results, query, resultsContainerEl, sectionData?.themeColor || 'gray');
+                } else if (input) {
+                    const resultsContainerEl = pageContent.querySelector('#sectionSearchResults');
+                    if (resultsContainerEl) resultsContainerEl.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-md">Please enter a query with at least 2 characters.</p>`;
+                }
+                return;
+            }
+        });
+    } else {
+        console.error('[app.js - FIX] pageContent element not found on initialization.');
+    }
+
+    window.addEventListener('hashchange', () => {
+        if (currentUser) { // Only process hash change if user is authenticated and present
+            const { sectionId, itemId, subCategoryFilter } = parseHash();
+            console.log('[app.js - FIX] Hash changed, user authenticated. Processing:', { sectionId, itemId, subCategoryFilter });
+            handleSectionTrigger(sectionId || 'home', itemId, subCategoryFilter);
+        } else {
+            console.log('[app.js - FIX] Hash changed, but currentUser is not set. Awaiting auth state or redirect.');
+            // If not authenticated, onAuthStateChange should handle redirection.
+            // If on login page, this is expected.
+        }
+    });
+
+    // Initial page load logic is now handled within onAuthStateChange when event is 'INITIAL_SESSION' or 'SIGNED_IN'.
+
+    console.log('[app.js - FIX] Core initializations complete. Awaiting Supabase auth state to finalize page setup.');
 });
