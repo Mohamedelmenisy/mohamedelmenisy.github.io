@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfiniBase - Loading...</title>
+    <title>InfiniBase</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/infini-base/css/style.css"> <!-- رابط لملف CSS الرئيسي -->
     <style>
         body {
             display: flex;
@@ -13,33 +12,24 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
-        }
-        .dark body {
-             background-color: #1f2937; /* Tailwind gray-800 */
+            background-color: #f3f4f6;
+            font-family: sans-serif;
         }
         .loading-container {
             text-align: center;
             padding: 2rem;
             background: white;
             border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .dark .loading-container {
-            background: #374151; /* Tailwind gray-700 */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .spinner {
-            border: 4px solid #e5e7eb; /* Tailwind gray-200 */
-            border-top: 4px solid #6366f1; /* Tailwind indigo-500 */
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #6366f1;
             border-radius: 50%;
-            width: 2.5rem; /* 40px */
-            height: 2.5rem; /* 40px */
+            width: 2rem;
+            height: 2rem;
             animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem; /* mb-6 */
-        }
-        .dark .spinner {
-            border: 4px solid #4b5563; /* Tailwind gray-600 */
-            border-top: 4px solid #818cf8; /* Tailwind indigo-400 */
+            margin: 0 auto 1rem;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -47,83 +37,71 @@
         }
     </style>
 </head>
-<body class=""> <!-- سيتم إضافة .dark بواسطة JS إذا كان الوضع الداكن مفعل -->
+<body>
     <div class="loading-container">
         <div class="spinner"></div>
-        <p class="text-xl font-semibold text-gray-700 dark:text-gray-200">Loading InfiniBase</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Please wait while we check your session...</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-6">
-            No account? <a href="/infini-base/signup.html" class="text-indigo-600 dark:text-indigo-400 hover:underline">Create one</a> |
-            Already registered? <a href="/infini-base/login.html" class="text-indigo-600 dark:text-indigo-400 hover:underline">Log In</a>
-        </p>
+        <p class="text-lg text-gray-700">Loading InfiniBase...</p>
+        <p class="text-sm text-gray-500 mt-2">Checking your session...</p>
+        <p class="text-sm text-gray-500 mt-4">Already have an account? <a href="/infini-base/login.html" class="text-indigo-600 hover:underline">Log in here</a>.</p>
     </div>
 
-    <script type="module">
-        // هذا السكربت سيعمل مباشرة عند تحميل index.html
-        // سنستورد عميل Supabase مباشرة هنا
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-        // نفس معلومات الاتصال من supabase.js
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-
-        let supabaseInstance;
-        try {
-            supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('[index.html] Supabase client initialized for session check.');
-        } catch (error) {
-            console.error("[index.html] Supabase client initialization failed:", error);
-            // إذا فشل تهيئة Supabase، قد يكون من الأفضل عرض رسالة خطأ ثابتة
-            // أو التوجيه إلى صفحة خطأ مخصصة.
-            // كحل بسيط الآن، سنوجه إلى تسجيل الدخول كأنه لا توجد جلسة
-            window.location.replace('/infini-base/login.html');
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Your Supabase client initializer -->
+    <script src="/infini-base/js/supabase.js"></script>
+    <!-- 3. Page specific logic -->
+    <script>
+        // Function to redirect to signup.html as a fallback
+        function redirectToSignup() {
+            console.log('[index.html] Redirecting to signup.html due to fallback.');
+            window.location.replace('/infini-base/signup.html');
         }
 
+        // Check session function
         async function checkSessionAndRedirect() {
-            if (!supabaseInstance) {
-                 console.error('[index.html] Supabase instance not available for session check. Redirecting to login.');
-                 window.location.replace('/infini-base/login.html');
-                 return;
-            }
-
             try {
-                const { data: { session }, error } = await supabaseInstance.auth.getSession();
+                if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient.auth) {
+                    console.error('[index.html] Supabase client (window.supabaseClient) not loaded or invalid.');
+                    redirectToSignup(); // Fallback to signup if client isn't ready
+                    return;
+                }
 
+                // const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co'; // Not needed here, client is already created
+                // const SUPABASE_ANON_KEY = '...'; // Not needed here
+                // const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // Client already created in supabase.js
+
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
                 if (error) {
                     console.error('[index.html] Error checking session:', error.message);
-                    // في حالة الخطأ، افترض عدم وجود جلسة ووجه لتسجيل الدخول
-                    window.location.replace('/infini-base/login.html');
+                    redirectToSignup(); // Fallback to signup on error
                     return;
                 }
 
                 if (session) {
-                    console.log('[index.html] Active session found. Redirecting to dashboard.');
-                    // قبل التوجيه، يمكن تخزين بعض بيانات المستخدم الأساسية إذا لزم الأمر
-                    // localStorage.setItem('cachedUser', JSON.stringify(session.user));
+                    console.log('[index.html] User is logged in, redirecting to dashboard.html');
                     window.location.replace('/infini-base/dashboard.html');
                 } else {
-                    console.log('[index.html] No active session. Redirecting to login.');
-                    window.location.replace('/infini-base/login.html');
+                    console.log('[index.html] No user session, redirecting to signup.html');
+                    redirectToSignup();
                 }
             } catch (e) {
                 console.error('[index.html] Exception during session check:', e.message);
-                window.location.replace('/infini-base/login.html');
+                redirectToSignup(); // Fallback to signup on exception
             }
         }
 
-        // تأكد من أن DOM جاهز، ثم انتظر قليلاً إذا لزم الأمر (عادة لا يلزم مع modules)
-        // document.addEventListener('DOMContentLoaded', () => {
-        //     checkSessionAndRedirect();
-        // });
-        // الاستدعاء المباشر أفضل لأننا نستورد createClient كـ module
-         checkSessionAndRedirect();
-
-        // تطبيق الوضع الداكن بناءً على تفضيلات المستخدم أو localStorage
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        // Run on DOM load with timeout to ensure Supabase loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                // Check if window.supabaseClient is defined from supabase.js
+                if (typeof window.supabaseClient !== 'undefined') {
+                    checkSessionAndRedirect();
+                } else {
+                    console.error('[index.html] Supabase Client (window.supabaseClient) failed to load after delay.');
+                    redirectToSignup();
+                }
+            }, 200); // 0.2-second delay, adjust if necessary
+        });
     </script>
 </body>
 </html>
