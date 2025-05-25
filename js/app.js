@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         return str.replace(/[&<>"']/g, function (match) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[match];
+            return { '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[match];
         });
     }
 
@@ -32,19 +32,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Authentication & Page Protection ---
-    if (typeof protectPage === 'function') {
-        protectPage();
-    } else if (typeof Auth !== 'undefined' && Auth.isAuthenticated) {
-        if (!Auth.isAuthenticated()) {
-            Auth.logout();
+    let currentUser = null;
+    if (typeof Auth !== 'undefined' && Auth.isAuthenticated && Auth.getCurrentUser) {
+        if (Auth.isAuthenticated()) {
+            currentUser = Auth.getCurrentUser();
+            console.log('[app.js - FIX] Current user loaded:', currentUser);
+        } else {
+            console.log('[app.js - FIX] User not authenticated, redirecting to login...');
+            window.location.href = '/login'; // غير الرابط حسب احتياجاتك
             return;
         }
     } else {
-        console.error('[app.js - FIX] CRITICAL: Authentication mechanism not found.');
+        console.error('[app.js - FIX] CRITICAL: Authentication mechanism (Auth) not found or incomplete.');
+        currentUser = { fullName: 'Guest', email: 'guest@example.com' }; // قيمة افتراضية مؤقتة
     }
-
-    const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { fullName: 'Guest', email: 'guest@example.com' };
-    console.log('[app.js - FIX] Current user:', currentUser);
 
     const userNameDisplay = document.getElementById('userNameDisplay');
     const welcomeUserName = document.getElementById('welcomeUserName');
@@ -52,10 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastKbUpdateSpan = document.getElementById('lastKbUpdate');
     const footerKbVersionSpan = document.getElementById('footerKbVersion');
 
+    // تحديث عرض اسم المستخدم
     if (currentUser) {
         const userDisplayName = currentUser.fullName || currentUser.email || 'Guest';
         if (userNameDisplay) userNameDisplay.textContent = userDisplayName;
         if (welcomeUserName) welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
+    } else {
+        if (welcomeUserName) welcomeUserName.textContent = 'Welcome, Guest!';
     }
 
     if (typeof kbSystemData !== 'undefined' && kbSystemData.meta) {
@@ -112,16 +116,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Logout Button ---
     const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton && typeof Auth !== 'undefined' && Auth.logout) {
-        logoutButton.addEventListener('click', () => {
-            Auth.logout().then(() => {
-                console.log('[app.js - FIX] Logout successful, redirecting...');
-                window.location.href = '/login'; // غير الرابط حسب احتياجاتك
-            }).catch(err => {
-                console.error('[app.js - FIX] Logout failed:', err);
-                alert('Logout failed, please try again.');
-            });
+    if (logoutButton) {
+        logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (typeof Auth !== 'undefined' && Auth.logout) {
+                Auth.logout()
+                    .then(() => {
+                        console.log('[app.js - FIX] Logout successful, redirecting...');
+                        alert('You have been logged out successfully.');
+                        window.location.href = '/login'; // غير الرابط حسب احتياجاتك
+                    })
+                    .catch(err => {
+                        console.error('[app.js - FIX] Logout failed:', err);
+                        alert('Logout failed, please try again.');
+                    });
+            } else {
+                console.error('[app.js - FIX] Auth.logout not available.');
+                alert('Logout functionality is not available at the moment.');
+            }
         });
+    } else {
+        console.warn('[app.js - FIX] Logout button not found in the DOM.');
     }
 
     // --- Report an Error Button ---
