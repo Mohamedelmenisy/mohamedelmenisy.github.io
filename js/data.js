@@ -41,7 +41,7 @@ const kbSystemData = {
                     summary: "A comprehensive guide on how to use the Zendesk integration for managing customer support interactions."
                 }
             ],
-            cases: [ // ADDED Case Management Data
+            cases: [
                 {
                     id: "case001",
                     title: "Frequent System Disconnects - User Alpha",
@@ -81,7 +81,7 @@ const kbSystemData = {
             id: "partner_care",
             name: "Partner Care",
             icon: "fas fa-handshake",
-            themeColor: "teal", // Added
+            themeColor: "teal",
             description: "Information for managing and supporting our valued partners, including onboarding, communication, and issue resolution.",
             articles: [
                  {
@@ -98,7 +98,7 @@ const kbSystemData = {
             id: "logistics",
             name: "Logistics",
             icon: "fas fa-truck",
-            themeColor: "green", // Added
+            themeColor: "green",
             description: "Documentation related to logistics operations, supply chain management, and transportation.",
             articles: []
         },
@@ -106,7 +106,7 @@ const kbSystemData = {
             id: "customer_care",
             name: "Customer Care",
             icon: "fas fa-users",
-            themeColor: "indigo", // Added
+            themeColor: "indigo",
             description: "Guidelines and best practices for providing excellent customer care and support.",
             articles: []
         },
@@ -114,7 +114,7 @@ const kbSystemData = {
             id: "dist_follow_up",
             name: "Distribution & Follow up",
             icon: "fas fa-people-carry",
-            themeColor: "cyan", // Added
+            themeColor: "cyan",
             description: "Procedures for product distribution and post-delivery follow-up actions.",
             articles: []
         },
@@ -122,7 +122,7 @@ const kbSystemData = {
             id: "logistics_driver",
             name: "Logistics (Driver Complaints)",
             icon: "fas fa-shipping-fast",
-            themeColor: "lime", // Added
+            themeColor: "lime",
             description: "Handling driver complaints and related logistical issues.",
             articles: []
         },
@@ -130,7 +130,7 @@ const kbSystemData = {
             id: "logistics_3pl",
             name: "Logistics-3PL",
             icon: "fas fa-boxes",
-            themeColor: "yellow", // Added
+            themeColor: "yellow",
             description: "Information specific to third-party logistics providers and collaborations.",
             articles: []
         },
@@ -138,7 +138,7 @@ const kbSystemData = {
             id: "order_at_store",
             name: "Order at store (Mac)",
             icon: "fas fa-store",
-            themeColor: "pink", // Added
+            themeColor: "pink",
             description: "Procedures for orders placed at physical store locations using Mac systems.",
             articles: []
         },
@@ -146,7 +146,7 @@ const kbSystemData = {
             id: "logistics_admin",
             name: "Logistics-Admin",
             icon: "fas fa-user-shield",
-            themeColor: "red", // Added
+            themeColor: "red",
             description: "Administrative tasks and oversight for logistics operations.",
             articles: []
         },
@@ -154,7 +154,7 @@ const kbSystemData = {
             id: "os",
             name: "Operating Systems",
             icon: "fab fa-windows",
-            themeColor: "sky", // Added
+            themeColor: "sky",
             description: "Guides and troubleshooting for supported operating systems.",
             articles: []
         },
@@ -162,7 +162,7 @@ const kbSystemData = {
             id: "compensation",
             name: "Compensation Policies",
             icon: "fas fa-hand-holding-usd",
-            themeColor: "amber", // Added
+            themeColor: "amber",
             description: "Details on compensation policies, bonus structures, and related financial information for employees/partners.",
             articles: []
         },
@@ -170,7 +170,7 @@ const kbSystemData = {
             id: "op_instructions",
             name: "Operational Instructions",
             icon: "fas fa-clipboard-list",
-            themeColor: "slate", // Added
+            themeColor: "slate",
             description: "General operational instructions and standard operating procedures (SOPs).",
             articles: []
         },
@@ -178,7 +178,7 @@ const kbSystemData = {
             id: "forms_templates",
             name: "Forms/Templates",
             icon: "fas fa-file-alt",
-            themeColor: "purple", // Added
+            themeColor: "purple",
             description: "A centralized collection of frequently used forms, document templates, and checklists.",
             items: [ 
                 {
@@ -211,8 +211,6 @@ const kbSystemData = {
 };
 
 function loadSectionContent(sectionId) {
-    // This function is less critical if displaySectionContent in app.js handles data fetching directly.
-    // However, searchKb still uses kbSystemData globally.
     const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
     if (sectionData) {
         console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
@@ -238,7 +236,7 @@ function searchKb(query) {
                 }
             });
         }
-        if (section.cases) { // ADDED search for cases
+        if (section.cases) {
             section.cases.forEach(caseItem => {
                 if (caseItem.title.toLowerCase().includes(lowerQuery) ||
                     (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
@@ -261,14 +259,14 @@ function searchKb(query) {
         }
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
             if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
-                 results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
+                results.push({ id: section.id, title: section.name, summary: section.description, sectionName: section.name, sectionId: section.id, type: 'section_match', themeColor: section.themeColor});
             }
         }
         if(section.glossary) {
             section.glossary.forEach(term => {
                 if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
                     if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
-                         results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor});
+                        results.push({ id: `glossary_${term.term}`, title: term.term, summary: term.definition, sectionName: section.name, sectionId: section.id, type: 'glossary_term', themeColor: section.themeColor});
                     }
                 }
             });
