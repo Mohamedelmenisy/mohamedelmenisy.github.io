@@ -1,11 +1,12 @@
-
 // js/data.js
 
 // Stores access history in memory. For persistence, localStorage or a backend would be needed.
-var accessHistory = []; // Use 'var' or ensure it's properly scoped if app.js is separate
+// This is not currently used by app.js after Supabase integration for logging.
+// var accessHistory = [];
 
-// Define standard case statuses for consistency
+// Define standard case statuses for consistency - used by openCaseModal
 const caseStatusOptions = [
+    'New',
     'Pending Investigation',
     'In Progress',
     'On Hold - Awaiting Client',
@@ -24,7 +25,8 @@ const kbSystemData = {
         version: "0.1.3", // Updated version
         lastGlobalUpdate: "2023-12-01T10:00:00Z" // Updated date
     },
-    sections: [
+    sections: [ // This static data is still used for sections, articles, items, glossary
+                // Cases and SubCategories are now primarily fetched from Supabase by app.js
         {
             id: "support",
             name: "Support",
@@ -37,7 +39,6 @@ const kbSystemData = {
                     title: "How to Handle a High Priority Ticket",
                     tags: ["high priority", "escalation", "critical issue"],
                     lastUpdated: "2023-10-27",
-                    // contentPath: "articles/support/sup001.html", // No longer for navigation
                     summary: "Step-by-step guide for managing and resolving high priority support tickets efficiently and effectively.",
                     details: "Detailed content for High Priority Tickets:\n1. Acknowledge receipt within 15 minutes.\n2. Gather all necessary information from the reporter.\n3. Attempt initial diagnosis based on known issues.\n4. If unresolved within 1 hour, escalate to Tier 2 support with all gathered details.\n5. Keep the reporter updated every 30 minutes on progress."
                 },
@@ -58,35 +59,29 @@ const kbSystemData = {
                     details: "To use the Zendesk integration:\n- Ensure your InfiniBase account is linked.\n- Access Zendesk via the 'Tools' menu.\n- Tickets created in InfiniBase can be synced to Zendesk.\n- Customer replies in Zendesk can update InfiniBase case statuses."
                 }
             ],
+            // Static cases are now a fallback if Supabase is not available or if you want to mix.
+            // app.js prioritizes Supabase cases.
             cases: [
                 {
-                    id: "case001",
-                    title: "Frequent System Disconnects - User Alpha",
+                    id: "case_static_001", // Differentiate from Supabase IDs if necessary
+                    title: "Frequent System Disconnects - User Alpha (Static)",
                     tags: ["connectivity", "disconnect", "user report", "alpha client"],
                     lastUpdated: "2023-11-20",
                     summary: "User Alpha reports frequent disconnects from the main platform. Initial investigation points to network instability.",
-                    status: "Pending Investigation", // Use one from caseStatusOptions
+                    status: "Pending Investigation",
                     assignedTo: "Support Team B",
-                    resolutionSteps: "1. Check user's local network configuration (ping, traceroute).\n2. Review server logs for connection drops corresponding to user's report times.\n3. Ask user for specific error messages or patterns observed.",
-                    // contentPath: "articles/support/cases/case001.html", // No longer for navigation
-                    type: "case"
-                },
-                {
-                    id: "case002",
-                    title: "Payment Gateway Error - Order #12345",
-                    tags: ["payment", "gateway", "error", "critical"],
-                    lastUpdated: "2023-11-22",
-                    summary: "Order #12345 failed at payment stage. Customer unable to complete purchase. Gateway: Stripe.",
-                    status: "Escalated to Tier 2",
-                    assignedTo: "Finance Support",
-                    resolutionSteps: "1. Verify error code with Stripe documentation.\n2. Check for recent gateway updates or outages.\n3. Attempt a test transaction with similar parameters if possible.",
-                    type: "case"
+                    resolutionStepsPreview: "1. Check user's local network configuration...", // Keep this a preview
+                    // For static cases, 'content' would be the full HTML if you had it.
+                    // 'resolutionSteps' could be plain text or markdown if 'content' is not used for detailed HTML.
+                    content: "<p>1. Check user's local network configuration (ping, traceroute).</p><p>2. Review server logs for connection drops corresponding to user's report times.</p><p>3. Ask user for specific error messages or patterns observed.</p>",
+                    type: "case" // Not strictly needed if rendered by renderCaseCard_enhanced
                 }
             ],
+             // Static subCategories are a fallback. app.js prioritizes Supabase.
             subCategories: [
-                { id: "cases_overview", name: "Case Management Overview", description: "General guidelines for managing support cases." },
-                { id: "escalation_procedures", name: "Escalation Procedures", description: "How and when to escalate issues." },
-                { id: "tools_guides", name: "Support Tools Guides", description: "Manuals for internal support tools." }
+                { id: "cases_overview", name: "Case Management Overview (Static)", description: "General guidelines for managing support cases." },
+                { id: "escalation_procedures", name: "Escalation Procedures (Static)", description: "How and when to escalate issues." },
+                { id: "tools_guides", name: "Support Tools Guides (Static)", description: "Manuals for internal support tools." }
             ],
             glossary: [
                 { term: "SLA", definition: "Service Level Agreement - a commitment between a service provider and a client regarding service quality, availability, responsibilities." },
@@ -111,7 +106,7 @@ const kbSystemData = {
             ],
             cases: [],
             subCategories: [
-                { id: "partner_comm", name: "Partner Communication", description: "Best practices for partner comms."}
+                { id: "partner_comm", name: "Partner Communication (Static)", description: "Best practices for partner comms."}
             ]
         },
         {
@@ -205,7 +200,7 @@ const kbSystemData = {
                     id: "form001",
                     title: "New Client Onboarding Checklist",
                     type: "checklist",
-                    url: "/templates/client_onboarding.pdf", // This would still be an external link if it's a file download
+                    url: "/templates/client_onboarding.pdf",
                     description: "Standard checklist for onboarding new clients, ensuring all steps are covered.",
                     lastUpdated: "2023-09-15",
                 },
@@ -226,22 +221,15 @@ const kbSystemData = {
                     lastUpdated: "2023-08-20",
                 }
             ],
-            // No cases or subCategories typical for forms/templates, but can be added if needed
             cases: [], subCategories: []
         }
     ],
 };
 
-// This function is kept for searchKb, but individual section content is now directly handled by displaySectionContent
-function loadSectionContent(sectionId) {
-    const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-    if (sectionData) {
-        // console.log(`[data.js] Data for ${sectionData.name} conceptually ready.`);
-        return sectionData;
-    }
-    return null;
-}
 
+// searchKb searches the static kbSystemData.
+// For dynamic Supabase data, this function would need to be async and query Supabase,
+// or you'd use Supabase's full-text search capabilities.
 function searchKb(query) {
     const lowerQuery = query.toLowerCase();
     const results = [];
@@ -249,30 +237,33 @@ function searchKb(query) {
     if (!kbSystemData || !kbSystemData.sections) return results;
 
     kbSystemData.sections.forEach(section => {
+        // Search articles
         if (section.articles) {
             section.articles.forEach(article => {
                 if (article.title.toLowerCase().includes(lowerQuery) ||
                     (article.tags && article.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (article.summary && article.summary.toLowerCase().includes(lowerQuery)) ||
-                    (article.details && article.details.toLowerCase().includes(lowerQuery)) // Search in details too
+                    (article.details && article.details.toLowerCase().includes(lowerQuery))
                 ) {
                     results.push({ ...article, sectionName: section.name, sectionId: section.id, type: 'article', themeColor: section.themeColor });
                 }
             });
         }
+        // Search static cases (fallback)
         if (section.cases) {
             section.cases.forEach(caseItem => {
                 if (caseItem.title.toLowerCase().includes(lowerQuery) ||
                     (caseItem.tags && caseItem.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
                     (caseItem.summary && caseItem.summary.toLowerCase().includes(lowerQuery)) ||
                     (caseItem.status && caseItem.status.toLowerCase().includes(lowerQuery)) ||
-                    (caseItem.resolutionSteps && caseItem.resolutionSteps.toLowerCase().includes(lowerQuery)) // Search in resolution steps
+                    (caseItem.content && typeof caseItem.content === 'string' && caseItem.content.toLowerCase().includes(lowerQuery))
                 ) {
-                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case', themeColor: section.themeColor });
+                    results.push({ ...caseItem, sectionName: section.name, sectionId: section.id, type: 'case', themeColor: section.themeColor, isStatic: true });
                 }
             });
         }
-        if (section.items) { // for forms/templates etc.
+        // Search items
+        if (section.items) {
             section.items.forEach(item => {
                 if (item.title.toLowerCase().includes(lowerQuery) ||
                     (item.description && item.description.toLowerCase().includes(lowerQuery)) ||
@@ -282,6 +273,7 @@ function searchKb(query) {
                 }
             });
         }
+        // Match section itself
         if (section.name.toLowerCase().includes(lowerQuery) || section.description.toLowerCase().includes(lowerQuery)) {
             if (!results.some(r => r.id === section.id && r.type === 'section_match')) {
                  results.push({
@@ -295,14 +287,33 @@ function searchKb(query) {
                     });
             }
         }
+        // Match static subcategories
+        if (section.subCategories) {
+            section.subCategories.forEach(subCat => {
+                if (subCat.name.toLowerCase().includes(lowerQuery) || (subCat.description && subCat.description.toLowerCase().includes(lowerQuery))) {
+                    if (!results.some(r => r.id === subCat.id && r.sectionId === section.id && r.type === 'sub_category_match_static')) {
+                        results.push({
+                            id: subCat.id, // This is the subCategory ID
+                            title: subCat.name,
+                            summary: subCat.description || `Sub-category in ${section.name}`,
+                            sectionName: section.name,
+                            sectionId: section.id,
+                            type: 'sub_category_match_static', // Special type for search results to handle subcategory links
+                            themeColor: section.themeColor
+                        });
+                    }
+                }
+            });
+        }
+        // Match glossary terms
         if(section.glossary) {
-            section.glossary.forEach(term => {
-                if(term.term.toLowerCase().includes(lowerQuery) || term.definition.toLowerCase().includes(lowerQuery)){
-                    if(!results.some(r => r.id === `glossary_${term.term}` && r.sectionId === section.id)){
+            section.glossary.forEach(termEntry => { // Renamed 'term' to 'termEntry' to avoid conflict
+                if(termEntry.term.toLowerCase().includes(lowerQuery) || termEntry.definition.toLowerCase().includes(lowerQuery)){
+                    if(!results.some(r => r.id === `glossary_${termEntry.term}` && r.sectionId === section.id)){
                          results.push({
-                             id: `glossary_${term.term}`,
-                             title: term.term,
-                             summary: term.definition,
+                             id: `glossary_${termEntry.term}`, // Unique ID for glossary term search result
+                             title: termEntry.term,
+                             summary: termEntry.definition,
                              sectionName: section.name,
                              sectionId: section.id,
                              type: 'glossary_term',
@@ -313,9 +324,10 @@ function searchKb(query) {
             });
         }
     });
+    // Basic sort: articles, cases, items, then sections/glossary/subcategories
     results.sort((a, b) => {
-        const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'section_match': 3, 'glossary_term': 4 };
-        return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
+        const typePriority = { 'article': 0, 'case': 1, 'item': 2, 'sub_category_match_static': 3, 'section_match': 4, 'glossary_term': 5 };
+        return (typePriority[a.type] || 6) - (typePriority[b.type] || 6);
     });
     return results;
 }
