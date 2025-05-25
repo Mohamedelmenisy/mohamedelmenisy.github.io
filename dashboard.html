@@ -1,12 +1,14 @@
-<!-- full_dashboard_with_supabase.txt -->
+<!-- dash.txt -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Base Dashboard</title>
+    <title>InfiniBase</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Quill Editor -->
@@ -14,14 +16,16 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <style>
         body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
             font-family: 'Arial', sans-serif;
+            background: #1a202c;
+            color: #e2e8f0;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
         }
         .sidebar {
             width: 250px;
-            background: #f8f9fa;
+            background: #2d3748;
             height: 100vh;
             position: fixed;
             top: 0;
@@ -35,14 +39,16 @@
         .content {
             margin-left: 250px;
             padding: 20px;
-            flex-grow: 1;
+            height: 100vh;
+            overflow-y: auto;
+            transition: margin-left 0.3s ease-in-out;
         }
         .sidebar-toggle {
             position: fixed;
             left: 250px;
             top: 20px;
             z-index: 1000;
-            background: #4b5563;
+            background: #4a5568;
             color: white;
             border: none;
             padding: 10px;
@@ -53,11 +59,14 @@
             display: block;
         }
         .card {
-            transition: all 0.3s ease;
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 15px;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
         }
         .case-editor {
             display: none;
@@ -65,10 +74,10 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
+            background: #2d3748;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             z-index: 1000;
             width: 90%;
             max-width: 600px;
@@ -93,6 +102,11 @@
             height: 200px;
             margin-bottom: 10px;
         }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-250px);
@@ -109,21 +123,21 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<body>
     <div id="overlay" class="overlay"></div>
-    <div id="caseEditor" class="case-editor">
+    <div id="caseEditorModal" class="case-editor">
         <h2 class="text-2xl font-bold mb-4">New Case</h2>
         <form id="caseForm">
             <div class="mb-4">
-                <label for="caseTitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-                <input type="text" id="caseTitle" class="mt-1 p-2 w-full border rounded-md dark:bg-gray-700 dark:border-gray-600" required>
+                <label for="caseTitle" class="block text-sm font-medium text-gray-300">Title</label>
+                <input type="text" id="caseTitle" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white" required>
             </div>
             <div class="mb-4">
-                <label for="caseSummary" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Summary</label>
-                <textarea id="caseSummary" class="mt-1 p-2 w-full border rounded-md dark:bg-gray-700 dark:border-gray-600" rows="3" required></textarea>
+                <label for="caseSummary" class="block text-sm font-medium text-gray-300">Summary</label>
+                <textarea id="caseSummary" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white" rows="3" required></textarea>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution Steps</label>
+                <label class="block text-sm font-medium text-gray-300">Resolution Steps</label>
                 <div id="quillEditor" class="quill"></div>
             </div>
             <div class="flex justify-end gap-4">
@@ -134,102 +148,116 @@
     </div>
 
     <div class="sidebar" id="sidebar">
-        <h2 class="text-xl font-bold mb-4 px-4">Menu</h2>
+        <h2 class="text-xl font-bold mb-4 px-4 text-white">Menu</h2>
         <ul class="space-y-2">
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="home">Home</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="support">Support</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="partner_care">Partner Care</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="logistics">Logistics</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="customer_care">Customer Care</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="dist_follow_up">Distribution & Follow-up</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="logistics_driver">Logistics (Driver Complaints)</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="logistics_3pl">Logistics-3PL</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="order_at_store">Order at Store (Mac)</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="logistics_admin">Logistics-Admin</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="os">Operating Systems</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="compensation">Compensation Policies</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="op_instructions">Operational Instructions</a></li>
-            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-section="forms_templates">Forms/Templates</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="home">Home</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="support">Support</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="partner_care">Partner Care</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="logistics">Logistics</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="customer_care">Customer Care</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="dist_follow_up">Distribution & Follow-up</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="logistics_driver">Logistics (Driver Complaints)</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="logistics_3pl">Logistics-3PL</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="order_at_store">Order at Store (Mac)</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="logistics_admin">Logistics-Admin</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="os">Operating Systems</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="compensation">Compensation Policies</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="op_instructions">Operational Instructions</a></li>
+            <li><a href="#" class="sidebar-link block px-4 py-2 text-gray-300 hover:bg-gray-700" data-section="forms_templates">Forms/Templates</a></li>
         </ul>
     </div>
 
     <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
 
     <div class="content" id="content">
-        <header class="bg-white dark:bg-gray-800 p-4 shadow mb-6 flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <span id="welcomeUserName" class="font-semibold"></span>
-                <span id="kbVersion" class="text-sm text-gray-500 dark:text-gray-400"></span>
-                <span id="lastKbUpdate" class="text-sm text-gray-500 dark:text-gray-400 ml-2"></span>
+        <header class="bg-gray-800 p-4 flex justify-between items-center rounded-lg mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Welcome</h1>
             </div>
             <div class="flex items-center space-x-4">
-                <div class="relative">
-                    <input type="text" id="globalSearchInput" placeholder="Search Knowledge Base..." class="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 w-64">
-                    <div id="searchResultsContainer" class="absolute top-full left-0 w-full bg-white dark:bg-gray-800 border rounded-md mt-1 shadow-lg hidden max-h-60 overflow-y-auto"></div>
-                </div>
-                <button id="themeSwitcher" class="flex items-center space-x-2 p-2 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+                <input type="text" id="globalSearchInput" placeholder="Search Knowledge Base..." class="p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                <span id="userNameDisplay" class="text-white"></span>
+                <button id="themeSwitcher" class="flex items-center space-x-2 p-2 bg-gray-700 rounded-md hover:bg-gray-600">
                     <i id="themeIcon" class="fas fa-moon"></i>
                     <span id="themeText">Dark Mode</span>
                 </button>
-                <button id="logoutButton" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">Logout</button>
+                <button id="logoutButton" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Logout</button>
+                <button id="newCaseBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">New Case</button>
             </div>
         </header>
 
         <main>
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold" id="currentSectionTitle">Welcome</h1>
-                <button id="newCaseBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">New Case</button>
+            <div id="dashboardSection" class="mb-6">
+                <h2 class="text-2xl font-bold text-white mb-4">Dashboard</h2>
+                <div class="dashboard-grid">
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-white mb-2">Users Activity</h3>
+                        <canvas id="usersChart"></canvas>
+                    </div>
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-white mb-2">Most Viewed Cases</h3>
+                        <canvas id="casesChart"></canvas>
+                    </div>
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-white mb-2">Last User Access</h3>
+                        <ul id="lastAccessList"></ul>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="filterDate" class="block text-sm font-medium text-gray-300">Filter by Date</label>
+                    <input type="date" id="filterDate" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white">
+                    <label for="filterUser" class="block text-sm font-medium text-gray-300 mt-2">Filter by User</label>
+                    <select id="filterUser" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white">
+                        <option value="">All Users</option>
+                    </select>
+                    <label for="filterInteraction" class="block text-sm font-medium text-gray-300 mt-2">Filter by Interaction</label>
+                    <select id="filterInteraction" class="mt-1 p-2 w-full border rounded-md bg-gray-700 border-gray-600 text-white">
+                        <option value="">All Interactions</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                    <button id="applyFilterBtn" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Apply Filter</button>
+                </div>
             </div>
-            <div id="breadcrumbs" class="text-sm text-gray-500 mb-4 hidden"></div>
             <div id="pageContent">
-                <!-- Home content -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                        <h3 class="font-semibold text-lg mb-2">Support</h3>
-                        <p class="text-gray-600 dark:text-gray-400">Resources for the Support team.</p>
-                        <a href="#" data-subcat-trigger="support.cases" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">View Cases</a>
+                <!-- Dynamic content will be loaded here -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-lg text-white mb-2">Support</h3>
+                        <p class="text-gray-400">Resources for the Support team</p>
+                        <a href="#" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="support.cases">View Cases</a>
                     </div>
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                        <h3 class="font-semibold text-lg mb-2">Partner Care</h3>
-                        <p class="text-gray-600 dark:text-gray-400">Manage partner relationships.</p>
-                        <a href="#" data-subcat-trigger="partner_care.onboarding" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">Onboarding Guide</a>
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-lg text-white mb-2">Partner Care</h3>
+                        <p class="text-gray-400">Manage partner relationships.</p>
+                        <a href="#" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="partner_care.onboarding">Onboarding Guide</a>
                     </div>
-                    <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                        <h3 class="font-semibold text-lg mb-2">Logistics</h3>
-                        <p class="text-gray-600 dark:text-gray-400">Logistics operations overview.</p>
-                        <a href="#" data-section-trigger="logistics" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">Explore</a>
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-lg text-white mb-2">Logistics</h3>
+                        <p class="text-gray-400">Logistics operations overview.</p>
+                        <a href="#" class="text-blue-400 hover:underline mt-2 block" data-section-trigger="logistics">Explore</a>
                     </div>
                 </div>
             </div>
         </main>
 
-        <footer class="mt-6 p-4 bg-white dark:bg-gray-800 text-center text-sm text-gray-500 dark:text-gray-400">
-            <span>Knowledge Base Version: <span id="footerKbVersion"></span> | Last Updated: <span id="lastKbUpdateFooter"></span></span>
+        <footer class="mt-6 p-4 bg-gray-800 text-center text-sm text-gray-400 rounded-lg">
+            <span>Knowledge Base Version | Last Updated: <span id="lastKbUpdate"></span></span>
             <button id="reportErrorBtn" class="ml-4 px-2 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600">Report an Error</button>
         </footer>
     </div>
 
     <script type="module">
-        // Import necessary modules
         import { supabase } from './supabase.js';
         import Auth from './auth.js';
         import kbSystemData from './data.js';
 
-        // Initialize Quill Editor
-        let quillEditor = null;
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.getElementById('quillEditor')) {
-                quillEditor = new Quill('#quillEditor', {
-                    theme: 'snow',
-                    placeholder: 'Enter resolution steps...'
-                });
-                window.quillEditor = quillEditor; // Make available globally for saveCaseToSupabase
-                console.log('[dashboard.js] Quill Editor initialized.');
-            } else {
-                console.error('[dashboard.js] Quill Editor container not found.');
-            }
+        let caseEditorQuill;
 
-            // Sidebar Toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[dash.js] DOMContentLoaded fired.');
+
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
             const content = document.getElementById('content');
@@ -239,71 +267,129 @@
                 content.classList.toggle('closed');
             });
 
-            // Open Case Editor
-            document.getElementById('newCaseBtn').addEventListener('click', () => {
-                document.getElementById('caseEditor').classList.add('open');
-                document.getElementById('overlay').classList.add('open');
-                document.getElementById('caseTitle').value = '';
-                document.getElementById('caseSummary').value = '';
-                if (quillEditor) quillEditor.setContents([]);
-                console.log('[dashboard.js] Case editor opened.');
-            });
+            if (document.getElementById('quillEditor')) {
+                caseEditorQuill = new Quill('#quillEditor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link', 'image'],
+                            ['clean']
+                        ]
+                    },
+                    placeholder: 'Describe the resolution steps or details...'
+                });
+            }
 
-            // Close Case Editor
-            document.getElementById('cancelCaseBtn').addEventListener('click', () => {
-                document.getElementById('caseEditor').classList.remove('open');
-                document.getElementById('overlay').classList.remove('open');
-                console.log('[dashboard.js] Case editor closed.');
-            });
-
-            // Close on overlay click
-            document.getElementById('overlay').addEventListener('click', () => {
-                document.getElementById('caseEditor').classList.remove('open');
-                document.getElementById('overlay').classList.remove('open');
-                console.log('[dashboard.js] Case editor closed via overlay.');
-            });
-
-            // Save Case
+            document.getElementById('newCaseBtn').addEventListener('click', openCaseEditor);
+            document.getElementById('cancelCaseBtn').addEventListener('click', closeCaseEditor);
+            document.getElementById('overlay').addEventListener('click', closeCaseEditor);
             document.getElementById('caseForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 await saveCaseToSupabase();
             });
 
-            // Function to close case editor (used in saveCaseToSupabase)
-            window.closeCaseEditor = () => {
-                document.getElementById('caseEditor').classList.remove('open');
-                document.getElementById('overlay').classList.remove('open');
-                console.log('[dashboard.js] Case editor closed after save.');
+            window.openCaseEditor = function() {
+                document.getElementById('caseEditorModal').classList.remove('hidden');
+                if (!caseEditorQuill) {
+                    caseEditorQuill = new Quill('#quillEditor', {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                [{ 'header': [1, 2, 3, false] }],
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                ['link', 'image'],
+                                ['clean']
+                            ]
+                        },
+                        placeholder: 'Describe the resolution steps or details...'
+                    });
+                }
+                document.getElementById('caseTitle').value = '';
+                document.getElementById('caseSummary').value = '';
+                if (caseEditorQuill) caseEditorQuill.setText('');
+                document.getElementById('caseTitle').focus();
             };
 
-            // Authentication & Page Protection
-            (async () => {
-                try {
-                    await Auth.protectPage();
-                    const currentUser = await Auth.getCurrentUser();
-                    const welcomeUserName = document.getElementById('welcomeUserName');
-                    if (currentUser && welcomeUserName) {
-                        const userDisplayName = currentUser.fullName || currentUser.email || 'User';
-                        welcomeUserName.textContent = `Welcome, ${userDisplayName}!`;
-                        console.log('[dashboard.js] Updated welcomeUserName to:', `Welcome, ${userDisplayName}!`);
-                    } else {
-                        welcomeUserName.textContent = 'Welcome, Guest!';
-                        console.log('[dashboard.js] Set welcomeUserName to Guest as fallback.');
-                    }
+            window.closeCaseEditor = function() {
+                document.getElementById('caseEditorModal').classList.add('hidden');
+            };
 
-                    // Update KB version and last update
-                    if (kbSystemData.meta) {
-                        document.getElementById('kbVersion').textContent = kbSystemData.meta.version;
-                        document.getElementById('footerKbVersion').textContent = kbSystemData.meta.version;
-                        document.getElementById('lastKbUpdate').textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-                        document.getElementById('lastKbUpdateFooter').textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
-                    }
-                } catch (error) {
-                    console.error('[dashboard.js] Error during initialization:', error);
+            (async () => {
+                await Auth.protectPage();
+                const currentUser = await Auth.getCurrentUser();
+                const role = currentUser?.role || 'viewer';
+                const userNameDisplay = document.getElementById('userNameDisplay');
+                if (userNameDisplay && currentUser) {
+                    userNameDisplay.textContent = currentUser.fullName || currentUser.email || 'User';
                 }
+
+                if (role === 'viewer') {
+                    document.getElementById('newCaseBtn').style.display = 'none';
+                } else if (role === 'admin' || role === 'super_admin') {
+                    document.getElementById('newCaseBtn').style.display = 'inline-block';
+                }
+
+                if (kbSystemData.meta) {
+                    document.getElementById('lastKbUpdate').textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+                }
+
+                // Initialize Charts
+                const usersChart = new Chart(document.getElementById('usersChart').getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['User1', 'User2', 'User3'],
+                        datasets: [{
+                            label: 'Active Users',
+                            data: [10, 20, 15],
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                const casesChart = new Chart(document.getElementById('casesChart').getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['Case1', 'Case2', 'Case3'],
+                        datasets: [{
+                            data: [30, 20, 10],
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                const lastAccessList = document.getElementById('lastAccessList');
+                lastAccessList.innerHTML = '<li>User1 - 2025-05-25</li><li>User2 - 2025-05-24</li>';
+
+                // Fetch views log for filters
+                const { data: views, error } = await supabase.from('views_log').select('*');
+                if (views) {
+                    const userSelect = document.getElementById('filterUser');
+                    const uniqueUsers = [...new Set(views.map(v => v.user_identifier))];
+                    uniqueUsers.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        userSelect.appendChild(option);
+                    });
+                }
+
+                // Apply Filters
+                document.getElementById('applyFilterBtn').addEventListener('click', () => {
+                    const filterDate = document.getElementById('filterDate').value;
+                    const filterUser = document.getElementById('filterUser').value;
+                    const filterInteraction = document.getElementById('filterInteraction').value;
+                    console.log('Filters applied:', { filterDate, filterUser, filterInteraction });
+                    // Implement filtering logic here (e.g., filter cases based on views_log)
+                    filterCases(filterDate, filterUser, filterInteraction);
+                });
             })();
 
-            // Theme Switcher
             const themeSwitcher = document.getElementById('themeSwitcher');
             const themeIcon = document.getElementById('themeIcon');
             const themeText = document.getElementById('themeText');
@@ -337,34 +423,25 @@
             }
             loadTheme();
 
-            // Logout Button
             const logoutButton = document.getElementById('logoutButton');
             if (logoutButton) {
-                logoutButton.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    try {
-                        await Auth.logout();
-                        console.log('[dashboard.js] Logout button triggered successfully.');
-                    } catch (error) {
-                        console.error('[dashboard.js] Logout button error:', error);
-                    }
+                logoutButton.addEventListener('click', async () => {
+                    await Auth.logout();
                 });
             }
 
-            // Report Error Button
             const reportErrorBtn = document.getElementById('reportErrorBtn');
             if (reportErrorBtn) {
                 reportErrorBtn.addEventListener('click', () => {
                     const sectionTitleText = document.getElementById('currentSectionTitle')?.textContent || 'Current Page';
                     const pageUrl = window.location.href;
-                    alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}\n(Placeholder)`);
+                    alert(`Report an issue for: ${sectionTitleText}\nURL: ${pageUrl}`);
                 });
             }
 
-            // Sidebar Navigation
             const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            const currentSectionTitleEl = document.getElementById('currentSectionTitle');
-            const breadcrumbsContainer = document.getElementById('breadcrumbs');
+            const currentSectionTitleEl = document.createElement('div'); // Placeholder for dynamic title
+            const breadcrumbsContainer = document.createElement('div'); // Placeholder for breadcrumbs
             const pageContent = document.getElementById('pageContent');
 
             function highlightSidebarLink(sectionId) {
@@ -374,38 +451,39 @@
             }
 
             function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
+                console.log(`[dash.js] Displaying section: ${sectionId}, item: ${itemIdToFocus}, subcat: ${subCategoryFilter}`);
                 if (!pageContent) {
-                    pageContent.innerHTML = '<p>Error: pageContent element not found.</p>';
+                    console.error('[dash.js] pageContent is null.');
                     return;
                 }
                 if (typeof kbSystemData === 'undefined' || !kbSystemData.sections) {
-                    pageContent.innerHTML = '<p>Error: Data missing.</p>';
+                    pageContent.innerHTML = '<p class="text-red-500 p-4">Error: Knowledge base data is missing.</p>';
                     return;
                 }
 
                 if (sectionId === 'home') {
                     pageContent.innerHTML = `
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h3 class="font-semibold text-lg mb-2">Support</h3>
-                                <p class="text-gray-600 dark:text-gray-400">Resources for the Support team.</p>
-                                <a href="#" data-subcat-trigger="support.cases" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">View Cases</a>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="card p-4">
+                                <h3 class="font-semibold text-lg text-white mb-2">Support</h3>
+                                <p class="text-gray-400">Resources for the Support team</p>
+                                <a href="#" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="support.cases">View Cases</a>
                             </div>
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h3 class="font-semibold text-lg mb-2">Partner Care</h3>
-                                <p class="text-gray-600 dark:text-gray-400">Manage partner relationships.</p>
-                                <a href="#" data-subcat-trigger="partner_care.onboarding" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">Onboarding Guide</a>
+                            <div class="card p-4">
+                                <h3 class="font-semibold text-lg text-white mb-2">Partner Care</h3>
+                                <p class="text-gray-400">Manage partner relationships.</p>
+                                <a href="#" class="text-blue-400 hover:underline mt-2 block" data-subcat-trigger="partner_care.onboarding">Onboarding Guide</a>
                             </div>
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h3 class="font-semibold text-lg mb-2">Logistics</h3>
-                                <p class="text-gray-600 dark:text-gray-400">Logistics operations overview.</p>
-                                <a href="#" data-section-trigger="logistics" class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">Explore</a>
+                            <div class="card p-4">
+                                <h3 class="font-semibold text-lg text-white mb-2">Logistics</h3>
+                                <p class="text-gray-400">Logistics operations overview.</p>
+                                <a href="#" class="text-blue-400 hover:underline mt-2 block" data-section-trigger="logistics">Explore</a>
                             </div>
                         </div>
                     `;
                     if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Welcome';
                     if (breadcrumbsContainer) {
-                        breadcrumbsContainer.innerHTML = '<a href="#" data-section-trigger="home" class="hover:underline text-blue-600 dark:text-blue-400">Home</a>';
+                        breadcrumbsContainer.innerHTML = '<a href="#" data-section-trigger="home" class="hover:underline text-blue-400">Home</a>';
                         breadcrumbsContainer.classList.remove('hidden');
                     }
                     return;
@@ -413,74 +491,22 @@
 
                 const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
                 if (!sectionData) {
-                    pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section not found</h2><p>"${sectionId}" does not exist.</p></div>`;
+                    pageContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-white">Section not found</h2><p>"${sectionId}" does not exist.</p></div>`;
                     if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Not Found';
                     return;
                 }
 
-                let contentHTML = `<div class="space-y-6"><h2 class="text-3xl font-bold">${sectionData.name}</h2><p class="text-gray-600 dark:text-gray-400">${sectionData.description}</p>`;
-
-                if (sectionData.articles && sectionData.articles.length > 0) {
-                    contentHTML += `<h3 class="text-2xl font-semibold mt-6 mb-4">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
-                    sectionData.articles.forEach(article => {
-                        contentHTML += `
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h4 class="font-semibold text-lg mb-2">${article.title}</h4>
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">${article.summary || 'No summary available.'}</p>
-                                <a href="${article.contentPath}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Read More</a>
-                            </div>
-                        `;
-                    });
-                    contentHTML += `</div>`;
-                }
+                let contentHTML = `<div class="space-y-6"><h2 class="text-3xl font-bold text-white">${sectionData.name}</h2><p class="text-gray-400">${sectionData.description}</p>`;
 
                 if (sectionData.cases && sectionData.cases.length > 0) {
-                    contentHTML += `<h3 class="text-2xl font-semibold mt-6 mb-4">Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+                    contentHTML += `<h3 class="text-2xl font-semibold text-white mt-6 mb-4">Active Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
                     sectionData.cases.forEach(caseItem => {
                         contentHTML += `
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h4 class="font-semibold text-lg mb-2">${caseItem.title}</h4>
-                                <p class="text-gray-600 dark:text-gray-400 mb-2">${caseItem.summary || 'No summary available.'}</p>
-                                <span class="text-sm text-gray-500 dark:text-gray-400">${caseItem.status}</span>
-                                <a href="${caseItem.contentPath}" target="_blank" class="mt-2 inline-block text-blue-600 dark:text-blue-400 hover:underline">Details</a>
-                            </div>
-                        `;
-                    });
-                    contentHTML += `</div>`;
-                }
-
-                if (sectionData.items && sectionData.items.length > 0) {
-                    contentHTML += `<h3 class="text-2xl font-semibold mt-6 mb-4">${sectionData.name} Items</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
-                    sectionData.items.forEach(item => {
-                        contentHTML += `
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <h4 class="font-semibold text-lg mb-2">${item.title}</h4>
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">${item.description || 'No description available.'}</p>
-                                <a href="${item.url}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Open</a>
-                            </div>
-                        `;
-                    });
-                    contentHTML += `</div>`;
-                }
-
-                if (sectionData.subCategories && sectionData.subCategories.length > 0) {
-                    contentHTML += `<h3 class="text-2xl font-semibold mt-6 mb-4">Sub-Categories</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
-                    sectionData.subCategories.forEach(subCat => {
-                        contentHTML += `
-                            <a href="#" data-section-trigger="${sectionId}" data-subcat-filter="${subCat.id}" class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300 text-center">
-                                <h4 class="font-semibold text-lg">${subCat.name}</h4>
-                            </a>
-                        `;
-                    });
-                    contentHTML += `</div>`;
-                }
-
-                if (sectionData.glossary && sectionData.glossary.length > 0) {
-                    contentHTML += `<h3 class="text-2xl font-semibold mt-6 mb-4">Glossary</h3><div class="space-y-4">`;
-                    sectionData.glossary.forEach(entry => {
-                        contentHTML += `
-                            <div class="card bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all duration-300">
-                                <strong>${entry.term}:</strong> ${entry.definition}
+                            <div class="card p-4">
+                                <h4 class="font-semibold text-lg text-white mb-2">${caseItem.title}</h4>
+                                <p class="text-gray-400 mb-2">${caseItem.summary || 'No summary available.'}</p>
+                                <span class="text-sm text-gray-500">${caseItem.status}</span>
+                                <a href="${caseItem.contentPath || '#'}" target="_blank" class="mt-2 inline-block text-blue-400 hover:underline">Details</a>
                             </div>
                         `;
                     });
@@ -491,18 +517,18 @@
                 pageContent.innerHTML = contentHTML;
                 if (currentSectionTitleEl) currentSectionTitleEl.textContent = sectionData.name;
                 if (breadcrumbsContainer) {
-                    breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-blue-600 dark:text-blue-400">Home</a> > <span>${sectionData.name}</span>`;
+                    breadcrumbsContainer.innerHTML = `<a href="#" data-section-trigger="home" class="hover:underline text-blue-400">Home</a> > <span class="text-white">${sectionData.name}</span>`;
                     breadcrumbsContainer.classList.remove('hidden');
                 }
             }
 
             function handleSectionTrigger(sectionId, itemId = null, subCategoryFilter = null) {
+                console.log('[dash.js] handleSectionTrigger called with:', { sectionId, itemId, subCategoryFilter });
                 highlightSidebarLink(sectionId);
                 displaySectionContent(sectionId, itemId, subCategoryFilter);
                 window.history.replaceState(null, '', `#${sectionId}${itemId ? `/${itemId}` : ''}${subCategoryFilter ? `/${subCategoryFilter}` : ''}`);
             }
 
-            // Sidebar links event listeners
             sidebarLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -511,7 +537,6 @@
                 });
             });
 
-            // Body click listener for dynamic links
             document.body.addEventListener('click', (e) => {
                 const target = e.target.closest('[data-section-trigger]');
                 if (target) {
@@ -533,77 +558,92 @@
                 }
             });
 
-            // Global Search
-            const globalSearchInput = document.getElementById('globalSearchInput');
-            const searchResultsContainer = document.getElementById('searchResultsContainer');
-            let searchDebounceTimer;
-
-            if (globalSearchInput && searchResultsContainer) {
-                globalSearchInput.addEventListener('input', () => {
-                    clearTimeout(searchDebounceTimer);
-                    searchDebounceTimer = setTimeout(() => {
-                        const query = globalSearchInput.value.trim();
-                        if (query.length > 1) {
-                            const results = kbSystemData.sections.flatMap(section => [
-                                ...section.articles.map(a => ({ ...a, sectionName: section.name, type: 'article' })),
-                                ...section.cases.map(c => ({ ...c, sectionName: section.name, type: 'case' })),
-                                ...section.items.map(i => ({ ...i, sectionName: section.name, type: 'item' }))
-                            ]).filter(item => item.title.toLowerCase().includes(query.toLowerCase()) || (item.summary && item.summary.toLowerCase().includes(query.toLowerCase())));
-                            searchResultsContainer.innerHTML = results.slice(0, 5).map(item => `
-                                <div class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" data-section-trigger="${item.sectionName.toLowerCase().replace(/ /g, '_')}" data-item-id="${item.id}">
-                                    <strong>${item.title}</strong><br><small>${item.summary || 'No summary'}</small>
-                                </div>
-                            `).join('');
-                            searchResultsContainer.classList.toggle('hidden', !results.length);
-                        } else {
-                            searchResultsContainer.classList.add('hidden');
-                        }
-                    }, 300);
-                });
-
-                document.addEventListener('click', (event) => {
-                    if (!globalSearchInput.contains(event.target) && !searchResultsContainer.contains(event.target)) {
-                        searchResultsContainer.classList.add('hidden');
-                    }
-                });
-            }
-
-            // Initial load with hash support
-            const hash = window.location.hash.replace('#', '').split('/');
-            handleSectionTrigger(hash[0] || 'home', hash[1], hash[2]);
-
-            // Save Case to Supabase
             async function saveCaseToSupabase() {
+                if (!supabase) {
+                    alert('Supabase client is not initialized. Cannot save case.');
+                    console.error('Supabase client not initialized.');
+                    return;
+                }
+
+                const title = document.getElementById('caseTitle').value.trim();
+                const summary = document.getElementById('caseSummary').value.trim();
+                const resolution_steps = caseEditorQuill ? caseEditorQuill.root.innerHTML : '';
+
+                if (!title || !summary) {
+                    alert('Please fill in at least Case Title and Summary.');
+                    return;
+                }
+
+                const user = await Auth.getCurrentUser();
+                const created_by_email = user ? user.email : 'anonymous';
+                const created_by_name = user ? (user.fullName || user.email) : 'Anonymous User';
+
+                const caseData = {
+                    title,
+                    summary,
+                    resolution_steps,
+                    status: 'New',
+                    created_by_email,
+                    created_by_name
+                };
+
                 try {
-                    const title = document.getElementById('caseTitle').value.trim();
-                    const summary = document.getElementById('caseSummary').value.trim();
-                    const resolution = quillEditor ? quillEditor.root.innerHTML : '';
-
-                    if (!title || !summary || !resolution) {
-                        alert('Please fill in all fields.');
-                        return;
-                    }
-
-                    const user = await Auth.getCurrentUser();
-                    const createdBy = user?.email || 'anonymous';
-
                     const { data, error } = await supabase
                         .from('cases')
-                        .insert([{ title, summary, resolution_steps: resolution, status: 'New', created_by: createdBy }]);
+                        .insert([caseData])
+                        .select();
 
                     if (error) {
-                        console.error('[dashboard.js] Error saving case:', error);
-                        alert('Error saving case.');
+                        console.error('Error saving case to Supabase:', error);
+                        alert(`Error saving case: ${error.message}`);
                     } else {
-                        console.log('[dashboard.js] Case saved successfully:', data);
                         alert('Case saved successfully!');
+                        console.log('Case saved:', data);
                         closeCaseEditor();
+                        await logUserView(data[0].id, 'case', null, 'created');
                     }
-                } catch (error) {
-                    console.error('[dashboard.js] Unexpected error in saveCaseToSupabase:', error);
+                } catch (err) {
+                    console.error('Unexpected error during saveCaseToSupabase:', err);
                     alert('An unexpected error occurred while saving the case.');
                 }
             }
+
+            async function logUserView(itemId, itemType, sectionId = null, details = null) {
+                if (!supabase) {
+                    console.warn('Supabase client not available for logging view.');
+                    return;
+                }
+                const user = await Auth.getCurrentUser();
+                const user_identifier = user ? (user.email || user.id || 'unknown_user') : 'anonymous_user';
+
+                const viewData = {
+                    item_id: itemId,
+                    item_type: itemType,
+                    user_identifier: user_identifier,
+                    viewed_at: new Date().toISOString(),
+                    section_id: sectionId,
+                    details_text: details
+                };
+
+                try {
+                    const { error } = await supabase.from('views_log').insert([viewData]);
+                    if (error) {
+                        console.error('Error logging view to Supabase:', error);
+                    }
+                } catch (err) {
+                    console.error('Unexpected error logging view:', err);
+                }
+            }
+
+            function filterCases(date, user, interaction) {
+                // Placeholder for filtering logic
+                console.log('Filtering cases with:', { date, user, interaction });
+                // Fetch cases and views_log from Supabase and apply filters
+                // Update pageContent with filtered results
+            }
+
+            const hash = window.location.hash.replace('#', '').split('/');
+            handleSectionTrigger(hash[0] || 'home', hash[1], hash[2]);
         });
     </script>
 </body>
