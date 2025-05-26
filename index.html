@@ -6,6 +6,19 @@
     <title>InfiniBase - Knowledge Base</title>
     <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/919/919820.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind CSS to ensure proper initialization
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -157,7 +170,7 @@
 
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
+            . sidebar.open { transform: translateX(0); }
             .content-wrapper { margin-left: 0; }
             .sidebar-toggle-button { display: block; }
         }
@@ -236,7 +249,9 @@
                 </div>
                 <div class="mb-4 hidden" id="contentUrlContainer">
                     <label for="contentUrl" class="block text-sm font-medium mb-1">URL (for Sheet/Form/Video/Design)</label>
-                    <input type="url" id="contentUrl" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <input type="url" id="contentUrl" name="url" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <button type="button" id="loadContentBtn" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Load Content</button>
+                    <div id="contentDisplay" class="mt-2 p-4 border rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"></div>
                 </div>
                 <div class="mb-6 hidden" id="resolutionStepsContainer">
                     <label class="block text-sm font-medium mb-1">Resolution Steps (for Case)</label>
@@ -565,6 +580,35 @@
         const contentTypeSelect = document.getElementById('contentType');
         const contentUrlContainer = document.getElementById('contentUrlContainer');
         const resolutionStepsContainer = document.getElementById('resolutionStepsContainer');
+        const loadContentBtn = document.getElementById('loadContentBtn');
+        const contentDisplay = document.getElementById('contentDisplay');
+
+        // Function to load and display URL content
+        function loadContent() {
+            const urlInput = document.querySelector('input[name="url"]');
+            if (urlInput && contentDisplay) {
+                const url = urlInput.value.trim();
+                if (url) {
+                    contentDisplay.innerHTML = '<p class="text-gray-500">Loading...</p>';
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) throw new Error('Network response was not ok');
+                            return response.text();
+                        })
+                        .then(html => {
+                            contentDisplay.innerHTML = `<div class="preview-content">${html}</div>`;
+                        })
+                        .catch(error => {
+                            contentDisplay.innerHTML = `<p class="text-red-500">Error loading content: ${error.message}</p>`;
+                        });
+                } else {
+                    contentDisplay.innerHTML = '<p class="text-red-500">Please enter a valid URL.</p>';
+                }
+            }
+        }
+
+        // Add event listener for the Load Content button
+        loadContentBtn.addEventListener('click', loadContent);
 
         const quillToolbarOptions = [
             ['bold', 'italic', 'underline', 'strike'],
@@ -585,6 +629,7 @@
         function openAddContentModal(sectionId, preselectedType = null) {
             currentSectionId = sectionId;
             addContentModalOverlay.classList.remove('hidden');
+            addContentModalOverlay.setAttribute('aria-hidden', 'false');
             if (!contentEditorQuill) {
                 contentEditorQuill = new Quill('#quillEditor', {
                     theme: 'snow',
@@ -594,6 +639,7 @@
             }
             addContentForm.reset();
             contentEditorQuill.setText('');
+            contentDisplay.innerHTML = '';
 
             let targetType = preselectedType;
             const validTypes = Array.from(contentTypeSelect.options).map(opt => opt.value);
@@ -615,6 +661,7 @@
 
         function closeAddContentModal() {
             addContentModalOverlay.classList.add('hidden');
+            addContentModalOverlay.setAttribute('aria-hidden', 'true');
         }
 
         contentTypeSelect.addEventListener('change', () => {
@@ -833,7 +880,7 @@
 
         function escapeHTML(str) {
             if (typeof str !== 'string') return '';
-            return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+            return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' })[m]);
         }
 
         function highlightText(text, query) {
@@ -869,7 +916,7 @@
                 lime: { bg: 'bg-lime-100 dark:bg-lime-900', text: 'text-lime-600 dark:text-lime-400', iconContainer: 'bg-lime-100 dark:bg-lime-800/50', icon: 'text-lime-500 dark:text-lime-400', cta: 'text-lime-600 hover:text-lime-700 dark:text-lime-400 dark:hover:text-lime-300', border: 'border-lime-500', tagBg: 'bg-lime-100 dark:bg-lime-500/20', tagText: 'text-lime-700 dark:text-lime-300', statusBg: 'bg-lime-100 dark:bg-lime-500/20', statusText: 'text-lime-700 dark:text-lime-400', addBtn: 'bg-lime-500 hover:bg-lime-600' },
                 yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-400', iconContainer: 'bg-yellow-100 dark:bg-yellow-800/50', icon: 'text-yellow-500 dark:text-yellow-400', cta: 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300', border: 'border-yellow-500', tagBg: 'bg-yellow-100 dark:bg-yellow-500/20', tagText: 'text-yellow-700 dark:text-yellow-300', statusBg: 'bg-yellow-100 dark:bg-yellow-500/20', statusText: 'text-yellow-700 dark:text-yellow-400', addBtn: 'bg-yellow-500 hover:bg-yellow-600' },
                 pink: { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-600 dark:text-pink-400', iconContainer: 'bg-pink-100 dark:bg-pink-800/50', icon: 'text-pink-500 dark:text-pink-400', cta: 'text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300', border: 'border-pink-500', tagBg: 'bg-pink-100 dark:bg-pink-500/20', tagText: 'text-pink-700 dark:text-pink-300', statusBg: 'bg-pink-100 dark:bg-pink-500/20', statusText: 'text-pink-700 dark:text-pink-400', addBtn: 'bg-pink-500 hover:bg-pink-600' },
-                red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400', addBtn: 'bg-red-500 hover:bg-red-600' },
+                red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hobby:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400', addBtn: 'bg-red-500 hover:bg-red-600' },
                 sky: { bg: 'bg-sky-100 dark:bg-sky-900', text: 'text-sky-600 dark:text-sky-400', iconContainer: 'bg-sky-100 dark:bg-sky-800/50', icon: 'text-sky-500 dark:text-sky-400', cta: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300', border: 'border-sky-500', tagBg: 'bg-sky-100 dark:bg-sky-500/20', tagText: 'text-sky-700 dark:text-sky-300', statusBg: 'bg-sky-100 dark:bg-sky-500/20', statusText: 'text-sky-700 dark:text-sky-400', addBtn: 'bg-sky-500 hover:bg-sky-600' },
                 amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400', addBtn: 'bg-amber-500 hover:bg-amber-600' },
                 slate: { bg: 'bg-slate-100 dark:bg-slate-900', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-800/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-100 dark:bg-slate-500/20', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-100 dark:bg-slate-500/20', statusText: 'text-slate-700 dark:text-slate-400', addBtn: 'bg-slate-500 hover:bg-slate-600' },
@@ -904,6 +951,9 @@
             const theme = getThemeColors(sectionData.themeColor);
             return `
                 <div class="card border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
+                    <div class="flex items-center mb-3">
+                        <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="fas fa-briefcase text-xl ${theme.icon}"></i></div>
+                        <h3 class="font border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
                     <div class="flex items-center mb-3">
                         <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="fas fa-briefcase text-xl ${theme.icon}"></i></div>
                         <h3 class="font-semibold text-lg leading-tight">${escapeHTML(caseItem.title)}</h3>
@@ -1057,10 +1107,10 @@
                     sectionHTML += `
                         <div class="mt-8">
                             <h3 class="text-xl font-semibold mb-4">Articles</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                ${sectionData.articles.map(article => renderArticleCard(article, sectionData)).join('')}
-                            </div>
-                        </div>`;
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${sectionData.articles.map(article => renderArticleCard(article, sectionData)).join('')}
+                        </div>
+                    </div>`;
                 }
 
                 if (sectionData.cases && sectionData.cases.length > 0) {
@@ -1076,164 +1126,125 @@
                 if (sectionData.items && sectionData.items.length > 0) {
                     sectionHTML += `
                         <div class="mt-8">
-                            <h3 class="text-xl font-semibold mb-4">Resources</h3>
+                            <h3 class="text-xl font-semibold mb-4">Items</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 ${sectionData.items.map(item => renderItemCard(item, sectionData)).join('')}
                             </div>
                         </div>`;
                 }
 
-                if (!(sectionData.articles?.length || sectionData.cases?.length || sectionData.items?.length)) {
-                    sectionHTML += `<div class="card"><p class="text-center text-gray-600 dark:text-gray-400">No content available in this section.</p></div>`;
+                if (!sectionData.articles?.length && !sectionData.cases?.length && !sectionData.items?.length) {
+                    sectionHTML += `
+                        <div class="card text-center">
+                            <p class="text-gray-600 dark:text-gray-400">No content available in this section.</p>
+                        </div>`;
                 }
             }
 
             standardSectionContentPlaceholder.innerHTML = sectionHTML;
             logUserView(sectionId, 'navigation');
+
+            // Add click handlers for item cards
+            document.querySelectorAll('.card[data-item-id]').forEach(card => {
+                card.addEventListener('click', () => {
+                    const itemId = card.getAttribute('data-item-id');
+                    const itemType = card.getAttribute('data-item-type');
+                    if (itemType === 'case' || itemType === 'item') {
+                        displaySectionContent(sectionId, itemId);
+                    }
+                });
+            });
         }
 
-        async function logUserView(itemId, itemType) {
+        function logUserView(itemId, actionType) {
             const user = Auth.getCurrentUser();
-            const viewEntry = {
-                item_id: itemId.toString(),
-                item_type: itemType,
-                user_identifier: user.id,
-                viewed_at: new Date().toISOString()
-            };
-            const { error } = await supabase.from(TABLES.VIEWS_LOG).insert([viewEntry]);
-            if (error) console.error('Error logging view:', error);
-        }
-
-        // Navigation Handler
-        function handleNavigation() {
-            const hash = window.location.hash.slice(1) || 'home';
-            const [sectionId, itemId] = hash.split('/');
-            const links = document.querySelectorAll('.sidebar-link');
-
-            links.forEach(link => link.classList.remove('active'));
-            const activeLink = document.querySelector(`.sidebar-link[href="#${sectionId}"]`);
-            if (activeLink) activeLink.classList.add('active');
-
-            currentSectionId = sectionId;
-            displaySectionContent(sectionId, itemId);
-        }
-
-        // Global Search Functionality
-        const globalSearchInput = document.getElementById('globalSearchInput');
-        const searchResults = document.getElementById('searchResults');
-
-        function performSearch(query) {
-            if (!query) {
-                searchResults.classList.add('hidden');
-                return;
+            if (user && user.id) {
+                supabase.from(TABLES.VIEWS_LOG).insert({
+                    item_id: itemId,
+                    item_type: actionType,
+                    user_identifier: user.id,
+                    viewed_at: new Date().toISOString()
+                }).catch(error => console.error('Error logging view:', error));
             }
+        }
 
-            const results = [];
-            kbSystemData.sections.forEach(section => {
-                if (!checkUserRoleAccess(section.id)) return;
+        // Initialize navigation
+        document.getElementById('navigationMenu').addEventListener('click', (e) => {
+            const link = e.target.closest('.sidebar-link');
+            if (link) {
+                e.preventDefault();
+                const sectionId = link.getAttribute('data-section');
+                if (sectionId) {
+                    displaySectionContent(sectionId);
+                    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    window.history.pushState({ section: sectionId }, sectionId, `#${sectionId}`);
+                }
+            }
+        });
 
-                // Search articles
-                if (section.articles) {
-                    section.articles.forEach(article => {
-                        if (article.title.toLowerCase().includes(query.toLowerCase()) || 
-                            (article.summary && article.summary.toLowerCase().includes(query.toLowerCase()))) {
-                            results.push({
-                                type: 'article',
-                                sectionId: section.id,
-                                sectionName: section.name,
-                                id: article.id,
-                                title: article.title,
-                                summary: article.summary,
-                                url: article.contentPath
-                            });
-                        }
-                    });
+        // Handle back/forward navigation
+        window.addEventListener('popstate', (e) => {
+            const sectionId = e.state?.section || 'home';
+            displaySectionContent(sectionId);
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+            if (activeLink) activeLink.classList.add('active');
+        });
+
+        // Initialize with home section
+        window.addEventListener('load', () => {
+            displaySectionContent('home');
+            document.querySelector('.sidebar-link[data-section="home"]').classList.add('active');
+            window.history.replaceState({ section: 'home' }, 'home', '#home');
+
+            // Global search functionality
+            const globalSearchInput = document.getElementById('globalSearchInput');
+            const searchResults = document.getElementById('searchResults');
+
+            globalSearchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                if (query.length < 2) {
+                    searchResults.classList.add('hidden');
+                    return;
                 }
 
-                // Search cases
-                if (section.cases) {
-                    section.cases.forEach(caseItem => {
-                        if (caseItem.title.toLowerCase().includes(query.toLowerCase()) || 
-                            (caseItem.summary && caseItem.summary.toLowerCase().includes(query.toLowerCase()))) {
-                            results.push({
-                                type: 'case',
-                                sectionId: section.id,
-                                sectionName: section.name,
-                                id: caseItem.id,
-                                title: caseItem.title,
-                                summary: caseItem.summary
-                            });
-                        }
-                    });
-                }
+                const results = kbSystemData.sections.flatMap(section => [
+                    ...(section.articles || []).map(a => ({ ...a, section: section.name, type: 'article' })),
+                    ...(section.cases || []).map(c => ({ ...c, section: section.name, type: 'case' })),
+                    ...(section.items || []).map(i => ({ ...i, section: section.name, type: 'item' }))
+                ]).filter(item => 
+                    item.title.toLowerCase().includes(query.toLowerCase()) ||
+                    (item.summary || '').toLowerCase().includes(query.toLowerCase())
+                );
 
-                // Search items
-                if (section.items) {
-                    section.items.forEach(item => {
-                        if (item.title.toLowerCase().includes(query.toLowerCase()) || 
-                            (item.summary && item.summary.toLowerCase().includes(query.toLowerCase()))) {
-                            results.push({
-                                type: 'item',
-                                sectionId: section.id,
-                                sectionName: section.name,
-                                id: item.id,
-                                title: item.title,
-                                summary: item.summary,
-                                url: item.url,
-                                itemType: item.type
-                            });
-                        }
-                    });
+                if (results.length > 0) {
+                    searchResults.innerHTML = results.slice(0, 5).map(item => `
+                        <a href="#${item.section.toLowerCase().replace(/ /g, '_')}/${item.id}" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${item.type === 'case' ? 'text-indigo-600' : item.type === 'article' ? 'text-teal-600' : 'text-green-600'}">
+                            <span class="font-medium">${highlightText(item.title, query)}</span>
+                            <span class="block text-xs text-gray-500 dark:text-gray-400">${highlightText(item.section, query)} - ${item.type}</span>
+                        </a>
+                    `).join('');
+                    searchResults.classList.remove('hidden');
+                } else {
+                    searchResults.classList.add('hidden');
                 }
             });
 
-            // Display search results
-            searchResults.innerHTML = results.length > 0 
-                ? results.map(result => `
-                    <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" onclick="navigateToSearchResult('${result.sectionId}', '${result.id}', '${result.type}')">
-                        <div class="flex items-center">
-                            <i class="fas ${result.type === 'article' ? 'fa-file-alt' : result.type === 'case' ? 'fa-briefcase' : 'fa-archive'} text-indigo-500 mr-2"></i>
-                            <div>
-                                <div class="font-medium">${highlightText(result.title, query)}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(result.summary, 50), query)}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-500">In ${result.sectionName}</div>
-                            </div>
-                        </div>
-                    </div>`).join('')
-                : '<div class="p-3 text-center text-gray-600 dark:text-gray-400">No results found.</div>';
-            searchResults.classList.remove('hidden');
-        }
+            globalSearchInput.addEventListener('blur', () => {
+                setTimeout(() => searchResults.classList.add('hidden'), 200);
+            });
 
-        function navigateToSearchResult(sectionId, itemId, type) {
-            if (type === 'case') {
-                window.location.hash = `${sectionId}/${itemId}`;
-            } else {
-                window.location.hash = sectionId;
-                if (type !== 'case') {
-                    setTimeout(() => {
-                        const element = document.querySelector(`[data-item-id="${itemId}"]`);
-                        if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    }, 100);
+            globalSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !searchResults.classList.contains('hidden')) {
+                    const firstResult = searchResults.querySelector('a');
+                    if (firstResult) {
+                        firstResult.click();
+                        searchResults.classList.add('hidden');
+                    }
                 }
-            }
-            searchResults.classList.add('hidden');
-            globalSearchInput.value = '';
-        }
-
-        globalSearchInput.addEventListener('input', (e) => performSearch(e.target.value.trim()));
-        globalSearchInput.addEventListener('blur', () => setTimeout(() => searchResults.classList.add('hidden'), 200));
-        globalSearchInput.addEventListener('focus', () => performSearch(globalSearchInput.value.trim()));
-
-        // Initialize Navigation
-        window.addEventListener('hashchange', handleNavigation);
-        handleNavigation();
-
-        // Ensure charts and filters are initialized on load if on the home page
-        if (window.location.hash === '' || window.location.hash === '#home') {
-            const { data: initialViewData } = await supabase.from(TABLES.VIEWS_LOG).select('*');
-            initCharts(initialViewData || []);
-            populateUserFilter();
-        }
+            });
+        });
     </script>
 </body>
 </html>
