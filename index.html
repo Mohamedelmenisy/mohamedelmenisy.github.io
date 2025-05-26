@@ -523,7 +523,7 @@
         });
 
         // Logout Modal
-        const logoutConfirmModal = document.getElementById('logoutConfirm');
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
         const logoutButton = document.getElementById('logoutButton');
 
         function confirmLogout() {
@@ -810,7 +810,7 @@
         // Helper Functions
         function escapeHTML(str) {
             if (typeof str !== 'string') return '';
-            return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[m]));
+            return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
         }
         function highlightText(text, query) {
             if (!text) return '';
@@ -1065,7 +1065,7 @@
             logUserView(sectionId, 'navigation');
         }
 
-            // Search Functionality
+        // Search Functionality
         const globalSearchInput = document.getElementById('globalSearchInput');
         const searchResultsContainer = document.getElementById('searchResultsContainer');
 
@@ -1129,7 +1129,7 @@
                                 <i class="fas ${iconClass} ${theme.icon} mr-3"></i>
                                 <div>
                                     <div class="text-sm font-medium text-indigo-700 dark:text-indigo-300">${highlightText(result.item.title || result.item.term, query)}</div>
-                                    <div class="text-xs text-indigo-500 dark:text-indigo-400">${highlightText(truncateText(result.item.summary || result.item.definition || stripHtml(result.item.resolution_steps) || result.section.name, 50), query)}</div>
+                                    <div class="text-xs text-indigo-500 dark:text-indigo-400">${highlightText(truncateText(result.item.summary || result.item.definition || stripHtml(result.item.resolution_steps) || '', 50), query)}</div>
                                     <div class="text-xs text-indigo-400 dark:text-indigo-500">${escapeHTML(result.section.name)} > ${escapeHTML(result.type)}</div>
                                 </div>
                             </div>
@@ -1137,7 +1137,7 @@
                 }).join('') :
                 `<div class="px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400">No results found for "${escapeHTML(query)}".</div>`;
 
-            searchResultsContainer.classList.remove('hidden');
+            searchResultsContainer.classList.toggle('hidden', !results.length);
         }
 
         globalSearchInput.addEventListener('input', debounce(e => {
@@ -1150,29 +1150,30 @@
 
         globalSearchInput.addEventListener('blur', () => {
             setTimeout(() => searchResultsContainer.classList.add('hidden'), 200);
-        });
-
-        // Navigation Handling
+                    // Navigation Handling
         function handleNavigation() {
-            const hash = window.location.hash.slice(1);
+            const hash = window.location.hash.slice(1); // Remove '#'
+            console.log('Handling navigation for hash:', hash); // Debug log for navigation
             const [sectionId, subCategoryOrItemId] = hash.split('/');
             currentSectionId = sectionId || 'home';
-
-            sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+            
+            // Update active link in sidebar
+            document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.classList.toggle('active', link.getAttribute('data-section') === currentSectionId);
             });
 
-            if (subCategoryOrItemId) {
-                const section = kbSystemData.sections.find(s => s.id === sectionId);
-                const isSubCategory = section?.subCategories?.some(sc => sc.id === subCategoryOrItemId);
-                displaySectionContent(sectionId, isSubCategory ? null : subCategoryOrItemId, isSubCategory ? subCategoryOrItemId : null);
-            } else {
-                displaySectionContent(currentSectionId);
+            // Ensure DOM elements exist before proceeding
+            if (!standardSectionContentPlaceholder || !dashboardOverviewContainer) {
+                console.error('Required DOM elements missing:', {
+                    standardSectionContentPlaceholder: !!standardSectionContentPlaceholder,
+                    dashboardOverviewContainer: !!dashboardOverviewContainer
+                });
+                return;
             }
-        }
 
-        window.addEventListener('hashchange', handleNavigation);
-        window.addEventListener('load', handleNavigation);
+            // Display content based on section and optional subcategory/item
+            displaySectionContent(currentSectionId, subCategoryOrItemId, subCategoryOrItemId && !subCategoryOrItemId.includes('case') ? subCategoryOrItemId : null);
+        }
 
         // Debounce Utility
         function debounce(func, wait) {
@@ -1187,64 +1188,56 @@
             };
         }
 
-        // Logout Modal Handlers
-        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
-        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+        // Initialize Navigation
+        window.addEventListener('hashchange', handleNavigation);
+        window.addEventListener('load', () => {
+            // Initialize with current hash or default to 'home'
+            handleNavigation();
 
-        confirmLogoutBtn.addEventListener('click', confirmLogout);
-        cancelLogoutBtn.addEventListener('click', () => {
-            logoutConfirmModal.classList.add('hidden');
-        });
-
-        // Click Outside to Close Modals
-        addContentModalOverlay.addEventListener('click', e => {
-            if (e.target === addContentModalOverlay) closeAddContentModal();
-        });
-
-        logoutConfirmModal.addEventListener('click', e => {
-            if (e.target === logoutConfirmModal) logoutConfirmModal.classList.add('hidden');
-        });
-
-        // Keyboard Shortcuts
-        document.addEventListener('keydown', e => {
-            if (e.key === '/' && document.activeElement !== globalSearchInput) {
-                e.preventDefault();
-                globalSearchInput.focus();
+            // Add test data if kbSystemData.sections is empty
+            if (kbSystemData.sections[0].articles.length === 0 && kbSystemData.sections[0].cases.length === 0) {
+                console.log('Adding test data to kbSystemData.sections[0]');
+                kbSystemData.sections[0].articles.push({
+                    id: 'sup001',
+                    title: 'Test Article',
+                    summary: 'This is a test article for support.',
+                    tags: ['test', 'support'],
+                    contentPath: '#'
+                });
+                kbSystemData.sections[0].cases.push({
+                    id: 'case001',
+                    title: 'Test Case',
+                    summary: 'This is a test case for connectivity issues.',
+                    resolution_steps: '<p>Steps to resolve connectivity issue.</p>',
+                    status: 'Open',
+                    tags: ['test', 'connectivity']
+                });
             }
-            if (e.key === 'Escape') {
-                closeAddContentModal();
+        });
+
+        // Logout Modal Handlers
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+        if (cancelLogoutBtn) {
+            cancelLogoutBtn.addEventListener('click', () => {
                 logoutConfirmModal.classList.add('hidden');
+            });
+        }
+
+        if (confirmLogoutBtn) {
+            confirmLogoutBtn.addEventListener('click', confirmLogout);
+        }
+
+        // Ensure search results container closes when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchResultsContainer.contains(e.target) && e.target !== globalSearchInput) {
                 searchResultsContainer.classList.add('hidden');
             }
         });
 
-        // Dynamic Content Loading for Infinite Scroll
-        let isLoadingMore = false;
-        pageContentArea.addEventListener('scroll', async () => {
-            if (isLoadingMore || currentSectionId === 'home') return;
-            const { scrollTop, scrollHeight, clientHeight } = pageContentArea;
-            if (scrollTop + clientHeight >= scrollHeight - 100) {
-                isLoadingMore = true;
-                const section = kbSystemData.sections.find(s => s.id === currentSectionId);
-                if (section) {
-                    const currentItems = standardSectionContentPlaceholder.querySelectorAll('.card').length;
-                    const moreItems = (section.cases || []).slice(currentItems, currentItems + 10).map(item => renderCaseCard(item, section))
-                        .concat((section.articles || []).slice(currentItems, currentItems + 10).map(item => renderArticleCard(item, section)))
-                        .concat((section.items || []).slice(currentItems, currentItems + 10).map(item => renderItemCard(item, section)));
-                    if (moreItems.length) {
-                        const container = document.createElement('div');
-                        container.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-8 mt-8';
-                        container.innerHTML = moreItems.join('');
-                        standardSectionContentPlaceholder.appendChild(container);
-                    }
-                }
-                isLoadingMore = false;
-            }
-        });
-
-        // Initialize
-        handleNavigation();
-        populateUserFilter();
+        // Expose openAddContentModal globally for button onclick
+        window.openAddContentModal = openAddContentModal;
     </script>
 </body>
 </html>
