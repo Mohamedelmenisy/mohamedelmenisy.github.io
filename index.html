@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Knowledge Base</title>
-    <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/919/919820.png">
+    <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/919/919820.png"> <!-- Favicon لقاعدة المعرفة -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -343,9 +342,32 @@
         // Simulated Supabase
         const supabase = {
             from: (table) => ({
-                select: async (columns = '*') => { console.log(`Simulated Supabase: SELECT ${columns} FROM ${table}`); if (table === 'views_log') { return { data: [ { id: 1, item_id: 'case001', item_type: 'case_created', user_identifier: 'user1@sim.com', viewed_at: '2025-05-25T10:00:00Z' }, { id: 2, item_id: 'sup001', item_type: 'article_view', user_identifier: 'user2@sim.com', viewed_at: '2025-05-25T11:00:00Z' } ], error: null }; } if (table === 'cases') return { data: [], error: null }; return { data: [], error: null }; },
-                insert: async (records) => { console.log(`Simulated Supabase: INSERT INTO ${table}`, records); const newId = Math.floor(Math.random() * 10000); return { data: [{ id: newId, ...records[0] }], error: null }; },
-                rpc: async (fnName, params) => { if (fnName === 'get_distinct_viewers') { return { data: [ { user_identifier: 'user1@sim.com' }, { user_identifier: 'user2@sim.com' }, { user_identifier: 'test@sim.com' } ], error: null }; } return { data: null, error: { message: "RPC not found" } }; }
+                select: async (columns = '*') => {
+                    console.log(`Simulated Supabase: SELECT ${columns} FROM ${table}`);
+                    if (table === 'views_log') {
+                        return { data: [
+                            { id: 1, item_id: 'case001', item_type: 'case_created', user_identifier: 'user1@sim.com', viewed_at: '2025-05-25T10:00:00Z' },
+                            { id: 2, item_id: 'sup001', item_type: 'article_view', user_identifier: 'user2@sim.com', viewed_at: '2025-05-25T11:00:00Z' }
+                        ], error: null };
+                    }
+                    if (table === 'cases') return { data: [], error: null };
+                    return { data: [], error: null };
+                },
+                insert: async (records) => {
+                    console.log(`Simulated Supabase: INSERT INTO ${table}`, records);
+                    const newId = Math.floor(Math.random() * 10000);
+                    return { data: [{ id: newId, ...records[0] }], error: null };
+                },
+                rpc: async (fnName, params) => {
+                    if (fnName === 'get_distinct_viewers') {
+                        return { data: [
+                            { user_identifier: 'user1@sim.com' },
+                            { user_identifier: 'user2@sim.com' },
+                            { user_identifier: 'test@sim.com' }
+                        ], error: null };
+                    }
+                    return { data: null, error: { message: "RPC not found" } };
+                }
             })
         };
 
@@ -353,7 +375,7 @@
         const Auth = {
             isAuthenticated: () => true,
             getCurrentUser: () => ({ email: 'testuser@example.com', fullName: 'Test User', role: 'admin' }),
-            logout: () => { Swal.fire({ icon: 'success', title: 'Logged out', text: 'You have been logged out successfully.', showConfirmButton: false, timer: 2000 }).then(() => window.location.href = '/login.html'); },
+            logout: () => { alert('Logged out'); window.location.reload(); },
             protectPage: () => { if (!Auth.isAuthenticated()) { alert('Not Authorized'); window.location.href = '/login.html'; throw 'Stop Execution'; } }
         };
 
@@ -376,7 +398,6 @@
                 { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', themeColor: 'purple', description: 'Forms and templates.', articles: [], cases: [], subCategories: [], items: [] }
             ]
         };
-        console.log('[Init] kbSystemData.sections:', kbSystemData.sections); // ADDED: Log kbSystemData
 
         let contentEditorQuill;
         let usersChartInstance, casesChartInstance;
@@ -404,8 +425,17 @@
         Auth.protectPage();
         const currentUser = Auth.getCurrentUser();
 
-        if (currentUser) { const displayName = currentUser.fullName || currentUser.email || 'User'; userNameDisplayHeader.textContent = displayName; welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`; userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=4f46e5&color=fff&rounded=true`;}
-        if (kbSystemData.meta) { kbVersionDashboard.textContent = kbSystemData.meta.version; lastKbUpdateDashboard.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString(); footerKbVersion.textContent = kbSystemData.meta.version; }
+        if (currentUser) {
+            const displayName = currentUser.fullName || currentUser.email || 'User';
+            userNameDisplayHeader.textContent = displayName;
+            welcomeUserNameDashboard.textContent = `Welcome, ${displayName}!`;
+            userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=4f46e5&color=fff&rounded=true`;
+        }
+        if (kbSystemData.meta) {
+            kbVersionDashboard.textContent = kbSystemData.meta.version;
+            lastKbUpdateDashboard.textContent = new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString();
+            footerKbVersion.textContent = kbSystemData.meta.version;
+        }
 
         // Theme Switcher
         const themeSwitcher = document.getElementById('themeSwitcher');
@@ -413,159 +443,519 @@
         const themeText = document.getElementById('themeText');
         const htmlElement = document.documentElement;
 
-        function applyTheme(theme) { if (theme === 'dark') { htmlElement.classList.add('dark'); themeIcon.classList.replace('fa-moon', 'fa-sun'); themeText.textContent = 'Light Mode'; } else { htmlElement.classList.remove('dark'); themeIcon.classList.replace('fa-sun', 'fa-moon'); themeText.textContent = 'Dark Mode'; } [usersChartInstance, casesChartInstance].forEach(chart => { if (chart) { chart.options.plugins.legend.labels.color = theme === 'dark' ? '#e2e8f0' : '#1a202c'; if (chart.options.scales && chart.options.scales.y) { chart.options.scales.y.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568'; chart.options.scales.y.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb'; chart.options.scales.x.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568'; chart.options.scales.x.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb'; } chart.update(); } }); }
-        function loadTheme() { const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); applyTheme(savedTheme); }
-        themeSwitcher.addEventListener('click', () => { const newTheme = htmlElement.classList.contains('dark') ? 'light' : 'dark'; localStorage.setItem('theme', newTheme); applyTheme(newTheme); });
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                htmlElement.classList.add('dark');
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                themeText.textContent = 'Light Mode';
+            } else {
+                htmlElement.classList.remove('dark');
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                themeText.textContent = 'Dark Mode';
+            }
+            // Update chart colors
+            [usersChartInstance, casesChartInstance].forEach(chart => {
+                if (chart) {
+                    chart.options.plugins.legend.labels.color = theme === 'dark' ? '#e2e8f0' : '#1a202c';
+                    if (chart.options.scales && chart.options.scales.y) {
+                        chart.options.scales.y.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568';
+                        chart.options.scales.y.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb';
+                        chart.options.scales.x.ticks.color = theme === 'dark' ? '#94a3b8' : '#4a5568';
+                        chart.options.scales.x.grid.color = theme === 'dark' ? '#374151' : '#e5e7eb';
+                    }
+                    chart.update();
+                }
+            });
+        }
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(savedTheme);
+        }
+        themeSwitcher.addEventListener('click', () => {
+            const newTheme = htmlElement.classList.contains('dark') ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
         loadTheme();
 
         // Mobile Sidebar Toggle
         mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-        sidebar.querySelectorAll('.sidebar-link').forEach(link => { link.addEventListener('click', () => { if (window.innerWidth < 768) sidebar.classList.remove('open'); }); });
+        sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 768) sidebar.classList.remove('open');
+            });
+        });
 
-        // Logout & Report Error
+        // Logout
         document.getElementById('logoutButton').addEventListener('click', () => Auth.logout());
         document.getElementById('reportErrorBtn').addEventListener('click', () => alert('Report Error (Placeholder)'));
 
         // Add Content Modal
-        const addContentModalOverlay = document.getElementById('addContentModalOverlay'); const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn'); const addContentForm = document.getElementById('addContentForm'); const cancelAddContentBtn = document.getElementById('cancelAddContentBtn'); const contentTypeSelect = document.getElementById('contentType'); const contentUrlContainer = document.getElementById('contentUrlContainer'); const resolutionStepsContainer = document.getElementById('resolutionStepsContainer');
-        function openAddContentModal(sectionId) { currentSectionId = sectionId; addContentModalOverlay.classList.remove('hidden'); if (!contentEditorQuill) { contentEditorQuill = new Quill('#quillEditor', { theme: 'snow', modules: { toolbar: [[{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered' }, { 'list': 'bullet' }]] }, placeholder: 'Resolution steps...' }); } addContentForm.reset(); contentEditorQuill.setText(''); contentUrlContainer.classList.add('hidden'); resolutionStepsContainer.classList.remove('hidden'); document.getElementById('contentTitle').focus(); }
-        function closeAddContentModal() { addContentModalOverlay.classList.add('hidden'); }
-        contentTypeSelect.addEventListener('change', () => { const type = contentTypeSelect.value; if (type === 'case') { contentUrlContainer.classList.add('hidden'); resolutionStepsContainer.classList.remove('hidden'); } else { contentUrlContainer.classList.remove('hidden'); resolutionStepsContainer.classList.add('hidden'); } });
-        closeAddContentModalBtn.addEventListener('click', closeAddContentModal); cancelAddContentBtn.addEventListener('click', closeAddContentModal);
-        addContentForm.addEventListener('submit', async e => { e.preventDefault(); await saveContentToSupabase(); });
-        async function saveContentToSupabase() { const type = contentTypeSelect.value; const title = document.getElementById('contentTitle').value.trim(); const summary = document.getElementById('contentSummary').value.trim(); let contentData = { title, summary, type }; if (type === 'case') { contentData.resolution_steps = contentEditorQuill.root.innerHTML; contentData.status = 'New'; } else { contentData.url = document.getElementById('contentUrl').value.trim(); if (!contentData.url) { alert('URL is required for this content type.'); return; } } const user = Auth.getCurrentUser(); contentData.created_by_email = user.email; contentData.created_by_name = user.fullName; const section = kbSystemData.sections.find(s => s.id === currentSectionId); if (type === 'case') { const { data, error } = await supabase.from(TABLES.CASES).insert([contentData]).select(); if (error) { alert(`Error saving case: ${error.message}`); console.error(error); return; } if (!section.cases) section.cases = []; section.cases.push({ ...data[0], id: data[0].id.toString() }); logUserView(data[0].id, 'case_created'); } else { if (!section.items) section.items = []; const newId = `item_${Date.now()}`; section.items.push({ ...contentData, id: newId }); logUserView(newId, 'item_added'); } alert('Content saved!'); closeAddContentModal(); await displaySectionContent(currentSectionId); }
+        const addContentModalOverlay = document.getElementById('addContentModalOverlay');
+        const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
+        const addContentForm = document.getElementById('addContentForm');
+        const cancelAddContentBtn = document.getElementById('cancelAddContentBtn');
+        const contentTypeSelect = document.getElementById('contentType');
+        const contentUrlContainer = document.getElementById('contentUrlContainer');
+        const resolutionStepsContainer = document.getElementById('resolutionStepsContainer');
+
+        function openAddContentModal(sectionId) {
+            currentSectionId = sectionId;
+            addContentModalOverlay.classList.remove('hidden');
+            if (!contentEditorQuill) {
+                contentEditorQuill = new Quill('#quillEditor', {
+                    theme: 'snow',
+                    modules: { toolbar: [[{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered' }, { 'list': 'bullet' }]] },
+                    placeholder: 'Resolution steps...'
+                });
+            }
+            addContentForm.reset();
+            contentEditorQuill.setText('');
+            contentUrlContainer.classList.add('hidden');
+            resolutionStepsContainer.classList.remove('hidden');
+            document.getElementById('contentTitle').focus();
+        }
+        function closeAddContentModal() {
+            addContentModalOverlay.classList.add('hidden');
+        }
+
+        contentTypeSelect.addEventListener('change', () => {
+            const type = contentTypeSelect.value;
+            if (type === 'case') {
+                contentUrlContainer.classList.add('hidden');
+                resolutionStepsContainer.classList.remove('hidden');
+            } else {
+                contentUrlContainer.classList.remove('hidden');
+                resolutionStepsContainer.classList.add('hidden');
+            }
+        });
+
+        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
+        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
+        addContentForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            await saveContentToSupabase();
+        });
+
+        async function saveContentToSupabase() {
+            const type = contentTypeSelect.value;
+            const title = document.getElementById('contentTitle').value.trim();
+            const summary = document.getElementById('contentSummary').value.trim();
+            let contentData = { title, summary, type };
+
+            if (type === 'case') {
+                contentData.resolution_steps = contentEditorQuill.root.innerHTML;
+                contentData.status = 'New';
+            } else {
+                contentData.url = document.getElementById('contentUrl').value.trim();
+                if (!contentData.url) {
+                    alert('URL is required for this content type.');
+                    return;
+                }
+            }
+
+            const user = Auth.getCurrentUser();
+            contentData.created_by_email = user.email;
+            contentData.created_by_name = user.fullName;
+
+            const section = kbSystemData.sections.find(s => s.id === currentSectionId);
+            if (type === 'case') {
+                const { data, error } = await supabase.from(TABLES.CASES).insert([contentData]).select();
+                if (error) {
+                    alert(`Error saving case: ${error.message}`);
+                    console.error(error);
+                    return;
+                }
+                section.cases.push({ ...data[0], id: data[0].id.toString() });
+                logUserView(data[0].id, 'case_created');
+            } else {
+                if (!section.items) section.items = [];
+                const newId = `item_${Date.now()}`;
+                section.items.push({ ...contentData, id: newId });
+                logUserView(newId, 'item_added');
+            }
+
+            alert('Content saved!');
+            closeAddContentModal();
+            displaySectionContent(currentSectionId);
+        }
 
         // Chart Initialization
-        async function initCharts(viewData = []) { try { const isDark = htmlElement.classList.contains('dark'); const legendColor = isDark ? '#e2e8f0' : '#1a202c'; const ticksColor = isDark ? '#94a3b8' : '#4a5568'; const gridColor = isDark ? '#374151' : '#e5e7eb'; const chartOptions = (type) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: legendColor } } }, scales: type === 'bar' ? { y: { ticks: { color: ticksColor, beginAtZero: true }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor }, grid: { color: gridColor } } } : {} }); const userCounts = viewData.reduce((acc, view) => { acc[view.user_identifier] = (acc[view.user_identifier] || 0) + 1; return acc; }, {}); if (usersChartInstance) usersChartInstance.destroy(); const usersCtx = document.getElementById('usersChart')?.getContext('2d'); if (usersCtx) { usersChartInstance = new Chart(usersCtx, { type: 'bar', data: { labels: Object.keys(userCounts), datasets: [{ label: 'User Views', data: Object.values(userCounts), backgroundColor: 'rgba(59, 130, 246, 0.7)' }] }, options: chartOptions('bar') }); } if (casesChartInstance) casesChartInstance.destroy(); const casesCtx = document.getElementById('casesChart')?.getContext('2d'); if (casesCtx) { const caseViews = viewData.filter(v => v.item_type === 'case_created').reduce((acc, view) => { acc[view.item_id] = (acc[view.item_id] || 0) + 1; return acc; }, {}); casesChartInstance = new Chart(casesCtx, { type: 'pie', data: { labels: Object.keys(caseViews), datasets: [{ data: Object.values(caseViews), backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }, options: chartOptions('pie') }); } if (recentUpdatesList && viewData) { recentUpdatesList.innerHTML = viewData.map(v => `<li class="text-gray-400 dark:text-gray-500">${v.user_identifier} ${v.item_type === 'case_created' ? 'created a case' : 'viewed'} ${v.item_id} on ${new Date(v.viewed_at).toLocaleString('en-EG', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short', year: 'numeric' })}</li>`).join(''); } } catch(e) { console.error("Error initializing charts or recent updates:", e); }}
+        async function initCharts(viewData = []) {
+            const isDark = htmlElement.classList.contains('dark');
+            const legendColor = isDark ? '#e2e8f0' : '#1a202c';
+            const ticksColor = isDark ? '#94a3b8' : '#4a5568';
+            const gridColor = isDark ? '#374151' : '#e5e7eb';
+
+            const chartOptions = (type) => ({
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: legendColor } } },
+                scales: type === 'bar' ? {
+                    y: { ticks: { color: ticksColor, beginAtZero: true }, grid: { color: gridColor } },
+                    x: { ticks: { color: ticksColor }, grid: { color: gridColor } }
+                } : {}
+            });
+
+            const userCounts = viewData.reduce((acc, view) => {
+                acc[view.user_identifier] = (acc[view.user_identifier] || 0) + 1;
+                return acc;
+            }, {});
+
+            if (usersChartInstance) usersChartInstance.destroy();
+            const usersCtx = document.getElementById('usersChart')?.getContext('2d');
+            if (usersCtx) {
+                usersChartInstance = new Chart(usersCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(userCounts),
+                        datasets: [{ label: 'User Views', data: Object.values(userCounts), backgroundColor: 'rgba(59, 130, 246, 0.7)' }]
+                    },
+                    options: chartOptions('bar')
+                });
+            }
+
+            if (casesChartInstance) casesChartInstance.destroy();
+            const casesCtx = document.getElementById('casesChart')?.getContext('2d');
+            if (casesCtx) {
+                const caseViews = viewData.filter(v => v.item_type === 'case_created').reduce((acc, view) => {
+                    acc[view.item_id] = (acc[view.item_id] || 0) + 1;
+                    return acc;
+                }, {});
+                casesChartInstance = new Chart(casesCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(caseViews),
+                        datasets: [{ data: Object.values(caseViews), backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+                    },
+                    options: chartOptions('pie')
+                });
+            }
+
+            // Update Recent Updates
+            recentUpdatesList.innerHTML = viewData.map(v => `
+                <li class="text-gray-400 dark:text-gray-500">
+                    ${v.user_identifier} ${v.item_type === 'case_created' ? 'created a case' : 'viewed'} ${v.item_id} on ${new Date(v.viewed_at).toLocaleString()}
+                </li>
+            `).join('');
+        }
 
         // Filters
         const filterUserSelect = document.getElementById('filterUser');
-        async function populateUserFilter() { try { const { data, error } = await supabase.rpc('get_distinct_viewers'); if (error) { console.error('Error fetching distinct viewers:', error); return; } if (data && filterUserSelect) { filterUserSelect.innerHTML = '<option value="">All Users</option>'; data.forEach(u => filterUserSelect.add(new Option(u.user_identifier, u.user_identifier))); } } catch(e) { console.error("Error populating user filter:", e); }}
-        if(document.getElementById('applyFilterBtn')) { document.getElementById('applyFilterBtn').addEventListener('click', async () => { const date = document.getElementById('filterDate').value; const user = filterUserSelect.value; const interaction = document.getElementById('filterInteraction').value; let query = supabase.from(TABLES.VIEWS_LOG).select('*'); if (date) query = query.gte('viewed_at', `${date}T00:00:00Z`).lte('viewed_at', `${date}T23:59:59Z`); if (user) query = query.eq('user_identifier', user); if (interaction) query = query.eq('item_type', interaction); const { data: filteredData, error } = await query; if (error) console.error('Error fetching filtered data:', error); else initCharts(filteredData || []); });}
+        async function populateUserFilter() {
+            const { data, error } = await supabase.rpc('get_distinct_viewers');
+            if (error) {
+                console.error('Error fetching distinct viewers:', error);
+                return;
+            }
+            if (data && filterUserSelect) {
+                filterUserSelect.innerHTML = '<option value="">All Users</option>';
+                data.forEach(u => filterUserSelect.add(new Option(u.user_identifier, u.user_identifier)));
+            }
+        }
+        document.getElementById('applyFilterBtn').addEventListener('click', async () => {
+            const date = document.getElementById('filterDate').value;
+            const user = filterUserSelect.value;
+            const interaction = document.getElementById('filterInteraction').value;
+            let query = supabase.from(TABLES.VIEWS_LOG).select('*');
+            if (date) query = query.gte('viewed_at', `${date}T00:00:00Z`).lte('viewed_at', `${date}T23:59:59Z`);
+            if (user) query = query.eq('user_identifier', user);
+            if (interaction) query = query.eq('item_type', interaction);
+            const { data: filteredData, error } = await query;
+            if (error) console.error('Error fetching filtered data:', error);
+            else initCharts(filteredData || []);
+        });
 
         // Helper Functions
-        function escapeHTML(str) { if (typeof str !== 'string') return ''; return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));}
-        function highlightText(text, query) { if (!text) return ''; const safeText = escapeHTML(text); if (!query) return safeText; try { const rgx = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'); return safeText.replace(rgx, '<mark>$1</mark>'); } catch (e) { console.warn("Highlight regex error:", e); return safeText; }}
-        function truncateText(text, len) { if (!text || text.length <= len) return text; return text.substring(0, len) + '...';}
-        function stripHtml(html) { const tmp = document.createElement('DIV'); tmp.innerHTML = html; return tmp.textContent || tmp.innerText || '';}
-        function getThemeColors(themeColor = 'gray') { const colorMap = { blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' }, teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' }, green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' }, indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-600 dark:text-indigo-400', iconContainer: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-indigo-500', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300', statusBg: 'bg-indigo-100 dark:bg-indigo-500/20', statusText: 'text-indigo-700 dark:text-indigo-400' }, cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900', text: 'text-cyan-600 dark:text-cyan-400', iconContainer: 'bg-cyan-100 dark:bg-cyan-800/50', icon: 'text-cyan-500 dark:text-cyan-400', cta: 'text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300', border: 'border-cyan-500', tagBg: 'bg-cyan-100 dark:bg-cyan-500/20', tagText: 'text-cyan-700 dark:text-cyan-300', statusBg: 'bg-cyan-100 dark:bg-cyan-500/20', statusText: 'text-cyan-700 dark:text-cyan-400' }, lime: { bg: 'bg-lime-100 dark:bg-lime-900', text: 'text-lime-600 dark:text-lime-400', iconContainer: 'bg-lime-100 dark:bg-lime-800/50', icon: 'text-lime-500 dark:text-lime-400', cta: 'text-lime-600 hover:text-lime-700 dark:text-lime-400 dark:hover:text-lime-300', border: 'border-lime-500', tagBg: 'bg-lime-100 dark:bg-lime-500/20', tagText: 'text-lime-700 dark:text-lime-300', statusBg: 'bg-lime-100 dark:bg-lime-500/20', statusText: 'text-lime-700 dark:text-lime-400' }, yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-400', iconContainer: 'bg-yellow-100 dark:bg-yellow-800/50', icon: 'text-yellow-500 dark:text-yellow-400', cta: 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300', border: 'border-yellow-500', tagBg: 'bg-yellow-100 dark:bg-yellow-500/20', tagText: 'text-yellow-700 dark:text-yellow-300', statusBg: 'bg-yellow-100 dark:bg-yellow-500/20', statusText: 'text-yellow-700 dark:text-yellow-400' }, pink: { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-600 dark:text-pink-400', iconContainer: 'bg-pink-100 dark:bg-pink-800/50', icon: 'text-pink-500 dark:text-pink-400', cta: 'text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300', border: 'border-pink-500', tagBg: 'bg-pink-100 dark:bg-pink-500/20', tagText: 'text-pink-700 dark:text-pink-300', statusBg: 'bg-pink-100 dark:bg-pink-500/20', statusText: 'text-pink-700 dark:text-pink-400' }, red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400' }, sky: { bg: 'bg-sky-100 dark:bg-sky-900', text: 'text-sky-600 dark:text-sky-400', iconContainer: 'bg-sky-100 dark:bg-sky-800/50', icon: 'text-sky-500 dark:text-sky-400', cta: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300', border: 'border-sky-500', tagBg: 'bg-sky-100 dark:bg-sky-500/20', tagText: 'text-sky-700 dark:text-sky-300', statusBg: 'bg-sky-100 dark:bg-sky-500/20', statusText: 'text-sky-700 dark:text-sky-400' }, amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400' }, slate: { bg: 'bg-slate-100 dark:bg-slate-900', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-800/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-100 dark:bg-slate-500/20', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-100 dark:bg-slate-500/20', statusText: 'text-slate-700 dark:text-slate-400' }, purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-400', iconContainer: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', cta: 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300', border: 'border-purple-500', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300', statusBg: 'bg-purple-100 dark:bg-purple-500/20', statusText: 'text-purple-700 dark:text-purple-400' }, gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' } }; return colorMap[themeColor.toLowerCase()] || colorMap.gray;}
-        function renderArticleCard(article, sectionData) { const theme = getThemeColors(sectionData.themeColor); const cardIconClass = sectionData.icon || 'fas fa-file-alt'; return `<div class="card border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article"><div class="flex items-center mb-3"><div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${cardIconClass} text-xl ${theme.icon}"></i></div><h3 class="font-semibold text-lg leading-tight">${escapeHTML(article.title)}</h3></div><p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(article.summary) || 'No summary.'}</p>${article.tags && article.tags.length ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}<div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700"><div></div><a href="${escapeHTML(article.contentPath || '#')}" target="_blank" class="text-sm font-medium ${theme.cta}">Read More <i class="fas fa-arrow-right ml-1 text-xs"></i></a></div></div>`;}
-        function renderCaseCard(caseItem, sectionData) { const theme = getThemeColors(sectionData.themeColor); return `<div class="card border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case"><div class="flex items-center mb-3"><div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="fas fa-briefcase text-xl ${theme.icon}"></i></div><h3 class="font-semibold text-lg leading-tight">${escapeHTML(caseItem.title)}</h3></div><p class="text-sm mb-2 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(caseItem.summary) || 'No summary.'}</p>${caseItem.resolution_steps ? `<p class="text-xs italic mb-3 text-gray-500 dark:text-gray-500">Preview: ${escapeHTML(truncateText(stripHtml(caseItem.resolution_steps), 100))}</p>` : ''}<div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700"><span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span><a href="#${sectionData.id}/${caseItem.id}" class="text-sm font-medium ${theme.cta}">Details <i class="fas fa-arrow-right ml-1 text-xs"></i></a></div></div>`;}
-        function renderItemCard(item, sectionData) { const theme = getThemeColors(sectionData.themeColor); return `<div class="card border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item"><div class="flex items-center mb-3"><div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${sectionData.icon || 'fas fa-archive'} text-xl ${theme.icon}"></i></div><h3 class="font-semibold text-lg leading-tight">${escapeHTML(item.title)}</h3></div><p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(item.summary) || 'No description.'}</p><div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700"><span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold">${escapeHTML(item.type)}</span><a href="${escapeHTML(item.url)}" target="_blank" class="text-sm font-medium ${theme.cta}">Open <i class="fas fa-external-link-alt ml-1 text-xs"></i></a></div></div>`;}
-        function checkUserRoleAccess(sectionId) { const user = Auth.getCurrentUser(); const section = kbSystemData.sections.find(s => s.id === sectionId); if (!section) return true; if (user.role === 'super_admin') return true; if (user.role === 'admin' && !['logistics_admin'].includes(sectionId)) return true; if (user.role === 'viewer' && ['support', 'partner_care', 'customer_care'].includes(sectionId)) return true; return false;}
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        }
+        function highlightText(text, query) {
+            if (!text) return '';
+            const safeText = escapeHTML(text);
+            if (!query) return safeText;
+            try {
+                const rgx = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+                return safeText.replace(rgx, '<mark>$1</mark>');
+            } catch (e) {
+                return safeText;
+            }
+        }
+        function truncateText(text, len) {
+            if (!text || text.length <= len) return text;
+            return text.substring(0, len) + '...';
+        }
+        function stripHtml(html) {
+            const tmp = document.createElement('DIV');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        }
+        function getThemeColors(themeColor = 'gray') {
+            const colorMap = {
+                blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-400', iconContainer: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', cta: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300', border: 'border-blue-500', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300', statusBg: 'bg-blue-100 dark:bg-blue-500/20', statusText: 'text-blue-700 dark:text-blue-400' },
+                teal: { bg: 'bg-teal-100 dark:bg-teal-900', text: 'text-teal-600 dark:text-teal-400', iconContainer: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', cta: 'text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300', border: 'border-teal-500', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300', statusBg: 'bg-teal-100 dark:bg-teal-500/20', statusText: 'text-teal-700 dark:text-teal-400' },
+                green: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-600 dark:text-green-400', iconContainer: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', cta: 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300', border: 'border-green-500', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300', statusBg: 'bg-green-100 dark:bg-green-500/20', statusText: 'text-green-700 dark:text-green-400' },
+                indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-600 dark:text-indigo-400', iconContainer: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-indigo-500', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300', statusBg: 'bg-indigo-100 dark:bg-indigo-500/20', statusText: 'text-indigo-700 dark:text-indigo-400' },
+                cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900', text: 'text-cyan-600 dark:text-cyan-400', iconContainer: 'bg-cyan-100 dark:bg-cyan-800/50', icon: 'text-cyan-500 dark:text-cyan-400', cta: 'text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300', border: 'border-cyan-500', tagBg: 'bg-cyan-100 dark:bg-cyan-500/20', tagText: 'text-cyan-700 dark:text-cyan-300', statusBg: 'bg-cyan-100 dark:bg-cyan-500/20', statusText: 'text-cyan-700 dark:text-cyan-400' },
+                lime: { bg: 'bg-lime-100 dark:bg-lime-900', text: 'text-lime-600 dark:text-lime-400', iconContainer: 'bg-lime-100 dark:bg-lime-800/50', icon: 'text-lime-500 dark:text-lime-400', cta: 'text-lime-600 hover:text-lime-700 dark:text-lime-400 dark:hover:text-lime-300', border: 'border-lime-500', tagBg: 'bg-lime-100 dark:bg-lime-500/20', tagText: 'text-lime-700 dark:text-lime-300', statusBg: 'bg-lime-100 dark:bg-lime-500/20', statusText: 'text-lime-700 dark:text-lime-400' },
+                yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-400', iconContainer: 'bg-yellow-100 dark:bg-yellow-800/50', icon: 'text-yellow-500 dark:text-yellow-400', cta: 'text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300', border: 'border-yellow-500', tagBg: 'bg-yellow-100 dark:bg-yellow-500/20', tagText: 'text-yellow-700 dark:text-yellow-300', statusBg: 'bg-yellow-100 dark:bg-yellow-500/20', statusText: 'text-yellow-700 dark:text-yellow-400' },
+                pink: { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-600 dark:text-pink-400', iconContainer: 'bg-pink-100 dark:bg-pink-800/50', icon: 'text-pink-500 dark:text-pink-400', cta: 'text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300', border: 'border-pink-500', tagBg: 'bg-pink-100 dark:bg-pink-500/20', tagText: 'text-pink-700 dark:text-pink-300', statusBg: 'bg-pink-100 dark:bg-pink-500/20', statusText: 'text-pink-700 dark:text-pink-400' },
+                red: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-600 dark:text-red-400', iconContainer: 'bg-red-100 dark:bg-red-800/50', icon: 'text-red-500 dark:text-red-400', cta: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300', border: 'border-red-500', tagBg: 'bg-red-100 dark:bg-red-500/20', tagText: 'text-red-700 dark:text-red-300', statusBg: 'bg-red-100 dark:bg-red-500/20', statusText: 'text-red-700 dark:text-red-400' },
+                sky: { bg: 'bg-sky-100 dark:bg-sky-900', text: 'text-sky-600 dark:text-sky-400', iconContainer: 'bg-sky-100 dark:bg-sky-800/50', icon: 'text-sky-500 dark:text-sky-400', cta: 'text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300', border: 'border-sky-500', tagBg: 'bg-sky-100 dark:bg-sky-500/20', tagText: 'text-sky-700 dark:text-sky-300', statusBg: 'bg-sky-100 dark:bg-sky-500/20', statusText: 'text-sky-700 dark:text-sky-400' },
+                amber: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-600 dark:text-amber-400', iconContainer: 'bg-amber-100 dark:bg-amber-800/50', icon: 'text-amber-500 dark:text-amber-400', cta: 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300', border: 'border-amber-500', tagBg: 'bg-amber-100 dark:bg-amber-500/20', tagText: 'text-amber-700 dark:text-amber-300', statusBg: 'bg-amber-100 dark:bg-amber-500/20', statusText: 'text-amber-700 dark:text-amber-400' },
+                slate: { bg: 'bg-slate-100 dark:bg-slate-900', text: 'text-slate-600 dark:text-slate-400', iconContainer: 'bg-slate-100 dark:bg-slate-800/50', icon: 'text-slate-500 dark:text-slate-400', cta: 'text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300', border: 'border-slate-500', tagBg: 'bg-slate-100 dark:bg-slate-500/20', tagText: 'text-slate-700 dark:text-slate-300', statusBg: 'bg-slate-100 dark:bg-slate-500/20', statusText: 'text-slate-700 dark:text-slate-400' },
+                purple: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-400', iconContainer: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', cta: 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300', border: 'border-purple-500', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300', statusBg: 'bg-purple-100 dark:bg-purple-500/20', statusText: 'text-purple-700 dark:text-purple-400' },
+                gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', iconContainer: 'bg-gray-100 dark:bg-gray-700/50', icon: 'text-gray-500 dark:text-gray-400', cta: 'text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300', border: 'border-gray-500', tagBg: 'bg-gray-200 dark:bg-gray-700', tagText: 'text-gray-700 dark:text-gray-300', statusBg: 'bg-gray-200 dark:bg-gray-600', statusText: 'text-gray-700 dark:text-gray-300' }
+            };
+            return colorMap[themeColor.toLowerCase()] || colorMap.gray;
+        }
+
+        // Card Rendering
+        function renderArticleCard(article, sectionData) {
+            const theme = getThemeColors(sectionData.themeColor);
+            const cardIconClass = sectionData.icon || 'fas fa-file-alt';
+            return `
+            <div class="card border-t-4 ${theme.border}" data-item-id="${article.id}" data-item-type="article">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${cardIconClass} text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(article.title)}</h3>
+                </div>
+                <p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(article.summary) || 'No summary.'}</p>
+                ${article.tags && article.tags.length ? `<div class="mb-4">${article.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-1 rounded-full mr-1 mb-1 font-medium">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div></div>
+                    <a href="${escapeHTML(article.contentPath || '#')}" target="_blank" class="text-sm font-medium ${theme.cta}">Read More <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+        function renderCaseCard(caseItem, sectionData) {
+            const theme = getThemeColors(sectionData.themeColor);
+            return `
+            <div class="card border-t-4 ${theme.border}" data-item-id="${caseItem.id}" data-item-type="case">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="fas fa-briefcase text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(caseItem.title)}</h3>
+                </div>
+                <p class="text-sm mb-2 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(caseItem.summary) || 'No summary.'}</p>
+                ${caseItem.resolution_steps ? `<p class="text-xs italic mb-3 text-gray-500 dark:text-gray-500">Preview: ${escapeHTML(truncateText(stripHtml(caseItem.resolution_steps), 100))}</p>` : ''}
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-sm font-medium px-3 py-1 rounded-full ${theme.statusBg} ${theme.statusText}">${escapeHTML(caseItem.status)}</span>
+                    <a href="#${sectionData.id}/${caseItem.id}" class="text-sm font-medium ${theme.cta}">Details <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+        function renderItemCard(item, sectionData) {
+            const theme = getThemeColors(sectionData.themeColor);
+            return `
+            <div class="card border-t-4 ${theme.border}" data-item-id="${item.id}" data-item-type="item">
+                <div class="flex items-center mb-3">
+                    <div class="p-3 rounded-full ${theme.iconContainer} mr-4"><i class="${sectionData.icon || 'fas fa-archive'} text-xl ${theme.icon}"></i></div>
+                    <h3 class="font-semibold text-lg leading-tight">${escapeHTML(item.title)}</h3>
+                </div>
+                <p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(item.summary) || 'No description.'}</p>
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-xs ${theme.tagBg} ${theme.tagText} px-3 py-1 rounded-full uppercase font-semibold">${escapeHTML(item.type)}</span>
+                    <a href="${escapeHTML(item.url)}" target="_blank" class="text-sm font-medium ${theme.cta}">Open <i class="fas fa-external-link-alt ml-1 text-xs"></i></a>
+                </div>
+            </div>`;
+        }
+
+        // Role-Based Permissions
+        function checkUserRoleAccess(sectionId) {
+            const user = Auth.getCurrentUser();
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!section) return true; // Default to allow if section not found
+            if (user.role === 'super_admin') return true;
+            if (user.role === 'admin' && !['logistics_admin'].includes(sectionId)) return true;
+            if (user.role === 'viewer' && ['support', 'partner_care', 'customer_care'].includes(sectionId)) return true;
+            return false;
+        }
 
         // Content Display
         async function displaySectionContent(sectionId, itemIdToFocus = null, subCategoryFilter = null) {
-            try { // ADDED: More robust DOM checks
-                console.log(`[DisplayContent] Rendering section: ${sectionId}, item: ${itemIdToFocus}, filter: ${subCategoryFilter}`);
-                if (!standardSectionContentPlaceholder || !currentSectionTitleEl || !breadcrumbsContainer || !dashboardOverviewContainer) { // Added dashboardOverviewContainer check
-                    throw new Error('Critical DOM elements (standardSectionContentPlaceholder, currentSectionTitleEl, breadcrumbsContainer, or dashboardOverviewContainer) are missing');
-                }
+            if (!checkUserRoleAccess(sectionId)) {
+                standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Access Denied</h2><p>You do not have permission to view this section.</p></div>`;
+                dashboardOverviewContainer.classList.add('hidden');
+                standardSectionContentPlaceholder.classList.remove('hidden');
+                currentSectionTitleEl.textContent = 'Access Denied';
+                breadcrumbsContainer.innerHTML = `<span class="font-medium">Access Denied</span>`;
+                return;
+            }
 
-                if (!checkUserRoleAccess(sectionId)) { /* ... as before ... */ standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Access Denied</h2><p>You do not have permission to view this section.</p></div>`; dashboardOverviewContainer.classList.add('hidden'); standardSectionContentPlaceholder.classList.remove('hidden'); currentSectionTitleEl.textContent = 'Access Denied'; breadcrumbsContainer.innerHTML = `<span class="font-medium">Access Denied</span>`; return; }
-                
-                dashboardOverviewContainer.classList.add('hidden'); standardSectionContentPlaceholder.classList.remove('hidden');
-                standardSectionContentPlaceholder.innerHTML = ''; 
+            dashboardOverviewContainer.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden');
+            standardSectionContentPlaceholder.innerHTML = '';
 
-                if (sectionId === 'home') { /* ... as before ... */ dashboardOverviewContainer.classList.remove('hidden'); standardSectionContentPlaceholder.classList.add('hidden'); currentSectionTitleEl.textContent = 'Dashboard Overview'; breadcrumbsContainer.innerHTML = `<span class="font-medium">Home</span>`; const { data: viewData, error: viewError } = await supabase.from(TABLES.VIEWS_LOG).select('*'); if(viewError) { console.error("[DisplayContent] Error fetching view data for dashboard:", viewError); initCharts([]); } else { initCharts(viewData || []); } await populateUserFilter(); console.log(`[DisplayContent] Displayed 'home' section.`); return; }
+            if (sectionId === 'home') {
+                dashboardOverviewContainer.classList.remove('hidden');
+                standardSectionContentPlaceholder.classList.add('hidden');
+                currentSectionTitleEl.textContent = 'Dashboard Overview';
+                breadcrumbsContainer.innerHTML = `<span class="font-medium">Home</span>`;
+                const { data: viewData } = await supabase.from(TABLES.VIEWS_LOG).select('*');
+                initCharts(viewData || []);
+                populateUserFilter();
+                return;
+            }
 
-                const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-                if (!sectionData) { /* ... as before ... */ standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section Not Found: ${escapeHTML(sectionId)}</h2></div>`; currentSectionTitleEl.textContent = 'Not Found'; console.error(`[DisplayContent] Section data not found for ID: ${sectionId}`); return; }
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!sectionData) {
+                standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold">Section Not Found: ${escapeHTML(sectionId)}</h2></div>`;
+                currentSectionTitleEl.textContent = 'Not Found';
+                return;
+            }
 
-                currentSectionTitleEl.textContent = sectionData.name;
-                let bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(sectionData.name)}</span>`;
-                if (subCategoryFilter) { const subCatName = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)?.name || subCategoryFilter; bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1">></span> <a href="#${sectionData.id}" class="hover:underline">${escapeHTML(sectionData.name)}</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(subCatName)}</span>`; }
-                breadcrumbsContainer.innerHTML = bcHTML;
+            currentSectionTitleEl.textContent = sectionData.name;
+            let bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(sectionData.name)}</span>`;
+            if (subCategoryFilter) {
+                const subCatName = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter)?.name || subCategoryFilter;
+                bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1">></span> <a href="#${sectionData.id}" class="hover:underline">${escapeHTML(sectionData.name)}</a> <span class="mx-1">></span> <span class="font-medium">${escapeHTML(subCatName)}</span>`;
+            }
+            breadcrumbsContainer.innerHTML = bcHTML;
 
-                let contentHTML = `<div class="space-y-8">`;
-                const themeColors = getThemeColors(sectionData.themeColor);
+            let contentHTML = `<div class="space-y-8">`;
+            const theme = getThemeColors(sectionData.themeColor);
 
-                if (['admin', 'super_admin'].includes(currentUser.role)) { contentHTML += `<div class="flex justify-end"><button onclick="openAddContentModal('${sectionData.id}')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"><i class="fas fa-plus-circle mr-2"></i> Add Content</button></div>`; }
+            // Add Content Button (for admin and super_admin)
+            if (['admin', 'super_admin'].includes(currentUser.role)) {
+                contentHTML += `
+                <div class="flex justify-end">
+                    <button onclick="openAddContentModal('${sectionData.id}')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i> Add Content
+                    </button>
+                </div>`;
+            }
 
-                const articles = (sectionData.articles || []).filter(a => !subCategoryFilter || a.tags?.includes(subCategoryFilter));
-                const cases = (sectionData.cases || []).filter(c => !subCategoryFilter || c.tags?.includes(subCategoryFilter));
-                const items = (sectionData.items || []).filter(i => !subCategoryFilter || i.type === subCategoryFilter);
+            const articles = (sectionData.articles || []).filter(a => !subCategoryFilter || a.tags?.includes(subCategoryFilter));
+            const cases = (sectionData.cases || []).filter(c => !subCategoryFilter || c.tags?.includes(subCategoryFilter));
+            const items = (sectionData.items || []).filter(i => !subCategoryFilter || i.type === subCategoryFilter);
 
-                if (articles.length) { contentHTML += `<h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">${articles.map(article => renderArticleCard(article, sectionData)).join('')}</div>`; }
-                if (cases.length) { contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">${cases.map(caseItem => renderCaseCard(caseItem, sectionData)).join('')}</div>`; }
-                if (items.length) { contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Resources</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">${items.map(item => renderItemCard(item, sectionData)).join('')}</div>`; }
-                
-                if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) { contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">${sectionData.subCategories.map(subCat => `<a href="#${sectionData.id}/${subCat.id}" class="card text-center hover:border-indigo-500 border-transparent border-2"><i class="${sectionData.icon || 'fas fa-folder-open'} text-3xl mb-2 ${themeColors.icon}"></i><h4 class="font-medium">${escapeHTML(subCat.name)}</h4></a>`).join('')}</div>`; }
-                if (!articles.length && !cases.length && !items.length && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) { contentHTML += `<div class="text-center py-10"><p class="text-xl text-gray-500">No content found for this section/filter.</p></div>`; }
+            if (articles.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Articles</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                articles.forEach(article => contentHTML += renderArticleCard(article, sectionData));
+                contentHTML += `</div>`;
+            }
+            if (cases.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Cases</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                cases.forEach(caseItem => contentHTML += renderCaseCard(caseItem, sectionData));
+                contentHTML += `</div>`;
+            }
+            if (items.length) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Resources</h3><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
+                items.forEach(item => contentHTML += renderItemCard(item, sectionData));
+                contentHTML += `</div>`;
+            }
+            if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
+                contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
+                sectionData.subCategories.forEach(subCat => {
+                    contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card text-center hover:border-indigo-500 border-transparent border-2">
+                        <i class="${sectionData.icon || 'fas fa-folder-open'} text-3xl mb-2 ${theme.icon}"></i>
+                        <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
+                    </a>`;
+                });
+                contentHTML += `</div>`;
+            }
 
-                contentHTML += `</div>`; standardSectionContentPlaceholder.innerHTML = contentHTML;
+            if (!articles.length && !cases.length && !items.length && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) {
+                contentHTML += `<div class="text-center py-10"><p class="text-xl text-gray-500">No content found for this section/filter.</p></div>`;
+            }
 
-                if (itemIdToFocus) { setTimeout(() => { const targetCard = standardSectionContentPlaceholder.querySelector(`[data-item-id="${itemIdToFocus}"]`); if (targetCard) { targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); targetCard.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)'; setTimeout(() => targetCard.style.boxShadow = '', 3000); } else { console.warn(`[DisplayContent] Item to focus ID '${itemIdToFocus}' not found in section '${sectionId}'.`);} }, 300); }
-                console.log(`[DisplayContent] Successfully displayed section: ${sectionId}`);
-            } catch (error) {
-                console.error(`[DisplayContent] Error displaying section '${sectionId}':`, error);
-                if (standardSectionContentPlaceholder) standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Content Display Error</h2><p>Error: ${escapeHTML(error.message)}</p></div>`;
-                if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Error';
+            contentHTML += `</div>`;
+            standardSectionContentPlaceholder.innerHTML = contentHTML;
+
+            if (itemIdToFocus) {
+                setTimeout(() => {
+                    const targetCard = standardSectionContentPlaceholder.querySelector(`[data-item-id="${itemIdToFocus}"]`);
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetCard.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)';
+                        setTimeout(() => targetCard.style.boxShadow = '', 3000);
+                    }
+                }, 300);
             }
         }
 
         // Navigation and Routing
-        function highlightSidebarLink(sectionId) { document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active')); const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`); if (activeLink) activeLink.classList.add('active');}
+        function highlightSidebarLink(sectionId) {
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+            if (activeLink) activeLink.classList.add('active');
+        }
 
         async function handleNavigation() {
-            try {
-                const hash = window.location.hash.substring(1) || 'home';
-                console.log('[Nav] Processing hash:', hash);
-                const parts = hash.split('/').filter(p => p); // MODIFIED: Filter empty parts
-                const sectionId = parts[0] || 'home';
-                const sectionDataForSubCat = kbSystemData.sections.find(s => s.id === sectionId);
-                
-                // ADDED: Check if section exists before proceeding
-                if (!sectionDataForSubCat && sectionId !== 'home') {
-                    console.error(`[Nav] Section '${sectionId}' not found in kbSystemData.sections. Cannot proceed with navigation.`);
-                    if (standardSectionContentPlaceholder) standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Section Not Found</h2><p>The section '${escapeHTML(sectionId)}' does not exist.</p></div>`;
-                    if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Section Not Found';
-                    highlightSidebarLink(''); // Clear active link if section is not found
-                    return;
-                }
+            const hash = window.location.hash.substring(1) || 'home';
+            const parts = hash.split('/');
+            const sectionId = parts[0] || 'home';
+            const subCategoryFilter = (parts.length > 1 && kbSystemData.sections.find(s => s.id === sectionId)?.subCategories?.find(sc => sc.id === parts[1])) ? parts[1] : null;
+            const itemIdToFocus = subCategoryFilter ? (parts[2] || null) : (parts[1] || null);
 
-                const subCategoryFilter = (parts.length > 1 && sectionDataForSubCat?.subCategories?.find(sc => sc.id === parts[1])) ? parts[1] : null;
-                const itemIdToFocus = subCategoryFilter ? (parts[2] || null) : (parts[1] || null);
-
-                highlightSidebarLink(sectionId);
-                await displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
-                await logUserView(sectionId, 'navigation', subCategoryFilter || itemIdToFocus);
-                console.log('[Nav] Navigation completed for:', sectionId);
-            } catch (error) {
-                console.error('[Nav] Navigation error:', error);
-                if (standardSectionContentPlaceholder) standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Navigation Error</h2><p>An error occurred: ${escapeHTML(error.message)}</p></div>`;
-                if (currentSectionTitleEl) currentSectionTitleEl.textContent = 'Error';
-            }
+            highlightSidebarLink(sectionId);
+            await displaySectionContent(sectionId, itemIdToFocus, subCategoryFilter);
+            logUserView(sectionId, 'navigation', subCategoryFilter || itemIdToFocus);
         }
 
         // Global Search
-        const globalSearchInput = document.getElementById('globalSearchInput'); const searchResultsContainer = document.getElementById('searchResultsContainer');
-        if (globalSearchInput && searchResultsContainer) { globalSearchInput.addEventListener('input', () => { const query = globalSearchInput.value.trim().toLowerCase(); if (query.length < 2) { searchResultsContainer.classList.add('hidden'); return; } const results = []; kbSystemData.sections.forEach(s => { s.articles?.forEach(a => { if (a.title.toLowerCase().includes(query) || a.summary?.toLowerCase().includes(query)) results.push({ ...a, type: 'article', sectionId: s.id, sectionName: s.name }); }); s.cases?.forEach(c => { if (c.title.toLowerCase().includes(query) || c.summary?.toLowerCase().includes(query)) results.push({ ...c, type: 'case', sectionId: s.id, sectionName: s.name }); }); s.items?.forEach(i => { if (i.title.toLowerCase().includes(query) || i.summary?.toLowerCase().includes(query)) results.push({ ...i, type: 'item', sectionId: s.id, sectionName: s.name }); }); }); searchResultsContainer.innerHTML = ''; if (results.length) { results.slice(0, 5).forEach(r => { const li = document.createElement('a'); li.href = `#${r.sectionId}/${r.id}`; li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-600'; li.innerHTML = `<div class="font-medium">${highlightText(r.title, query)} <span class="text-xs text-gray-500">(${r.type} in ${r.sectionName})</span></div><p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(r.summary, 50), query)}</p>`; searchResultsContainer.appendChild(li); }); searchResultsContainer.classList.remove('hidden'); } else { searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results.</div>`; searchResultsContainer.classList.remove('hidden'); } }); document.addEventListener('click', e => { if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) { searchResultsContainer.classList.add('hidden'); } });}
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        globalSearchInput.addEventListener('input', () => {
+            const query = globalSearchInput.value.trim().toLowerCase();
+            if (query.length < 2) {
+                searchResultsContainer.classList.add('hidden');
+                return;
+            }
+            const results = [];
+            kbSystemData.sections.forEach(s => {
+                s.articles?.forEach(a => {
+                    if (a.title.toLowerCase().includes(query) || a.summary?.toLowerCase().includes(query))
+                        results.push({ ...a, type: 'article', sectionId: s.id, sectionName: s.name });
+                });
+                s.cases?.forEach(c => {
+                    if (c.title.toLowerCase().includes(query) || c.summary?.toLowerCase().includes(query))
+                        results.push({ ...c, type: 'case', sectionId: s.id, sectionName: s.name });
+                });
+                s.items?.forEach(i => {
+                    if (i.title.toLowerCase().includes(query) || i.summary?.toLowerCase().includes(query))
+                        results.push({ ...i, type: 'item', sectionId: s.id, sectionName: s.name });
+                });
+            });
+            searchResultsContainer.innerHTML = '';
+            if (results.length) {
+                results.slice(0, 5).forEach(r => {
+                    const li = document.createElement('a');
+                    li.href = `#${r.sectionId}/${r.id}`;
+                    li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-600';
+                    li.innerHTML = `<div class="font-medium">${highlightText(r.title, query)} <span class="text-xs text-gray-500">(${r.type} in ${r.sectionName})</span></div><p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(r.summary, 50), query)}</p>`;
+                    searchResultsContainer.appendChild(li);
+                });
+                searchResultsContainer.classList.remove('hidden');
+            } else {
+                searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500">No results.</div>`;
+                searchResultsContainer.classList.remove('hidden');
+            }
+        });
+        document.addEventListener('click', e => {
+            if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+                searchResultsContainer.classList.add('hidden');
+            }
+        });
 
         // Log User Views
-        async function logUserView(itemId, itemType, details = null) { try { const user = Auth.getCurrentUser(); const viewData = { item_id: itemId, item_type: itemType, user_identifier: user.email, details_text: details, viewed_at: new Date().toISOString() }; const { error } = await supabase.from(TABLES.VIEWS_LOG).insert([viewData]); if (error) { console.error(`[LogView] Error logging view for ${itemId} (${itemType}):`, error); } else { console.log(`[LogView] View logged for ${itemId} (${itemType})`); } } catch (err) { console.error(`[LogView] Exception while logging view for ${itemId} (${itemType}):`, err); }}
-        
-        // MODIFIED: Enhanced hashchange listener
-        window.addEventListener('hashchange', () => {
-            console.log('[HashChange] URL hash changed to:', window.location.hash);
-            handleNavigation(); // Call the existing handler
-        });
-        
-        // MODIFIED: Enhanced DOMContentLoaded listener
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('[Init] DOM fully loaded. Initializing app.');
-            if (!document.getElementById('pageContentArea') || !document.getElementById('standardSectionContentPlaceholder')) { // Added check for placeholder too
-                console.error('[Init] Critical DOM elements (pageContentArea or standardSectionContentPlaceholder) not found in DOM. Navigation might fail.');
-                // Optionally, display an error to the user here if these elements are missing
-                // For example: document.body.innerHTML = "<h1>Critical Error: UI components missing.</h1>";
-                return; // Stop further execution if essential elements are missing
-            }
-            await handleNavigation(); // Initial navigation call
-            console.log('[Init] Initial navigation completed.');
-        });
-        
-        window.openAddContentModal = openAddContentModal;
-        console.log('[Init] InfiniBase App Initialized. Event listeners set up.');
+        async function logUserView(itemId, itemType, details = null) {
+            const user = Auth.getCurrentUser();
+            const viewData = {
+                item_id: itemId,
+                item_type: itemType,
+                user_identifier: user.email,
+                details_text: details,
+                viewed_at: new Date().toISOString()
+            };
+            await supabase.from(TABLES.VIEWS_LOG).insert([viewData]);
+        }
+
+        window.addEventListener('hashchange', handleNavigation);
+        handleNavigation();
+
+        console.log('InfiniBase App Initialized');
     </script>
 </body>
 </html>
