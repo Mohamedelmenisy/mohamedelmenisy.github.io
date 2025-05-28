@@ -315,7 +315,7 @@
     ];
 
     let kbSystemData = {
-        meta: { version: '0.2.0', lastGlobalUpdate: new Date().toISOString() },
+        meta: { version: '0.2.1', lastGlobalUpdate: new Date().toISOString() }, // Increment version
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', themeColor: 'indigo', description: 'Dashboard and overview.' },
             {
@@ -435,8 +435,7 @@
             setTimeout(() => toast.remove(), 300);
         }, duration);
     }
-
-
+    // CORRECTED AREA - START
     // --- Theme Management ---
     function applyTheme(theme) {
         if (theme === 'dark') {
@@ -459,6 +458,8 @@
             }
         });
     }
+    // CORRECTED AREA - END
+
     function loadTheme() {
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         applyTheme(savedTheme);
@@ -757,18 +758,19 @@ graph TD
         resolutionStepsContainer.classList.add('hidden');
         contentUrlContainer.classList.add('hidden');
         jsonScenarioContainer.classList.add('hidden');
+        const resolutionLabel = document.querySelector('#resolutionStepsContainer label');
+
 
         if (type === 'case') {
             resolutionStepsContainer.classList.remove('hidden');
+            if(resolutionLabel) resolutionLabel.textContent = 'Details / Resolution Steps (for Case)';
         } else if (type === 'form_sheet') {
             contentUrlContainer.classList.remove('hidden');
         } else if (type === 'interactive_scenario') {
             jsonScenarioContainer.classList.remove('hidden');
         } else if (type === 'article') {
-            // For articles, we might also use the Quill editor or a simpler textarea.
-            // Let's use Quill for articles too for consistency of rich content.
             resolutionStepsContainer.classList.remove('hidden');
-             document.querySelector('#resolutionStepsContainer label').textContent = 'Article Content';
+            if(resolutionLabel) resolutionLabel.textContent = 'Article Content';
         }
     });
 
@@ -828,7 +830,10 @@ graph TD
         scenarioStepHistory = [];
         interactiveScenarioTitleEl.textContent = title;
         interactiveScenarioTitleEl.classList.toggle('highlight-scenario-title-animation', isSensitive);
-        if(isSensitive && scenarioAlertSound) scenarioAlertSound.play().catch(e => console.warn("Scenario alert sound failed:", e));
+        if(isSensitive && scenarioAlertSound && scenarioAlertSound.src) { // Check src before playing
+             scenarioAlertSound.play().catch(e => console.warn("Scenario alert sound failed:", e));
+        }
+
 
         renderScenarioStep();
         interactiveScenarioModalOverlay.classList.remove('hidden');
@@ -1022,12 +1027,7 @@ graph TD
             const section = kbSystemData.sections.find(s => s.id === sectionId);
             const item = section?.items?.find(i => i.id === actualItemId);
             if (item && item.type === 'interactive_scenario') {
-                // If navigating directly to scenario via hash, launch it.
-                // But typically, user clicks a card. For direct hash, show section, user clicks.
-                // To simplify, let's just show the section, and user can click the scenario card.
-                displaySectionContent(sectionId, subCategoryFilter);
-                // If we want to auto-launch:
-                // launchInteractiveScenario(item.scenario_data, item.title, item.is_sensitive);
+                displaySectionContent(sectionId, subCategoryFilter); // Show section, user clicks card to launch
             } else {
                  displayItemDetail(sectionId, actualItemId);
             }
