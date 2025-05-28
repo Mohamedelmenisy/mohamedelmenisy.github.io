@@ -82,7 +82,7 @@
             transform: translateX(-100%); /* LTR */
         }
         @media (min-width: 768px) {
-            .sidebar.closed { transform: translateX(0); }
+            .sidebar.closed { transform: translateX(0); } /* Sidebar always effectively open on desktop */
         }
 
         .sidebar-header {
@@ -144,6 +144,7 @@
             background-color: var(--bg-color-active);
             color: var(--text-color-inverted) !important;
             font-weight: 600;
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
         }
         .sidebar-link.active i {
             color: var(--text-color-inverted) !important;
@@ -173,7 +174,7 @@
         }
         @media (min-width: 768px) {
              .content-wrapper { margin-left: var(--sidebar-width); /* LTR */ }
-             .sidebar.closed + .content-wrapper { margin-left: 0; /* LTR */ }
+             /* .sidebar.closed + .content-wrapper { margin-left: 0; } LTR - Not needed as sidebar is always open on desktop */
         }
 
         .content-header {
@@ -582,6 +583,7 @@
         }
         .mermaid-diagram-container {
             overflow-x: auto; /* For wide diagrams */
+            background-color: var(--bg-color-alt); /* Ensure diagram background matches card */
         }
         .mermaid-diagram-container svg {
             display: block;
@@ -598,10 +600,13 @@
         .mermaid-diagram-container ellipse,
         .mermaid-diagram-container circle {
             stroke: var(--primary-color) !important;
-            fill: var(--bg-color) !important;
+            fill: var(--bg-color) !important; /* Node fill */
+        }
+        .mermaid-diagram-container .node.default>rect {
+             fill: var(--bg-color) !important; /* Explicitly target default nodes if needed */
         }
         .mermaid-diagram-container .cluster rect {
-             fill: var(--bg-color-alt) !important;
+             fill: var(--bg-color-alt) !important; /* Subgraph / cluster background */
              stroke: var(--border-color-darker) !important;
         }
         .mermaid-diagram-container .arrowheadPath {
@@ -810,59 +815,56 @@
 <script type="module">
     // --- Initialize Mermaid ---
     mermaid.initialize({ 
-        startOnLoad: false,
-        theme: 'dark', // Permanently dark
+        startOnLoad: false, // We will call mermaid.run() manually after content is loaded
+        theme: 'dark', 
         fontFamily: 'Inter, sans-serif',
         flowchart: {
             htmlLabels: true,
             useMaxWidth: true,
         },
-        themeVariables: {
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), // Node bg
+        themeVariables: { // Overriding theme variables for better consistency with page style
+            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram background
             primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
             primaryBorderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), // Node border
             lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), // Edge color
             textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            // darkMode: true, // Already handled by theme: 'dark'
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram bg
+            secondaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), // Node fill (main background)
+            tertiaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Node fill for specific types if used
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram overall background
+            
+            // Ensure node specific colors are distinct if needed
+            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            clusterBkg: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), // Subgraph background
+            clusterBorder: getComputedStyle(document.documentElement).getPropertyValue('--border-color-darker').trim(),
+            defaultLinkColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            edgeLabelBackground: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
         }
     });
     
     // --- Simulated Auth & Data ---
     const Auth = {
-        isAuthenticated: () => true, 
+        isAuthenticated: () => {
+            return !!localStorage.getItem('infiniBaseUser');
+        },
         getCurrentUser: () => {
             const storedUser = localStorage.getItem('infiniBaseUser');
             if (storedUser) return JSON.parse(storedUser);
-            return { email: 'guest@example.com', fullName: 'Guest User', role: 'viewer' }; // Default to guest
-        },
-        login: (fullName, email, role = 'admin') => {
-            const user = { fullName, email, role };
-            localStorage.setItem('infiniBaseUser', JSON.stringify(user));
-            showToast(`Welcome, ${fullName}!`, 'success');
-            setTimeout(() => window.location.reload(), 1500);
+            return null; 
         },
         logout: () => {
+            const user = Auth.getCurrentUser();
+            const userName = user ? user.fullName : 'User';
             localStorage.removeItem('infiniBaseUser');
-            showToast('Logged out successfully!', 'info');
-            setTimeout(() => window.location.reload(), 1500);
-        },
-        promptLogin: () => {
-            if (!localStorage.getItem('infiniBaseUser')) {
-                const name = prompt("Enter your full name (e.g., John Doe):", "John Doe");
-                const email = prompt("Enter your email (e.g., john.doe@example.com):", "john.doe@example.com");
-                const role = prompt("Enter your role (admin/viewer):", "admin");
-                if (name && email) {
-                    Auth.login(name, email, role);
-                } else {
-                    Auth.login("Guest User", "guest@example.com", "viewer");
-                }
-            }
+            localStorage.removeItem('justLoggedIn'); // Clear login flag
+            showToast(`${userName} logged out successfully. Redirecting to login...`, 'info');
+            setTimeout(() => {
+                window.location.href = 'login.html'; 
+            }, 1500);
         }
     };
 
     let kbSystemData = {
-        meta: { version: '0.5.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 },
+        meta: { version: '0.5.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 },
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.' },
             {
@@ -870,35 +872,59 @@
                 items: [
                      { 
                         id: 'sup_flow_compensation', type: 'article', 
-                        title: 'Scenario: Customer Inquiry - Compensation Flow', 
-                        summary: 'Flowchart for handling customer compensation due to order delays.',
+                        title: 'Scenario: Customer Inquiry - Compensation Flow for Delays', 
+                        summary: 'Flowchart for handling customer compensation due to order delays, simplified.',
                         content: `
-                            <p>The following diagram illustrates the steps involved when a customer inquires about a delayed order and potential compensation.</p>
+                            <p>This diagram outlines the decision-making process for compensating customers due to order delays.</p>
                             <div class="mermaid-diagram-container">
                                 <pre class="mermaid">
 graph TD
-    A[Receive Customer Request] --> B{Inquiry Type?};
-    B -- Order Delay --> C{Delivery Time Exceeded?};
-    C -- Yes --> D{Driver Left Store?};
-    C -- No --> E[Apologize, Set New ETA];
-    D -- Yes --> F{Delay 15-30 mins?};
-    D -- No --> G[Apologize, Expedite Order];
-    F -- Yes --> H{Order Type?};
-    F -- No --> I[Apologize, Set New ETA];
-    H -- Fast --> J{Actual Delay?};
-    J -- 31-45 mins --> K[Compensate 25% Delivery Fee];
-    J -- 46-60 mins --> L[Compensate 50% Delivery Fee];
-    J -- Over 60 mins --> M[Full Delivery Fee Compensation];
-    H -- Scheduled --> N{Actual Delay?};
-    N -- 31-60 mins --> O[Compensate 100% Order Value];
-    N -- Over 60 mins --> P[Full Order Value + $10 Credit];
-    E --> Z((End)); G --> Z; I --> Z; K --> Z; L --> Z; M --> Z; O --> Z; P --> Z;
+    A[Customer Inquiry: Order Delay] --> B{Initial Check: Valid Delay Confirmed?};
+    B -- Yes --> C{Order Type?};
+    B -- No --> X[Action: Apologize, Provide New ETA, Monitor. No Compensation Initially.];
+    
+    C -- Fast Delivery --> D{Delay Duration?};
+    D -- 15-30 mins --> E[Action: Apologize, Set New ETA, Monitor Closely];
+    D -- 31-45 mins --> F[Action: Compensate 25% Delivery Fee];
+    D -- 46-60 mins --> G[Action: Compensate 50% Delivery Fee];
+    D -- Over 60 mins --> H[Action: Compensate Full Delivery Fee];
+
+    C -- Scheduled Delivery --> I{Delay Duration?};
+    I -- Up to 30 mins --> J[Action: Apologize, Reassure, Monitor];
+    I -- 31-60 mins --> K[Action: Compensate 100% Order Value (if major disruption)];
+    I -- Over 60 mins --> L[Action: Compensate Full Order Value + Future Credit ($10)];
+    
+    X --> Z((End Interaction));
+    E --> Z; F --> Z; G --> Z; H --> Z;
+    J --> Z; K --> Z; L --> Z;
+
+    subgraph Legend
+        direction LR
+        L1[Action/Information]
+        L2{Decision Point}
+        L3((End of Flow))
+    end
+    
+    classDef default fill:var(--bg-color),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color),font-family:Inter;
+    classDef decision fill:var(--bg-color-alt),stroke:var(--text-color-muted),stroke-width:1px,color:var(--text-color),font-family:Inter;
+    classDef endNode fill:var(--primary-color-hover),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color-inverted),font-family:Inter;
+    classDef legendNode fill:var(--bg-color-alt),stroke:var(--border-color),color:var(--text-color-subtle),font-size:12px,font-family:Inter;
+
+    class A,E,F,G,H,J,K,L,X default;
+    class B,C,D,I decision;
+    class Z endNode;
+    class L1,L2,L3 legendNode;
+
                                 </pre>
                             </div>
-                            <p>Note: Determine responsibility for the delay (store, driver, company) to apply discount.</p>
-                            <p>Max compensation for delivery fee is $5 if fee is less.</p>
+                            <p><strong>Important Considerations:</strong></p>
+                            <ul>
+                                <li>Always verify the cause of the delay (Store, Driver, System). This may influence compensation details or internal follow-up.</li>
+                                <li>Maximum compensation for delivery fee related issues should not exceed $5 if the original delivery fee was less than $5.</li>
+                                <li>Maintain a positive and empathetic tone throughout the interaction.</li>
+                            </ul>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'flowchart']
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'support policy']
                     },
                 ]
             },
@@ -914,7 +940,7 @@ graph TD
             { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', items: [] },
             { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', items: [] },
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', items: [
-                // "Leave Request Form" removed
+                // "Leave Request Form" removed as per request, section is empty.
             ]}
         ]
     };
@@ -946,10 +972,8 @@ graph TD
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
 
-    const htmlElement = document.documentElement; // No theme switcher needed
-
     let quillEditor; 
-    let currentUser = Auth.getCurrentUser();
+    let currentUser = null; // Will be set in initializeApp
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
@@ -1001,12 +1025,9 @@ graph TD
         }, duration);
     }
     
-    // --- Theme Management (Simplified for permanent dark mode) ---
     function applyPermanentDarkMode() {
-        // htmlElement.classList.add('dark'); // Already set in HTML tag
-        // No need to change icons or text for a switcher
-        
-        // Update chart colors if charts exist
+        // Theme is permanently dark via HTML class and CSS variables.
+        // This function can update dynamic elements if needed, e.g., charts.
         [visitorsChartInstance, casesChartInstance, articlesChartInstance].forEach(chart => {
             if (chart) {
                 const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -1023,9 +1044,9 @@ graph TD
                 chart.update();
             }
         });
-        // Mermaid is already initialized with dark theme
+        // Re-render Mermaid diagrams if visible, as themeVariables might need re-application
         if (!itemDetailViewPlaceholder.classList.contains('hidden') || !standardSectionContentPlaceholder.classList.contains('hidden')) {
-            renderMermaidDiagramsInElement(pageContentArea);
+             renderMermaidDiagramsInElement(pageContentArea);
         }
     }
 
@@ -1083,58 +1104,59 @@ graph TD
     async function renderMermaidDiagramsInElement(element) {
         const mermaidElements = element.querySelectorAll('pre.mermaid');
         if (mermaidElements.length > 0) {
+            // Temporarily show hidden parents for rendering, then hide again.
             const initiallyHiddenParents = [];
             mermaidElements.forEach(el => {
                 let parent = el.parentElement;
-                while(parent) {
-                    if (parent.classList.contains('hidden')) {
+                while(parent && parent !== document.body) {
+                    if (parent.classList.contains('hidden') || (parent.style.display === 'none')) {
+                        const oldDisplay = parent.style.display;
                         parent.classList.remove('hidden');
-                        initiallyHiddenParents.push(parent);
+                        parent.style.display = ''; // Remove inline style if it was 'none'
+                        initiallyHiddenParents.push({el: parent, display: oldDisplay});
                     }
-                    if(parent.classList.contains('modal-overlay') || parent.classList.contains('content-wrapper')) break;
+                    if(parent.classList.contains('modal-overlay') || parent.classList.contains('content-wrapper') || parent.classList.contains('card')) break;
                     parent = parent.parentElement;
                 }
             });
-
+    
             for (let i = 0; i < mermaidElements.length; i++) {
                 const preElement = mermaidElements[i];
-                const diagramId = `mermaid-diagram-${Date.now()}-${i}`;
-                const existingSvg = preElement.parentElement.querySelector('svg');
+                const diagramContainer = preElement.parentElement; // Should be .mermaid-diagram-container
+                
+                // Remove any existing SVG sibling to prevent duplicates on re-render
+                const existingSvg = diagramContainer.querySelector('svg');
                 if(existingSvg) existingSvg.remove();
+                
+                preElement.style.display = 'block'; // Ensure pre is visible for mermaid to process
+                preElement.removeAttribute('data-processed'); // Allow re-processing
 
                 try {
-                    // Ensure mermaid lib is ready
-                    await mermaid.run({nodes: [preElement], suppressErrors: false});
-                    // The library might directly replace the pre with SVG, or we might need to handle it.
-                    // Checking if the pre element itself was replaced.
-                    if (!preElement.parentElement) { // If preElement was removed from DOM
-                        console.log("Mermaid replaced pre element with SVG.");
-                    } else if (preElement.style.display === 'none' && preElement.nextElementSibling && preElement.nextElementSibling.tagName === 'svg') {
-                         console.log("Mermaid rendered SVG next to hidden pre.");
+                    // mermaid.run processes nodes in place.
+                    await mermaid.run({ nodes: [preElement], suppressErrors: false });
+                    // After run, mermaid might hide the <pre> and insert an <svg>
+                    // We want to ensure the pre remains hidden if an SVG was generated.
+                     if (diagramContainer.querySelector('svg')) {
+                        preElement.style.display = 'none';
                     } else {
-                         // Fallback: if mermaid.run() doesn't auto-replace, use mermaid.render()
-                        const { svg } = await mermaid.render(diagramId, preElement.textContent);
-                        const div = document.createElement('div');
-                        div.innerHTML = svg;
-                        preElement.style.display = 'none'; 
-                        if (preElement.parentElement.classList.contains('mermaid-diagram-container')) {
-                             preElement.parentElement.appendChild(div.firstChild);
-                        } else {
-                            preElement.insertAdjacentElement('afterend', div.firstChild);
-                        }
+                         // Fallback if mermaid.run didn't produce SVG directly or pre is still visible
+                        console.warn("Mermaid.run did not replace pre with SVG or pre is still visible. Manual rendering might be needed or check pre content.");
+                        preElement.style.display = 'block'; // Keep it visible if no SVG
                     }
-                   
                 } catch (error) {
-                    console.error("Mermaid rendering error:", error);
+                    console.error("Mermaid rendering error:", error, "for diagram:", preElement.textContent);
                     const errorMsg = document.createElement('p');
                     errorMsg.style.color = 'red';
-                    errorMsg.textContent = `Error rendering diagram: ${error.message}`;
-                    if (preElement.parentElement) {
-                        preElement.parentElement.insertBefore(errorMsg, preElement.nextSibling);
-                    }
+                    errorMsg.textContent = `Error rendering diagram: ${error.message}. Check console for details.`;
+                    diagramContainer.appendChild(errorMsg);
+                    preElement.style.display = 'block'; // Show pre if error
                 }
             }
-            initiallyHiddenParents.forEach(p => p.classList.add('hidden'));
+            // Restore hidden state for parents
+            initiallyHiddenParents.forEach(pInfo => {
+                if (pInfo.display === 'none') pInfo.el.style.display = 'none';
+                else pInfo.el.classList.add('hidden'); // If it was class-based
+            });
         }
     }
 
@@ -1188,12 +1210,18 @@ graph TD
         const welcomeUser = currentUser.fullName || 'User';
         const totalArticles = kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(i => i.type === 'article' || i.type === 'guide' || i.type === 'policy').length || 0), 0);
         const totalCases = kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(i => i.type === 'case').length || 0), 0);
-        // Mock data
-        kbSystemData.meta.editsThisWeek = Math.floor(Math.random() * 15); 
+        
+        kbSystemData.meta.editsThisWeek = Math.floor(Math.random() * 15) + (kbSystemData.meta.editsThisWeek || 0) ; // Mock some activity
         if (!kbSystemData.meta.lastArticleAdded) {
             const allItems = kbSystemData.sections.flatMap(s => s.items || []);
             if (allItems.length > 0) {
-                 kbSystemData.meta.lastArticleAdded = { title: allItems[allItems.length-1].title, date: new Date(allItems[allItems.length-1].createdAt || Date.now()).toLocaleDateString() };
+                 const latestItem = allItems.sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                 if (latestItem) {
+                     const itemTypeForDisplay = latestItem.type.charAt(0).toUpperCase() + latestItem.type.slice(1);
+                     kbSystemData.meta.lastArticleAdded = { title: `(${itemTypeForDisplay}) ${latestItem.title}`, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
+                 } else {
+                     kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
+                 }
             } else {
                  kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
             }
@@ -1238,25 +1266,27 @@ graph TD
                     </div>
                     <div class="card chart-container">
                         <h3>Content Types (Mock)</h3>
-                        <canvas id="articlesChart"></canvas> <!-- Renamed from casesChart to reflect content types -->
+                        <canvas id="articlesChart"></canvas> 
                     </div>
                 </div>
                 <div class="dashboard-quicklink-card card">
                     <h3>Quick Links</h3>
                     <ul>
                         <li><a href="#" id="dashboardAddContentLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li><a href="#support/${kbSystemData.sections.find(s=>s.id==='support').items[0].id}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>
+                        <li><a href="#support/${kbSystemData.sections.find(s=>s.id==='support').items[0]?.id || ''}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
                     </ul>
                      <h3 style="margin-top: 1.5rem;">Last Added</h3>
                      <p style="font-size: 0.9rem; color: var(--text-color-subtle);">${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <br><small>(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</small></p>
+                     <h3 style="margin-top: 1.5rem;">Top Viewed (Placeholder)</h3>
+                     <p style="font-size: 0.9rem; color: var(--text-color-subtle);">Feature coming soon!</p>
                 </div>
             </div>
         `;
         
         document.getElementById('dashboardAddContentLink').addEventListener('click', (e) => {
             e.preventDefault();
-            openAddContentModal(kbSystemData.sections.find(s => s.id !== 'home')?.id || 'support'); // Default to first non-home section
+            openAddContentModal(kbSystemData.sections.find(s => s.id !== 'home')?.id || 'support'); 
         });
 
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -1291,7 +1321,6 @@ graph TD
                 options: chartOptions('doughnut') 
             });
         }
-        // Add cases chart if needed in future, for now using articlesChart for content types
     }
     
     function displaySectionContent(sectionId, subCategoryFilter = null) {
@@ -1312,7 +1341,8 @@ graph TD
         breadcrumbsContainer.innerHTML = bcHTML;
 
         let contentHTML = `<div>`;
-        if (currentUser.role === 'admin' && sectionId !== 'home') {
+        // Show "Add Content" button if user is admin and not on home page
+        if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
                 <div style="text-align: right; margin-bottom: 20px;"> <!-- LTR: align right -->
                     <button id="openAddContentBtn" class="button" data-section-id="${sectionData.id}">
@@ -1325,12 +1355,12 @@ graph TD
             .filter(item => !subCategoryFilter || (item.tags && item.tags.includes(subCategoryFilter)));
 
         if (itemsToDisplay.length > 0) {
-             if (sectionId === 'support' && itemsToDisplay[0]?.id === 'sup_flow_compensation') { // Special rendering for compensation flow
+             if (sectionId === 'support' && itemsToDisplay[0]?.id === 'sup_flow_compensation') { 
                 const item = itemsToDisplay[0];
                 contentHTML += `
                 <div class="mermaid-diagram-card">
                     <h3>${escapeHTML(item.title)}</h3>
-                    <p>${escapeHTML(item.summary)}</p>
+                    <p>${item.summary}</p> <!-- Assuming summary is HTML safe or plain text -->
                     ${item.content} <!-- This contains the <pre class="mermaid">...</pre> -->
                 </div>`;
 
@@ -1416,9 +1446,9 @@ graph TD
                 <hr>
                 <div class="kb-content">`;
 
-        if (itemData.content) { // Covers articles, guides, policies, and cases with 'content'
+        if (itemData.content) { 
             detailHTML += itemData.content;
-        } else if (itemData.resolution_steps) { // Specifically for cases if resolution_steps is used
+        } else if (itemData.resolution_steps) { 
              detailHTML += itemData.resolution_steps;
         } else if ((itemData.type === 'form_sheet' || itemData.type === 'design') && itemData.url) {
             detailHTML += `<p>This content is an external link:</p><p><a href="${escapeHTML(itemData.url)}" target="_blank" rel="noopener noreferrer" class="button"><i class="fas fa-external-link-alt"></i> Open Link</a></p>`;
@@ -1426,7 +1456,6 @@ graph TD
             detailHTML += `<p>No detailed content available for this item.</p>`;
         }
 
-        // Display attachments if any
         if (itemData.attachments) {
             detailHTML += `<hr><h4 style="margin-top:1.5rem; margin-bottom:1rem; font-weight:600;">Attachments:</h4><ul>`;
             if(itemData.attachments.pdf) detailHTML += `<li><i class="fas fa-file-pdf"></i> <a href="${escapeHTML(itemData.attachments.pdf)}" target="_blank">View PDF</a> (Simulated)</li>`;
@@ -1461,7 +1490,7 @@ graph TD
                         [{ 'color': [] }, { 'background': [] }],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                         [{ 'align': [] }],
-                        ['link', 'image', 'video', 'blockquote', 'code-block'], // Added video
+                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
                         ['clean']
                     ]
                 },
@@ -1480,11 +1509,9 @@ graph TD
             else if (itemToEdit.resolution_steps) quillEditor.root.innerHTML = itemToEdit.resolution_steps;
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             addContentForm.dataset.itemId = itemToEdit.id; 
-            // Populate attachment fields if editing (links only for simulation)
             if (itemToEdit.attachments) {
                 if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
                 if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
-                // File inputs cannot be pre-filled for security reasons
             }
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
@@ -1550,9 +1577,9 @@ graph TD
                 createdBy: currentUser.email,
                 createdAt: new Date().toISOString()
             };
-            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date(itemData.createdAt).toLocaleDateString() };
+            const itemTypeForDisplay = itemData.type.charAt(0).toUpperCase() + itemData.type.slice(1);
+            kbSystemData.meta.lastArticleAdded = { title: `(${itemTypeForDisplay}) ${itemData.title}`, date: new Date(itemData.createdAt).toLocaleDateString() };
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
-
         }
 
         if (itemData.type === 'case') {
@@ -1565,15 +1592,14 @@ graph TD
             if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
         }
 
-        // Handle attachments (simulated: store URLs or filenames)
         itemData.attachments = itemData.attachments || {};
         const pdfFile = document.getElementById('pdfFile').files[0];
         const imageFile = document.getElementById('imageFile').files[0];
         const videoLink = document.getElementById('videoLink').value.trim();
         const driveLink = document.getElementById('driveLink').value.trim();
 
-        if (pdfFile) itemData.attachments.pdf = `simulated_uploads/${pdfFile.name}`; // Simulate path
-        if (imageFile) itemData.attachments.image = `simulated_uploads/${imageFile.name}`; // Simulate path
+        if (pdfFile) itemData.attachments.pdf = `simulated_uploads/${pdfFile.name}`; 
+        if (imageFile) itemData.attachments.image = `simulated_uploads/${imageFile.name}`; 
         if (videoLink) itemData.attachments.video = videoLink;
         if (driveLink) itemData.attachments.drive = driveLink;
 
@@ -1592,7 +1618,7 @@ graph TD
         } else if (currentHashParts[0] === sectionId) { 
             displaySectionContent(sectionId, currentHashParts[1] || null);
         } else if (window.location.hash === '#home' || window.location.hash === '') {
-             displayDashboard(); // Refresh dashboard if on home
+             displayDashboard(); 
         }
     });
 
@@ -1605,7 +1631,7 @@ graph TD
         }
         const results = [];
         kbSystemData.sections.forEach(s => {
-            if (s.id === 'home') return; // Don't search in home meta section
+            if (s.id === 'home') return; 
             s.items?.forEach(i => {
                 if (i.title.toLowerCase().includes(query) || 
                     (i.summary && stripHtml(i.summary).toLowerCase().includes(query)) || 
@@ -1673,8 +1699,16 @@ graph TD
     }
 
     function initializeApp() {
-        Auth.promptLogin(); 
+        if (!Auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+            return; 
+        }
+
         currentUser = Auth.getCurrentUser();
+        if (!currentUser) { // Should not happen if isAuthenticated check is robust
+            window.location.href = 'login.html';
+            return;
+        }
 
         const displayName = currentUser.fullName || currentUser.email || 'User';
         userNameDisplayHeader.textContent = displayName;
@@ -1682,7 +1716,7 @@ graph TD
         footerKbVersion.textContent = kbSystemData.meta.version;
 
         populateSidebar();
-        applyPermanentDarkMode(); // Apply dark mode styles, update charts etc.
+        applyPermanentDarkMode(); 
         handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
@@ -1694,16 +1728,235 @@ graph TD
         closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
         cancelAddContentBtn.addEventListener('click', closeAddContentModal);
         
-        if (window.innerWidth < 768) {
+        if (window.innerWidth < 768 && !sidebar.classList.contains('closed')) { // Keep sidebar closed on mobile by default
             sidebar.classList.add('closed');
         }
         
-        showToast(`InfiniBase v${kbSystemData.meta.version} loaded. Welcome, ${displayName}!`, 'info', 4000);
-        console.log(`InfiniBase v${kbSystemData.meta.version} initialized (Permanent Dark Mode).`);
+        if (localStorage.getItem('justLoggedIn') === 'true') {
+            showToast(`Welcome back, ${displayName}! You've successfully logged in.`, 'success', 4000);
+            localStorage.removeItem('justLoggedIn'); 
+        } else {
+            showToast(`InfiniBase v${kbSystemData.meta.version} loaded. Session restored for ${displayName}.`, 'info', 4000);
+        }
+        console.log(`InfiniBase v${kbSystemData.meta.version} initialized for ${displayName} (Permanent Dark Mode).`);
     }
 
     initializeApp();
 
 </script>
+</body>
+</html>
+```
+--- END OF FILE index.html ---
+
+--- START OF FILE login.html ---
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfiniBase - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #1a202c, #2d3748);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+        .login-container {
+            background: #2d3748;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .input-icon {
+            position: relative;
+        }
+        .input-icon i {
+            position: absolute;
+            left: 12px; /* Adjusted for padding */
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0; /* Tailwind gray-500 */
+        }
+        .input-icon input {
+            padding-left: 40px; /* Space for icon */
+            width: 100%;
+            padding-top: 0.75rem; padding-bottom: 0.75rem; /* Tailwind p-3 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            background-color: #4a5568; /* Tailwind gray-700 */
+            border: 1px solid #718096; /* Tailwind gray-600 */
+            color: white;
+        }
+        .input-icon input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4299e1; /* Tailwind ring-blue-500 */
+            border-color: #4299e1; /* Tailwind blue-500 */
+        }
+        .login-button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #4299e1; /* Tailwind blue-600 */
+            color: white;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .login-button:hover {
+            background-color: #2b6cb0; /* Tailwind blue-700 */
+        }
+        .login-button:disabled {
+            background-color: #667eea; /* Tailwind indigo-400 */
+            cursor: not-allowed;
+        }
+        #errorMessage {
+            color: #f56565; /* Tailwind red-500 */
+            background-color: rgba(245, 101, 101, 0.1);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+        }
+         #alreadyLoggedIn {
+            color: #68d391; /* Tailwind green-400 */
+            background-color: rgba(104, 211, 145, 0.1);
+            border: 1px solid rgba(104, 211, 145, 0.2);
+         }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 class="text-3xl font-bold text-white mb-2">Welcome to InfiniBase</h2>
+        <p class="text-gray-400 mb-6">Please login to access your knowledge base.</p>
+        
+        <div id="errorMessage" class="hidden mb-4"></div>
+
+        <div id="alreadyLoggedIn" class="hidden text-green-500 mb-4 p-3 bg-gray-800 rounded-md">
+            You are already logged in as <strong id="loggedInUserName" class="text-white"></strong>.
+            <a href="index.html" class="text-blue-400 hover:underline block mt-2">Go to Dashboard</a>
+            <button id="forceLogoutBtn" class="mt-2 text-sm text-yellow-400 hover:underline">Logout and login as different user</button>
+        </div>
+
+        <div id="loginFormContainer">
+            <div class="mb-4 input-icon">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="emailInput" placeholder="Work Email (e.g., user@example.com)" class="w-full p-3" required>
+            </div>
+            <div class="mb-4 input-icon">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="passwordInput" placeholder="Password (e.g., adminpass for admin)" class="w-full p-3" required>
+            </div>
+            <div class="flex justify-between items-center mb-6">
+                <label class="flex items-center text-gray-400 text-sm">
+                    <input type="checkbox" class="mr-2 h-4 w-4 text-blue-500 border-gray-500 rounded focus:ring-blue-400">
+                    <span>Remember me</span>
+                </label>
+                <a href="#" class="text-sm text-blue-400 hover:underline">Forgot password?</a>
+            </div>
+            <button id="loginBtn" class="login-button">Login</button>
+            <p class="mt-4 text-gray-400 text-sm">Don't have an account? <a href="signup.html" class="text-blue-400 hover:underline">Sign Up</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedUserString = localStorage.getItem('infiniBaseUser');
+            if (storedUserString) {
+                try {
+                    const user = JSON.parse(storedUserString);
+                    document.getElementById('loginFormContainer').classList.add('hidden');
+                    const alreadyLoggedInDiv = document.getElementById('alreadyLoggedIn');
+                    alreadyLoggedInDiv.classList.remove('hidden');
+                    document.getElementById('loggedInUserName').textContent = user.fullName || user.email;
+
+                    document.getElementById('forceLogoutBtn').addEventListener('click', () => {
+                        localStorage.removeItem('infiniBaseUser');
+                        localStorage.removeItem('justLoggedIn');
+                        window.location.reload();
+                    });
+                } catch (e) {
+                    // If parsing fails, clear corrupted data and show login form
+                    localStorage.removeItem('infiniBaseUser');
+                    localStorage.removeItem('justLoggedIn');
+                    console.error("Error parsing stored user data:", e);
+                }
+            }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const email = emailInput.value.trim();
+            const password = passwordInput.value; // Password used for role simulation
+
+            const errorMessageDiv = document.getElementById('errorMessage');
+            errorMessageDiv.classList.add('hidden'); // Hide previous errors
+
+            if (!email) {
+                errorMessageDiv.textContent = 'Please enter your email.';
+                errorMessageDiv.classList.remove('hidden');
+                emailInput.focus();
+                return;
+            }
+            if (!password) { // Password field is now required for the simulation
+                errorMessageDiv.textContent = 'Please enter your password.';
+                errorMessageDiv.classList.remove('hidden');
+                passwordInput.focus();
+                return;
+            }
+
+
+            let fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
+            let emailFromSignup = localStorage.getItem('pendingSignupEmail');
+            let roleFromSignup = localStorage.getItem('pendingSignupRole');
+
+            let userFullName;
+            let userRole;
+
+            if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
+                userFullName = fullNameFromSignup;
+                userRole = roleFromSignup;
+                // Clear pending signup data after use
+                localStorage.removeItem('pendingSignupEmail');
+                localStorage.removeItem('pendingSignupFullName');
+                localStorage.removeItem('pendingSignupRole');
+            } else {
+                // Default derivation if no pending signup matches
+                userFullName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                // Simple role simulation based on password or email
+                if (password.toLowerCase() === 'adminpass' || email.toLowerCase().includes('admin@')) {
+                    userRole = 'admin';
+                } else {
+                    userRole = 'viewer';
+                }
+            }
+            
+            const userToStore = {
+                fullName: userFullName,
+                email: email,
+                role: userRole,
+                lastLogin: new Date().toISOString()
+            };
+
+            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
+            localStorage.setItem('justLoggedIn', 'true'); // Flag for index.html to show welcome toast
+
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.textContent = 'Logging In...';
+            loginBtn.disabled = true;
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
