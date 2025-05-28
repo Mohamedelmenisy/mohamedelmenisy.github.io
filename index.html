@@ -1,361 +1,1068 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl"> <!-- Changed lang to ar and added dir="rtl" -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfiniBase - Knowledge Base</title>
+    <title>InfiniBase - قاعدة المعرفة</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234A5568' width='64' height='64'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/></svg>">
+    <!-- FontAwesome removed for simplicity, icons will be text or Unicode if needed -->
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background-color: #f0f0f0;
-            color: #333;
+        :root {
+            --primary-color: #4A5568; /* Default gray */
+            --background-color: #f7fafc;
+            --text-color: #2d3748;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --sidebar-bg: #edf2f7;
+            --sidebar-text: #4a5568;
+            --sidebar-hover-bg: #e2e8f0;
+            --sidebar-active-bg: var(--primary-color);
+            --sidebar-active-text: #ffffff;
+            --button-bg: var(--primary-color);
+            --button-text-color: #ffffff;
+            --button-hover-bg: #2d3748;
+            --border-radius: 0.375rem; /* 6px */
+            --header-height: 60px;
         }
-        .container {
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .container-fluid {
             display: flex;
             min-height: 100vh;
         }
+
         .sidebar {
             width: 250px;
-            background-color: #2c3e50;
-            color: white;
+            background-color: var(--sidebar-bg);
             padding: 20px;
-            position: fixed;
-            height: 100%;
-        }
-        .sidebar h2 {
-            margin: 0 0 20px;
-            font-size: 24px;
-        }
-        .sidebar a {
-            color: white;
-            text-decoration: none;
-            display: block;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-        }
-        .sidebar a:hover, .sidebar a.active {
-            background-color: #3498db;
-        }
-        .content {
-            margin-left: 270px;
-            padding: 20px;
-            flex-grow: 1;
-        }
-        .header {
-            background-color: #ecf0f1;
-            padding: 10px 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        .search-bar {
-            margin: 10px 0;
-            padding: 10px;
-            width: 300px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .card {
-            background-color: white;
-            padding: 20px;
-            margin: 10px 0;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .modal {
-            display: none;
+            border-left: 1px solid var(--border-color); /* Adjusted for RTL */
             position: fixed;
             top: 0;
-            left: 0;
-            width: 100%;
+            right: 0; /* Adjusted for RTL */
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            z-index: 100;
+        }
+        .sidebar.closed {
+            transform: translateX(100%); /* Adjusted for RTL */
+        }
+        @media (min-width: 768px) {
+            .sidebar.closed {
+                transform: translateX(0);
+            }
+        }
+
+
+        .sidebar-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
             align-items: center;
         }
-        .modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            width: 500px;
-            max-width: 90%;
+        .sidebar-header svg {
+            width: 32px;
+            height: 32px;
+            margin-left: 8px; /* Adjusted for RTL */
+            fill: var(--primary-color);
         }
-        button {
+
+        .sidebar-link {
+            display: block;
             padding: 10px 15px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            margin-bottom: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .sidebar-link:hover {
+            background-color: var(--sidebar-hover-bg);
+        }
+        .sidebar-link.active {
+            background-color: var(--sidebar-active-bg);
+            color: var(--sidebar-active-text);
+            font-weight: bold;
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+        }
+        .sidebar-footer button {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+
+        .content-wrapper {
+            flex-grow: 1;
+            padding-top: var(--header-height); /* Space for fixed header */
+            padding-left: 20px; /* Adjusted for RTL, assuming sidebar is on right */
+            padding-right: 20px;
+            transition: margin-right 0.3s ease-in-out; /* Adjusted for RTL */
+        }
+        @media (min-width: 768px) {
+             .content-wrapper {
+                margin-right: 250px; /* Space for sidebar, RTL */
+             }
+             .sidebar.closed + .content-wrapper {
+                margin-right: 0; /* RTL */
+             }
+        }
+
+
+        .content-header {
+            background-color: #fff;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            right: 0; /* Adjusted for RTL */
+            left: 0;
+            height: var(--header-height);
+            z-index: 50;
+        }
+         @media (min-width: 768px) {
+            .content-header {
+                right: 250px; /* Space for sidebar, RTL */
+            }
+            .sidebar.closed ~ .content-wrapper .content-header {
+                right: 0; /* RTL */
+            }
+        }
+
+
+        #currentSectionTitle {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        #breadcrumbs {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+        #breadcrumbs a { color: var(--primary-color); text-decoration: none; }
+        #breadcrumbs a:hover { text-decoration: underline; }
+
+        .search-container input[type="search"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            min-width: 250px;
+        }
+        #searchResultsContainer {
+            position: absolute;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            width: calc(100% - 2px); /* Adjust for border */
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        #searchResultsContainer a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: var(--text-color);
+        }
+        #searchResultsContainer a:hover { background-color: #f0f0f0; }
+        #searchResultsContainer mark { background-color: yellow; font-weight: normal; }
+
+
+        .user-profile { display: flex; align-items: center; }
+        .user-profile img { width: 36px; height: 36px; border-radius: 50%; margin-left: 10px; } /* RTL */
+
+        main {
+            padding: 20px 0;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card h3 { margin-top: 0; font-size: 1.25rem; color: var(--primary-color); }
+        .card p { margin-bottom: 15px; }
+        .card .item-cta-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .card .item-cta-link:hover { text-decoration: underline; }
+        .item-type-badge {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background-color: #e2e8f0;
+            color: #4a5568;
+            display: inline-block;
+        }
+
+
+        .button, button {
+            background-color: var(--button-bg);
+            color: var(--button-text-color);
             border: none;
-            border-radius: 5px;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            margin: 5px;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+            text-decoration: none; /* For <a> styled as button */
+            display: inline-block; /* For <a> styled as button */
         }
-        .primary-btn {
-            background-color: #3498db;
-            color: white;
+        .button:hover, button:hover {
+            background-color: var(--button-hover-bg);
         }
-        .secondary-btn {
-            background-color: #e74c3c;
-            color: white;
+        .button-secondary {
+            background-color: #e2e8f0;
+            color: #2d3748;
         }
-        input, textarea {
+        .button-secondary:hover { background-color: #cbd5e0; }
+        .button-danger {
+            background-color: #e53e3e; /* red-500 */
+        }
+        .button-danger:hover {
+            background-color: #c53030; /* red-600 */
+        }
+
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-actions {
+            margin-top: 20px;
+            text-align: left; /* Adjusted for RTL */
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        .modal-actions button:first-child { margin-left: 10px; } /* Adjusted for RTL */
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group select,
+        .form-group textarea {
             width: 100%;
             padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-sizing: border-box;
         }
+        .form-group textarea { min-height: 120px; }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+            color: #718096;
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+        #reportErrorBtn {
+            margin-right: 15px; /* RTL */
+            color: #e53e3e;
+            background: none;
+            border: none;
+            padding: 0;
+            text-decoration: underline;
+        }
+
+        .mobile-sidebar-toggle {
+            display: block;
+            position: fixed;
+            top: 15px;
+            right: 15px; /* RTL */
+            z-index: 101;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        @media (min-width: 768px) {
+            .mobile-sidebar-toggle { display: none; }
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 20px; /* For RTL, can be right too, but let's keep it simple */
+            padding: 12px 18px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        .toast-notification.show { opacity: 1; transform: translateY(0); }
+        .toast-icon { margin-left: 10px; /* RTL */ font-size: 1.2em; }
+        .toast-success { background-color: #48bb78; color: white; } /* green-500 */
+        .toast-error { background-color: #f56565; color: white; } /* red-500 */
+        .toast-info { background-color: #4299e1; color: white; } /* blue-500 */
+
+        /* Basic grid for cards - can be expanded */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* Simple Prose styling for content */
+        .kb-content h1, .kb-content h2, .kb-content h3 { margin-top: 1.5em; margin-bottom: 0.5em; }
+        .kb-content p { margin-bottom: 1em; }
+        .kb-content ul, .kb-content ol { margin-bottom: 1em; padding-right: 20px; } /* RTL */
+        .kb-content li { margin-bottom: 0.5em; }
+        .kb-content strong { font-weight: bold; }
+        .kb-content em { font-style: italic; }
+        .kb-content a { color: var(--primary-color); text-decoration: underline; }
+        .kb-content pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        mark {
+            background-color: #fefcbf; /* yellow-200 equivalent */
+            color: #744210; /* yellow-900 equivalent */
+            padding: 0.1em 0.2em;
+            border-radius: 0.2em;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <aside class="sidebar">
-            <h2>InfiniBase</h2>
-            <nav id="navigationMenu">
-                <div style="font-size: 12px; color: #bdc3c7; margin: 10px 0;">Main</div>
-                <a href="#home" data-section="home">Home</a>
-                <div style="font-size: 12px; color: #bdc3c7; margin: 10px 0;">Knowledge Areas</div>
-                <a href="#support" data-section="support">Support</a>
-            </nav>
-            <div style="position: absolute; bottom: 20px; width: 200px;">
-                <button id="logoutButton" class="secondary-btn">Logout</button>
-            </div>
-        </aside>
 
-        <div class="content">
-            <div class="header">
-                <h1 id="currentSectionTitle">Welcome</h1>
-                <div id="breadcrumbs">Home</div>
-                <input type="text" id="globalSearchInput" class="search-bar" placeholder="Search KB...">
-                <div id="searchResultsContainer" style="display: none; background: white; border: 1px solid #ddd; border-radius: 5px; max-height: 300px; overflow-y: auto;"></div>
-            </div>
-
-            <main id="pageContentArea">
-                <div id="dashboardOverviewContainer" style="display: none;">
-                    <div class="card">
-                        <h2>Welcome, User!</h2>
-                        <p>Here's an overview of your InfiniBase knowledge hub.</p>
-                    </div>
-                </div>
-                <div id="standardSectionContentPlaceholder"></div>
-                <div id="itemDetailViewPlaceholder" style="display: none;"></div>
-            </main>
-        </div>
-    </div>
-
-    <div id="addContentModal" class="modal">
+    <div id="addContentModalOverlay" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2>Add New Content</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin:0;">إضافة محتوى جديد</h2>
+                <button id="closeAddContentModalBtn" class="button-secondary" style="padding: 5px 10px;">×</button>
+            </div>
             <form id="addContentForm">
-                <label>Title</label>
-                <input type="text" id="contentTitle" required>
-                <label>Summary</label>
-                <textarea id="contentSummary" rows="3" required></textarea>
-                <label>Details</label>
-                <textarea id="contentDetails" rows="5"></textarea>
-                <div style="text-align: right;">
-                    <button type="button" id="cancelAddContentBtn" class="secondary-btn">Cancel</button>
-                    <button type="submit" class="primary-btn">Save</button>
+                <div class="form-group">
+                    <label for="contentType">نوع المحتوى</label>
+                    <select id="contentType">
+                        <option value="article">مقال</option>
+                        <option value="case">حالة</option>
+                        <option value="form_sheet">نموذج/ورقة</option>
+                        <!-- Interactive Scenario removed -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contentTitle">العنوان</label>
+                    <input type="text" id="contentTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="contentSummary">الملخص / الوصف</label>
+                    <textarea id="contentSummary" rows="3" required></textarea>
+                </div>
+                <div class="form-group hidden" id="contentUrlContainer">
+                    <label for="contentUrl">الرابط (للنموذج/الورقة)</label>
+                    <input type="url" id="contentUrl">
+                </div>
+                <div class="form-group" id="contentDetailContainer"> <!-- Simplified content area -->
+                    <label for="contentDetail" id="contentDetailLabel">التفاصيل / المحتوى</label>
+                    <textarea id="contentDetail" rows="8"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="saveContentBtn" class="button">حفظ المحتوى</button>
+                    <button type="button" id="cancelAddContentBtn" class="button-secondary">إلغاء</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script>
-        const kbSystemData = {
-            sections: [
-                { id: 'home', name: 'Home', description: 'Dashboard and overview.' },
-                {
-                    id: 'support', name: 'Support', description: 'Support resources.',
-                    items: [
-                        { id: 'sup_article_001', type: 'article', title: 'Handling High Priority Tickets', summary: 'A guide on managing P1 incidents.', content: 'Detailed content for P1 tickets...' },
-                        { id: 'sup_case_001', type: 'case', title: 'User Alpha Frequent Disconnects', summary: 'Investigating network instability.', content: '<p><strong>Step 1:</strong> Check network.</p>' }
-                    ]
+    <!-- Interactive Scenario Modal Removed -->
+
+    <div class="container-fluid">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                InfiniBase
+            </div>
+            <nav id="navigationMenu">
+                <!-- Links will be dynamically generated -->
+            </nav>
+            <div class="sidebar-footer">
+                <!-- Theme Switcher Removed for simplicity -->
+                <button id="logoutButton" class="button button-danger" style="width: 100%;">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <button id="mobileSidebarToggle" class="mobile-sidebar-toggle">☰</button>
+
+        <div class="content-wrapper" id="contentWrapper">
+            <header class="content-header">
+                <div>
+                    <h1 id="currentSectionTitle">مرحباً بك</h1>
+                    <div id="breadcrumbs">الرئيسية</div>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <div class="search-container" style="position: relative; margin-left: 20px;"> {/* RTL */}
+                        <input type="search" id="globalSearchInput" placeholder="ابحث في قاعدة المعرفة...">
+                        <div id="searchResultsContainer" class="hidden"></div>
+                    </div>
+                    <div id="userProfileContainer" class="user-profile">
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=U&size=36&background=4A5568&color=fff&rounded=true&font-size=0.5" alt="المستخدم">
+                        <span id="userNameDisplayHeader" style="font-weight: 500;">المستخدم</span>
+                    </div>
+                </div>
+            </header>
+
+            <main id="pageContentArea">
+                <div id="dashboardOverviewContainer" class="hidden">
+                    <!-- Dashboard content will be injected here -->
+                </div>
+                <div id="standardSectionContentPlaceholder">
+                    <!-- Section content will be injected here -->
+                </div>
+                <div id="itemDetailViewPlaceholder" class="hidden">
+                    <!-- Item detail view -->
+                </div>
+            </main>
+
+            <footer class="mt-auto p-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. الإصدار <span id="footerKbVersion">0.1.0</span></span>
+                <button id="reportErrorBtn">الإبلاغ عن مشكلة</button>
+            </footer>
+        </div>
+    </div>
+    <div id="toastContainer"></div>
+
+
+<script type="module">
+    // --- Simulated Auth & Data ---
+    const Auth = {
+        isAuthenticated: () => true,
+        getCurrentUser: () => {
+            const storedUser = localStorage.getItem('infiniBaseUser');
+            if (storedUser) return JSON.parse(storedUser);
+            return { email: 'agent@example.com', fullName: 'وكيل الدعم', role: 'admin' };
+        },
+        login: (fullName, email, role = 'admin') => {
+            const user = { fullName, email, role };
+            localStorage.setItem('infiniBaseUser', JSON.stringify(user));
+            showToast(`مرحباً، ${fullName}!`, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        },
+        logout: () => {
+            localStorage.removeItem('infiniBaseUser');
+            showToast('تم تسجيل الخروج بنجاح!', 'info');
+            setTimeout(() => window.location.reload(), 1500);
+        },
+        promptLogin: () => {
+            if (!localStorage.getItem('infiniBaseUser')) {
+                const name = prompt("أدخل اسمك الكامل (مثال: جون دو):", "وكيل الدعم");
+                const email = prompt("أدخل بريدك الإلكتروني (مثال: agent@example.com):", "agent@example.com");
+                const role = prompt("أدخل دورك (admin/viewer):", "admin");
+                if (name && email) {
+                    Auth.login(name, email, role);
                 }
-            ]
-        };
-
-        const navigationMenu = document.getElementById('navigationMenu');
-        const currentSectionTitle = document.getElementById('currentSectionTitle');
-        const breadcrumbs = document.getElementById('breadcrumbs');
-        const pageContentArea = document.getElementById('pageContentArea');
-        const dashboardOverview = document.getElementById('dashboardOverviewContainer');
-        const standardSectionContent = document.getElementById('standardSectionContentPlaceholder');
-        const itemDetailView = document.getElementById('itemDetailViewPlaceholder');
-        const globalSearchInput = document.getElementById('globalSearchInput');
-        const searchResultsContainer = document.getElementById('searchResultsContainer');
-        const addContentModal = document.getElementById('addContentModal');
-        const addContentForm = document.getElementById('addContentForm');
-        const cancelAddContentBtn = document.getElementById('cancelAddContentBtn');
-
-        function escapeHTML(str) { return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m])); }
-        function truncateText(text, len) { return text.length <= len ? text : text.substring(0, len) + '...'; }
-
-        function highlightSidebarLink(sectionId) {
-            document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
-            const activeLink = document.querySelector(`.sidebar a[data-section="${sectionId}"]`);
-            if (activeLink) activeLink.classList.add('active');
-        }
-
-        function displayDashboard() {
-            dashboardOverview.style.display = 'block';
-            standardSectionContent.style.display = 'none';
-            itemDetailView.style.display = 'none';
-            currentSectionTitle.textContent = 'Dashboard Overview';
-            breadcrumbs.innerHTML = '<span>Home</span>';
-        }
-
-        function displaySectionContent(sectionId) {
-            dashboardOverview.style.display = 'none';
-            standardSectionContent.style.display = 'block';
-            itemDetailView.style.display = 'none';
-
-            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-            if (!sectionData) {
-                standardSectionContent.innerHTML = '<div class="card"><h2>Section Not Found</h2></div>';
-                currentSectionTitle.textContent = 'Not Found';
-                return;
             }
-
-            currentSectionTitle.textContent = sectionData.name;
-            breadcrumbs.innerHTML = `<a href="#home">Home</a> > <span>${escapeHTML(sectionData.name)}</span>`;
-
-            let contentHTML = '<div class="card"><button class="primary-btn" onclick="openAddContentModal(\'' + sectionId + '\')">Add New Content</button></div>';
-            if (sectionData.items && sectionData.items.length > 0) {
-                sectionData.items.forEach(item => {
-                    contentHTML += `
-                        <div class="card">
-                            <h3>${escapeHTML(item.title)}</h3>
-                            <p>${escapeHTML(truncateText(item.summary, 120))}</p>
-                            <a href="#${sectionId}/${item.id}" class="primary-btn">View Details</a>
-                        </div>`;
-                });
-            } else {
-                contentHTML += '<div class="card"><p>No content found in this section.</p></div>';
-            }
-            standardSectionContent.innerHTML = contentHTML;
         }
+    };
 
-        function displayItemDetail(sectionId, itemId) {
-            dashboardOverview.style.display = 'none';
-            standardSectionContent.style.display = 'none';
-            itemDetailView.style.display = 'block';
+    // Interactive scenario data removed.
+    // Any items of type 'interactive_scenario' in kbSystemData below will be non-functional
+    // or should be removed/changed to a different type.
+    // For this simplified version, we'll filter them out or handle them gracefully.
 
-            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-            const itemData = sectionData?.items?.find(i => i.id === itemId);
+    let kbSystemData = {
+        meta: { version: '0.3.0', lastGlobalUpdate: new Date().toISOString() },
+        sections: [
+            { id: 'home', name: 'الرئيسية', iconText: '🏠', description: 'لوحة التحكم ونظرة عامة.' },
+            {
+                id: 'support', name: 'الدعم', iconText: '🎧', description: 'موارد الدعم والحالات.',
+                items: [
+                    { id: 'sup_article_001', type: 'article', title: 'التعامل مع التذاكر ذات الأولوية العالية', summary: 'دليل لإدارة حوادث P1 و P0 بفعالية.', content: 'محتوى تفصيلي لتذاكر P1...', tags: ['p1', 'عاجل'] },
+                    { id: 'sup_case_001', type: 'case', title: 'انقطاعات متكررة للمستخدم ألفا', summary: 'التحقيق في عدم استقرار الشبكة للمستخدم ألفا.', status: 'Pending', resolution_steps: '<p><strong>الخطوة 1:</strong> تحقق من الشبكة المحلية.</p><p><strong>الخطوة 2:</strong> قم بعمل Ping للخوادم الداخلية.</p>', tags: ['اتصال', 'شبكات'] },
+                    // Example of an interactive scenario item - it won't launch a modal now.
+                    // Could be displayed as a regular article or filtered out.
+                    // {
+                    //     id: 'comp_flow_scenario', type: 'interactive_scenario', title: 'استفسار العميل – تدفق التعويضات',
+                    //     summary: 'دليل تفاعلي للتعامل مع تعويضات العملاء بسبب تأخر الطلبات.',
+                    //     scenario_data: {}, // Empty or remove if type is fully removed
+                    //     is_sensitive: true
+                    // },
+                ],
+                subCategories: [{ id: 'tools', name: 'أدوات الدعم', iconText: '🛠️' }, { id: 'faq', name: 'الأسئلة الشائعة', iconText: '❓' }]
+            },
+            { id: 'partner_care', name: 'رعاية الشركاء', iconText: '🤝', description: 'موارد لإدارة الشركاء.', items: [] },
+            { id: 'logistics', name: 'اللوجستيات', iconText: '🚚', description: 'عمليات ومعلومات اللوجستيات.', items: [] },
+            { id: 'forms_templates', name: 'النماذج/القوالب', iconText: '📄', description: 'نماذج وقوالب قابلة للتنزيل.', items: [{id: 'form_001', type: 'form_sheet', title: 'نموذج طلب إجازة', summary: 'نموذج قياسي لطلب إجازة.', url: '#'}] }
+        ]
+    };
 
-            if (!sectionData || !itemData) {
-                itemDetailView.innerHTML = '<div class="card"><p>Error: Item not found.</p></div>';
-                return;
+    // --- DOM Elements ---
+    const sidebar = document.getElementById('sidebar');
+    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+    const navigationMenu = document.getElementById('navigationMenu');
+    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
+    const breadcrumbsContainer = document.getElementById('breadcrumbs');
+    const pageContentArea = document.getElementById('pageContentArea');
+    const dashboardOverviewContainer = document.getElementById('dashboardOverviewContainer');
+    const standardSectionContentPlaceholder = document.getElementById('standardSectionContentPlaceholder');
+    const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
+    const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
+    const userAvatar = document.getElementById('userAvatar');
+    const footerKbVersion = document.getElementById('footerKbVersion');
+
+    const addContentModalOverlay = document.getElementById('addContentModalOverlay');
+    const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
+    const addContentForm = document.getElementById('addContentForm');
+    const cancelAddContentBtn = document.getElementById('cancelAddContentBtn');
+    const contentTypeSelect = document.getElementById('contentType');
+    const contentUrlContainer = document.getElementById('contentUrlContainer');
+    const contentDetailContainer = document.getElementById('contentDetailContainer');
+    const contentDetailLabel = document.getElementById('contentDetailLabel');
+    const contentDetailTextarea = document.getElementById('contentDetail');
+
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    const searchResultsContainer = document.getElementById('searchResultsContainer');
+
+    // Quill, Mermaid, Interactive Scenario elements and variables removed.
+
+    let currentUser = Auth.getCurrentUser();
+    let currentOpenItem = null;
+
+    // --- Utility Functions ---
+    function escapeHTML(str) {
+        if (typeof str !== 'string') return '';
+        const el = document.createElement('div');
+        el.textContent = str;
+        return el.innerHTML;
+    }
+
+    function highlightText(text, query) {
+        if (!text) return '';
+        const safeText = escapeHTML(text);
+        if (!query) return safeText;
+        try {
+            const rgx = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+            return safeText.replace(rgx, '<mark>$1</mark>');
+        } catch (e) { return safeText; }
+    }
+
+    function truncateText(text, len) {
+        if (!text || text.length <= len) return text;
+        return text.substring(0, len) + '...';
+    }
+    function stripHtml(html){
+       let tmp = document.createElement("DIV");
+       tmp.innerHTML = html;
+       return tmp.textContent || tmp.innerText || "";
+    }
+
+    function showToast(message, type = 'info', duration = 3000) {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        
+        let iconSymbol = 'ℹ️'; // Unicode icons
+        if (type === 'success') iconSymbol = '✔️';
+        else if (type === 'error') iconSymbol = '❌';
+
+        toast.innerHTML = `<span>${escapeHTML(message)}</span> <span class="toast-icon">${iconSymbol}</span>`;
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    // Theme management removed for simplicity
+
+    // --- Sidebar and Navigation ---
+    function populateSidebar() {
+        let menuHTML = `<div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: #718096; margin-bottom: 8px; margin-top: 15px; padding: 0 10px;">القائمة الرئيسية</div>`;
+        kbSystemData.sections.forEach(section => {
+            if (section.id === 'home') {
+                 menuHTML += `<a href="#home" class="sidebar-link" data-section="home">
+                    <span style="margin-left: 10px;">${section.iconText || '📄'}</span>${escapeHTML(section.name)}
+                </a>`;
             }
+        });
+        menuHTML += `<div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: #718096; margin-bottom: 8px; margin-top: 20px; padding: 0 10px;">مجالات المعرفة</div>`;
+        kbSystemData.sections.forEach(section => {
+            if (section.id !== 'home') {
+                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                    <span style="margin-left: 10px;">${section.iconText || '📁'}</span>${escapeHTML(section.name)}
+                </a>`;
+            }
+        });
+        navigationMenu.innerHTML = menuHTML;
+    }
 
-            currentSectionTitle.textContent = itemData.title;
-            breadcrumbs.innerHTML = `<a href="#home">Home</a> > <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> > <span>${escapeHTML(itemData.title)}</span>`;
-            itemDetailView.innerHTML = `
+    mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
+    sidebar.addEventListener('click', (e) => {
+        if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
+            sidebar.classList.add('closed');
+        }
+    });
+
+    function highlightSidebarLink(sectionId) {
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+        if (activeLink) activeLink.classList.add('active');
+    }
+
+    // --- Content Display ---
+    function renderItemCard(item, sectionData) {
+        let itemIconText = '📄'; // Default icon
+        let ctaText = 'عرض التفاصيل';
+        let ctaLink = `#${sectionData.id}/${item.id}`;
+        let target = '';
+
+        if (item.type === 'article') itemIconText = '📰';
+        else if (item.type === 'case') itemIconText = '💼';
+        else if (item.type === 'form_sheet') { itemIconText = '📝'; ctaText = 'فتح الرابط'; ctaLink = item.url || '#'; target = '_blank';}
+        // Interactive scenario type handling removed from here.
+        // If an 'interactive_scenario' item exists, it will be rendered like a generic item or filtered out.
+
+        return `
+        <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
+            <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+                <span style="font-size: 1.5rem; margin-left: 15px; min-width: 30px;">${itemIconText}</span>
+                <h3 style="margin-top:0;">${escapeHTML(item.title)}</h3>
+            </div>
+            <p style="font-size: 0.9rem; color: #4a5568; flex-grow: 1;">${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
+            ${item.tags && item.tags.length ? `<div style="margin-bottom: 12px;">${item.tags.map(tag => `<span style="font-size: 0.75rem; background-color: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 8px; margin-left: 5px; display: inline-block;">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                <span class="item-type-badge">${escapeHTML(item.type.replace('_', ' '))}</span>
+                <a href="${escapeHTML(ctaLink)}" ${target ? `target="${target}" rel="noopener noreferrer"` : ''} class="item-cta-link"
+                   data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}">
+                   ${ctaText} →
+                </a>
+            </div>
+        </div>`;
+    }
+
+    function displayDashboard() {
+        dashboardOverviewContainer.classList.remove('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+        currentSectionTitleEl.textContent = 'نظرة عامة';
+        breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">الرئيسية</span>`;
+
+        const welcomeUser = currentUser.fullName || 'المستخدم';
+        dashboardOverviewContainer.innerHTML = `
+            <div class="card" style="background-color: #e2e8f0;">
+                <h2 style="font-size: 2rem; margin-bottom: 8px;">مرحباً، ${escapeHTML(welcomeUser)}!</h2>
+                <p>هنا نظرة عامة على مركز المعرفة InfiniBase الخاص بك.</p>
+                <p style="font-size: 0.9rem; color: #4a5568;">InfiniBase الإصدار ${escapeHTML(kbSystemData.meta.version)} | آخر تحديث: ${new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString()}</p>
+            </div>
+            <div class="cards-grid">
                 <div class="card">
-                    <h2>${escapeHTML(itemData.title)}</h2>
-                    <p>${escapeHTML(itemData.summary)}</p>
-                    <hr style="margin: 20px 0;">
-                    <div>${itemData.content}</div>
-                    <a href="#${sectionId}" class="primary-btn">Back to ${escapeHTML(sectionData.name)}</a>
+                    <h3>إحصائيات سريعة</h3>
+                    <p>إجمالي الأقسام: ${kbSystemData.sections.length}</p>
+                    <p>إجمالي العناصر (تقريبي): ${kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(it => it.type !== 'interactive_scenario').length || 0), 0)}</p>
+                </div>
+                <div class="card">
+                    <h3>تم عرضه مؤخراً (مثال)</h3>
+                    <ul style="list-style-type: disc; padding-right: 20px;">
+                        <li>كيفية التعامل مع تذاكر P1</li>
+                        <li>نموذج طلب إجازة</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- Mermaid Diagram Example Removed -->
+        `;
+    }
+
+    function displaySectionContent(sectionId, subCategoryFilter = null) {
+        currentOpenItem = null;
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.remove('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+
+        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+        if (!sectionData) {
+            standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: red;">القسم غير موجود: ${escapeHTML(sectionId)}</h2></div>`;
+            currentSectionTitleEl.textContent = 'غير موجود';
+            return;
+        }
+
+        currentSectionTitleEl.textContent = sectionData.name;
+        let bcHTML = `<a href="#home">الرئيسية</a> <span style="margin: 0 5px;">></span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
+        if (subCategoryFilter) {
+            const subCat = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter);
+            if (subCat) {
+                 bcHTML = `<a href="#home">الرئيسية</a> <span style="margin: 0 5px;">></span> <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">></span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(subCat.name)}</span>`;
+            }
+        }
+        breadcrumbsContainer.innerHTML = bcHTML;
+
+        let contentHTML = `<div>`; // Removed space-y-8 equivalent
+        if (currentUser.role === 'admin') {
+             contentHTML += `
+                <div style="text-align: left; margin-bottom: 20px;"> {/* RTL: text-align: left */}
+                    <button id="openAddContentBtn" class="button" data-section-id="${sectionData.id}">
+                        ➕ إضافة محتوى جديد إلى ${escapeHTML(sectionData.name)}
+                    </button>
                 </div>`;
         }
 
-        function openAddContentModal(sectionId) {
-            addContentForm.dataset.sectionId = sectionId;
-            addContentModal.style.display = 'flex';
-            document.getElementById('contentTitle').focus();
+        const itemsToDisplay = (sectionData.items || [])
+            .filter(item => item.type !== 'interactive_scenario') // Filter out interactive scenarios
+            .filter(item => !subCategoryFilter || (item.tags && item.tags.includes(subCategoryFilter)));
+
+        if (itemsToDisplay.length > 0) {
+            contentHTML += `<div class="cards-grid">`;
+            itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
+            contentHTML += `</div>`;
         }
 
-        function closeAddContentModal() {
-            addContentModal.style.display = 'none';
-            addContentForm.reset();
-        }
-
-        addContentForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const sectionId = addContentForm.dataset.sectionId;
-            const section = kbSystemData.sections.find(s => s.id === sectionId);
-            if (!section) return;
-
-            const newItem = {
-                id: `${sectionId}_item_${Date.now()}`,
-                type: 'article',
-                title: document.getElementById('contentTitle').value,
-                summary: document.getElementById('contentSummary').value,
-                content: document.getElementById('contentDetails').value.replace(/\n/g, '<br>')
-            };
-
-            if (!section.items) section.items = [];
-            section.items.push(newItem);
-            closeAddContentModal();
-            if (window.location.hash.substring(1) === sectionId) displaySectionContent(sectionId);
-        });
-
-        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
-
-        globalSearchInput.addEventListener('input', () => {
-            const query = globalSearchInput.value.trim().toLowerCase();
-            if (query.length < 2) {
-                searchResultsContainer.style.display = 'none';
-                return;
-            }
-            const results = [];
-            kbSystemData.sections.forEach(s => {
-                s.items?.forEach(i => {
-                    if (i.title.toLowerCase().includes(query) || i.summary?.toLowerCase().includes(query)) {
-                        results.push({ ...i, sectionId: s.id, sectionName: s.name });
-                    }
-                });
+        if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
+            contentHTML += `<h3 style="font-size: 1.5rem; font-weight: 600; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">الأقسام الفرعية</h3><div class="cards-grid">`;
+            sectionData.subCategories.forEach(subCat => {
+                contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card" style="text-align: center; text-decoration: none; color: var(--text-color);">
+                    <span style="font-size: 2rem; display: block; margin-bottom: 10px;">${subCat.iconText || sectionData.iconText || '📁'}</span>
+                    <h4 style="margin:0; font-weight: 500;">${escapeHTML(subCat.name)}</h4>
+                </a>`;
             });
-            searchResultsContainer.innerHTML = '';
-            if (results.length) {
-                results.slice(0, 5).forEach(r => {
-                    const li = document.createElement('a');
-                    li.href = `#${r.sectionId}/${r.id}`;
-                    li.style.display = 'block';
-                    li.style.padding = '10px';
-                    li.style.borderBottom = '1px solid #ddd';
-                    li.innerHTML = `<strong>${escapeHTML(r.title)}</strong> (${r.sectionName})<br>${escapeHTML(truncateText(r.summary, 50))}`;
-                    li.addEventListener('click', () => { searchResultsContainer.style.display = 'none'; globalSearchInput.value = ''; });
-                    searchResultsContainer.appendChild(li);
-                });
-                searchResultsContainer.style.display = 'block';
-            } else {
-                searchResultsContainer.innerHTML = '<div style="padding: 10px;">No results found.</div>';
-                searchResultsContainer.style.display = 'block';
-            }
-        });
-
-        document.addEventListener('click', e => {
-            if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
-                searchResultsContainer.style.display = 'none';
-            }
-        });
-
-        function handleNavigation() {
-            const hash = window.location.hash.substring(1) || 'home';
-            const [sectionId, itemId] = hash.split('/');
-
-            highlightSidebarLink(sectionId);
-
-            if (sectionId === 'home') {
-                displayDashboard();
-            } else if (itemId && sectionId) {
-                displayItemDetail(sectionId, itemId);
-            } else if (sectionId) {
-                displaySectionContent(sectionId);
-            } else {
-                displayDashboard();
-            }
+            contentHTML += `</div>`;
         }
 
-        document.getElementById('logoutButton').addEventListener('click', () => {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.clear();
-                window.location.reload();
-            }
+        if (itemsToDisplay.length === 0 && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) {
+             contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p style="font-size: 1.2rem; color: #718096;">لا يوجد محتوى في هذا القسم${subCategoryFilter ? ' أو القسم الفرعي' : ''}.</p></div>`;
+        }
+
+        contentHTML += `</div>`;
+        standardSectionContentPlaceholder.innerHTML = contentHTML;
+
+        const openAddBtn = document.getElementById('openAddContentBtn');
+        if (openAddBtn) {
+            openAddBtn.addEventListener('click', (e) => {
+                const currentSecId = e.currentTarget.dataset.sectionId;
+                openAddContentModal(currentSecId);
+            });
+        }
+    }
+
+    function displayItemDetail(sectionId, itemId) {
+        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+        const itemData = sectionData?.items?.find(i => i.id === itemId);
+
+        if (!sectionData || !itemData || itemData.type === 'interactive_scenario') { // Also ignore interactive scenario details
+            standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">خطأ: العنصر غير موجود أو غير قابل للعرض.</p>`;
+            itemDetailViewPlaceholder.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden'); // Show section list instead
+            return;
+        }
+        currentOpenItem = { sectionId, itemId };
+
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.remove('hidden');
+
+        let bcHTML = `
+            <a href="#home">الرئيسية</a> <span style="margin: 0 5px;">></span>
+            <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">></span>
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
+        breadcrumbsContainer.innerHTML = bcHTML;
+        currentSectionTitleEl.textContent = itemData.title;
+
+        let detailHTML = `
+            <button id="backToSectionBtn" class="button button-secondary" style="margin-bottom: 20px;">
+                ← العودة إلى ${escapeHTML(sectionData.name)}
+            </button>
+            <div class="card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 1.8rem; margin-left: 15px;">${itemData.type === 'case' ? '💼' : '📰'}</span>
+                    <h2 style="font-size: 1.8rem; margin:0;">${escapeHTML(itemData.title)}</h2>
+                </div>
+                <p style="color: #4a5568; margin-bottom: 15px; font-style: italic;">${escapeHTML(itemData.summary)}</p>
+                ${itemData.tags && itemData.tags.length ? `<div style="margin-bottom: 20px;">${itemData.tags.map(tag => `<span style="font-size: 0.75rem; background-color: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 8px; margin-left: 5px; display: inline-block;">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <hr style="margin: 20px 0; border-color: var(--border-color);">
+                <div class="kb-content">`;
+
+        if (itemData.type === 'case' && itemData.resolution_steps) {
+            // Assuming resolution_steps is simple HTML or Markdown-like text
+            // For true simplicity, treat as text or basic HTML.
+            // If it's Quill HTML, stripHtml might be too aggressive, but for now, direct render.
+            detailHTML += itemData.resolution_steps; // Render as is
+        } else if (itemData.type === 'article' && itemData.content) {
+            // Treat as plain text or simple HTML. Convert newlines to <br> for plain text.
+            detailHTML += escapeHTML(itemData.content).replace(/\n/g, '<br>');
+        } else if (itemData.type === 'form_sheet' && itemData.url) {
+            detailHTML += `<p>يمكنك الوصول إلى هذا النموذج/الورقة من خلال الرابط التالي:</p><p><a href="${escapeHTML(itemData.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(itemData.url)}</a></p>`;
+        } else {
+            detailHTML += `<p>لا يوجد محتوى تفصيلي متاح لهذا العنصر.</p>`;
+        }
+        detailHTML += `</div></div>`;
+        itemDetailViewPlaceholder.innerHTML = detailHTML;
+
+        document.getElementById('backToSectionBtn').addEventListener('click', () => {
+            window.location.hash = `#${sectionId}`;
         });
+    }
+
+    // --- Add Content Modal Logic (Simplified) ---
+    function openAddContentModal(sectionIdForContent) {
+        addContentForm.reset();
+        addContentForm.dataset.sectionId = sectionIdForContent;
+        contentDetailTextarea.value = ''; // Clear textarea
+
+        // Default to article/case related fields
+        contentDetailContainer.classList.remove('hidden');
+        contentUrlContainer.classList.add('hidden');
+        contentTypeSelect.value = "article";
+        contentDetailLabel.textContent = 'محتوى المقال';
+
+
+        addContentModalOverlay.classList.remove('hidden');
+        document.getElementById('contentTitle').focus();
+    }
+
+    function closeAddContentModal() {
+        addContentModalOverlay.classList.add('hidden');
+    }
+
+    contentTypeSelect.addEventListener('change', (e) => {
+        const type = e.target.value;
+        contentDetailContainer.classList.add('hidden');
+        contentUrlContainer.classList.add('hidden');
+
+        if (type === 'case') {
+            contentDetailContainer.classList.remove('hidden');
+            contentDetailLabel.textContent = 'تفاصيل / خطوات الحل (للحالة)';
+        } else if (type === 'form_sheet') {
+            contentUrlContainer.classList.remove('hidden');
+        } else if (type === 'article') {
+            contentDetailContainer.classList.remove('hidden');
+            contentDetailLabel.textContent = 'محتوى المقال';
+        }
+    });
+
+    addContentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const sectionId = addContentForm.dataset.sectionId;
+        const section = kbSystemData.sections.find(s => s.id === sectionId);
+        if (!section) {
+            showToast('خطأ: القسم المستهدف غير موجود!', 'error');
+            return;
+        }
+
+        const newItem = {
+            id: `${sectionId}_item_${Date.now()}`,
+            type: contentTypeSelect.value,
+            title: document.getElementById('contentTitle').value.trim(),
+            summary: document.getElementById('contentSummary').value.trim(),
+            tags: [],
+            createdBy: currentUser.email,
+            createdAt: new Date().toISOString()
+        };
+
+        if (newItem.type === 'case' || newItem.type === 'article') {
+            // Storing as plain text or simple HTML from textarea
+            const rawContent = contentDetailTextarea.value;
+            // Basic sanitization / formatting if needed, for now direct
+            // If you want basic HTML (bold, italic, lists) from textarea,
+            // users would have to write HTML, or you'd need a simple Markdown parser.
+            // For now, we'll assume it can be plain text or simple user-entered HTML.
+             newItem.content = rawContent; // For articles
+            if (newItem.type === 'case') newItem.resolution_steps = rawContent;
+        } else if (newItem.type === 'form_sheet') {
+            newItem.url = document.getElementById('contentUrl').value.trim();
+            if (!newItem.url) { showToast('الرابط مطلوب للنموذج/الورقة.', 'error'); return; }
+        }
+        // Interactive_scenario type removed
+
+        if (!section.items) section.items = [];
+        section.items.push(newItem);
+
+        showToast(`تمت إضافة '${newItem.title}' إلى ${section.name} بنجاح!`, 'success');
+        closeAddContentModal();
+        const currentHashParts = window.location.hash.substring(1).split('/');
+        if (currentHashParts[0] === sectionId) {
+            displaySectionContent(sectionId, currentHashParts[1] || null);
+        }
+    });
+
+    // Interactive Scenario Logic and Modal functions/elements removed.
+
+    // --- Global Search ---
+    globalSearchInput.addEventListener('input', () => {
+        const query = globalSearchInput.value.trim().toLowerCase();
+        if (query.length < 2) {
+            searchResultsContainer.classList.add('hidden');
+            return;
+        }
+        const results = [];
+        kbSystemData.sections.forEach(s => {
+            s.items?.forEach(i => {
+                if (i.type === 'interactive_scenario') return; // Skip interactive scenarios in search
+
+                if (i.title.toLowerCase().includes(query) || 
+                    (i.summary && stripHtml(i.summary).toLowerCase().includes(query)) || 
+                    (i.content && stripHtml(i.content).toLowerCase().includes(query)) ||
+                    (i.resolution_steps && stripHtml(i.resolution_steps).toLowerCase().includes(query)) ||
+                    (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
+                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
+                }
+            });
+        });
+        searchResultsContainer.innerHTML = '';
+        if (results.length) {
+            results.slice(0, 7).forEach(r => {
+                const li = document.createElement('a');
+                li.href = `#${r.sectionId}/${r.id}`;
+                 li.addEventListener('click', () => {
+                    searchResultsContainer.classList.add('hidden');
+                    globalSearchInput.value = '';
+                });
+
+                li.innerHTML = `
+                    <div style="font-weight: bold;">${highlightText(r.title, query)}
+                        <span style="font-size: 0.8em; color: #718096; margin-right: 5px;">(${escapeHTML(r.type.replace('_', ' '))} في ${escapeHTML(r.sectionName)})</span>
+                    </div>
+                    <p style="font-size: 0.9em; color: #4a5568; margin: 0;">${highlightText(truncateText(stripHtml(r.summary || r.content || r.resolution_steps), 70), query)}</p>`;
+                searchResultsContainer.appendChild(li);
+            });
+            searchResultsContainer.classList.remove('hidden');
+        } else {
+            searchResultsContainer.innerHTML = `<div style="padding: 10px; font-size: 0.9em; color: #718096;">لا توجد نتائج.</div>`;
+            searchResultsContainer.classList.remove('hidden');
+        }
+    });
+    document.addEventListener('click', e => {
+        if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+            searchResultsContainer.classList.add('hidden');
+        }
+    });
+    
+    // handleSearchResultClick simplified as interactive scenarios are gone
+
+    // --- Routing and Initialization ---
+    function handleNavigation() {
+        const hash = window.location.hash.substring(1) || 'home';
+        const parts = hash.split('/');
+        const sectionId = parts[0];
+        const itemIdOrSubCategory = parts[1];
+        const itemIdIfSubCategory = parts[2];
+
+        let actualItemId = null;
+        let subCategoryFilter = null;
+
+        const sectionForCheck = kbSystemData.sections.find(s => s.id === sectionId);
+        if (sectionForCheck && sectionForCheck.subCategories && sectionForCheck.subCategories.find(sc => sc.id === itemIdOrSubCategory)) {
+            subCategoryFilter = itemIdOrSubCategory;
+            actualItemId = itemIdIfSubCategory;
+        } else {
+            actualItemId = itemIdOrSubCategory;
+        }
+
+        highlightSidebarLink(sectionId);
+
+        if (sectionId === 'home') {
+            displayDashboard();
+        } else if (actualItemId && sectionId) {
+            displayItemDetail(sectionId, actualItemId);
+        } else if (sectionId) {
+            displaySectionContent(sectionId, subCategoryFilter);
+        } else {
+            displayDashboard();
+        }
+        window.scrollTo(0,0);
+    }
+
+    function initializeApp() {
+        Auth.promptLogin();
+        currentUser = Auth.getCurrentUser();
+
+        const displayName = currentUser.fullName || currentUser.email || 'المستخدم';
+        userNameDisplayHeader.textContent = displayName;
+        userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=4A5568&color=fff&rounded=true&font-size=0.5`;
+        footerKbVersion.textContent = kbSystemData.meta.version;
+
+        populateSidebar();
+        // loadTheme removed
+        handleNavigation();
 
         window.addEventListener('hashchange', handleNavigation);
-        handleNavigation();
-    </script>
+        document.getElementById('logoutButton').addEventListener('click', () => {
+             if(confirm('هل أنت متأكد أنك تريد تسجيل الخروج؟')) Auth.logout();
+        });
+        document.getElementById('reportErrorBtn').addEventListener('click', () => showToast('ميزة الإبلاغ عن المشكلات قيد التطوير.', 'info'));
+        
+        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
+        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
+        // Event listeners for interactive scenario modal removed.
+
+        // Click delegation for item cards (simplified)
+        pageContentArea.addEventListener('click', e => {
+            const cardCta = e.target.closest('.item-cta-link');
+            if (cardCta) {
+                const itemType = cardCta.dataset.itemType;
+                // Interactive scenario specific launch logic removed.
+                // form_sheet is handled by href target=_blank
+                // Other types (article, case) use hash navigation, which is default link behavior.
+                // No specific JS needed here unless we need to preventDefault for some reason.
+            }
+        });
+
+        // Ensure sidebar is closed on mobile initially if not already determined by CSS media queries
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('closed');
+        }
+
+
+        showToast(`تم تحميل InfiniBase الإصدار ${kbSystemData.meta.version}. مرحباً، ${displayName}!`, 'info', 4000);
+        console.log('تطبيق InfiniBase مبسط تم تهيئته');
+    }
+
+    initializeApp();
+
+</script>
 </body>
 </html>
