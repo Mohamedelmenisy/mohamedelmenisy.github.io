@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Knowledge Base</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1' width='64' height='64'><path d='M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17A1,1 0 0,0 9,18H15A1,1 0 0,0 16,17V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2M9,21A1,1 0 0,0 10,22H14A1,1 0 0,0 15,21V20H9V21Z'/></svg>">
+    <!-- Favicon from indexx.txt (example) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1' width='64' height='64'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/></svg>">
     
+    <!-- CDNs -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
@@ -14,25 +16,26 @@
 
     <style>
         :root {
-            --primary-color: #6366f1; 
+            /* Permanent Dark Theme Variables */
+            --primary-color: #6366f1; /* Brighter Indigo for dark */
             --primary-color-hover: #4f46e5;
-            
-            --text-color: #f1f5f9; /* New */
-            --text-color-muted: #94a3b8; /* New */
-            --text-color-inverted: #111827; 
-            --text-color-subtle: #94a3b8; /* New - aliased to muted */
+            --secondary-color: #9ca3af;
 
-            --bg-color: #111827; 
-            --bg-color-alt: #1f2937; /* New - For cards/modals */
-            --bg-color-sidebar: #1f2937; /* New - For sidebar */
-            --bg-color-header: rgba(17, 24, 39, 0.85); /* Updated to match --bg-color with alpha */
-            --bg-color-modal: #1f2937; /* New */
-            --bg-color-hover: #374151; /* New */
+            --text-color: #d1d5db;
+            --text-color-muted: #9ca3af;
+            --text-color-inverted: #111827; /* For text on primary bg */
+            --text-color-subtle: #9ca3af;
+
+            --bg-color: #111827; /* Dark gray */
+            --bg-color-alt: #1f2937; /* Slightly lighter dark gray for cards/modals */
+            --bg-color-sidebar: #1f2937;
+            --bg-color-header: rgba(31, 41, 55, 0.9);
+            --bg-color-modal: #1f2937;
+            --bg-color-hover: #374151;
             --bg-color-active: var(--primary-color);
 
-            --border-color: #334155; /* New */
-            --border-color-darker: #4b5563; /* Will be less distinct from new border-color, adjust if needed */
-            /* For consistency, perhaps make border-color-darker a slightly darker shade of #334155 or use border-color directly for most cases */
+            --border-color: #374151;
+            --border-color-darker: #4b5563;
 
             --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
             --card-hover-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
@@ -79,7 +82,7 @@
             transform: translateX(-100%); /* LTR */
         }
         @media (min-width: 768px) {
-            .sidebar.closed { transform: translateX(0); } 
+            .sidebar.closed { transform: translateX(0); }
         }
 
         .sidebar-header {
@@ -139,12 +142,11 @@
         }
         .sidebar-link.active {
             background-color: var(--bg-color-active);
-            color: var(--text-color-inverted) !important; /* White text on primary bg */
+            color: var(--text-color-inverted) !important;
             font-weight: 600;
-            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3); /* primary-color with alpha */
         }
         .sidebar-link.active i {
-            color: var(--text-color-inverted) !important; /* White icon on primary bg */
+            color: var(--text-color-inverted) !important;
         }
 
         .sidebar-footer {
@@ -171,6 +173,7 @@
         }
         @media (min-width: 768px) {
              .content-wrapper { margin-left: var(--sidebar-width); /* LTR */ }
+             .sidebar.closed + .content-wrapper { margin-left: 0; /* LTR */ }
         }
 
         .content-header {
@@ -182,13 +185,13 @@
             align-items: center;
             position: sticky; 
             top: 0;
-            left: var(--sidebar-width); 
+            left: var(--sidebar-width); /* LTR, adjusted for fixed sidebar */
             right: 0;
             height: var(--header-height);
             z-index: 50;
             backdrop-filter: blur(8px); 
         }
-         @media (max-width: 767px) { 
+         @media (max-width: 767px) { /* Mobile: header spans full width */
             .content-header {
                 left: 0;
             }
@@ -198,7 +201,6 @@
             font-size: 1.5rem; 
             font-weight: bold;
             margin: 0;
-            color: var(--text-color);
         }
         #breadcrumbs {
             font-size: 0.875rem; 
@@ -211,16 +213,12 @@
         .header-right-content { display: flex; align-items: center; gap: 1rem; }
         .search-container { position: relative; }
         .search-container input[type="search"] {
-            padding: 0.625rem 1rem 0.625rem 2.5rem; 
-            border: 1px solid var(--border-color); /* Use main border color */
+            padding: 0.625rem 1rem 0.625rem 2.5rem; /* py-2.5 pl-10 pr-4 for LTR */
+            border: 1px solid var(--border-color-darker);
             border-radius: 9999px; 
             min-width: 250px; 
-            background-color: var(--bg-color); /* Darker than card for input */
+            background-color: var(--bg-color-alt); 
             color: var(--text-color);
-        }
-         .search-container input[type="search"]:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
         .search-container .search-icon {
             position: absolute;
@@ -248,12 +246,12 @@
             color: var(--text-color);
         }
         #searchResultsContainer a:hover { background-color: var(--bg-color-hover); }
-        #searchResultsContainer mark { background-color: #a55221; color: var(--text-color); } /* Adjusted mark for better contrast on dark */
+        #searchResultsContainer mark { background-color: #78350f; color: #f3f4f6; }
 
 
         .user-profile { display: flex; align-items: center; gap: 0.5rem; }
         .user-profile img { width: 36px; height: 36px; border-radius: 50%; }
-        #userNameDisplayHeader { font-weight: 500; color: var(--text-color); }
+        #userNameDisplayHeader { font-weight: 500; }
         @media (max-width: 640px) { 
             #userNameDisplayHeader { display: none; }
         }
@@ -275,7 +273,6 @@
         .card:hover {
             transform: translateY(-4px);
             box-shadow: var(--card-hover-shadow);
-            background-color: var(--bg-color-hover); /* Added hover bg for card */
         }
         .card-header-icon {
             display: flex;
@@ -286,11 +283,11 @@
             padding: 0.75rem;
             border-radius: 50%;
             margin-right: 1rem; /* LTR */
-            background-color: var(--primary-color); /* Updated to primary */
+            background-color: var(--primary-color-hover); 
         }
         .card-icon-container i {
             font-size: 1.25rem;
-            color: var(--text-color-inverted);  /* White on primary */
+            color: var(--text-color-inverted);  
         }
         .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
@@ -313,7 +310,7 @@
             font-size: 0.75rem; 
             padding: 0.25rem 0.75rem; 
             border-radius: 9999px; 
-            background-color: var(--bg-color); /* Darker than card bg */
+            background-color: var(--bg-color-hover); 
             color: var(--text-color-subtle); 
             font-weight: 600; 
             text-transform: uppercase;
@@ -322,22 +319,15 @@
             font-size: 0.75rem;
             padding: 2px 8px;
             border-radius: 10px;
-            background-color: var(--bg-color); /* Darker than card bg */
+            background-color: var(--bg-color-hover);
             color: var(--text-color-subtle);
             display: inline-block;
             margin: 0 5px 5px 0; /* LTR */
         }
 
-        .sub-item-list { margin-top: 1rem; padding-left: 1rem; border-left: 2px solid var(--primary-color); }
-        .sub-item-list h5 { font-size: 0.9rem; color: var(--text-color-muted); margin-bottom: 0.25rem;}
-        .sub-item-list ul { list-style: none; padding-left: 0; }
-        .sub-item-list li a { color: var(--primary-color); font-size: 0.85rem; text-decoration: none; }
-        .sub-item-list li a:hover { text-decoration: underline; }
-
-
         .button, button {
             background-color: var(--primary-color);
-            color: var(--text-color-inverted); /* Ensuring white on primary */
+            color: var(--text-color-inverted);
             border: 1px solid transparent;
             padding: 0.625rem 1rem; 
             border-radius: var(--border-radius);
@@ -357,18 +347,18 @@
         .button-secondary {
             background-color: transparent;
             color: var(--text-color-subtle);
-            border-color: var(--border-color); /* Use main border color */
+            border-color: var(--border-color-darker);
         }
         .button-secondary:hover { background-color: var(--bg-color-hover); color: var(--text-color); }
         .button-danger {
-            background-color: #dc2626; /* Red-600 */
-            color: var(--text-color-inverted); /* White */
+            background-color: #dc2626; 
+            color: var(--text-color-inverted);
         }
-        .button-danger:hover { background-color: #b91c1c; /* Red-700 */ }
+        .button-danger:hover { background-color: #b91c1c; }
         input:focus, button:focus, select:focus, textarea:focus, a:focus { 
             outline: 2px solid transparent;
             outline-offset: 2px;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); /* primary-color with alpha */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); 
         }
 
         .modal-overlay {
@@ -403,15 +393,13 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem; 
-            border-bottom: 1px solid var(--border-color); /* Added border */
-            padding-bottom: 1rem; /* Added padding */
         }
-        .modal-header h2 { margin-top: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
+        .modal-header h2 { margin-top: 0; font-size: 1.5rem; font-weight: 700; }
         .modal-header .close-button { 
             background: none; border: none; font-size: 1.5rem; color: var(--text-color-muted); cursor: pointer;
             padding: 0.25rem; line-height: 1; border-radius: 50%;
         }
-        .modal-header .close-button:hover { background-color: var(--bg-color-hover); color: var(--text-color); }
+        .modal-header .close-button:hover { background-color: var(--bg-color-hover); }
         
         .modal-actions {
             margin-top: 1.5rem; 
@@ -424,7 +412,7 @@
         }
 
         .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; color: var(--text-color-subtle); }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; }
         .form-group input[type="text"],
         .form-group input[type="url"],
         .form-group input[type="file"],
@@ -432,37 +420,30 @@
         .form-group textarea {
             width: 100%;
             padding: 0.625rem; 
-            border: 1px solid var(--border-color); 
+            border: 1px solid var(--border-color-darker); 
             border-radius: var(--border-radius);
             box-sizing: border-box;
             background-color: var(--bg-color); 
-            color: var(--text-color);
-        }
-         .form-group input::placeholder, .form-group textarea::placeholder {
-            color: var(--text-color-muted);
-        }
-        .form-group select option {
-            background-color: var(--bg-color-alt);
             color: var(--text-color);
         }
         .form-group textarea { min-height: 100px; }
         
         .ql-toolbar {
             background: var(--bg-color);
-            border-color: var(--border-color) !important;
+            border-color: var(--border-color-darker) !important;
             border-top-left-radius: var(--border-radius);
             border-top-right-radius: var(--border-radius);
         }
         .ql-toolbar .ql-stroke { stroke: var(--text-color-muted); }
         .ql-toolbar .ql-fill { fill: var(--text-color-muted); }
         .ql-toolbar .ql-picker-label { color: var(--text-color-muted); }
-        .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color); }
+        .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
         .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
 
 
         .ql-container {
-            background: var(--bg-color); /* Consistent with other inputs */
-            border-color: var(--border-color) !important;
+            background: var(--bg-color-alt);
+            border-color: var(--border-color-darker) !important;
             color: var(--text-color);
             min-height: 150px; 
             border-bottom-left-radius: var(--border-radius);
@@ -470,7 +451,6 @@
             font-size: 1rem;
         }
         .ql-editor { padding: 12px; }
-        .ql-editor.ql-blank::before{ color: var(--text-color-muted); }
 
 
         footer {
@@ -480,6 +460,12 @@
             color: var(--text-color-muted);
             border-top: 1px solid var(--border-color);
             margin-top: auto; 
+        }
+        #reportErrorBtn {
+            margin-left: 1rem; /* LTR */
+            color: #ef4444; 
+            background: none; border: none; padding: 0; text-decoration: underline;
+            font-size: 0.75rem; 
         }
 
         .mobile-sidebar-toggle {
@@ -498,10 +484,10 @@
         }
         @media (min-width: 768px) {
             .mobile-sidebar-toggle { display: none; }
-            .header-left-content #currentSectionTitle { margin-left: 0; } 
+            .header-left-content #currentSectionTitle { margin-left: 0; } /* No toggle on desktop */
         }
         @media (max-width: 767px) {
-            .header-left-content #currentSectionTitle { margin-left: 0.5rem; } 
+            .header-left-content #currentSectionTitle { margin-left: 0.5rem; } /* Space for toggle */
             .content-header { padding: 1rem; }
             .header-right-content .search-container { display:none; } 
         }
@@ -525,11 +511,9 @@
         }
         .toast-notification.show { opacity: 1; transform: translateY(0); }
         .toast-icon { margin-right: 10px; /* LTR */ font-size: 1.2em; }
-        .toast-success { background-color: #10b981; color: white; border-color: #059669; } /* Green-500, Green-600 */
-        .toast-error { background-color: #ef4444; color: white; border-color: #dc2626; } /* Red-500, Red-600 */
-        .toast-info { background-color: #3b82f6; color: white; border-color: #2563eb; } /* Blue-500, Blue-600 */
-        .toast-logout { background-color: var(--primary-color); color: var(--text-color-inverted); border-color: var(--primary-color-hover); } /* Using primary for logout, as requested "blue or purple" */
-
+        .toast-success { background-color: #10b981; color: white; border-color: #059669; } 
+        .toast-error { background-color: #ef4444; color: white; border-color: #dc2626; } 
+        .toast-info { background-color: #3b82f6; color: white; border-color: #2563eb; } 
 
         .cards-grid {
             display: grid;
@@ -538,10 +522,10 @@
         }
 
         .kb-content h1, .kb-content h2, .kb-content h3 { margin-top: 1.5em; margin-bottom: 0.5em; color: var(--text-color); }
-        .kb-content p { margin-bottom: 1em; color: var(--text-color-subtle); } /* Lighten default p color */
-        .kb-content ul, .kb-content ol { margin-bottom: 1em; padding-left: 20px; /* LTR */ color: var(--text-color-subtle); }
+        .kb-content p { margin-bottom: 1em; }
+        .kb-content ul, .kb-content ol { margin-bottom: 1em; padding-left: 20px; /* LTR */ }
         .kb-content li { margin-bottom: 0.5em; }
-        .kb-content strong { font-weight: bold; color: var(--text-color); } /* Ensure strong is main text color */
+        .kb-content strong { font-weight: bold; }
         .kb-content em { font-style: italic; }
         .kb-content a { color: var(--primary-color); text-decoration: underline; }
         .kb-content pre {
@@ -552,19 +536,18 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             border: 1px solid var(--border-color);
-            color: var(--text-color); 
+            color: var(--text-color); /* Ensure pre content is visible */
         }
-         .kb-content code:not(pre code) { /* More specific for inline code */
+         .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
             padding: 0.2em 0.4em;
             margin: 0;
             font-size: 85%;
             border-radius: 3px;
-            color: var(--text-color);
         }
-        mark { /* Used by search highlight */
+        mark {
             padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold;
-            background-color: #a55221; color: var(--text-color); /* Adjusted mark for better contrast */
+            background-color: #78350f; color: #f3f4f6; 
         }
 
         .hidden { display: none !important; }
@@ -581,9 +564,8 @@
             font-weight: 600; 
             margin-bottom: 0.5rem;
             text-align: center;
-            color: var(--text-color);
         }
-        .mermaid-diagram-card { 
+        .mermaid-diagram-card { /* Specific card for Mermaid diagrams */
             background-color: var(--bg-color-alt);
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
@@ -597,19 +579,37 @@
             font-weight: 600;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.5rem;
-            color: var(--text-color);
         }
         .mermaid-diagram-container {
-            overflow-x: auto; 
-            background-color: var(--bg-color-alt); 
-            padding: 1rem 0;
+            overflow-x: auto; /* For wide diagrams */
         }
         .mermaid-diagram-container svg {
             display: block;
             margin: 0 auto; 
-            max-width: 100%; /* ensure it doesn't overflow its container unnecessarily */
         }
-        /* Mermaid dark theme overrides will be handled by mermaid.initialize themeVariables */
+        /* Mermaid dark theme overrides (Mermaid applies its own styles) */
+        .mermaid-diagram-container text { fill: var(--text-color) !important; }
+        .mermaid-diagram-container .edgeLabel { background-color: var(--bg-color-alt) !important; color: var(--text-color) !important; }
+        .mermaid-diagram-container .label { color: var(--text-color) !important; }
+        .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
+        .mermaid-diagram-container .messageText { fill: var(--text-color) !important; }
+        .mermaid-diagram-container rect, 
+        .mermaid-diagram-container polygon, 
+        .mermaid-diagram-container ellipse,
+        .mermaid-diagram-container circle {
+            stroke: var(--primary-color) !important;
+            fill: var(--bg-color) !important;
+        }
+        .mermaid-diagram-container .cluster rect {
+             fill: var(--bg-color-alt) !important;
+             stroke: var(--border-color-darker) !important;
+        }
+        .mermaid-diagram-container .arrowheadPath {
+            fill: var(--primary-color) !important;
+        }
+        .mermaid-diagram-container .edgePaths path {
+            stroke: var(--primary-color) !important;
+        }
 
 
         /* Item Detail View Specific */
@@ -620,38 +620,9 @@
             display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
         }
         #itemDetailViewPlaceholder .item-title-area i { font-size: 2rem; color: var(--primary-color); }
-        #itemDetailViewPlaceholder .item-title-area h2 { font-size: 1.8rem; margin:0; color: var(--text-color); }
+        #itemDetailViewPlaceholder .item-title-area h2 { font-size: 1.8rem; margin:0; }
         #itemDetailViewPlaceholder .item-summary { color: var(--text-color-subtle); margin-bottom: 1rem; font-style: italic; }
         #itemDetailViewPlaceholder hr { margin: 1.5rem 0; border-color: var(--border-color); }
-         #itemDetailViewPlaceholder .sub-content-heading {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        #itemDetailViewPlaceholder .sub-content-list ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        #itemDetailViewPlaceholder .sub-content-list li {
-            margin-bottom: 0.5rem;
-            padding: 0.5rem;
-            background-color: var(--bg-color);
-            border-radius: var(--border-radius);
-            border-left: 3px solid var(--primary-color);
-        }
-        #itemDetailViewPlaceholder .sub-content-list li a {
-            color: var(--text-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        #itemDetailViewPlaceholder .sub-content-list li a:hover {
-            color: var(--primary-color);
-        }
-
 
         /* Dashboard specific styles */
         .dashboard-stat-card {
@@ -671,7 +642,6 @@
             font-weight: 700;
             display: block;
             margin-bottom: 0.25rem;
-            color: var(--text-color);
         }
         .dashboard-stat-card .stat-label {
             font-size: 0.875rem;
@@ -687,7 +657,6 @@
             font-size: 1.125rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            color: var(--text-color);
         }
         .dashboard-quicklink-card ul {
             list-style: none;
@@ -702,9 +671,7 @@
         }
          .dashboard-quicklink-card ul li a:hover {
             text-decoration: underline;
-            color: var(--primary-color-hover);
         }
-        .dashboard-quicklink-card p { color: var(--text-color-subtle); }
 
     </style>
 </head>
@@ -739,12 +706,12 @@
                 
                 <div class="form-group hidden" id="contentUrlContainer">
                     <label for="contentUrl">Link (for Forms, Designs, etc.)</label>
-                    <input type="url" id="contentUrl" placeholder="https://example.com">
+                    <input type="url" id="contentUrl">
                 </div>
 
                 <div class="form-group" id="contentDetailContainer">
                     <label for="contentDetail" id="contentDetailLabel">Details / Content</label>
-                    <div id="quillEditor"></div> 
+                    <div id="quillEditor"></div> <!-- Quill editor container -->
                 </div>
 
                 <div class="form-group">
@@ -752,13 +719,8 @@
                     <input type="text" id="contentTags" placeholder="e.g., important, update, billing">
                 </div>
 
-                <div class="form-group">
-                    <label for="contentParentId">Parent Item ID (Optional - for sub-content)</label>
-                    <input type="text" id="contentParentId" placeholder="Enter ID of parent item in this section">
-                </div>
-
-                <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
-                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);">Attachments (Optional)</h3>
+                <hr style="border-color: var(--border-color-darker); margin: 1.5rem 0;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Attachments (Optional)</h3>
                 
                 <div class="form-group">
                     <label for="pdfFile">Upload PDF</label>
@@ -796,6 +758,7 @@
                 <!-- Links will be dynamically generated -->
             </nav>
             <div class="sidebar-footer">
+                 <!-- Theme switcher removed -->
                 <button id="logoutButton" class="button button-danger">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -819,7 +782,7 @@
                     </div>
                     <div id="userProfileContainer" class="user-profile">
                         <img id="userAvatar" src="https://ui-avatars.com/api/?name=U&size=36&background=6366f1&color=fff&rounded=true" alt="User">
-                        <span id="userNameDisplayHeader">User</span>
+                        <span id="userNameDisplayHeader" style="font-weight: 500;">User</span>
                     </div>
                 </div>
             </header>
@@ -837,7 +800,8 @@
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy</span>
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. Version <span id="footerKbVersion">0.1.0</span></span>
+                <button id="reportErrorBtn">Report an Issue</button>
             </footer>
         </div>
     </div>
@@ -847,157 +811,111 @@
     // --- Initialize Mermaid ---
     mermaid.initialize({ 
         startOnLoad: false,
-        theme: 'dark', 
+        theme: 'dark', // Permanently dark
         fontFamily: 'Inter, sans-serif',
         flowchart: {
             htmlLabels: true,
             useMaxWidth: true,
         },
-        themeVariables: { 
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), 
+        themeVariables: {
+            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), // Node bg
             primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            primaryBorderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), 
-            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), 
+            primaryBorderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), // Node border
+            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), // Edge color
             textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            secondaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), 
-            tertiaryColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), 
-            
-            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            clusterBkg: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), 
-            clusterBorder: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(), 
-            defaultLinkColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            edgeLabelBackground: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-            nodeTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            // darkMode: true, // Already handled by theme: 'dark'
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram bg
         }
     });
     
     // --- Simulated Auth & Data ---
     const Auth = {
-        isAuthenticated: () => {
-            return !!localStorage.getItem('infiniBaseUser');
-        },
+        isAuthenticated: () => true, 
         getCurrentUser: () => {
             const storedUser = localStorage.getItem('infiniBaseUser');
             if (storedUser) return JSON.parse(storedUser);
-            return null; 
+            return { email: 'guest@example.com', fullName: 'Guest User', role: 'viewer' }; // Default to guest
+        },
+        login: (fullName, email, role = 'admin') => {
+            const user = { fullName, email, role };
+            localStorage.setItem('infiniBaseUser', JSON.stringify(user));
+            showToast(`Welcome, ${fullName}!`, 'success');
+            setTimeout(() => window.location.reload(), 1500);
         },
         logout: () => {
-            const user = Auth.getCurrentUser();
-            const userName = user ? user.fullName : 'User';
             localStorage.removeItem('infiniBaseUser');
-            localStorage.removeItem('justLoggedIn'); 
-            showToast(`You have been logged out, ${userName}. See you soon!`, 'logout', 2500);
-            setTimeout(() => {
-                window.location.href = 'login.html'; 
-            }, 1500);
+            showToast('Logged out successfully!', 'info');
+            setTimeout(() => window.location.reload(), 1500);
+        },
+        promptLogin: () => {
+            if (!localStorage.getItem('infiniBaseUser')) {
+                const name = prompt("Enter your full name (e.g., John Doe):", "John Doe");
+                const email = prompt("Enter your email (e.g., john.doe@example.com):", "john.doe@example.com");
+                const role = prompt("Enter your role (admin/viewer):", "admin");
+                if (name && email) {
+                    Auth.login(name, email, role);
+                } else {
+                    Auth.login("Guest User", "guest@example.com", "viewer");
+                }
+            }
         }
     };
 
     let kbSystemData = {
-        meta: { version: '0.6.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 },
+        meta: { version: '0.5.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 },
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.' },
             {
                 id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.',
                 items: [
                      { 
-                        id: 'sup_flow_compensation', type: 'article', parentId: null,
-                        title: 'Scenario: Customer Inquiry - Compensation Flow for Delays', 
-                        summary: 'Flowchart for handling customer compensation due to order delays, using subgraphs for clarity.',
+                        id: 'sup_flow_compensation', type: 'article', 
+                        title: 'Scenario: Customer Inquiry - Compensation Flow', 
+                        summary: 'Flowchart for handling customer compensation due to order delays.',
                         content: `
-                            <p>This diagram outlines the decision-making process for compensating customers due to order delays.</p>
+                            <p>The following diagram illustrates the steps involved when a customer inquires about a delayed order and potential compensation.</p>
                             <div class="mermaid-diagram-container">
                                 <pre class="mermaid">
 graph TD
-    A[Order Delay Inquiry] --> B{Valid Delay?};
-    B -- No --> B_NO[Apologize, New ETA, Monitor];
-    B -- Yes --> C{Order Type?};
-
-    C -- Fast Delivery --> FD_ROOT[Fast Delivery Path];
-    subgraph Fast Delivery Compensation
-        direction TD
-        FD_ROOT --> FD_D1{Delay: 15-30m?};
-        FD_D1 -- Yes --> FD_A1[Action: Apologize, New ETA, Monitor];
-        FD_D1 -- No --> FD_D2{Delay: 31-45m?};
-        FD_D2 -- Yes --> FD_A2[Action: Compensate 25% Delivery Fee];
-        FD_D2 -- No --> FD_D3{Delay: 46-60m?};
-        FD_D3 -- Yes --> FD_A3[Action: Compensate 50% Delivery Fee];
-        FD_D3 -- No --> FD_A4[Action: Compensate Full Delivery Fee (Over 60m)];
-    end
-
-    C -- Scheduled Delivery --> SD_ROOT[Scheduled Delivery Path];
-    subgraph Scheduled Delivery Compensation
-        direction TD
-        SD_ROOT --> SD_D1{Delay: Up to 30m?};
-        SD_D1 -- Yes --> SD_A1[Action: Apologize, Reassure, Monitor];
-        SD_D1 -- No --> SD_D2{Delay: 31-60m?};
-        SD_D2 -- Yes --> SD_A2[Action: Compensate 100% Order (If Major Disruption)];
-        SD_D2 -- No --> SD_A3[Action: Compensate Full Order + $10 Credit (Over 60m)];
-    end
-
-    B_NO --> Z_END((End Interaction));
-    FD_A1 --> Z_END;
-    FD_A2 --> Z_END;
-    FD_A3 --> Z_END;
-    FD_A4 --> Z_END;
-    SD_A1 --> Z_END;
-    SD_A2 --> Z_END;
-    SD_A3 --> Z_END;
-
-    subgraph Legend
-        direction LR
-        LEG_ACTION[Action/Info]
-        LEG_DECISION{Decision}
-        LEG_END((End))
-    end
-    
-    classDef default fill:var(--bg-color),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color),font-family:Inter;
-    classDef decision fill:var(--bg-color-alt),stroke:var(--text-color-muted),stroke-width:1px,color:var(--text-color),font-family:Inter;
-    classDef endNode fill:var(--primary-color-hover),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color-inverted),font-family:Inter;
-    classDef legendNode fill:var(--bg-color-alt),stroke:var(--border-color),color:var(--text-color-subtle),font-size:12px,font-family:Inter;
-    classDef pathNode fill:var(--bg-color),stroke:var(--border-color),stroke-width:1px,color:var(--text-color-muted),font-family:Inter,font-style:italic;
-
-    class A,B_NO,FD_A1,FD_A2,FD_A3,FD_A4,SD_A1,SD_A2,SD_A3 default;
-    class B,C,FD_D1,FD_D2,FD_D3,SD_D1,SD_D2 decision;
-    class Z_END endNode;
-    class LEG_ACTION,LEG_DECISION,LEG_END legendNode;
-    class FD_ROOT, SD_ROOT pathNode;
-
+    A[Receive Customer Request] --> B{Inquiry Type?};
+    B -- Order Delay --> C{Delivery Time Exceeded?};
+    C -- Yes --> D{Driver Left Store?};
+    C -- No --> E[Apologize, Set New ETA];
+    D -- Yes --> F{Delay 15-30 mins?};
+    D -- No --> G[Apologize, Expedite Order];
+    F -- Yes --> H{Order Type?};
+    F -- No --> I[Apologize, Set New ETA];
+    H -- Fast --> J{Actual Delay?};
+    J -- 31-45 mins --> K[Compensate 25% Delivery Fee];
+    J -- 46-60 mins --> L[Compensate 50% Delivery Fee];
+    J -- Over 60 mins --> M[Full Delivery Fee Compensation];
+    H -- Scheduled --> N{Actual Delay?};
+    N -- 31-60 mins --> O[Compensate 100% Order Value];
+    N -- Over 60 mins --> P[Full Order Value + $10 Credit];
+    E --> Z((End)); G --> Z; I --> Z; K --> Z; L --> Z; M --> Z; O --> Z; P --> Z;
                                 </pre>
                             </div>
-                            <p><strong>Important Considerations:</strong></p>
-                            <ul>
-                                <li>Always verify the cause of the delay (Store, Driver, System). This may influence compensation details or internal follow-up.</li>
-                                <li>Maximum compensation for delivery fee related issues should not exceed $5 if the original delivery fee was less than $5.</li>
-                                <li>Maintain a positive and empathetic tone throughout the interaction.</li>
-                            </ul>
+                            <p>Note: Determine responsibility for the delay (store, driver, company) to apply discount.</p>
+                            <p>Max compensation for delivery fee is $5 if fee is less.</p>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'support policy'],
-                        createdAt: '2023-10-01T10:00:00Z'
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart']
                     },
-                    {
-                        id: 'sup_sub_article_1', type: 'article', parentId: 'sup_flow_compensation',
-                        title: 'Sub-Article: Detailed Verification Steps for Delays',
-                        summary: 'Specific steps to verify the cause of an order delay before proceeding with compensation.',
-                        content: '<p>Before offering compensation, follow these verification steps:</p><ol><li>Check system logs for any automated delay notifications.</li><li>Contact the assigned driver (if applicable) for their status.</li><li>Contact the store/partner to confirm order readiness and any internal issues.</li></ol>',
-                        tags: ['verification', 'delay', 'internal procedure'],
-                        createdAt: '2023-10-01T11:00:00Z'
-                    }
                 ]
             },
-            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', items: [], parentId: null },
-            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', items: [], parentId: null },
-            { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', items: [], parentId: null },
-            { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', items: [], parentId: null },
-            { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', items: [], parentId: null },
-            { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', items: [], parentId: null },
-            { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', items: [], parentId: null },
-            { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', items: [], parentId: null },
-            { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', items: [], parentId: null },
-            { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', items: [], parentId: null },
-            { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', items: [], parentId: null },
-            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', items: [], parentId: null }
+            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', items: [] },
+            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', items: [] },
+            { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', items: [] },
+            { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', items: [] },
+            { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', items: [] },
+            { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', items: [] },
+            { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', items: [] },
+            { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', items: [] },
+            { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', items: [] },
+            { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', items: [] },
+            { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', items: [] },
+            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', items: [
+                // "Leave Request Form" removed
+            ]}
         ]
     };
 
@@ -1013,7 +931,7 @@ graph TD
     const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
     const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
     const userAvatar = document.getElementById('userAvatar');
-    // const footerKbVersion = document.getElementById('footerKbVersion'); // Removed as per request
+    const footerKbVersion = document.getElementById('footerKbVersion');
 
     const addContentModalOverlay = document.getElementById('addContentModalOverlay');
     const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
@@ -1024,13 +942,14 @@ graph TD
     const contentDetailContainer = document.getElementById('contentDetailContainer');
     const contentDetailLabel = document.getElementById('contentDetailLabel');
     const contentTagsInput = document.getElementById('contentTags');
-    const contentParentIdInput = document.getElementById('contentParentId');
     
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
 
+    const htmlElement = document.documentElement; // No theme switcher needed
+
     let quillEditor; 
-    let currentUser = null; 
+    let currentUser = Auth.getCurrentUser();
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
@@ -1057,7 +976,6 @@ graph TD
         return text.substring(0, len) + '...';
     }
     function stripHtml(html){
-       if (!html) return "";
        let tmp = document.createElement("DIV");
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
@@ -1071,8 +989,6 @@ graph TD
         let iconClass = 'fas fa-info-circle';
         if (type === 'success') iconClass = 'fas fa-check-circle';
         else if (type === 'error') iconClass = 'fas fa-times-circle';
-        else if (type === 'logout') iconClass = 'fas fa-door-open';
-
 
         toast.innerHTML = `<i class="toast-icon ${iconClass}"></i> <span>${escapeHTML(message)}</span>`;
         toastContainer.appendChild(toast);
@@ -1085,7 +1001,12 @@ graph TD
         }, duration);
     }
     
+    // --- Theme Management (Simplified for permanent dark mode) ---
     function applyPermanentDarkMode() {
+        // htmlElement.classList.add('dark'); // Already set in HTML tag
+        // No need to change icons or text for a switcher
+        
+        // Update chart colors if charts exist
         [visitorsChartInstance, casesChartInstance, articlesChartInstance].forEach(chart => {
             if (chart) {
                 const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -1102,37 +1023,46 @@ graph TD
                 chart.update();
             }
         });
+        // Mermaid is already initialized with dark theme
         if (!itemDetailViewPlaceholder.classList.contains('hidden') || !standardSectionContentPlaceholder.classList.contains('hidden')) {
-             renderMermaidDiagramsInElement(pageContentArea);
+            renderMermaidDiagramsInElement(pageContentArea);
         }
     }
 
     // --- Sidebar and Navigation ---
     function populateSidebar() {
         let menuHTML = '';
-        const sectionCategories = {
-            MAIN: ['home'],
-            KNOWLEDGE_AREAS: [
-                'support', 'partner_care', 'logistics', 'customer_care', 
-                'distribution_followup', 'logistics_driver_complaints', 'logistics_3pl', 
-                'order_at_store_mac', 'logistics_admin', 'operating_systems'
-            ],
-            RESOURCES_POLICIES: [
-                'compensation_policies', 'operational_instructions', 'forms_templates'
-            ]
-        };
+        const mainSections = ['home'];
+        const knowledgeAreas = [
+            'support', 'partner_care', 'logistics', 'customer_care', 
+            'distribution_followup', 'logistics_driver_complaints', 'logistics_3pl', 
+            'order_at_store_mac', 'logistics_admin', 'operating_systems'
+        ];
+        const resourcesPolicies = [
+            'compensation_policies', 'operational_instructions', 'forms_templates'
+        ];
 
-        Object.keys(sectionCategories).forEach(categoryKey => {
-            const title = categoryKey.replace('_', ' & ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            menuHTML += `<div class="sidebar-section-title">${title}</div>`;
-            kbSystemData.sections
-                .filter(s => sectionCategories[categoryKey].includes(s.id))
-                .forEach(section => {
-                    menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                        <i class="${section.icon || (categoryKey === 'KNOWLEDGE_AREAS' ? 'fas fa-folder' : 'fas fa-book')}"></i>${escapeHTML(section.name)}
-                    </a>`;
-                });
+        menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
+        kbSystemData.sections.filter(s => mainSections.includes(s.id)).forEach(section => {
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-file-alt'}"></i>${escapeHTML(section.name)}
+            </a>`;
         });
+        
+        menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+        kbSystemData.sections.filter(s => knowledgeAreas.includes(s.id)).forEach(section => {
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-folder'}"></i>${escapeHTML(section.name)}
+            </a>`;
+        });
+
+        menuHTML += `<div class="sidebar-section-title">RESOURCES & POLICIES</div>`;
+        kbSystemData.sections.filter(s => resourcesPolicies.includes(s.id)).forEach(section => {
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-book'}"></i>${escapeHTML(section.name)}
+            </a>`;
+        });
+
         navigationMenu.innerHTML = menuHTML;
     }
 
@@ -1156,59 +1086,61 @@ graph TD
             const initiallyHiddenParents = [];
             mermaidElements.forEach(el => {
                 let parent = el.parentElement;
-                while(parent && parent !== document.body) {
-                    if (parent.classList.contains('hidden') || (parent.style.display === 'none')) {
-                        const oldDisplay = parent.style.display;
+                while(parent) {
+                    if (parent.classList.contains('hidden')) {
                         parent.classList.remove('hidden');
-                        parent.style.display = ''; 
-                        initiallyHiddenParents.push({el: parent, display: oldDisplay});
+                        initiallyHiddenParents.push(parent);
                     }
-                    if(parent.classList.contains('modal-overlay') || parent.classList.contains('content-wrapper') || parent.classList.contains('card')) break;
+                    if(parent.classList.contains('modal-overlay') || parent.classList.contains('content-wrapper')) break;
                     parent = parent.parentElement;
                 }
             });
-    
+
             for (let i = 0; i < mermaidElements.length; i++) {
                 const preElement = mermaidElements[i];
-                const diagramContainer = preElement.parentElement; 
-                
-                const existingSvg = diagramContainer.querySelector('svg');
+                const diagramId = `mermaid-diagram-${Date.now()}-${i}`;
+                const existingSvg = preElement.parentElement.querySelector('svg');
                 if(existingSvg) existingSvg.remove();
-                
-                preElement.style.display = 'block'; 
-                preElement.removeAttribute('data-processed'); 
 
                 try {
-                    // To make Mermaid nodes interactive (clickable), you'd add `click` directives in the diagram text.
-                    // Example: `A[Node A] --> B[Node B]; click A call myJsFunction("paramA")`
-                    // or `click B "/another-page.html" "Tooltip for B"`
-                    // Then, ensure `myJsFunction` is globally accessible or handle navigation.
-                    await mermaid.run({ nodes: [preElement], suppressErrors: false });
-                     if (diagramContainer.querySelector('svg')) {
-                        preElement.style.display = 'none';
+                    // Ensure mermaid lib is ready
+                    await mermaid.run({nodes: [preElement], suppressErrors: false});
+                    // The library might directly replace the pre with SVG, or we might need to handle it.
+                    // Checking if the pre element itself was replaced.
+                    if (!preElement.parentElement) { // If preElement was removed from DOM
+                        console.log("Mermaid replaced pre element with SVG.");
+                    } else if (preElement.style.display === 'none' && preElement.nextElementSibling && preElement.nextElementSibling.tagName === 'svg') {
+                         console.log("Mermaid rendered SVG next to hidden pre.");
                     } else {
-                        console.warn("Mermaid.run did not replace pre with SVG. Pre content:", preElement.textContent.substring(0,100));
-                        preElement.style.display = 'block'; 
+                         // Fallback: if mermaid.run() doesn't auto-replace, use mermaid.render()
+                        const { svg } = await mermaid.render(diagramId, preElement.textContent);
+                        const div = document.createElement('div');
+                        div.innerHTML = svg;
+                        preElement.style.display = 'none'; 
+                        if (preElement.parentElement.classList.contains('mermaid-diagram-container')) {
+                             preElement.parentElement.appendChild(div.firstChild);
+                        } else {
+                            preElement.insertAdjacentElement('afterend', div.firstChild);
+                        }
                     }
+                   
                 } catch (error) {
-                    console.error("Mermaid rendering error:", error, "for diagram:", preElement.textContent.substring(0,100));
+                    console.error("Mermaid rendering error:", error);
                     const errorMsg = document.createElement('p');
                     errorMsg.style.color = 'red';
-                    errorMsg.textContent = `Error rendering diagram: ${error.message}. Check console.`;
-                    diagramContainer.appendChild(errorMsg);
-                    preElement.style.display = 'block'; 
+                    errorMsg.textContent = `Error rendering diagram: ${error.message}`;
+                    if (preElement.parentElement) {
+                        preElement.parentElement.insertBefore(errorMsg, preElement.nextSibling);
+                    }
                 }
             }
-            initiallyHiddenParents.forEach(pInfo => {
-                if (pInfo.display === 'none') pInfo.el.style.display = 'none';
-                else pInfo.el.classList.add('hidden'); 
-            });
+            initiallyHiddenParents.forEach(p => p.classList.add('hidden'));
         }
     }
 
 
     // --- Content Display ---
-    function renderItemCard(item, sectionData, allItemsInSection) {
+    function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
         let ctaText = 'View Details';
         let ctaLink = `#${sectionData.id}/${item.id}`;
@@ -1222,31 +1154,25 @@ graph TD
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
 
-        const children = allItemsInSection.filter(child => child.parentId === item.id);
-        let childrenHTML = '';
-        if (children.length > 0) {
-            childrenHTML = `<div class="sub-item-list">
-                <h5>Sub-items (${children.length}):</h5>
-                <ul>${children.map(child => `<li><a href="#${sectionData.id}/${child.id}" data-item-id="${child.id}" data-section-id="${sectionData.id}">${escapeHTML(child.title)}</a></li>`).join('')}</ul>
-            </div>`;
-        }
+
+        const cardIconContainerColor = 'var(--primary-color-hover)'; 
+        const cardIconColor = 'var(--text-color-inverted)';
 
         return `
         <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
             <div class="card-header-icon">
-                <div class="card-icon-container">
-                    <i class="${itemIconClass}"></i>
+                <div class="card-icon-container" style="background-color: ${cardIconContainerColor};">
+                    <i class="${itemIconClass}" style="color: ${cardIconColor};"></i>
                 </div>
                 <h3>${escapeHTML(item.title)}</h3>
             </div>
             <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
             ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-            ${childrenHTML}
             <div class="item-meta-info">
                 <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
                 <a href="${escapeHTML(ctaLink)}" ${target ? `target="${target}" rel="noopener noreferrer"` : ''} class="item-cta-link"
                    data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}">
-                   ${ctaText} <i class="fas fa-arrow-right"></i> 
+                   ${ctaText} <i class="fas fa-arrow-right"></i> <!-- LTR arrow -->
                 </a>
             </div>
         </div>`;
@@ -1260,20 +1186,14 @@ graph TD
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
         const welcomeUser = currentUser.fullName || 'User';
-        const totalArticles = kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length || 0), 0);
+        const totalArticles = kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(i => i.type === 'article' || i.type === 'guide' || i.type === 'policy').length || 0), 0);
         const totalCases = kbSystemData.sections.reduce((sum, s) => sum + (s.items?.filter(i => i.type === 'case').length || 0), 0);
-        
-        kbSystemData.meta.editsThisWeek = Math.floor(Math.random() * 5) + (kbSystemData.meta.editsThisWeek || 0) ; 
+        // Mock data
+        kbSystemData.meta.editsThisWeek = Math.floor(Math.random() * 15); 
         if (!kbSystemData.meta.lastArticleAdded) {
             const allItems = kbSystemData.sections.flatMap(s => s.items || []);
             if (allItems.length > 0) {
-                 const latestItem = allItems.sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                 if (latestItem) {
-                     const itemTypeForDisplay = latestItem.type.charAt(0).toUpperCase() + latestItem.type.slice(1);
-                     kbSystemData.meta.lastArticleAdded = { title: `(${itemTypeForDisplay}) ${latestItem.title}`, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
-                 } else {
-                     kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
-                 }
+                 kbSystemData.meta.lastArticleAdded = { title: allItems[allItems.length-1].title, date: new Date(allItems[allItems.length-1].createdAt || Date.now()).toLocaleDateString() };
             } else {
                  kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
             }
@@ -1281,22 +1201,22 @@ graph TD
 
 
         dashboardOverviewContainer.innerHTML = `
-            <div class="card" style="background: linear-gradient(135deg, var(--primary-color) 0%, ${getComputedStyle(document.documentElement).getPropertyValue('--primary-color-hover').trim()} 100%); color: var(--text-color-inverted);"> 
+            <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white;"> <!-- LTR gradient -->
                 <h2 style="font-size: 2rem; margin-bottom: 8px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
-                <p style="opacity: 0.9;">Here's your knowledge base activity overview.</p>
-                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 4px;">InfiniBase Version ${escapeHTML(kbSystemData.meta.version)} | Last Global Update: ${new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString()}</p>
+                <p style="opacity: 0.8;">Overview of your knowledge base activity.</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 4px;">InfiniBase Version ${escapeHTML(kbSystemData.meta.version)} | Last Global Update: ${new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString()}</p>
             </div>
 
-            <div class="cards-grid my-6" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 my-6">
                 <div class="dashboard-stat-card">
                     <i class="fas fa-folder-open"></i>
-                    <span class="stat-value">${kbSystemData.sections.filter(s => s.id !== 'home').length}</span>
+                    <span class="stat-value">${kbSystemData.sections.length -1}</span> <!-- Exclude Home -->
                     <span class="stat-label">Total Sections</span>
                 </div>
                 <div class="dashboard-stat-card">
                     <i class="fas fa-newspaper"></i>
                     <span class="stat-value">${totalArticles}</span>
-                    <span class="stat-label">Total Articles & Guides</span>
+                    <span class="stat-label">Total Articles</span>
                 </div>
                  <div class="dashboard-stat-card">
                     <i class="fas fa-briefcase"></i>
@@ -1318,27 +1238,25 @@ graph TD
                     </div>
                     <div class="card chart-container">
                         <h3>Content Types (Mock)</h3>
-                        <canvas id="articlesChart"></canvas> 
+                        <canvas id="articlesChart"></canvas> <!-- Renamed from casesChart to reflect content types -->
                     </div>
                 </div>
                 <div class="dashboard-quicklink-card card">
                     <h3>Quick Links</h3>
                     <ul>
                         <li><a href="#" id="dashboardAddContentLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li><a href="#support/${kbSystemData.sections.find(s=>s.id==='support').items[0]?.id || ''}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>
+                        <li><a href="#support/${kbSystemData.sections.find(s=>s.id==='support').items[0].id}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
                     </ul>
                      <h3 style="margin-top: 1.5rem;">Last Added</h3>
-                     <p>${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <br><small>(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</small></p>
-                     <h3 style="margin-top: 1.5rem;">Top Viewed (Placeholder)</h3>
-                     <p>Feature coming soon!</p>
+                     <p style="font-size: 0.9rem; color: var(--text-color-subtle);">${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <br><small>(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</small></p>
                 </div>
             </div>
         `;
         
         document.getElementById('dashboardAddContentLink').addEventListener('click', (e) => {
             e.preventDefault();
-            openAddContentModal(kbSystemData.sections.find(s => s.id !== 'home')?.id || 'support'); 
+            openAddContentModal(kbSystemData.sections.find(s => s.id !== 'home')?.id || 'support'); // Default to first non-home section
         });
 
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -1350,7 +1268,7 @@ graph TD
             plugins: { legend: { labels: { color: legendColor, font: { family: 'Inter, sans-serif' } } } },
             scales: type === 'bar' || type === 'line' ? {
                 y: { ticks: { color: ticksColor, beginAtZero: true, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } },
-                x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor, drawOnChartArea: false } }
+                x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } }
             } : {}
         });
 
@@ -1369,10 +1287,11 @@ graph TD
         if (articlesCtx) {
             articlesChartInstance = new Chart(articlesCtx, {
                 type: 'doughnut', 
-                data: { labels: ['Articles', 'Cases', 'Guides', 'Policies'], datasets: [{ data: [totalArticles, totalCases, 5, 3], backgroundColor: ['#6366f1', '#ec4899', '#22d3ee', '#f59e0b'], borderWidth: 0 }] },
+                data: { labels: ['Articles', 'Cases', 'Guides', 'Policies'], datasets: [{ data: [totalArticles, totalCases, 5, 3], backgroundColor: ['#6366f1', '#ec4899', '#22d3ee', '#f59e0b'] }] },
                 options: chartOptions('doughnut') 
             });
         }
+        // Add cases chart if needed in future, for now using articlesChart for content types
     }
     
     function displaySectionContent(sectionId, subCategoryFilter = null) {
@@ -1383,47 +1302,47 @@ graph TD
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
-            standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: var(--primary-color);">Section not found: ${escapeHTML(sectionId)}</h2></div>`;
+            standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: red;">Section not found: ${escapeHTML(sectionId)}</h2></div>`;
             currentSectionTitleEl.textContent = 'Not Found';
             return;
         }
 
         currentSectionTitleEl.textContent = sectionData.name;
-        let parentItemForBreadcrumb = null; 
-        if (subCategoryFilter) {
-            parentItemForBreadcrumb = sectionData.items?.find(i => i.id === subCategoryFilter);
-        }
-
         let bcHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
-        if (parentItemForBreadcrumb) {
-             bcHTML += ` <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(parentItemForBreadcrumb.title)}</span>`;
-        }
         breadcrumbsContainer.innerHTML = bcHTML;
 
         let contentHTML = `<div>`;
-        if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
+        if (currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
-                <div style="text-align: right; margin-bottom: 20px;">
+                <div style="text-align: right; margin-bottom: 20px;"> <!-- LTR: align right -->
                     <button id="openAddContentBtn" class="button" data-section-id="${sectionData.id}">
                         <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
                     </button>
                 </div>`;
         }
-        
-        const allItemsInSection = sectionData.items || [];
-        const itemsToDisplay = allItemsInSection
-            .filter(item => !item.parentId) 
+
+        const itemsToDisplay = (sectionData.items || [])
             .filter(item => !subCategoryFilter || (item.tags && item.tags.includes(subCategoryFilter)));
 
-
         if (itemsToDisplay.length > 0) {
-             contentHTML += `<div class="cards-grid">`;
-             itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData, allItemsInSection));
-             contentHTML += `</div>`;
+             if (sectionId === 'support' && itemsToDisplay[0]?.id === 'sup_flow_compensation') { // Special rendering for compensation flow
+                const item = itemsToDisplay[0];
+                contentHTML += `
+                <div class="mermaid-diagram-card">
+                    <h3>${escapeHTML(item.title)}</h3>
+                    <p>${escapeHTML(item.summary)}</p>
+                    ${item.content} <!-- This contains the <pre class="mermaid">...</pre> -->
+                </div>`;
+
+            } else {
+                contentHTML += `<div class="cards-grid">`;
+                itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
+                contentHTML += `</div>`;
+            }
         }
         
-        if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
-            contentHTML += `<h3 style="font-size: 1.5rem; font-weight: 600; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--text-color);">Subcategories</h3><div class="cards-grid">`;
+        if (sectionId !== 'support' && !subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
+            contentHTML += `<h3 style="font-size: 1.5rem; font-weight: 600; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Subcategories</h3><div class="cards-grid">`;
             sectionData.subCategories.forEach(subCat => {
                 contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card" style="text-align: center; text-decoration: none; color: var(--text-color);">
                     <i class="${subCat.icon || sectionData.icon || 'fas fa-folder-open'}" style="font-size: 2rem; display: block; margin-bottom: 10px; color: var(--primary-color);"></i>
@@ -1434,7 +1353,7 @@ graph TD
         }
 
         if (itemsToDisplay.length === 0 && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) {
-             contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No top-level content in this section${subCategoryFilter ? ' or subcategory/tag' : ''} yet.</p></div>`;
+             contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section${subCategoryFilter ? ' or subcategory' : ''} yet.</p></div>`;
         }
 
         contentHTML += `</div>`;
@@ -1456,7 +1375,7 @@ graph TD
         const itemData = sectionData?.items?.find(i => i.id === itemId);
 
         if (!sectionData || !itemData) {
-            standardSectionContentPlaceholder.innerHTML = `<p style="color: var(--primary-color);">Error: Item not found.</p>`;
+            standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
             itemDetailViewPlaceholder.classList.add('hidden');
             standardSectionContentPlaceholder.classList.remove('hidden');
             return;
@@ -1467,20 +1386,10 @@ graph TD
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
 
-        let parentItemTitle = null;
-        if (itemData.parentId) {
-            const parentItem = sectionData.items.find(p => p.id === itemData.parentId);
-            if (parentItem) parentItemTitle = parentItem.title;
-        }
-
         let bcHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
-            <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a>`;
-        if (parentItemTitle) {
-             bcHTML += ` <span style="margin: 0 5px;">›</span> <a href="#${sectionData.id}/${itemData.parentId}">${escapeHTML(parentItemTitle)}</a>`;
-        }    
-        bcHTML += ` <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
-        
+            <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">›</span>
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
         breadcrumbsContainer.innerHTML = bcHTML;
         currentSectionTitleEl.textContent = itemData.title;
 
@@ -1495,7 +1404,7 @@ graph TD
 
         let detailHTML = `
             <button id="backToSectionBtn" class="button button-secondary" style="margin-bottom: 20px;">
-                <i class="fas fa-arrow-left"></i> Back to ${escapeHTML(parentItemTitle ? parentItemTitle : sectionData.name)}
+                <i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)} <!-- LTR arrow -->
             </button>
             <div class="card">
                 <div class="item-title-area">
@@ -1507,9 +1416,9 @@ graph TD
                 <hr>
                 <div class="kb-content">`;
 
-        if (itemData.content) { 
+        if (itemData.content) { // Covers articles, guides, policies, and cases with 'content'
             detailHTML += itemData.content;
-        } else if (itemData.resolution_steps) { 
+        } else if (itemData.resolution_steps) { // Specifically for cases if resolution_steps is used
              detailHTML += itemData.resolution_steps;
         } else if ((itemData.type === 'form_sheet' || itemData.type === 'design') && itemData.url) {
             detailHTML += `<p>This content is an external link:</p><p><a href="${escapeHTML(itemData.url)}" target="_blank" rel="noopener noreferrer" class="button"><i class="fas fa-external-link-alt"></i> Open Link</a></p>`;
@@ -1517,25 +1426,15 @@ graph TD
             detailHTML += `<p>No detailed content available for this item.</p>`;
         }
 
+        // Display attachments if any
         if (itemData.attachments) {
-            detailHTML += `<hr><h4 style="margin-top:1.5rem; margin-bottom:1rem; font-weight:600; color:var(--text-color);">Attachments:</h4><ul>`;
-            if(itemData.attachments.pdf) detailHTML += `<li><i class="fas fa-file-pdf text-red-400"></i> <a href="${escapeHTML(itemData.attachments.pdf)}" target="_blank">View PDF</a> (Simulated)</li>`;
-            if(itemData.attachments.image) detailHTML += `<li><i class="fas fa-file-image text-blue-400"></i> <a href="${escapeHTML(itemData.attachments.image)}" target="_blank">View Image</a> (Simulated)</li>`;
-            if(itemData.attachments.video) detailHTML += `<li><i class="fas fa-video text-purple-400"></i> <a href="${escapeHTML(itemData.attachments.video)}" target="_blank">Watch Video</a></li>`;
-            if(itemData.attachments.drive) detailHTML += `<li><i class="fab fa-google-drive text-green-400"></i> <a href="${escapeHTML(itemData.attachments.drive)}" target="_blank">Open Drive Link</a></li>`;
+            detailHTML += `<hr><h4 style="margin-top:1.5rem; margin-bottom:1rem; font-weight:600;">Attachments:</h4><ul>`;
+            if(itemData.attachments.pdf) detailHTML += `<li><i class="fas fa-file-pdf"></i> <a href="${escapeHTML(itemData.attachments.pdf)}" target="_blank">View PDF</a> (Simulated)</li>`;
+            if(itemData.attachments.image) detailHTML += `<li><i class="fas fa-file-image"></i> <a href="${escapeHTML(itemData.attachments.image)}" target="_blank">View Image</a> (Simulated)</li>`;
+            if(itemData.attachments.video) detailHTML += `<li><i class="fas fa-video"></i> <a href="${escapeHTML(itemData.attachments.video)}" target="_blank">Watch Video</a></li>`;
+            if(itemData.attachments.drive) detailHTML += `<li><i class="fab fa-google-drive"></i> <a href="${escapeHTML(itemData.attachments.drive)}" target="_blank">Open Drive Link</a></li>`;
             detailHTML += `</ul>`;
         }
-        
-        const children = sectionData.items.filter(child => child.parentId === itemId);
-        if (children.length > 0) {
-            detailHTML += `<h3 class="sub-content-heading">Sub-Content (${children.length})</h3>`;
-            detailHTML += `<div class="sub-content-list"><ul>`;
-            children.forEach(child => {
-                detailHTML += `<li><a href="#${sectionId}/${child.id}">${escapeHTML(child.title)} <small>(${child.type})</small></a></li>`;
-            });
-            detailHTML += `</ul></div>`;
-        }
-
 
         detailHTML += `</div></div>`;
         itemDetailViewPlaceholder.innerHTML = detailHTML;
@@ -1543,7 +1442,7 @@ graph TD
 
 
         document.getElementById('backToSectionBtn').addEventListener('click', () => {
-            window.location.hash = `#${sectionId}${itemData.parentId ? '/' + itemData.parentId : ''}`;
+            window.location.hash = `#${sectionId}`;
         });
     }
 
@@ -1562,7 +1461,7 @@ graph TD
                         [{ 'color': [] }, { 'background': [] }],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                         [{ 'align': [] }],
-                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
+                        ['link', 'image', 'video', 'blockquote', 'code-block'], // Added video
                         ['clean']
                     ]
                 },
@@ -1580,17 +1479,17 @@ graph TD
             if (itemToEdit.content) quillEditor.root.innerHTML = itemToEdit.content;
             else if (itemToEdit.resolution_steps) quillEditor.root.innerHTML = itemToEdit.resolution_steps;
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
-            contentParentIdInput.value = itemToEdit.parentId || '';
             addContentForm.dataset.itemId = itemToEdit.id; 
+            // Populate attachment fields if editing (links only for simulation)
             if (itemToEdit.attachments) {
                 if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
                 if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
+                // File inputs cannot be pre-filled for security reasons
             }
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
             delete addContentForm.dataset.itemId; 
             contentTypeSelect.value = "article";
-            contentParentIdInput.value = '';
         }
         
         contentTypeSelect.dispatchEvent(new Event('change'));
@@ -1629,26 +1528,18 @@ graph TD
             showToast('Error: Target section not found!', 'error'); return;
         }
         
-        const itemIdToEdit = addContentForm.dataset.itemId; 
+        const itemId = addContentForm.dataset.itemId; 
         let itemData;
-
-        const parentIdValue = contentParentIdInput.value.trim() || null;
 
         const commonData = {
             type: contentTypeSelect.value,
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag),
-            parentId: parentIdValue
         };
-        
-        if (commonData.title.length === 0 || commonData.summary.length === 0) {
-             showToast('Title and Summary are required.', 'error'); return;
-        }
 
-
-        if (itemIdToEdit) { 
-            itemData = section.items.find(i => i.id === itemIdToEdit);
+        if (itemId) { 
+            itemData = section.items.find(i => i.id === itemId);
             if (!itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
@@ -1659,24 +1550,10 @@ graph TD
                 createdBy: currentUser.email,
                 createdAt: new Date().toISOString()
             };
-            const itemTypeForDisplay = itemData.type.charAt(0).toUpperCase() + itemData.type.slice(1);
-            kbSystemData.meta.lastArticleAdded = { title: `(${itemTypeForDisplay}) ${itemData.title}`, date: new Date(itemData.createdAt).toLocaleDateString() };
+            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date(itemData.createdAt).toLocaleDateString() };
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
-        }
-        
-        if (itemData.parentId) {
-            if (itemData.parentId === itemData.id) { 
-                showToast(`Error: Item cannot be its own parent. Parent ID cleared.`, 'error');
-                itemData.parentId = null;
-            } else {
-                const parentItem = section.items.find(i => i.id === itemData.parentId);
-                if (!parentItem) {
-                    showToast(`Warning: Parent item with ID '${itemData.parentId}' not found in this section. Item will be top-level.`, 'info');
-                    itemData.parentId = null; 
-                }
-            }
-        }
 
+        }
 
         if (itemData.type === 'case') {
             itemData.resolution_steps = quillEditor.root.innerHTML;
@@ -1685,40 +1562,37 @@ graph TD
             itemData.content = quillEditor.root.innerHTML;
         } else if (itemData.type === 'form_sheet' || itemData.type === 'design') {
             itemData.url = document.getElementById('contentUrl').value.trim();
-            if (!itemData.url || !itemData.url.startsWith('http')) { 
-                showToast('A valid URL (starting with http/https) is required for this content type.', 'error'); return; 
-            }
+            if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
         }
 
+        // Handle attachments (simulated: store URLs or filenames)
         itemData.attachments = itemData.attachments || {};
         const pdfFile = document.getElementById('pdfFile').files[0];
         const imageFile = document.getElementById('imageFile').files[0];
         const videoLink = document.getElementById('videoLink').value.trim();
         const driveLink = document.getElementById('driveLink').value.trim();
 
-        if (pdfFile) itemData.attachments.pdf = `simulated_uploads/${pdfFile.name}`; 
-        if (imageFile) itemData.attachments.image = `simulated_uploads/${imageFile.name}`; 
+        if (pdfFile) itemData.attachments.pdf = `simulated_uploads/${pdfFile.name}`; // Simulate path
+        if (imageFile) itemData.attachments.image = `simulated_uploads/${imageFile.name}`; // Simulate path
         if (videoLink) itemData.attachments.video = videoLink;
         if (driveLink) itemData.attachments.drive = driveLink;
 
 
-        if (!itemIdToEdit) { 
+        if (!itemId) { 
             if (!section.items) section.items = [];
             section.items.push(itemData);
         }
 
-        showToast(`Content '${itemData.title}' ${itemIdToEdit ? 'updated' : 'saved'} successfully!`, 'success');
+        showToast(`✔️ Content '${itemData.title}' ${itemId ? 'updated' : 'saved'} successfully!`, 'success');
         closeAddContentModal();
         
         const currentHashParts = window.location.hash.substring(1).split('/');
-        if (currentHashParts[0] === sectionId && currentHashParts.length === 1 ) { 
-             displaySectionContent(sectionId);
-        } else if (currentHashParts[0] === sectionId && currentHashParts[1] === itemData.id) {
-            displayItemDetail(sectionId, itemData.id);
-        } else if (currentHashParts[0] === sectionId && itemData.parentId && currentHashParts[1] === itemData.parentId) {
-            displayItemDetail(sectionId, itemData.parentId);
-        } else {
-             handleNavigation();
+        if (currentHashParts[0] === sectionId && currentHashParts[1] === itemId) { 
+            displayItemDetail(sectionId, itemId);
+        } else if (currentHashParts[0] === sectionId) { 
+            displaySectionContent(sectionId, currentHashParts[1] || null);
+        } else if (window.location.hash === '#home' || window.location.hash === '') {
+             displayDashboard(); // Refresh dashboard if on home
         }
     });
 
@@ -1731,11 +1605,12 @@ graph TD
         }
         const results = [];
         kbSystemData.sections.forEach(s => {
-            if (s.id === 'home') return; 
+            if (s.id === 'home') return; // Don't search in home meta section
             s.items?.forEach(i => {
-                const contentToSearch = stripHtml(i.summary || '') + " " + stripHtml(i.content || '') + " " + stripHtml(i.resolution_steps || '');
                 if (i.title.toLowerCase().includes(query) || 
-                    contentToSearch.toLowerCase().includes(query) ||
+                    (i.summary && stripHtml(i.summary).toLowerCase().includes(query)) || 
+                    (i.content && stripHtml(i.content).toLowerCase().includes(query)) ||
+                    (i.resolution_steps && stripHtml(i.resolution_steps).toLowerCase().includes(query)) ||
                     (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
                     results.push({ ...i, sectionId: s.id, sectionName: s.name });
                 }
@@ -1760,7 +1635,7 @@ graph TD
             });
             searchResultsContainer.classList.remove('hidden');
         } else {
-            searchResultsContainer.innerHTML = `<div style="padding: 10px; font-size: 0.9em; color: var(--text-color-muted);">No results found for "${escapeHTML(query)}".</div>`;
+            searchResultsContainer.innerHTML = `<div style="padding: 10px; font-size: 0.9em; color: var(--text-color-muted);">No results found.</div>`;
             searchResultsContainer.classList.remove('hidden');
         }
     });
@@ -1775,68 +1650,56 @@ graph TD
         const hash = window.location.hash.substring(1) || 'home';
         const parts = hash.split('/');
         const sectionId = parts[0];
-        const itemIdOrSubCategoryOrParentId = parts[1];
+        const itemIdOrSubCategory = parts[1]; 
 
         highlightSidebarLink(sectionId);
 
         if (sectionId === 'home') {
             displayDashboard();
-        } else if (itemIdOrSubCategoryOrParentId && sectionId) { 
+        } else if (itemIdOrSubCategory && sectionId) { 
             const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-            const itemExists = sectionData?.items?.some(i => i.id === itemIdOrSubCategoryOrParentId);
+            const itemExists = sectionData?.items?.some(i => i.id === itemIdOrSubCategory);
             if(itemExists) {
-                displayItemDetail(sectionId, itemIdOrSubCategoryOrParentId);
+                displayItemDetail(sectionId, itemIdOrSubCategory);
             } else {
-                displaySectionContent(sectionId, itemIdOrSubCategoryOrParentId); 
+                displaySectionContent(sectionId, itemIdOrSubCategory); 
             }
         } else if (sectionId) {
             displaySectionContent(sectionId);
         } else {
-            displayDashboard();
+            displayDashboard(); 
         }
         window.scrollTo(0,0);
     }
 
     function initializeApp() {
-        if (!Auth.isAuthenticated()) {
-            window.location.href = 'login.html';
-            return; 
-        }
-
+        Auth.promptLogin(); 
         currentUser = Auth.getCurrentUser();
-        if (!currentUser) { 
-            window.location.href = 'login.html';
-            return;
-        }
 
         const displayName = currentUser.fullName || currentUser.email || 'User';
         userNameDisplayHeader.textContent = displayName;
         userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
-        // footerKbVersion.textContent = kbSystemData.meta.version; // Removed as per request
+        footerKbVersion.textContent = kbSystemData.meta.version;
 
         populateSidebar();
-        applyPermanentDarkMode(); 
+        applyPermanentDarkMode(); // Apply dark mode styles, update charts etc.
         handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
         document.getElementById('logoutButton').addEventListener('click', () => {
              if(confirm('Are you sure you want to logout?')) Auth.logout();
         });
+        document.getElementById('reportErrorBtn').addEventListener('click', () => showToast('Issue reporting feature is under development.', 'info'));
         
         closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
         cancelAddContentBtn.addEventListener('click', closeAddContentModal);
         
-        if (window.innerWidth < 768 && !sidebar.classList.contains('closed')) {
+        if (window.innerWidth < 768) {
             sidebar.classList.add('closed');
         }
         
-        if (localStorage.getItem('justLoggedIn') === 'true') {
-            showToast(`Welcome back, ${displayName}! You've successfully logged in. 🎉`, 'success', 4000);
-            localStorage.removeItem('justLoggedIn'); 
-        } else {
-            showToast(`InfiniBase v${kbSystemData.meta.version} loaded. Session restored for ${displayName}.`, 'info', 4000);
-        }
-        console.log(`InfiniBase v${kbSystemData.meta.version} initialized for ${displayName} (Permanent Dark Mode).`);
+        showToast(`InfiniBase v${kbSystemData.meta.version} loaded. Welcome, ${displayName}!`, 'info', 4000);
+        console.log(`InfiniBase v${kbSystemData.meta.version} initialized (Permanent Dark Mode).`);
     }
 
     initializeApp();
