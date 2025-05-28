@@ -908,7 +908,63 @@
                         content: `
                             <p>This diagram outlines the decision-making process for compensating customers due to order delays.</p>
                             <div class="mermaid-diagram-container">
-                                
+                                <pre class="mermaid">
+graph TD
+    A[Order Delay Inquiry] --> B{Valid Delay?};
+    B -- No --> B_NO[Apologize, New ETA, Monitor];
+    B -- Yes --> C{Order Type?};
+
+    C -- Fast Delivery --> FD_ROOT[Fast Delivery Path];
+    subgraph Fast Delivery Compensation
+        direction TD
+        FD_ROOT --> FD_D1{Delay: 15-30m?};
+        FD_D1 -- Yes --> FD_A1[Action: Apologize, New ETA, Monitor];
+        FD_D1 -- No --> FD_D2{Delay: 31-45m?};
+        FD_D2 -- Yes --> FD_A2[Action: Compensate 25% Delivery Fee];
+        FD_D2 -- No --> FD_D3{Delay: 46-60m?};
+        FD_D3 -- Yes --> FD_A3[Action: Compensate 50% Delivery Fee];
+        FD_D3 -- No --> FD_A4[Action: Compensate Full Delivery Fee (Over 60m)];
+    end
+
+    C -- Scheduled Delivery --> SD_ROOT[Scheduled Delivery Path];
+    subgraph Scheduled Delivery Compensation
+        direction TD
+        SD_ROOT --> SD_D1{Delay: Up to 30m?};
+        SD_D1 -- Yes --> SD_A1[Action: Apologize, Reassure, Monitor];
+        SD_D1 -- No --> SD_D2{Delay: 31-60m?};
+        SD_D2 -- Yes --> SD_A2[Action: Compensate 100% Order (If Major Disruption)];
+        SD_D2 -- No --> SD_A3[Action: Compensate Full Order + $10 Credit (Over 60m)];
+    end
+
+    B_NO --> Z_END((End Interaction));
+    FD_A1 --> Z_END;
+    FD_A2 --> Z_END;
+    FD_A3 --> Z_END;
+    FD_A4 --> Z_END;
+    SD_A1 --> Z_END;
+    SD_A2 --> Z_END;
+    SD_A3 --> Z_END;
+
+    subgraph Legend
+        direction LR
+        LEG_ACTION[Action/Info]
+        LEG_DECISION{Decision}
+        LEG_END((End))
+    end
+    
+    classDef default fill:var(--bg-color),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color),font-family:Inter;
+    classDef decision fill:var(--bg-color-alt),stroke:var(--text-color-muted),stroke-width:1px,color:var(--text-color),font-family:Inter;
+    classDef endNode fill:var(--primary-color-hover),stroke:var(--primary-color),stroke-width:2px,color:var(--text-color-inverted),font-family:Inter;
+    classDef legendNode fill:var(--bg-color-alt),stroke:var(--border-color),color:var(--text-color-subtle),font-size:12px,font-family:Inter;
+    classDef pathNode fill:var(--bg-color),stroke:var(--border-color),stroke-width:1px,color:var(--text-color-muted),font-family:Inter,font-style:italic;
+
+    class A,B_NO,FD_A1,FD_A2,FD_A3,FD_A4,SD_A1,SD_A2,SD_A3 default;
+    class B,C,FD_D1,FD_D2,FD_D3,SD_D1,SD_D2 decision;
+    class Z_END endNode;
+    class LEG_ACTION,LEG_DECISION,LEG_END legendNode;
+    class FD_ROOT, SD_ROOT pathNode;
+
+                                </pre>
                             </div>
                             <p><strong>Important Considerations:</strong></p>
                             <ul>
@@ -1788,47 +1844,3 @@
 </script>
 </body>
 </html>
-
-<!-- Compensation Flow Diagram -->
-
-<div class="diagram-box">
-  <div class="mermaid">
-    graph TD
-    A[Receive Request] --> B{Order Late?}
-    B -- Yes --> C{Delivery Time Exceeded?}
-    C -- No --> D[Let Customer Wait & Add Note]
-    C -- "0-15 min" --> E[Apologize + Add Note + New ETA]
-    C -- ">15 min" --> F{Order Type?}
-    F -- Fast --> G{Delay Duration?}
-    G -- "16–30 min" --> G1[Compensate Delivery Fees]
-    G -- "31–45 min" --> G2[Delivery Fees + 25% Chef Total]
-    G -- "46–60 min" --> G3[Delivery Fees + 50% Chef Total]
-    G -- ">60 min" --> G4[Compensate Full Order]
-    F -- Scheduled --> H{Driver Left Store?}
-    H -- No --> H1[Apologize + Accelerate Order]
-    H -- Yes --> H2{Delay Duration?}
-    H2 -- "31–60 min" --> H3[Compensate 50%-100% Order]
-    H2 -- ">60 min" --> H4[Compensate Full Order + 50 SAR]
-    D --> I[Determine Responsibility]
-    E --> I
-    G1 --> I
-    G2 --> I
-    G3 --> I
-    G4 --> I
-    H1 --> I
-    H3 --> I
-    H4 --> I
-    I --> J{Customer Requests Compensation?}
-    J -- Yes --> K[Confirm Compensation Action]
-    J -- No --> L[Close with Apology/Update]
-    K --> M[Conclude Call]
-    L --> M
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
-<script>
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: 'dark'
-  });
-</script>
