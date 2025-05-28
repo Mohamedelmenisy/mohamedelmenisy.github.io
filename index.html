@@ -1,1102 +1,361 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Knowledge Base</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366F1' width='64' height='64'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/></svg>">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-
     <style>
-        :root {
-            --primary-color: #4f46e5; /* indigo-600 */
-            --primary-color-dark: #3730a3; /* indigo-800 */
-            --background-color: #f3f4f6; /* gray-100 */
-            --text-color: #1f2937; /* gray-800 */
-            --card-bg: #ffffff;
-            --border-color: #e5e7eb; /* gray-200 */
-            --sidebar-bg: #ffffff;
-            --sidebar-text: #4b5563; /* gray-600 */
-            --sidebar-hover-bg: #e5e7eb;
-            --sidebar-active-bg: var(--primary-color);
-            --sidebar-active-text: #ffffff;
-            --button-text-color: #ffffff;
-            --border-radius: 0.5rem;
-        }
-        .dark {
-            --primary-color: #818cf8; /* indigo-400 */
-            --primary-color-dark: #a5b4fc; /* indigo-300 */
-            --background-color: #111827; /* gray-900 */
-            --text-color: #d1d5db; /* gray-300 */
-            --card-bg: #1f2937; /* gray-800 */
-            --border-color: #374151; /* gray-700 */
-            --sidebar-bg: #1f2937;
-            --sidebar-text: #9ca3af; /* gray-400 */
-            --sidebar-hover-bg: #374151;
-            --sidebar-active-text: #111827;
-            --button-text-color: #1f2937;
-        }
         body {
-            font-family: 'Poppins', 'Roboto', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
         }
         .sidebar {
-            background-color: var(--sidebar-bg);
-            color: var(--sidebar-text);
-            border-right: 1px solid var(--border-color);
-        }
-        .sidebar-link:hover { background-color: var(--sidebar-hover-bg); }
-        .sidebar-link.active { background-color: var(--sidebar-active-bg); color: var(--sidebar-active-text); font-weight: 600; }
-        .content-header { background-color: color-mix(in srgb, var(--background-color) 90%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); }
-        .card { background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
-        .modal-overlay { background-color: rgba(0,0,0,0.6); }
-        .modal-content { background-color: var(--card-bg); }
-        .quill-editor-container .ql-toolbar { background: var(--border-color); border-color: var(--border-color)!important; }
-        .quill-editor-container .ql-container { background: var(--card-bg); border-color: var(--border-color)!important; color: var(--text-color); }
-        mark { padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold; }
-        .dark mark { background-color: #eab308; color: #1f2937; } /* yellow-500 */
-        body:not(.dark) mark { background-color: #fef08a; color: #1f2937; } /* yellow-200 */
-
-        /* Call Scenario Specific Styles (from corrrre.txt, adapted) */
-        .scenario-step-card { background-color: var(--card-bg); color: var(--text-color); padding: 1.5rem; border-radius: var(--border-radius); margin-top: 1rem; }
-        .scenario-title-dynamic { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color); }
-        .decision-button {
-            width: 100%; padding: 0.75rem 1rem; font-size: 0.95rem; border: 1px solid var(--primary-color);
-            background-color: transparent; color: var(--primary-color); cursor: pointer;
-            border-radius: var(--border-radius); transition: background-color 0.2s ease, color 0.2s ease; text-align: center;
-        }
-        .decision-button:hover { background-color: var(--primary-color); color: var(--button-text-color); }
-        .nav-button {
-            padding: 0.6rem 1.2rem; border-radius: var(--border-radius); cursor: pointer; transition: background-color 0.2s, color 0.2s;
-            display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;
-        }
-        .primary-button { background-color: var(--primary-color); color: var(--button-text-color); border: 1px solid var(--primary-color); }
-        .primary-button:hover { background-color: var(--primary-color-dark); }
-        .secondary-button { background-color: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); }
-        .secondary-button:hover { background-color: color-mix(in srgb, var(--primary-color) 10%, transparent); }
-        .highlight-scenario-title-animation { animation: pulse-title 0.6s 2 ease-in-out; }
-        @keyframes pulse-title { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: 0.8; } }
-        .special-compensation-scenario-icon::before { content: "⭐ "; color: #FFC107; }
-
-        /* Toast / Popup Messages */
-        .toast-notification {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            z-index: 1000;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            height: 100%;
         }
-        .toast-notification.show { opacity: 1; transform: translateY(0); }
-        .toast-success { background-color: #10b981; color: white; } /* green-500 */
-        .toast-error { background-color: #ef4444; color: white; } /* red-500 */
-        .toast-info { background-color: #3b82f6; color: white; } /* blue-500 */
+        .sidebar h2 {
+            margin: 0 0 20px;
+            font-size: 24px;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background-color: #3498db;
+        }
+        .content {
+            margin-left: 270px;
+            padding: 20px;
+            flex-grow: 1;
+        }
+        .header {
+            background-color: #ecf0f1;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .search-bar {
+            margin: 10px 0;
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 500px;
+            max-width: 90%;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .primary-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        .secondary-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
     </style>
 </head>
-<body class="text-base">
-
-    <!-- Add New Content Modal -->
-    <div id="addContentModalOverlay" class="fixed inset-0 modal-overlay hidden flex items-center justify-center p-4 z-50">
-        <div class="modal-content w-full max-w-2xl p-6 rounded-lg shadow-xl transform transition-all opacity-0 scale-95">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">Add New Content</h2>
-                <button id="closeAddContentModalBtn" class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>InfiniBase</h2>
+            <nav id="navigationMenu">
+                <div style="font-size: 12px; color: #bdc3c7; margin: 10px 0;">Main</div>
+                <a href="#home" data-section="home">Home</a>
+                <div style="font-size: 12px; color: #bdc3c7; margin: 10px 0;">Knowledge Areas</div>
+                <a href="#support" data-section="support">Support</a>
+            </nav>
+            <div style="position: absolute; bottom: 20px; width: 200px;">
+                <button id="logoutButton" class="secondary-btn">Logout</button>
             </div>
+        </aside>
+
+        <div class="content">
+            <div class="header">
+                <h1 id="currentSectionTitle">Welcome</h1>
+                <div id="breadcrumbs">Home</div>
+                <input type="text" id="globalSearchInput" class="search-bar" placeholder="Search KB...">
+                <div id="searchResultsContainer" style="display: none; background: white; border: 1px solid #ddd; border-radius: 5px; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+
+            <main id="pageContentArea">
+                <div id="dashboardOverviewContainer" style="display: none;">
+                    <div class="card">
+                        <h2>Welcome, User!</h2>
+                        <p>Here's an overview of your InfiniBase knowledge hub.</p>
+                    </div>
+                </div>
+                <div id="standardSectionContentPlaceholder"></div>
+                <div id="itemDetailViewPlaceholder" style="display: none;"></div>
+            </main>
+        </div>
+    </div>
+
+    <div id="addContentModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Content</h2>
             <form id="addContentForm">
-                <div class="mb-4">
-                    <label for="contentType" class="block text-sm font-medium mb-1">Content Type</label>
-                    <select id="contentType" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <option value="article">Article</option>
-                        <option value="case">Case</option>
-                        <option value="form_sheet">Form/Sheet</option>
-                        <option value="interactive_scenario">Interactive Scenario (JSON)</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="contentTitle" class="block text-sm font-medium mb-1">Title</label>
-                    <input type="text" id="contentTitle" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" required>
-                </div>
-                <div class="mb-4">
-                    <label for="contentSummary" class="block text-sm font-medium mb-1">Summary / Description</label>
-                    <textarea id="contentSummary" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none" rows="3" required></textarea>
-                </div>
-                <div class="mb-4 hidden" id="contentUrlContainer">
-                    <label for="contentUrl" class="block text-sm font-medium mb-1">URL (for Form/Sheet)</label>
-                    <input type="url" id="contentUrl" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
-                <div class="mb-6 hidden" id="resolutionStepsContainer">
-                    <label class="block text-sm font-medium mb-1">Details / Resolution Steps (for Case)</label>
-                    <div id="quillEditor" class="quill-editor-container h-48"></div>
-                </div>
-                 <div class="mb-6 hidden" id="jsonScenarioContainer">
-                    <label for="jsonScenarioData" class="block text-sm font-medium mb-1">Scenario JSON Data</label>
-                    <textarea id="jsonScenarioData" class="p-2.5 w-full border rounded-md bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 font-mono text-xs h-48 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Paste scenario JSON here..."></textarea>
-                </div>
-                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button type="button" id="cancelAddContentBtn" class="px-5 py-2.5 secondary-button">Cancel</button>
-                    <button type="submit" id="saveContentBtn" class="px-5 py-2.5 primary-button">Save Content</button>
+                <label>Title</label>
+                <input type="text" id="contentTitle" required>
+                <label>Summary</label>
+                <textarea id="contentSummary" rows="3" required></textarea>
+                <label>Details</label>
+                <textarea id="contentDetails" rows="5"></textarea>
+                <div style="text-align: right;">
+                    <button type="button" id="cancelAddContentBtn" class="secondary-btn">Cancel</button>
+                    <button type="submit" class="primary-btn">Save</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Interactive Scenario Modal -->
-    <div id="interactiveScenarioModalOverlay" class="fixed inset-0 modal-overlay hidden flex items-center justify-center p-4 z-50">
-        <div class="modal-content w-full max-w-3xl p-0 rounded-lg shadow-xl transform transition-all opacity-0 scale-95 flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 id="interactiveScenarioTitle" class="text-xl font-bold scenario-title-dynamic">Interactive Scenario</h2>
-                <button id="closeInteractiveScenarioModalBtn" class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div id="interactiveScenarioContent" class="scenario-step-card overflow-y-auto flex-grow p-6">
-                <!-- Scenario steps will be rendered here -->
-                 <div id="scenarioStepsContainer" class="steps-area mb-4"></div>
-                 <div id="scenarioDecisionButtonsContainer" class="step-actions grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-            </div>
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <button id="scenarioPrevStepBtn" class="nav-button secondary-button" style="display: none;">
-                    <i class="fas fa-arrow-left"></i> Previous
-                </button>
-                <div id="scenarioCallTimer" class="text-sm font-mono" style="display: none;">00:00</div>
-                <button id="scenarioNextStepBtn" class="nav-button primary-button">
-                    Next Step <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-         <audio id="scenarioAlertSound" src="compensation_alert.mp3" preload="auto"></audio>
-    </div>
-
-
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <aside class="sidebar w-64 fixed top-0 left-0 h-full p-6 overflow-y-auto transition-transform duration-300 ease-in-out z-40 md:translate-x-0 -translate-x-full" id="sidebar">
-            <div class="sidebar-header text-2xl font-bold mb-8 flex items-center">
-                <svg class="w-8 h-8 mr-2 text-indigo-500 dark:text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-                InfiniBase
-            </div>
-            <nav id="navigationMenu" class="space-y-2">
-                <!-- Links will be dynamically generated -->
-            </nav>
-            <div class="absolute bottom-6 left-0 right-0 px-6 space-y-3">
-                <button id="themeSwitcher" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i id="themeIcon" class="fas fa-moon mr-2"></i> <span id="themeText">Dark Mode</span>
-                </button>
-                <button id="logoutButton" class="w-full flex items-center justify-center py-2.5 px-4 text-sm font-medium rounded-lg transition shadow-sm bg-red-500 hover:bg-red-600 text-white">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                </button>
-            </div>
-        </aside>
-
-        <!-- Mobile Sidebar Toggle -->
-        <button id="mobileSidebarToggle" class="p-2 rounded-md bg-indigo-500 text-white md:hidden fixed top-4 left-4 z-50">
-            <i class="fas fa-bars text-xl"></i>
-        </button>
-
-        <div class="content-wrapper md:ml-64 flex-1 flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-in-out" id="contentWrapper">
-            <header class="content-header sticky top-0 p-5 z-30">
-                <div class="flex justify-between items-center w-full">
-                    <div>
-                        <h1 id="currentSectionTitle" class="text-2xl md:text-3xl font-bold">Welcome</h1>
-                        <div id="breadcrumbs" class="text-sm mt-1 text-gray-500 dark:text-gray-400">Home</div>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="relative">
-                            <input type="search" id="globalSearchInput" placeholder="Search KB..." class="py-2.5 pl-10 pr-4 w-56 md:w-80 border rounded-full bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fas fa-search text-gray-400"></i></span>
-                            <div id="searchResultsContainer" class="hidden absolute mt-1 w-full max-h-80 overflow-y-auto rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 z-10"></div>
-                        </div>
-                        <div id="userProfileContainer" class="flex items-center space-x-2">
-                            <img id="userAvatar" src="https://ui-avatars.com/api/?name=U&size=36&background=4f46e5&color=fff&rounded=true&font-size=0.5" alt="User" class="w-9 h-9 rounded-full">
-                            <span id="userNameDisplayHeader" class="font-medium hidden sm:block">User</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <main class="p-6 md:p-8 flex-grow" id="pageContentArea">
-                <div id="dashboardOverviewContainer" class="hidden space-y-8">
-                    <!-- Dashboard content will be injected here -->
-                </div>
-                <div id="standardSectionContentPlaceholder" class="space-y-8">
-                    <!-- Section content will be injected here -->
-                </div>
-                <div id="itemDetailViewPlaceholder" class="hidden space-y-6">
-                    <!-- Item detail view (e.g. for a case) -->
-                </div>
-            </main>
-
-            <footer class="mt-auto p-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. v<span id="footerKbVersion">0.1.0</span></span>
-                <button id="reportErrorBtn" class="ml-4 text-xs text-red-500 hover:underline">Report an Issue</button>
-            </footer>
-        </div>
-    </div>
-    <div id="toastContainer"></div>
-
-
-<script type="module">
-    // Initialize Mermaid
-    mermaid.initialize({ startOnLoad: false, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default' });
-
-    // --- Simulated Auth & Data ---
-    const Auth = {
-        isAuthenticated: () => true, // Assume user is always authenticated
-        getCurrentUser: () => {
-            // Try to get user from localStorage, or default
-            const storedUser = localStorage.getItem('infiniBaseUser');
-            if (storedUser) return JSON.parse(storedUser);
-            return { email: 'agent@example.com', fullName: 'Support Agent', role: 'admin' }; // admin, viewer
-        },
-        login: (fullName, email, role = 'admin') => {
-            const user = { fullName, email, role };
-            localStorage.setItem('infiniBaseUser', JSON.stringify(user));
-            showToast(`Welcome, ${fullName}!`, 'success');
-            setTimeout(() => window.location.reload(), 1500);
-        },
-        logout: () => {
-            localStorage.removeItem('infiniBaseUser');
-            showToast('Logged out successfully!', 'info');
-            // Simulate redirect to a login page or just refresh for demo
-            setTimeout(() => window.location.reload(), 1500);
-        },
-        // For demo, a simple prompt to set user
-        promptLogin: () => {
-            if (!localStorage.getItem('infiniBaseUser')) {
-                const name = prompt("Enter your Full Name (e.g., John Doe):", "Support Agent");
-                const email = prompt("Enter your Email (e.g., agent@example.com):", "agent@example.com");
-                const role = prompt("Enter your role (admin/viewer):", "admin");
-                if (name && email) {
-                    Auth.login(name, email, role);
+    <script>
+        const kbSystemData = {
+            sections: [
+                { id: 'home', name: 'Home', description: 'Dashboard and overview.' },
+                {
+                    id: 'support', name: 'Support', description: 'Support resources.',
+                    items: [
+                        { id: 'sup_article_001', type: 'article', title: 'Handling High Priority Tickets', summary: 'A guide on managing P1 incidents.', content: 'Detailed content for P1 tickets...' },
+                        { id: 'sup_case_001', type: 'case', title: 'User Alpha Frequent Disconnects', summary: 'Investigating network instability.', content: '<p><strong>Step 1:</strong> Check network.</p>' }
+                    ]
                 }
-            }
-        }
-    };
-
-    // Initial customer_compensation_flow.json data
-    const customerCompensationFlowScenario = [
-      { "id": "s1_receive_request", "text": "Receive the customer request.", "type": "info", "next_id": "s2_check_inquiry_type" },
-      { "id": "s2_check_inquiry_type", "text": "Check the inquiry type: Is the order late?", "type": "decision", "options": [ { "label": "Yes, order is late", "next_id": "s3_check_delivery_time_exceeded" }, { "label": "No, other issue", "next_id": "s_handle_other_issue" } ] },
-      { "id": "s3_check_delivery_time_exceeded", "text": "Has the delivery time exceeded?", "type": "decision", "options": [ { "label": "Yes, time exceeded (> 15 mins)", "next_id": "s5_apologize_check_order_type" }, { "label": "Yes, time exceeded (0-15 mins)", "next_id": "s4_inform_wait_add_note_0_15" }, { "label": "No, not yet exceeded", "next_id": "s4_inform_wait_add_note" } ] },
-      { "id": "s4_inform_wait_add_note", "text": "If not exceeded: Let the customer wait and add a note.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s4_inform_wait_add_note_0_15", "text": "If delivery exceeded by 0-15 mins: Apologize and add note. Inform customer of new ETA.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s5_apologize_check_order_type", "text": "Delivery exceeded by > 15 mins: Apologize and add note. Check order type: Fast or Scheduled?", "type": "decision", "options": [ { "label": "Fast Order", "next_id": "s7_fast_check_delay_duration" }, { "label": "Scheduled Order", "next_id": "s12_scheduled_driver_left" } ] },
-      { "id": "s7_fast_check_delay_duration", "text": "For this Fast Order, what was the delay duration (after initial 15 mins)?", "type": "decision", "options": [ { "label": "16–30 min total delay", "next_id": "s8_fast_comp_16_30" }, { "label": "31–45 min total delay", "next_id": "s9_fast_comp_31_45" }, { "label": "46–60 min total delay", "next_id": "s10_fast_comp_46_60" }, { "label": "> 60 min total delay", "next_id": "s11_fast_comp_over_60" } ] },
-      { "id": "s8_fast_comp_16_30", "text": "Delay 16–30 min (Fast Order): Compensate delivery fees only.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s9_fast_comp_31_45", "text": "Delay 31–45 min (Fast Order): Compensate delivery fees + 25% of chef total.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s10_fast_comp_46_60", "text": "Delay 46–60 min (Fast Order): Compensate delivery fees + 50% of chef total.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s11_fast_comp_over_60", "text": "Delay > 60 min (Fast Order): Compensate full order fees.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s12_scheduled_driver_left", "text": "Scheduled Order (delayed >15min): Did driver leave store?", "type": "decision", "options": [ { "label": "No, driver not left store", "next_id": "s13_scheduled_inform_accelerate" }, { "label": "Yes, driver left store", "next_id": "s14_scheduled_check_delay_duration" } ] },
-      { "id": "s13_scheduled_inform_accelerate", "text": "Scheduled Order, driver not left: Apologize, inform order will be accelerated.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s14_scheduled_check_delay_duration", "text": "Scheduled Order (driver left, delayed >15min): Total delay duration?", "type": "decision", "options": [ { "label": "31–60 min total delay", "next_id": "s15_scheduled_comp_31_60" }, { "label": "> 60 min total delay", "next_id": "s16_scheduled_comp_over_60" } ] },
-      { "id": "s15_scheduled_comp_31_60", "text": "Delay 31–60 min (Scheduled, driver left): Compensate 50%–100% of order total.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s16_scheduled_comp_over_60", "text": "Delay > 60 min (Scheduled, driver left): Compensate full order + 50 SAR.", "type": "info", "next_id": "s17_determine_responsibility" },
-      { "id": "s17_determine_responsibility", "text": "Determine responsibility (Store/Driver/Company) & add deduction.", "type": "info", "next_id": "s18_check_customer_requests_compensation" },
-      { "id": "s18_check_customer_requests_compensation", "text": "Customer explicitly requests compensation?", "type": "decision", "options": [ { "label": "Yes, requests compensation", "next_id": "s_proceed_with_compensation_actions" }, { "label": "No (resolved by apology/update)", "next_id": "s_conclude_call_no_comp_request" } ] },
-      { "id": "s_handle_other_issue", "text": "Handle other non-delay issue. [Branch to another scenario/steps]. For now, end.", "type": "info", "next_id": "s_conclude_call" },
-      { "id": "s_proceed_with_compensation_actions", "text": "Agent: \"Alright, based on the situation, here's the compensation we've processed for you: [State specific compensation]. This should reflect in [details]\".", "type": "info", "next_id": "s_conclude_call" },
-      { "id": "s_conclude_call_no_comp_request", "text": "Agent: \"Thank you for your understanding. We've noted the delay and taken steps to [mention action]\".", "type": "info", "next_id": "s_conclude_call" },
-      { "id": "s_conclude_call", "text": "Agent: Is there anything else I can help you with today? [If no] Thank you for calling. Have a great day!", "type": "info", "is_end": true }
-    ];
-
-    let kbSystemData = {
-        meta: { version: '0.2.1', lastGlobalUpdate: new Date().toISOString() }, // Increment version
-        sections: [
-            { id: 'home', name: 'Home', icon: 'fas fa-home', themeColor: 'indigo', description: 'Dashboard and overview.' },
-            {
-                id: 'support', name: 'Support', icon: 'fas fa-headset', themeColor: 'blue', description: 'Support resources, cases, and interactive scenarios.',
-                items: [
-                    { id: 'sup_article_001', type: 'article', title: 'Handling High Priority Tickets', summary: 'A guide on managing P1 and P0 incidents effectively.', content: 'Detailed content for P1 tickets...', tags: ['p1', 'urgent'] },
-                    { id: 'sup_case_001', type: 'case', title: 'User Alpha Frequent Disconnects', summary: 'Investigating network instability for User Alpha.', status: 'Pending', resolution_steps: '<p><strong>Step 1:</strong> Check local network.</p><p><strong>Step 2:</strong> Ping internal servers.</p>', tags: ['connectivity', 'networking'] },
-                    {
-                        id: 'comp_flow_scenario', type: 'interactive_scenario', title: 'Customer Inquiry – Compensation Flow',
-                        summary: 'Interactive guide for handling customer compensation due to late orders.',
-                        scenario_data: customerCompensationFlowScenario, // Embed JSON here
-                        is_sensitive: true
-                    },
-                ],
-                subCategories: [{ id: 'tools', name: 'Support Tools', icon: 'fas fa-tools' }, { id: 'faq', name: 'FAQ', icon: 'fas fa-question-circle' }]
-            },
-            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', themeColor: 'teal', description: 'Resources for partner management.', items: [] },
-            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', themeColor: 'green', description: 'Logistics operations and information.', items: [] },
-            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', themeColor: 'purple', description: 'Downloadable forms and templates.', items: [{id: 'form_001', type: 'form_sheet', title: 'Vacation Request Form', summary: 'Standard form for requesting vacation.', url: '#'}] }
-        ]
-    };
-
-    // --- DOM Elements ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
-    const navigationMenu = document.getElementById('navigationMenu');
-    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
-    const breadcrumbsContainer = document.getElementById('breadcrumbs');
-    const pageContentArea = document.getElementById('pageContentArea');
-    const dashboardOverviewContainer = document.getElementById('dashboardOverviewContainer');
-    const standardSectionContentPlaceholder = document.getElementById('standardSectionContentPlaceholder');
-    const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
-    const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
-    const userAvatar = document.getElementById('userAvatar');
-    const footerKbVersion = document.getElementById('footerKbVersion');
-    const themeSwitcher = document.getElementById('themeSwitcher');
-    const themeIcon = document.getElementById('themeIcon');
-    const themeText = document.getElementById('themeText');
-    const addContentModalOverlay = document.getElementById('addContentModalOverlay');
-    const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
-    const addContentForm = document.getElementById('addContentForm');
-    const cancelAddContentBtn = document.getElementById('cancelAddContentBtn');
-    const contentTypeSelect = document.getElementById('contentType');
-    const contentUrlContainer = document.getElementById('contentUrlContainer');
-    const resolutionStepsContainer = document.getElementById('resolutionStepsContainer');
-    const jsonScenarioContainer = document.getElementById('jsonScenarioContainer');
-    const globalSearchInput = document.getElementById('globalSearchInput');
-    const searchResultsContainer = document.getElementById('searchResultsContainer');
-
-    // Interactive Scenario Modal Elements
-    const interactiveScenarioModalOverlay = document.getElementById('interactiveScenarioModalOverlay');
-    const interactiveScenarioTitleEl = document.getElementById('interactiveScenarioTitle');
-    const closeInteractiveScenarioModalBtn = document.getElementById('closeInteractiveScenarioModalBtn');
-    const scenarioStepsContainer = document.getElementById('scenarioStepsContainer');
-    const scenarioDecisionButtonsContainer = document.getElementById('scenarioDecisionButtonsContainer');
-    const scenarioPrevStepBtn = document.getElementById('scenarioPrevStepBtn');
-    const scenarioNextStepBtn = document.getElementById('scenarioNextStepBtn');
-    const scenarioAlertSound = document.getElementById('scenarioAlertSound');
-    const scenarioCallTimer = document.getElementById('scenarioCallTimer');
-
-
-    let quillEditor;
-    let currentUser = Auth.getCurrentUser();
-    let currentOpenItem = null; // For back button functionality for item details
-
-    // For Interactive Scenarios
-    let currentScenarioData = null;
-    let currentScenarioStepId = null;
-    let scenarioStepHistory = [];
-    let scenarioTimerInterval = null;
-    let scenarioStartTime = 0;
-
-
-    // --- Utility Functions ---
-    function escapeHTML(str) {
-        if (typeof str !== 'string') return '';
-        return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
-    }
-
-    function highlightText(text, query) {
-        if (!text) return '';
-        const safeText = escapeHTML(text);
-        if (!query) return safeText;
-        try {
-            const rgx = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-            return safeText.replace(rgx, '<mark>$1</mark>');
-        } catch (e) { return safeText; }
-    }
-
-    function truncateText(text, len) {
-        if (!text || text.length <= len) return text;
-        return text.substring(0, len) + '...';
-    }
-    function stripHtml(html){
-       let tmp = document.createElement("DIV");
-       tmp.innerHTML = html;
-       return tmp.textContent || tmp.innerText || "";
-    }
-
-    function showToast(message, type = 'info', duration = 3000) {
-        const toastContainer = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast-notification toast-${type}`;
-        
-        let iconClass = 'fas fa-info-circle';
-        if (type === 'success') iconClass = 'fas fa-check-circle';
-        else if (type === 'error') iconClass = 'fas fa-exclamation-circle';
-
-        toast.innerHTML = `<i class="${iconClass} text-xl"></i><span>${escapeHTML(message)}</span>`;
-        toastContainer.appendChild(toast);
-
-        // Trigger animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-    // CORRECTED AREA - START
-    // --- Theme Management ---
-    function applyTheme(theme) {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            themeIcon.classList.replace('fa-moon', 'fa-sun');
-            themeText.textContent = 'Light Mode';
-        } else {
-            document.documentElement.classList.remove('dark');
-            themeIcon.classList.replace('fa-sun', 'fa-moon');
-            themeText.textContent = 'Dark Mode';
-        }
-        mermaid.initialize({ startOnLoad: false, theme: theme === 'dark' ? 'dark' : 'default' });
-        // Re-render any visible mermaid diagrams if needed
-        document.querySelectorAll('.mermaid').forEach(el => {
-            if (el.getAttribute('data-processed')) { // only if already rendered
-                 const code = el.textContent;
-                 el.removeAttribute('data-processed');
-                 el.innerHTML = code; // Put back the code
-                 mermaid.run({nodes: [el]});
-            }
-        });
-    }
-    // CORRECTED AREA - END
-
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        applyTheme(savedTheme);
-    }
-    themeSwitcher.addEventListener('click', () => {
-        const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
-        showToast(`Switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Mode`, 'info');
-    });
-
-    // --- Sidebar and Navigation ---
-    function populateSidebar() {
-        let menuHTML = `<div class="text-xs uppercase font-semibold text-gray-400 dark:text-gray-500 mb-2 mt-4 px-2">Main</div>`;
-        kbSystemData.sections.forEach(section => {
-            if (section.id === 'home') {
-                 menuHTML += `<a href="#home" class="sidebar-link flex items-center p-2.5 rounded-md transition-colors" data-section="home">
-                    <i class="${section.icon} w-5 text-center mr-3"></i>${escapeHTML(section.name)}
-                </a>`;
-            }
-        });
-        menuHTML += `<div class="text-xs uppercase font-semibold text-gray-400 dark:text-gray-500 mb-2 mt-6 px-2">Knowledge Areas</div>`;
-        kbSystemData.sections.forEach(section => {
-            if (section.id !== 'home') {
-                menuHTML += `<a href="#${section.id}" class="sidebar-link flex items-center p-2.5 rounded-md transition-colors" data-section="${section.id}">
-                    <i class="${section.icon} w-5 text-center mr-3"></i>${escapeHTML(section.name)}
-                </a>`;
-            }
-        });
-        navigationMenu.innerHTML = menuHTML;
-    }
-
-    mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
-    sidebar.addEventListener('click', (e) => {
-        if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
-            sidebar.classList.add('-translate-x-full');
-        }
-    });
-
-    function highlightSidebarLink(sectionId) {
-        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
-        if (activeLink) activeLink.classList.add('active');
-    }
-
-    // --- Content Display ---
-    function getThemeColorClasses(themeColor = 'gray') {
-        const colors = {
-            indigo: { border: 'border-indigo-500', text: 'text-indigo-600 dark:text-indigo-400', bgIcon: 'bg-indigo-100 dark:bg-indigo-800/50', icon: 'text-indigo-500 dark:text-indigo-400', tagBg: 'bg-indigo-100 dark:bg-indigo-500/20', tagText: 'text-indigo-700 dark:text-indigo-300' },
-            blue: { border: 'border-blue-500', text: 'text-blue-600 dark:text-blue-400', bgIcon: 'bg-blue-100 dark:bg-blue-800/50', icon: 'text-blue-500 dark:text-blue-400', tagBg: 'bg-blue-100 dark:bg-blue-500/20', tagText: 'text-blue-700 dark:text-blue-300' },
-            teal: { border: 'border-teal-500', text: 'text-teal-600 dark:text-teal-400', bgIcon: 'bg-teal-100 dark:bg-teal-800/50', icon: 'text-teal-500 dark:text-teal-400', tagBg: 'bg-teal-100 dark:bg-teal-500/20', tagText: 'text-teal-700 dark:text-teal-300' },
-            green: { border: 'border-green-500', text: 'text-green-600 dark:text-green-400', bgIcon: 'bg-green-100 dark:bg-green-800/50', icon: 'text-green-500 dark:text-green-400', tagBg: 'bg-green-100 dark:bg-green-500/20', tagText: 'text-green-700 dark:text-green-300' },
-            purple: { border: 'border-purple-500', text: 'text-purple-600 dark:text-purple-400', bgIcon: 'bg-purple-100 dark:bg-purple-800/50', icon: 'text-purple-500 dark:text-purple-400', tagBg: 'bg-purple-100 dark:bg-purple-500/20', tagText: 'text-purple-700 dark:text-purple-300' },
-            gray: { border: 'border-gray-500', text: 'text-gray-600 dark:text-gray-400', bgIcon: 'bg-gray-100 dark:bg-gray-800/50', icon: 'text-gray-500 dark:text-gray-400', tagBg: 'bg-gray-100 dark:bg-gray-500/20', tagText: 'text-gray-700 dark:text-gray-300' }
+            ]
         };
-        return colors[themeColor] || colors.gray;
-    }
 
-    function renderItemCard(item, sectionData) {
-        const theme = getThemeColorClasses(sectionData.themeColor);
-        let itemIcon = 'fas fa-file-alt';
-        let ctaText = 'View Details';
-        let ctaLink = `#${sectionData.id}/${item.id}`;
-        let target = '';
-        let specialIndicator = '';
+        const navigationMenu = document.getElementById('navigationMenu');
+        const currentSectionTitle = document.getElementById('currentSectionTitle');
+        const breadcrumbs = document.getElementById('breadcrumbs');
+        const pageContentArea = document.getElementById('pageContentArea');
+        const dashboardOverview = document.getElementById('dashboardOverviewContainer');
+        const standardSectionContent = document.getElementById('standardSectionContentPlaceholder');
+        const itemDetailView = document.getElementById('itemDetailViewPlaceholder');
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        const addContentModal = document.getElementById('addContentModal');
+        const addContentForm = document.getElementById('addContentForm');
+        const cancelAddContentBtn = document.getElementById('cancelAddContentBtn');
 
-        if (item.type === 'article') itemIcon = 'fas fa-newspaper';
-        else if (item.type === 'case') itemIcon = 'fas fa-briefcase';
-        else if (item.type === 'form_sheet') { itemIcon = 'fas fa-file-invoice'; ctaText = 'Open Link'; ctaLink = item.url || '#'; target = '_blank';}
-        else if (item.type === 'interactive_scenario') {
-            itemIcon = 'fas fa-project-diagram';
-            ctaText = 'Start Scenario';
-            // ctaLink will be handled by event listener
-            if(item.is_sensitive) specialIndicator = '<span class="special-compensation-scenario-icon text-yellow-400 text-xs" title="Sensitive Scenario"></span> ';
+        function escapeHTML(str) { return str.replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m])); }
+        function truncateText(text, len) { return text.length <= len ? text : text.substring(0, len) + '...'; }
+
+        function highlightSidebarLink(sectionId) {
+            document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+            const activeLink = document.querySelector(`.sidebar a[data-section="${sectionId}"]`);
+            if (activeLink) activeLink.classList.add('active');
         }
 
-        return `
-        <div class="card border-t-4 ${theme.border} p-5 flex flex-col hover:shadow-lg transition-shadow duration-200" data-item-id="${item.id}" data-item-type="${item.type}">
-            <div class="flex items-start mb-3">
-                <div class="p-3 rounded-full ${theme.bgIcon} mr-4"><i class="${itemIcon} text-xl ${theme.icon}"></i></div>
-                <h3 class="font-semibold text-lg leading-tight flex-1">${specialIndicator}${escapeHTML(item.title)}</h3>
-            </div>
-            <p class="text-sm mb-4 flex-grow text-gray-600 dark:text-gray-400">${escapeHTML(truncateText(item.summary, 120))}</p>
-            ${item.tags && item.tags.length ? `<div class="mb-3">${item.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-1.5 mb-1 font-medium inline-block">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-            <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                <span class="text-xs font-medium px-2 py-1 rounded-full ${theme.tagBg} ${theme.tagText} uppercase">${escapeHTML(item.type.replace('_', ' '))}</span>
-                <a href="${escapeHTML(ctaLink)}" ${target} class="text-sm font-medium ${theme.text} hover:underline item-cta-link"
-                   data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}">
-                   ${ctaText} <i class="fas fa-arrow-right ml-1 text-xs"></i>
-                </a>
-            </div>
-        </div>`;
-    }
-
-    function displayDashboard() {
-        dashboardOverviewContainer.classList.remove('hidden');
-        standardSectionContentPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.classList.add('hidden');
-        currentSectionTitleEl.textContent = 'Dashboard Overview';
-        breadcrumbsContainer.innerHTML = `<span class="font-medium text-indigo-600 dark:text-indigo-400">Home</span>`;
-
-        const welcomeUser = currentUser.fullName || 'User';
-        dashboardOverviewContainer.innerHTML = `
-            <div class="card bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-8">
-                <h2 class="text-3xl font-bold mb-2">Welcome, ${escapeHTML(welcomeUser)}!</h2>
-                <p class="text-indigo-200">Here's an overview of your InfiniBase knowledge hub.</p>
-                <p class="text-sm text-indigo-300 mt-1">InfiniBase v${escapeHTML(kbSystemData.meta.version)} | Last Update: ${new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString()}</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="card p-6">
-                    <h3 class="text-xl font-semibold mb-3">Quick Stats</h3>
-                    <p>Total Sections: ${kbSystemData.sections.length}</p>
-                    <p>Total Items (approx): ${kbSystemData.sections.reduce((sum, s) => sum + (s.items?.length || 0), 0)}</p>
-                </div>
-                <div class="card p-6 lg:col-span-2">
-                    <h3 class="text-xl font-semibold mb-3">Recently Viewed (Placeholder)</h3>
-                    <ul class="list-disc list-inside text-sm space-y-1">
-                        <li>How to handle P1 tickets</li>
-                        <li>Compensation Flow Guide</li>
-                        <li>Vacation Request Form</li>
-                    </ul>
-                </div>
-            </div>
-             <div class="card p-6">
-                <h3 class="text-xl font-semibold mb-4">Mermaid Diagram Example (Static)</h3>
-                <p class="text-sm mb-2 text-gray-600 dark:text-gray-400">This shows how Mermaid.js can render diagrams from text definitions.</p>
-                <div class="mermaid p-4 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 overflow-x-auto">
-graph TD
-    A[Start] --> B{Is it late?};
-    B -- Yes --> C[Apologize];
-    B -- No --> D[Check other issues];
-    C --> E[Offer compensation];
-    D --> F[Resolve issue];
-    E --> G[End];
-    F --> G;
-                </div>
-            </div>
-        `;
-        mermaid.run({nodes: dashboardOverviewContainer.querySelectorAll('.mermaid')});
-    }
-
-    function displaySectionContent(sectionId, subCategoryFilter = null) {
-        currentOpenItem = null; // Reset open item
-        dashboardOverviewContainer.classList.add('hidden');
-        standardSectionContentPlaceholder.classList.remove('hidden');
-        itemDetailViewPlaceholder.classList.add('hidden');
-
-        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-        if (!sectionData) {
-            standardSectionContentPlaceholder.innerHTML = `<div class="p-6 text-center"><h2 class="text-xl font-semibold text-red-500">Section Not Found: ${escapeHTML(sectionId)}</h2></div>`;
-            currentSectionTitleEl.textContent = 'Not Found';
-            return;
+        function displayDashboard() {
+            dashboardOverview.style.display = 'block';
+            standardSectionContent.style.display = 'none';
+            itemDetailView.style.display = 'none';
+            currentSectionTitle.textContent = 'Dashboard Overview';
+            breadcrumbs.innerHTML = '<span>Home</span>';
         }
 
-        currentSectionTitleEl.textContent = sectionData.name;
-        let bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1 text-gray-400">></span> <span class="font-medium text-indigo-600 dark:text-indigo-400">${escapeHTML(sectionData.name)}</span>`;
-        if (subCategoryFilter) {
-            const subCat = sectionData.subCategories?.find(sc => sc.id === subCategoryFilter);
-            if (subCat) {
-                 bcHTML = `<a href="#home" class="hover:underline">Home</a> <span class="mx-1 text-gray-400">></span> <a href="#${sectionData.id}" class="hover:underline">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400">></span> <span class="font-medium text-indigo-600 dark:text-indigo-400">${escapeHTML(subCat.name)}</span>`;
+        function displaySectionContent(sectionId) {
+            dashboardOverview.style.display = 'none';
+            standardSectionContent.style.display = 'block';
+            itemDetailView.style.display = 'none';
+
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!sectionData) {
+                standardSectionContent.innerHTML = '<div class="card"><h2>Section Not Found</h2></div>';
+                currentSectionTitle.textContent = 'Not Found';
+                return;
             }
-        }
-        breadcrumbsContainer.innerHTML = bcHTML;
 
-        let contentHTML = `<div class="space-y-8">`;
-        if (currentUser.role === 'admin') {
-             contentHTML += `
-                <div class="flex justify-end">
-                    <button id="openAddContentBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md flex items-center transition-colors" data-section-id="${sectionData.id}">
-                        <i class="fas fa-plus-circle mr-2"></i> Add New Content to ${escapeHTML(sectionData.name)}
-                    </button>
+            currentSectionTitle.textContent = sectionData.name;
+            breadcrumbs.innerHTML = `<a href="#home">Home</a> > <span>${escapeHTML(sectionData.name)}</span>`;
+
+            let contentHTML = '<div class="card"><button class="primary-btn" onclick="openAddContentModal(\'' + sectionId + '\')">Add New Content</button></div>';
+            if (sectionData.items && sectionData.items.length > 0) {
+                sectionData.items.forEach(item => {
+                    contentHTML += `
+                        <div class="card">
+                            <h3>${escapeHTML(item.title)}</h3>
+                            <p>${escapeHTML(truncateText(item.summary, 120))}</p>
+                            <a href="#${sectionId}/${item.id}" class="primary-btn">View Details</a>
+                        </div>`;
+                });
+            } else {
+                contentHTML += '<div class="card"><p>No content found in this section.</p></div>';
+            }
+            standardSectionContent.innerHTML = contentHTML;
+        }
+
+        function displayItemDetail(sectionId, itemId) {
+            dashboardOverview.style.display = 'none';
+            standardSectionContent.style.display = 'none';
+            itemDetailView.style.display = 'block';
+
+            const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+            const itemData = sectionData?.items?.find(i => i.id === itemId);
+
+            if (!sectionData || !itemData) {
+                itemDetailView.innerHTML = '<div class="card"><p>Error: Item not found.</p></div>';
+                return;
+            }
+
+            currentSectionTitle.textContent = itemData.title;
+            breadcrumbs.innerHTML = `<a href="#home">Home</a> > <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> > <span>${escapeHTML(itemData.title)}</span>`;
+            itemDetailView.innerHTML = `
+                <div class="card">
+                    <h2>${escapeHTML(itemData.title)}</h2>
+                    <p>${escapeHTML(itemData.summary)}</p>
+                    <hr style="margin: 20px 0;">
+                    <div>${itemData.content}</div>
+                    <a href="#${sectionId}" class="primary-btn">Back to ${escapeHTML(sectionData.name)}</a>
                 </div>`;
         }
 
-        const itemsToDisplay = (sectionData.items || []).filter(item => !subCategoryFilter || (item.tags && item.tags.includes(subCategoryFilter)));
-
-        if (itemsToDisplay.length > 0) {
-            contentHTML += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">`;
-            itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
-            contentHTML += `</div>`;
+        function openAddContentModal(sectionId) {
+            addContentForm.dataset.sectionId = sectionId;
+            addContentModal.style.display = 'flex';
+            document.getElementById('contentTitle').focus();
         }
 
-        if (!subCategoryFilter && sectionData.subCategories && sectionData.subCategories.length > 0) {
-            const theme = getThemeColorClasses(sectionData.themeColor);
-            contentHTML += `<h3 class="text-2xl font-semibold mt-8 mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Sub-Categories</h3><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">`;
-            sectionData.subCategories.forEach(subCat => {
-                contentHTML += `<a href="#${sectionData.id}/${subCat.id}" class="card text-center p-6 hover:shadow-lg transition-shadow duration-200 border-t-4 ${theme.border}">
-                    <i class="${subCat.icon || sectionData.icon || 'fas fa-folder-open'} text-3xl mb-3 ${theme.icon}"></i>
-                    <h4 class="font-medium">${escapeHTML(subCat.name)}</h4>
-                </a>`;
-            });
-            contentHTML += `</div>`;
+        function closeAddContentModal() {
+            addContentModal.style.display = 'none';
+            addContentForm.reset();
         }
 
-        if (itemsToDisplay.length === 0 && (!sectionData.subCategories || sectionData.subCategories.length === 0 || subCategoryFilter)) {
-             contentHTML += `<div class="text-center py-10"><p class="text-xl text-gray-500 dark:text-gray-400">No content found in this section${subCategoryFilter ? ' or sub-category' : ''}.</p></div>`;
-        }
+        addContentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const sectionId = addContentForm.dataset.sectionId;
+            const section = kbSystemData.sections.find(s => s.id === sectionId);
+            if (!section) return;
 
-        contentHTML += `</div>`;
-        standardSectionContentPlaceholder.innerHTML = contentHTML;
+            const newItem = {
+                id: `${sectionId}_item_${Date.now()}`,
+                type: 'article',
+                title: document.getElementById('contentTitle').value,
+                summary: document.getElementById('contentSummary').value,
+                content: document.getElementById('contentDetails').value.replace(/\n/g, '<br>')
+            };
 
-        // Attach event listener for Add Content button if it exists
-        const openAddBtn = document.getElementById('openAddContentBtn');
-        if (openAddBtn) {
-            openAddBtn.addEventListener('click', (e) => {
-                const currentSecId = e.currentTarget.dataset.sectionId;
-                openAddContentModal(currentSecId);
-            });
-        }
-    }
-
-    function displayItemDetail(sectionId, itemId) {
-        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-        const itemData = sectionData?.items?.find(i => i.id === itemId);
-
-        if (!sectionData || !itemData) {
-            standardSectionContentPlaceholder.innerHTML = `<p class="text-red-500">Error: Item not found.</p>`;
-            return;
-        }
-        currentOpenItem = { sectionId, itemId }; // For back button
-
-        dashboardOverviewContainer.classList.add('hidden');
-        standardSectionContentPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.classList.remove('hidden');
-        const theme = getThemeColorClasses(sectionData.themeColor);
-
-        let bcHTML = `
-            <a href="#home" class="hover:underline">Home</a> <span class="mx-1 text-gray-400">></span>
-            <a href="#${sectionData.id}" class="hover:underline">${escapeHTML(sectionData.name)}</a> <span class="mx-1 text-gray-400">></span>
-            <span class="font-medium text-indigo-600 dark:text-indigo-400">${escapeHTML(itemData.title)}</span>`;
-        breadcrumbsContainer.innerHTML = bcHTML;
-        currentSectionTitleEl.textContent = itemData.title;
-
-        let detailHTML = `
-            <button id="backToSectionBtn" class="mb-6 px-4 py-2 text-sm secondary-button">
-                <i class="fas fa-arrow-left mr-2"></i> Back to ${escapeHTML(sectionData.name)}
-            </button>
-            <div class="card p-6 md:p-8">
-                <div class="flex items-center mb-4">
-                    <div class="p-3 rounded-full ${theme.bgIcon} mr-4"><i class="${itemData.type === 'case' ? 'fas fa-briefcase' : 'fas fa-newspaper'} text-2xl ${theme.icon}"></i></div>
-                    <h2 class="text-2xl md:text-3xl font-bold">${escapeHTML(itemData.title)}</h2>
-                </div>
-                <p class="text-gray-600 dark:text-gray-400 mb-4 italic">${escapeHTML(itemData.summary)}</p>
-                ${itemData.tags && itemData.tags.length ? `<div class="mb-6">${itemData.tags.map(tag => `<span class="text-xs ${theme.tagBg} ${theme.tagText} px-2 py-0.5 rounded-full mr-1.5 mb-1 font-medium inline-block">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <hr class="my-6 border-gray-300 dark:border-gray-600">
-                <div class="prose dark:prose-invert max-w-none kb-content">`;
-
-        if (itemData.type === 'case' && itemData.resolution_steps) {
-            detailHTML += itemData.resolution_steps; // Quill content is already HTML
-        } else if (itemData.type === 'article' && itemData.content) {
-            detailHTML += `<p>${escapeHTML(itemData.content).replace(/\n/g, '<br>')}</p>`; // Simple text content
-        } else {
-            detailHTML += `<p>No detailed content available for this item type.</p>`;
-        }
-        detailHTML += `</div></div>`;
-        itemDetailViewPlaceholder.innerHTML = detailHTML;
-
-        document.getElementById('backToSectionBtn').addEventListener('click', () => {
-            window.location.hash = `#${sectionId}`;
+            if (!section.items) section.items = [];
+            section.items.push(newItem);
+            closeAddContentModal();
+            if (window.location.hash.substring(1) === sectionId) displaySectionContent(sectionId);
         });
-    }
 
+        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
 
-    // --- Add Content Modal Logic ---
-    function openAddContentModal(sectionIdForContent) {
-        addContentForm.reset(); // Reset form fields
-        addContentForm.dataset.sectionId = sectionIdForContent;
-
-        if (!quillEditor) {
-            quillEditor = new Quill('#quillEditor', {
-                theme: 'snow',
-                modules: { toolbar: [[{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline', 'strike'], ['link', 'image'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] },
-                placeholder: 'Enter resolution steps or detailed content...'
-            });
-        }
-        quillEditor.setText(''); // Clear editor
-
-        // Default to article/case related fields
-        resolutionStepsContainer.classList.remove('hidden'); // Show for case
-        contentUrlContainer.classList.add('hidden');
-        jsonScenarioContainer.classList.add('hidden');
-        contentTypeSelect.value = "article"; // Default
-
-        addContentModalOverlay.classList.remove('hidden');
-        setTimeout(() => addContentModalOverlay.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95'), 10);
-        document.getElementById('contentTitle').focus();
-    }
-
-    function closeAddContentModal() {
-        addContentModalOverlay.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
-        setTimeout(() => addContentModalOverlay.classList.add('hidden'), 200);
-    }
-
-    contentTypeSelect.addEventListener('change', (e) => {
-        const type = e.target.value;
-        resolutionStepsContainer.classList.add('hidden');
-        contentUrlContainer.classList.add('hidden');
-        jsonScenarioContainer.classList.add('hidden');
-        const resolutionLabel = document.querySelector('#resolutionStepsContainer label');
-
-
-        if (type === 'case') {
-            resolutionStepsContainer.classList.remove('hidden');
-            if(resolutionLabel) resolutionLabel.textContent = 'Details / Resolution Steps (for Case)';
-        } else if (type === 'form_sheet') {
-            contentUrlContainer.classList.remove('hidden');
-        } else if (type === 'interactive_scenario') {
-            jsonScenarioContainer.classList.remove('hidden');
-        } else if (type === 'article') {
-            resolutionStepsContainer.classList.remove('hidden');
-            if(resolutionLabel) resolutionLabel.textContent = 'Article Content';
-        }
-    });
-
-
-    addContentForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const sectionId = addContentForm.dataset.sectionId;
-        const section = kbSystemData.sections.find(s => s.id === sectionId);
-        if (!section) {
-            showToast('Error: Target section not found!', 'error');
-            return;
-        }
-
-        const newItem = {
-            id: `${sectionId}_item_${Date.now()}`,
-            type: contentTypeSelect.value,
-            title: document.getElementById('contentTitle').value.trim(),
-            summary: document.getElementById('contentSummary').value.trim(),
-            tags: [], // Placeholder for tags, could add a field for this
-            createdBy: currentUser.email,
-            createdAt: new Date().toISOString()
-        };
-
-        if (newItem.type === 'case' || newItem.type === 'article') {
-            newItem.content = quillEditor.root.innerHTML; // For articles
-            if (newItem.type === 'case') newItem.resolution_steps = quillEditor.root.innerHTML; // Specifically for cases
-        } else if (newItem.type === 'form_sheet') {
-            newItem.url = document.getElementById('contentUrl').value.trim();
-            if (!newItem.url) { showToast('URL is required for Form/Sheet.', 'error'); return; }
-        } else if (newItem.type === 'interactive_scenario') {
-            try {
-                newItem.scenario_data = JSON.parse(document.getElementById('jsonScenarioData').value);
-                newItem.is_sensitive = newItem.title.toLowerCase().includes("compensation"); // Basic check
-            } catch (err) {
-                showToast('Invalid JSON data for scenario.', 'error');
-                console.error("JSON Parse Error:", err);
+        globalSearchInput.addEventListener('input', () => {
+            const query = globalSearchInput.value.trim().toLowerCase();
+            if (query.length < 2) {
+                searchResultsContainer.style.display = 'none';
                 return;
             }
-        }
-
-        if (!section.items) section.items = [];
-        section.items.push(newItem);
-
-        showToast(`'${newItem.title}' added to ${section.name} successfully!`, 'success');
-        closeAddContentModal();
-        // Re-render current section if it's the one modified
-        const currentHashParts = window.location.hash.substring(1).split('/');
-        if (currentHashParts[0] === sectionId) {
-            displaySectionContent(sectionId, currentHashParts[1] || null);
-        }
-    });
-
-    // --- Interactive Scenario Logic (Adapted from corrrre.txt) ---
-    function launchInteractiveScenario(scenario, title, isSensitive = false) {
-        currentScenarioData = scenario;
-        currentScenarioStepId = scenario[0]?.id;
-        scenarioStepHistory = [];
-        interactiveScenarioTitleEl.textContent = title;
-        interactiveScenarioTitleEl.classList.toggle('highlight-scenario-title-animation', isSensitive);
-        if(isSensitive && scenarioAlertSound && scenarioAlertSound.src) { // Check src before playing
-             scenarioAlertSound.play().catch(e => console.warn("Scenario alert sound failed:", e));
-        }
-
-
-        renderScenarioStep();
-        interactiveScenarioModalOverlay.classList.remove('hidden');
-        setTimeout(() => interactiveScenarioModalOverlay.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95'), 10);
-        startScenarioTimer();
-    }
-
-    function closeInteractiveScenarioModal() {
-        interactiveScenarioModalOverlay.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
-        setTimeout(() => {
-            interactiveScenarioModalOverlay.classList.add('hidden');
-            currentScenarioData = null;
-            currentScenarioStepId = null;
-            scenarioStepHistory = [];
-            stopScenarioTimer();
-            scenarioStepsContainer.innerHTML = ''; // Clear content
-            scenarioDecisionButtonsContainer.innerHTML = '';
-        }, 200);
-    }
-    
-    function renderScenarioStep() {
-        if (!currentScenarioData || !currentScenarioStepId) {
-            scenarioStepsContainer.innerHTML = '<p class="text-red-500">Error: Invalid scenario step.</p>';
-            return;
-        }
-        const step = currentScenarioData.find(s => s.id === currentScenarioStepId);
-        if (!step) {
-            scenarioStepsContainer.innerHTML = `<p class="text-red-500">Error: Step ID "${currentScenarioStepId}" not found.</p>`;
-            scenarioNextStepBtn.style.display = 'none';
-            return;
-        }
-
-        scenarioStepsContainer.innerHTML = `<p class="text-lg">${step.text.replace(/\n/g, '<br>')}</p>`;
-        scenarioDecisionButtonsContainer.innerHTML = ''; // Clear previous buttons
-
-        scenarioPrevStepBtn.style.display = scenarioStepHistory.length > 0 ? 'inline-flex' : 'none';
-
-        if (step.type === 'decision' && step.options) {
-            scenarioNextStepBtn.style.display = 'none';
-            step.options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'decision-button';
-                btn.textContent = opt.label;
-                btn.onclick = () => navigateToScenarioStep(opt.next_id);
-                scenarioDecisionButtonsContainer.appendChild(btn);
-            });
-        } else {
-            scenarioNextStepBtn.style.display = 'inline-flex';
-            if (step.next_id) {
-                scenarioNextStepBtn.innerHTML = `Next Step <i class="fas fa-arrow-right"></i>`;
-                scenarioNextStepBtn.onclick = () => navigateToScenarioStep(step.next_id);
-            } else if (step.is_end) { // Check for is_end flag
-                 scenarioNextStepBtn.innerHTML = `Finish Scenario <i class="fas fa-check-circle"></i>`;
-                 scenarioNextStepBtn.onclick = () => {
-                    showToast('Scenario Completed!', 'success');
-                    closeInteractiveScenarioModal();
-                };
-            } else { // No next_id and not marked as end, effectively an end point
-                scenarioNextStepBtn.innerHTML = `End Scenario <i class="fas fa-flag-checkered"></i>`;
-                 scenarioNextStepBtn.onclick = () => {
-                    showToast('Scenario Path Ended.', 'info');
-                    closeInteractiveScenarioModal();
-                 };
-            }
-        }
-    }
-
-    function navigateToScenarioStep(nextId) {
-        if (!currentScenarioStepId || !nextId) {
-             showToast('Scenario path ended or invalid next step.', 'info');
-             closeInteractiveScenarioModal();
-             return;
-        }
-        scenarioStepHistory.push(currentScenarioStepId);
-        currentScenarioStepId = nextId;
-        renderScenarioStep();
-    }
-    
-    scenarioPrevStepBtn.addEventListener('click', () => {
-        if (scenarioStepHistory.length > 0) {
-            currentScenarioStepId = scenarioStepHistory.pop();
-            renderScenarioStep();
-        }
-    });
-
-    function startScenarioTimer() {
-        scenarioCallTimer.style.display = 'block';
-        if (scenarioTimerInterval) clearInterval(scenarioTimerInterval);
-        scenarioStartTime = Date.now();
-        
-        function updateTimerDisplay() {
-            const elapsed = Date.now() - scenarioStartTime;
-            const totalSeconds = Math.floor(elapsed / 1000);
-            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-            const seconds = String(totalSeconds % 60).padStart(2, '0');
-            scenarioCallTimer.textContent = `${minutes}:${seconds}`;
-        }
-        updateTimerDisplay();
-        scenarioTimerInterval = setInterval(updateTimerDisplay, 1000);
-    }
-
-    function stopScenarioTimer() {
-        if (scenarioTimerInterval) clearInterval(scenarioTimerInterval);
-        scenarioTimerInterval = null;
-        scenarioCallTimer.style.display = 'none';
-        scenarioCallTimer.textContent = '00:00';
-    }
-
-
-    // --- Global Search ---
-    globalSearchInput.addEventListener('input', () => {
-        const query = globalSearchInput.value.trim().toLowerCase();
-        if (query.length < 2) {
-            searchResultsContainer.classList.add('hidden');
-            return;
-        }
-        const results = [];
-        kbSystemData.sections.forEach(s => {
-            s.items?.forEach(i => {
-                if (i.title.toLowerCase().includes(query) || i.summary?.toLowerCase().includes(query) || (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
-                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
-                }
-            });
-        });
-        searchResultsContainer.innerHTML = '';
-        if (results.length) {
-            results.slice(0, 7).forEach(r => { // Show max 7 results
-                const li = document.createElement('a');
-                let href = `#${r.sectionId}/${r.id}`;
-                if (r.type === 'interactive_scenario' || r.type === 'form_sheet') { // Direct launch/open
-                    href = `javascript:void(0);`; // Prevent hash change, handle with click
-                    li.addEventListener('click', () => {
-                         handleSearchResultClick(r);
-                         searchResultsContainer.classList.add('hidden');
-                         globalSearchInput.value = '';
-                    });
-                } else {
-                    li.href = href;
-                     li.addEventListener('click', () => {
-                        searchResultsContainer.classList.add('hidden');
-                        globalSearchInput.value = '';
-                    });
-                }
-
-                li.className = 'block p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer';
-                li.innerHTML = `
-                    <div class="font-medium">${highlightText(r.title, query)}
-                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">(${escapeHTML(r.type.replace('_', ' '))} in ${escapeHTML(r.sectionName)})</span>
-                    </div>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">${highlightText(truncateText(r.summary, 70), query)}</p>`;
-                searchResultsContainer.appendChild(li);
-            });
-            searchResultsContainer.classList.remove('hidden');
-        } else {
-            searchResultsContainer.innerHTML = `<div class="p-3 text-sm text-gray-500 dark:text-gray-400">No results found.</div>`;
-            searchResultsContainer.classList.remove('hidden');
-        }
-    });
-    document.addEventListener('click', e => { // Hide search results on outside click
-        if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
-            searchResultsContainer.classList.add('hidden');
-        }
-    });
-    
-    function handleSearchResultClick(itemData) {
-        if (itemData.type === 'interactive_scenario' && itemData.scenario_data) {
-            launchInteractiveScenario(itemData.scenario_data, itemData.title, itemData.is_sensitive);
-        } else if (itemData.type === 'form_sheet' && itemData.url) {
-            window.open(itemData.url, '_blank');
-        } else { // For articles, cases - navigate via hash
-             window.location.hash = `#${itemData.sectionId}/${itemData.id}`;
-        }
-    }
-
-
-    // --- Routing and Initialization ---
-    function handleNavigation() {
-        const hash = window.location.hash.substring(1) || 'home';
-        const parts = hash.split('/');
-        const sectionId = parts[0];
-        const itemId = parts[1];
-        const subCategoryFilter = (parts.length > 2 && kbSystemData.sections.find(s => s.id === sectionId)?.subCategories?.find(sc => sc.id === parts[1])) ? parts[1] : (parts.length === 2 && kbSystemData.sections.find(s => s.id === sectionId)?.subCategories?.find(sc => sc.id === parts[1]) ? parts[1] : null);
-        const actualItemId = subCategoryFilter ? parts[2] : itemId;
-
-
-        highlightSidebarLink(sectionId);
-
-        if (sectionId === 'home') {
-            displayDashboard();
-        } else if (actualItemId && sectionId) {
-            const section = kbSystemData.sections.find(s => s.id === sectionId);
-            const item = section?.items?.find(i => i.id === actualItemId);
-            if (item && item.type === 'interactive_scenario') {
-                displaySectionContent(sectionId, subCategoryFilter); // Show section, user clicks card to launch
-            } else {
-                 displayItemDetail(sectionId, actualItemId);
-            }
-        } else if (sectionId) {
-            displaySectionContent(sectionId, subCategoryFilter);
-        } else {
-            displayDashboard(); // Default to home
-        }
-        window.scrollTo(0,0); // Scroll to top on navigation
-    }
-
-    function initializeApp() {
-        Auth.promptLogin(); // Ask for user details if not set (for demo)
-        currentUser = Auth.getCurrentUser();
-
-        const displayName = currentUser.fullName || currentUser.email || 'User';
-        userNameDisplayHeader.textContent = displayName;
-        userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=4f46e5&color=fff&rounded=true&font-size=0.5`;
-        footerKbVersion.textContent = kbSystemData.meta.version;
-
-        populateSidebar();
-        loadTheme();
-        handleNavigation();
-
-        // Event Listeners
-        window.addEventListener('hashchange', handleNavigation);
-        document.getElementById('logoutButton').addEventListener('click', () => {
-             if(confirm('Are you sure you want to logout?')) Auth.logout();
-        });
-        document.getElementById('reportErrorBtn').addEventListener('click', () => showToast('Issue reporting feature is under development.', 'info'));
-        
-        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
-        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
-        closeInteractiveScenarioModalBtn.addEventListener('click', closeInteractiveScenarioModal);
-
-
-        // Delegate click for item cards
-        pageContentArea.addEventListener('click', e => {
-            const cardCta = e.target.closest('.item-cta-link');
-            if (cardCta) {
-                const itemId = cardCta.dataset.itemId;
-                const sectionId = cardCta.dataset.sectionId;
-                const itemType = cardCta.dataset.itemType;
-                const section = kbSystemData.sections.find(s => s.id === sectionId);
-                const item = section?.items?.find(i => i.id === itemId);
-
-                if (itemType === 'interactive_scenario' && item?.scenario_data) {
-                    e.preventDefault(); // Prevent hash change if it's a scenario
-                    launchInteractiveScenario(item.scenario_data, item.title, item.is_sensitive);
-                } else if (itemType === 'form_sheet') {
-                    // Already handled by href target=_blank
-                } else {
-                    // For articles/cases, let hash navigation take over if href is set
-                    // If not, means it was javascript:void(0) and we need to manually navigate
-                    if (cardCta.getAttribute('href') === 'javascript:void(0);') {
-                        e.preventDefault();
-                        window.location.hash = `#${sectionId}/${itemId}`;
+            const results = [];
+            kbSystemData.sections.forEach(s => {
+                s.items?.forEach(i => {
+                    if (i.title.toLowerCase().includes(query) || i.summary?.toLowerCase().includes(query)) {
+                        results.push({ ...i, sectionId: s.id, sectionName: s.name });
                     }
-                }
+                });
+            });
+            searchResultsContainer.innerHTML = '';
+            if (results.length) {
+                results.slice(0, 5).forEach(r => {
+                    const li = document.createElement('a');
+                    li.href = `#${r.sectionId}/${r.id}`;
+                    li.style.display = 'block';
+                    li.style.padding = '10px';
+                    li.style.borderBottom = '1px solid #ddd';
+                    li.innerHTML = `<strong>${escapeHTML(r.title)}</strong> (${r.sectionName})<br>${escapeHTML(truncateText(r.summary, 50))}`;
+                    li.addEventListener('click', () => { searchResultsContainer.style.display = 'none'; globalSearchInput.value = ''; });
+                    searchResultsContainer.appendChild(li);
+                });
+                searchResultsContainer.style.display = 'block';
+            } else {
+                searchResultsContainer.innerHTML = '<div style="padding: 10px;">No results found.</div>';
+                searchResultsContainer.style.display = 'block';
             }
         });
 
+        document.addEventListener('click', e => {
+            if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+                searchResultsContainer.style.display = 'none';
+            }
+        });
 
-        showToast(`InfiniBase v${kbSystemData.meta.version} loaded. Welcome, ${displayName}!`, 'info', 4000);
-        console.log('InfiniBase App Initialized');
-    }
+        function handleNavigation() {
+            const hash = window.location.hash.substring(1) || 'home';
+            const [sectionId, itemId] = hash.split('/');
 
-    initializeApp();
+            highlightSidebarLink(sectionId);
 
-</script>
+            if (sectionId === 'home') {
+                displayDashboard();
+            } else if (itemId && sectionId) {
+                displayItemDetail(sectionId, itemId);
+            } else if (sectionId) {
+                displaySectionContent(sectionId);
+            } else {
+                displayDashboard();
+            }
+        }
+
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        });
+
+        window.addEventListener('hashchange', handleNavigation);
+        handleNavigation();
+    </script>
 </body>
 </html>
