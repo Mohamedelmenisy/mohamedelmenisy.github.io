@@ -30,57 +30,179 @@
         }
         .input-icon i {
             position: absolute;
-            left: 10px;
+            left: 12px; /* Adjusted for padding */
             top: 50%;
             transform: translateY(-50%);
-            color: #a0aec0;
+            color: #a0aec0; /* Tailwind gray-500 */
         }
         .input-icon input {
-            padding-left: 40px;
+            padding-left: 40px; /* Space for icon */
+            width: 100%;
+            padding-top: 0.75rem; padding-bottom: 0.75rem; /* Tailwind p-3 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            background-color: #4a5568; /* Tailwind gray-700 */
+            border: 1px solid #718096; /* Tailwind gray-600 */
+            color: white;
         }
+        .input-icon input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4299e1; /* Tailwind ring-blue-500 */
+            border-color: #4299e1; /* Tailwind blue-500 */
+        }
+        .login-button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #4299e1; /* Tailwind blue-600 */
+            color: white;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .login-button:hover {
+            background-color: #2b6cb0; /* Tailwind blue-700 */
+        }
+        .login-button:disabled {
+            background-color: #667eea; /* Tailwind indigo-400 */
+            cursor: not-allowed;
+        }
+        #errorMessage {
+            color: #f56565; /* Tailwind red-500 */
+            background-color: rgba(245, 101, 101, 0.1);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+        }
+         #alreadyLoggedIn {
+            color: #68d391; /* Tailwind green-400 */
+            background-color: rgba(104, 211, 145, 0.1);
+            border: 1px solid rgba(104, 211, 145, 0.2);
+         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <h2 class="text-3xl font-bold text-white mb-2">Welcome to InfiniBase</h2>
         <p class="text-gray-400 mb-6">Please login to access your knowledge base.</p>
-        <div id="errorMessage" class="hidden text-red-500 mb-4">Error: Could not initialize authentication service.</div>
-        <div id="alreadyLoggedIn" class="hidden text-green-500 mb-4">
-            You are already logged in. <a href="index.html" class="text-blue-400 hover:underline">Go to Dashboard</a>
+        
+        <div id="errorMessage" class="hidden mb-4"></div>
+
+        <div id="alreadyLoggedIn" class="hidden text-green-500 mb-4 p-3 bg-gray-800 rounded-md">
+            You are already logged in as <strong id="loggedInUserName" class="text-white"></strong>.
+            <a href="index.html" class="text-blue-400 hover:underline block mt-2">Go to Dashboard</a>
+            <button id="forceLogoutBtn" class="mt-2 text-sm text-yellow-400 hover:underline">Logout and login as different user</button>
         </div>
+
         <div id="loginFormContainer">
             <div class="mb-4 input-icon">
                 <i class="fas fa-envelope"></i>
-                <input type="email" id="emailInput" placeholder="Work Email" class="w-full p-3 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <input type="email" id="emailInput" placeholder="Work Email (e.g., user@example.com)" class="w-full p-3" required>
             </div>
             <div class="mb-4 input-icon">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="passwordInput" placeholder="Password" class="w-full p-3 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <input type="password" id="passwordInput" placeholder="Password (e.g., adminpass for admin)" class="w-full p-3" required>
             </div>
             <div class="flex justify-between items-center mb-6">
-                <label class="flex items-center text-gray-400">
-                    <input type="checkbox" class="mr-2">
+                <label class="flex items-center text-gray-400 text-sm">
+                    <input type="checkbox" class="mr-2 h-4 w-4 text-blue-500 border-gray-500 rounded focus:ring-blue-400">
                     <span>Remember me</span>
                 </label>
-                <a href="#" class="text-blue-400 hover:underline">Forgot password?</a>
+                <a href="#" class="text-sm text-blue-400 hover:underline">Forgot password?</a>
             </div>
-            <button id="loginBtn" class="w-full p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">Login</button>
-            <p class="mt-4 text-gray-400">Don't have an account? <a href="signup.html" class="text-blue-400 hover:underline">Sign Up</a></p>
+            <button id="loginBtn" class="login-button">Login</button>
+            <p class="mt-4 text-gray-400 text-sm">Don't have an account? <a href="signup.html" class="text-blue-400 hover:underline">Sign Up</a></p>
         </div>
     </div>
 
     <script>
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            if (email && password) {
-                document.getElementById('loginBtn').textContent = 'Logging In...';
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
-            } else {
-                alert('Please fill in all fields.');
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedUserString = localStorage.getItem('infiniBaseUser');
+            if (storedUserString) {
+                try {
+                    const user = JSON.parse(storedUserString);
+                    document.getElementById('loginFormContainer').classList.add('hidden');
+                    const alreadyLoggedInDiv = document.getElementById('alreadyLoggedIn');
+                    alreadyLoggedInDiv.classList.remove('hidden');
+                    document.getElementById('loggedInUserName').textContent = user.fullName || user.email;
+
+                    document.getElementById('forceLogoutBtn').addEventListener('click', () => {
+                        localStorage.removeItem('infiniBaseUser');
+                        localStorage.removeItem('justLoggedIn');
+                        window.location.reload();
+                    });
+                } catch (e) {
+                    // If parsing fails, clear corrupted data and show login form
+                    localStorage.removeItem('infiniBaseUser');
+                    localStorage.removeItem('justLoggedIn');
+                    console.error("Error parsing stored user data:", e);
+                }
             }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const email = emailInput.value.trim();
+            const password = passwordInput.value; // Password used for role simulation
+
+            const errorMessageDiv = document.getElementById('errorMessage');
+            errorMessageDiv.classList.add('hidden'); // Hide previous errors
+
+            if (!email) {
+                errorMessageDiv.textContent = 'Please enter your email.';
+                errorMessageDiv.classList.remove('hidden');
+                emailInput.focus();
+                return;
+            }
+            if (!password) { // Password field is now required for the simulation
+                errorMessageDiv.textContent = 'Please enter your password.';
+                errorMessageDiv.classList.remove('hidden');
+                passwordInput.focus();
+                return;
+            }
+
+
+            let fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
+            let emailFromSignup = localStorage.getItem('pendingSignupEmail');
+            let roleFromSignup = localStorage.getItem('pendingSignupRole');
+
+            let userFullName;
+            let userRole;
+
+            if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
+                userFullName = fullNameFromSignup;
+                userRole = roleFromSignup;
+                // Clear pending signup data after use
+                localStorage.removeItem('pendingSignupEmail');
+                localStorage.removeItem('pendingSignupFullName');
+                localStorage.removeItem('pendingSignupRole');
+            } else {
+                // Default derivation if no pending signup matches
+                userFullName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                // Simple role simulation based on password or email
+                if (password.toLowerCase() === 'adminpass' || email.toLowerCase().includes('admin@')) {
+                    userRole = 'admin';
+                } else {
+                    userRole = 'viewer';
+                }
+            }
+            
+            const userToStore = {
+                fullName: userFullName,
+                email: email,
+                role: userRole,
+                lastLogin: new Date().toISOString()
+            };
+
+            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
+            localStorage.setItem('justLoggedIn', 'true'); // Flag for index.html to show welcome toast
+
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.textContent = 'Logging In...';
+            loginBtn.disabled = true;
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
         });
     </script>
 </body>
