@@ -44,6 +44,9 @@
             --border-radius-lg: 0.75rem;
             --header-height: 70px;
             --sidebar-width: 260px;
+
+            --yes-color: #22c55e; /* Green for Yes */
+            --no-color: #ef4444;   /* Red for No */
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -130,7 +133,7 @@
             margin-right: 0.75rem; /* LTR */
             width: 1.25rem;
             text-align: center;
-            color: var(--text-color-muted); 
+            color: var(--text-color-muted); /* Default icon color */
             transition: color 0.2s ease;
         }
         .sidebar-link:hover {
@@ -138,15 +141,15 @@
             color: var(--text-color);
         }
         .sidebar-link:hover i {
-            color: var(--primary-color);
+            color: var(--primary-color); /* Icon color on hover */
         }
         .sidebar-link.active {
-            background-color: var(--bg-color-active);
-            color: var(--text-color-inverted) !important;
+            background-color: var(--bg-color-active); /* Primary color */
+            color: var(--text-color-inverted) !important; /* White text */
             font-weight: 600;
         }
         .sidebar-link.active i {
-            color: var(--text-color-inverted) !important;
+            color: var(--text-color-inverted) !important; /* White icon on primary background */
         }
 
         .sidebar-footer {
@@ -401,6 +404,12 @@
         }
         .modal-header .close-button:hover { background-color: var(--bg-color-hover); }
         
+        .modal-body { /* For modals with just text content like confirm */
+            padding-bottom: 1rem;
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
         .modal-actions {
             margin-top: 1.5rem; 
             text-align: right; /* LTR */
@@ -410,6 +419,11 @@
             justify-content: flex-end; /* LTR */
             gap: 0.75rem; 
         }
+         .modal-actions.no-border {
+            border-top: none;
+            padding-top: 0;
+        }
+
 
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; }
@@ -461,12 +475,7 @@
             border-top: 1px solid var(--border-color);
             margin-top: auto; 
         }
-        #reportErrorBtn {
-            margin-left: 1rem; /* LTR */
-            color: #ef4444; 
-            background: none; border: none; padding: 0; text-decoration: underline;
-            font-size: 0.75rem; 
-        }
+        /* #reportErrorBtn removed */
 
         .mobile-sidebar-toggle {
             display: block;
@@ -572,7 +581,7 @@
             box-shadow: var(--card-shadow);
             margin-bottom: 1.5rem;
         }
-        .mermaid-diagram-card h3 {
+        .mermaid-diagram-card h3 { /* Title within the card */
             margin-top: 0;
             margin-bottom: 1rem;
             font-size: 1.25rem;
@@ -582,15 +591,19 @@
         }
         .mermaid-diagram-container {
             overflow-x: auto; /* For wide diagrams */
+            padding: 10px; /* Add some padding around the diagram itself */
+            background-color: var(--bg-color); /* Slightly different bg for diagram area if needed */
+            border-radius: var(--border-radius);
         }
         .mermaid-diagram-container svg { /* Ensure SVG is block and centered if smaller than container */
             display: block;
             margin: 0 auto; 
             max-width: 100%; /* Ensure it scales down if too wide */
+            min-height: 300px; /* Give it some min height */
         }
         /* Mermaid dark theme overrides (Mermaid applies its own styles) */
         .mermaid-diagram-container text { fill: var(--text-color) !important; }
-        .mermaid-diagram-container .edgeLabel { background-color: var(--bg-color-alt) !important; color: var(--text-color) !important; }
+        .mermaid-diagram-container .edgeLabel { background-color: var(--bg-color) !important; color: var(--text-color) !important; } /* Changed from bg-color-alt */
         .mermaid-diagram-container .label { color: var(--text-color) !important; }
         .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
         .mermaid-diagram-container .messageText { fill: var(--text-color) !important; }
@@ -599,7 +612,7 @@
         .mermaid-diagram-container ellipse,
         .mermaid-diagram-container circle {
             stroke: var(--primary-color) !important;
-            fill: var(--bg-color) !important;
+            fill: var(--bg-color) !important; /* Node background */
         }
         .mermaid-diagram-container .cluster rect {
              fill: var(--bg-color-alt) !important;
@@ -752,6 +765,23 @@
         </div>
     </div>
 
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutConfirmModalOverlay" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 28rem;"> <!-- Smaller modal for confirm -->
+            <div class="modal-header">
+                <h2 id="logoutConfirmModalTitle">Confirm Logout</h2>
+                <button id="closeLogoutConfirmModalBtn" class="close-button" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to logout from InfiniBase?</p>
+            </div>
+            <div class="modal-actions no-border">
+                <button type="button" id="confirmLogoutBtn" class="button button-danger"><i class="fas fa-sign-out-alt"></i> Confirm Logout</button>
+                <button type="button" id="cancelLogoutBtn" class="button-secondary"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </div>
+    </div>
+
 
     <div class="container-fluid">
         <aside class="sidebar" id="sidebar">
@@ -798,14 +828,14 @@
                 <div id="standardSectionContentPlaceholder">
                     <!-- Section content will be injected here -->
                 </div>
-                <div id="itemDetailViewPlaceholder" class="hidden">
+                <div id="itemDetailViewPlaceholder" class="hidden" data-mermaid-rendered="false">
                     <!-- Item detail view -->
                 </div>
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. Version <span id="footerKbVersion">0.1.0</span></span>
-                <button id="reportErrorBtn">Report an Issue</button>
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion">0.1.0</span></span>
+                <!-- Report an Issue button removed -->
             </footer>
         </div>
     </div>
@@ -828,6 +858,9 @@
             lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(), // Edge color
             textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
             background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram bg
+            // Custom colors for Yes/No - these are applied via HTML spans now.
+            // yesColor: getComputedStyle(document.documentElement).getPropertyValue('--yes-color').trim(),
+            // noColor: getComputedStyle(document.documentElement).getPropertyValue('--no-color').trim(),
         }
     });
     
@@ -886,7 +919,6 @@
 
         jsonData.forEach(node => {
             const nodeId = node.id.replace(/-/g, '_');
-            // Escape quotes for Mermaid string, replace \n with <br> for HTML labels
             let nodeLabel = `"${node.text.replace(/"/g, '#quot;').replace(/\n/g, '<br>')}"`; 
 
             if (node.type === 'decision') {
@@ -894,11 +926,19 @@
                 if (node.options) {
                     node.options.forEach(option => {
                         const nextNodeId = option.next_id.replace(/-/g, '_');
-                        const optionLabel = `"${option.label.replace(/"/g, '#quot;')}"`;
+                        let optionLabelText = option.label.replace(/"/g, '#quot;');
+                        let labelColor = 'var(--text-color)'; // Default color for label text
+                        if (option.label.toLowerCase().startsWith("yes")) {
+                            labelColor = 'var(--yes-color)';
+                        } else if (option.label.toLowerCase().startsWith("no")) {
+                            labelColor = 'var(--no-color)';
+                        }
+                        // Using HTML within the label for coloring
+                        const optionLabel = `"<span style='color:${labelColor}; font-weight:bold;'>${optionLabelText}</span>"`;
+                        
                         if (definedNodeIds.has(nextNodeId)) {
                             mermaidSyntax += `    ${nodeId} -- ${optionLabel} --> ${nextNodeId};\n`;
                         } else {
-                             // If next_id is not in the defined nodes, assume it's a conceptual end point
                              mermaidSyntax += `    ${nodeId} -- ${optionLabel} --> ${nextNodeId}((End: ${nextNodeId.replace(/s_/g, '').replace(/_/g, ' ')}));\n`;
                         }
                     });
@@ -910,12 +950,9 @@
                     if (definedNodeIds.has(nextNodeId)) {
                         mermaidSyntax += `    ${nodeId} --> ${nextNodeId};\n`;
                     } else {
-                        // If next_id is not in the defined nodes, assume it's a conceptual end point
                          mermaidSyntax += `    ${nodeId} --> ${nextNodeId}((End: ${nextNodeId.replace(/s_/g, '').replace(/_/g, ' ')}));\n`;
                     }
                 } else {
-                    // If an info node has no next_id, it's a terminal node itself.
-                    // Create a distinct end shape for clarity, rather than just stopping.
                     mermaidSyntax += `    ${nodeId} -.-> ${nodeId}_end((End Process));\n`;
                 }
             }
@@ -958,7 +995,7 @@
     };
 
     let kbSystemData = {
-        meta: { version: '0.5.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, // Version updated
+        meta: { version: '0.5.2', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, // Version updated
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.' },
             {
@@ -1027,6 +1064,13 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
+
+    // Logout Modal Elements
+    const logoutConfirmModalOverlay = document.getElementById('logoutConfirmModalOverlay');
+    const closeLogoutConfirmModalBtn = document.getElementById('closeLogoutConfirmModalBtn');
+    const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+    const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
 
     let quillEditor; 
     let currentUser = Auth.getCurrentUser();
@@ -1101,12 +1145,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                 chart.update();
             }
         });
-        // Re-render mermaid if content is already visible
-        if (!itemDetailViewPlaceholder.classList.contains('hidden')) {
-            renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
-        } else if (!standardSectionContentPlaceholder.classList.contains('hidden') && standardSectionContentPlaceholder.querySelector('pre.mermaid')) {
-             renderMermaidDiagramsInElement(standardSectionContentPlaceholder);
-        }
+        // Re-render mermaid if content is already visible and contains a diagram
+        // This is now more specifically handled in displayItemDetail
     }
 
     // --- Sidebar and Navigation ---
@@ -1162,47 +1202,49 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     // --- Mermaid Rendering ---
     async function renderMermaidDiagramsInElement(element) {
         const mermaidElements = element.querySelectorAll('pre.mermaid');
-        if (mermaidElements.length > 0) {
-            // Temporarily unhide parents if the diagram is in a hidden container, to allow Mermaid to calculate dimensions.
-            const initiallyHiddenParents = [];
-            mermaidElements.forEach(el => {
-                let parent = el.parentElement;
-                while(parent) {
-                    if (parent.classList.contains('hidden') || (parent.style && parent.style.display === 'none')) {
-                        if(parent.style) parent.dataset.originalDisplay = parent.style.display;
-                        parent.classList.remove('hidden');
-                        if(parent.style) parent.style.display = ''; // Use default or inherited display
-                        initiallyHiddenParents.push(parent);
-                    }
-                    if(parent.classList.contains('modal-overlay') || parent.classList.contains('content-wrapper') || parent === document.body) break;
-                    parent = parent.parentElement;
+        if (mermaidElements.length === 0) return;
+
+        // Temporarily unhide parents if the diagram is in a hidden container, to allow Mermaid to calculate dimensions.
+        // This is a common workaround.
+        const initiallyHiddenParents = [];
+        let currentEl = mermaidElements[0]; // Check visibility for the first diagram, assuming similar context for others
+        while(currentEl && currentEl !== document.body) {
+            if (currentEl.classList.contains('hidden') || (currentEl.style && currentEl.style.display === 'none')) {
+                if(currentEl.style) currentEl.dataset.originalDisplay = currentEl.style.display;
+                currentEl.classList.remove('hidden'); // Temporarily unhide
+                if(currentEl.style) currentEl.style.display = ''; 
+                initiallyHiddenParents.push(currentEl);
+            }
+            if(currentEl.classList.contains('modal-overlay') || currentEl.classList.contains('content-wrapper')) break;
+            currentEl = currentEl.parentElement;
+        }
+
+        try {
+            console.log("Attempting to render Mermaid diagrams...");
+            //mermaid.contentLoaded(); // May not be necessary with direct .run()
+            await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
+            console.log("Mermaid rendering complete.");
+            element.dataset.mermaidRendered = 'true'; // Mark as rendered
+        } catch (error) {
+            console.error("Mermaid rendering error during run():", error);
+            mermaidElements.forEach(preElement => {
+                if (preElement.parentElement && !preElement.parentElement.querySelector('.mermaid-error-msg')) {
+                    const errorMsg = document.createElement('p');
+                    errorMsg.className = 'mermaid-error-msg';
+                    errorMsg.style.color = 'red';
+                    errorMsg.textContent = `Error rendering diagram. Check console.`;
+                    preElement.parentElement.insertBefore(errorMsg, preElement.nextSibling);
                 }
             });
-
-            try {
-                // mermaid.contentLoaded(); // Recommended before run by some docs
-                await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
-            } catch (error) {
-                console.error("Mermaid rendering error during run():", error);
-                mermaidElements.forEach(preElement => {
-                    if (preElement.parentElement && !preElement.parentElement.querySelector('.mermaid-error-msg')) {
-                        const errorMsg = document.createElement('p');
-                        errorMsg.className = 'mermaid-error-msg';
-                        errorMsg.style.color = 'red';
-                        errorMsg.textContent = `Error rendering diagram: ${error.message}. Please check console.`;
-                        preElement.parentElement.insertBefore(errorMsg, preElement.nextSibling);
-                    }
-                });
-            } finally {
-                 // Restore hidden state
-                initiallyHiddenParents.forEach(p => {
-                    p.classList.add('hidden');
-                    if (p.dataset.originalDisplay) {
-                        p.style.display = p.dataset.originalDisplay;
-                        delete p.dataset.originalDisplay;
-                    }
-                });
-            }
+        } finally {
+            // Restore hidden state
+            initiallyHiddenParents.forEach(p => {
+                p.classList.add('hidden');
+                if (p.dataset.originalDisplay) {
+                    p.style.display = p.dataset.originalDisplay;
+                    delete p.dataset.originalDisplay;
+                }
+            });
         }
     }
 
@@ -1250,6 +1292,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; // Reset flag
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
@@ -1273,7 +1316,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;"> <!-- LTR gradient -->
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
                 <p style="opacity: 0.85; font-size: 0.95rem;">Overview of your knowledge base activity.</p>
-                <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 2px;">InfiniBase Version ${escapeHTML(kbSystemData.meta.version)} | Last Global Update: ${new Date(kbSystemData.meta.lastGlobalUpdate).toLocaleDateString()}</p>
+                <!-- Version and update info removed from here -->
             </div>
 
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
@@ -1367,6 +1410,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; // Reset flag
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
@@ -1380,11 +1424,11 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         breadcrumbsContainer.innerHTML = bcHTML;
 
         let contentHTML = `<div>`;
-        // Add "Add Content" button for admins in non-home sections
+        
         if (currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
                 <div style="text-align: right; margin-bottom: 1.5rem;"> <!-- LTR: align right -->
-                    <button id="openAddContentBtn" class="button" data-section-id="${sectionData.id}">
+                    <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
                         <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
                     </button>
                 </div>`;
@@ -1393,13 +1437,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         const itemsToDisplay = (sectionData.items || [])
             .filter(item => !subCategoryFilter || (item.tags && item.tags.includes(subCategoryFilter)));
         
-        // Special handling for the compensation flow diagram to ensure it's wrapped correctly
-        // if (sectionId === 'support' && itemsToDisplay.some(item => item.id === 'sup_flow_compensation')) {
-        //     // This specific item is rendered in displayItemDetail with its mermaid card.
-        //     // For section view, we show its card.
-        // }
-
-
         if (itemsToDisplay.length > 0) {
             contentHTML += `<div class="cards-grid">`;
             itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
@@ -1423,13 +1460,10 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
-        // No need to renderMermaidDiagramsInElement here, as section view shows cards, not full content.
-        // Mermaid diagrams are rendered in displayItemDetail or if a section *directly* contains a diagram (unlikely for general sections).
 
-
-        const openAddBtn = document.getElementById('openAddContentBtn');
-        if (openAddBtn) {
-            openAddBtn.addEventListener('click', (e) => {
+        const openAddBtnInSection = document.getElementById('openAddContentBtnInSection');
+        if (openAddBtnInSection) {
+            openAddBtnInSection.addEventListener('click', (e) => {
                 const currentSecId = e.currentTarget.dataset.sectionId;
                 openAddContentModal(currentSecId);
             });
@@ -1444,9 +1478,11 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
             itemDetailViewPlaceholder.classList.add('hidden');
             standardSectionContentPlaceholder.classList.remove('hidden');
+            itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; // Reset flag
             return;
         }
         currentOpenItem = { sectionId, itemId };
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; // Reset flag before showing new item
 
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -1467,7 +1503,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        // Special handling for the compensation flow diagram to wrap it in a .mermaid-diagram-card if it's that specific item
         let detailHTML = ``;
         if (itemData.id === 'sup_flow_compensation' && itemData.content.includes('class="mermaid"')) {
              detailHTML = `
@@ -1482,7 +1517,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                      <p class="item-summary" style="font-size: 0.9rem;">${escapeHTML(itemData.summary)}</p>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr style="margin-bottom: 1rem;">
-                    <div class="kb-content">${itemData.content}</div>
+                    <div class="kb-content">${itemData.content}</div> <!-- Mermaid pre tag is inside itemData.content -->
                 </div>`;
         } else {
             detailHTML = `
@@ -1509,7 +1544,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                 detailHTML += `<p>No detailed content available for this item.</p>`;
             }
 
-            // Display attachments if any
             if (itemData.attachments && Object.keys(itemData.attachments).length > 0 && (itemData.attachments.pdf || itemData.attachments.image || itemData.attachments.video || itemData.attachments.drive) ) {
                 detailHTML += `<hr><h4 style="margin-top:1.5rem; margin-bottom:1rem; font-weight:600;">Attachments:</h4><ul>`;
                 if(itemData.attachments.pdf) detailHTML += `<li><i class="fas fa-file-pdf"></i> <a href="${escapeHTML(itemData.attachments.pdf)}" target="_blank">View PDF</a> (Simulated)</li>`;
@@ -1523,8 +1557,9 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
-        // Crucially, render Mermaid diagrams *after* content is in the DOM and visible
-        if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
+        // Crucially, render Mermaid diagrams *after* content is in the DOM and visible,
+        // and only if not already rendered for this view.
+        if (itemDetailViewPlaceholder.querySelector('pre.mermaid') && itemDetailViewPlaceholder.dataset.mermaidRendered !== 'true') {
             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
@@ -1651,13 +1686,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             itemData.status = itemData.status || 'New'; 
         } else if (['article', 'guide', 'policy'].includes(itemData.type)) {
             itemData.content = quillEditor.root.innerHTML;
-            // Check if this item is the special flowchart item and regenerate its Mermaid if it is
-             if (itemData.id === 'sup_flow_compensation' && itemData.type === 'article') {
-                 // For simplicity, assume Quill content for flowchart contains <pre class="mermaid">...</pre>
-                 // If it's edited directly, the user needs to maintain the mermaid syntax.
-                 // Or, provide a specific field for raw mermaid code in the modal.
-                 // For now, we trust the content from Quill or the initial generation.
-             }
         } else if (itemData.type === 'form_sheet' || itemData.type === 'design') {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
@@ -1683,14 +1711,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         showToast(`Content '${itemData.title}' ${itemId ? 'updated' : 'saved'} successfully!`, 'success');
         closeAddContentModal();
         
-        const currentHashParts = window.location.hash.substring(1).split('/');
-        if (currentHashParts[0] === sectionId && currentHashParts[1] === itemData.id) { 
-            displayItemDetail(sectionId, itemData.id); // Refresh item detail
-        } else if (currentHashParts[0] === sectionId) { 
-            displaySectionContent(sectionId, currentHashParts[1] || null); // Refresh section
-        } else if (window.location.hash === '#home' || window.location.hash === '') {
-             displayDashboard(); 
-        }
+        // Re-render current view
+        handleNavigation(); // This will re-evaluate the hash and call the appropriate display function
     });
 
     // --- Global Search ---
@@ -1750,6 +1772,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         const itemIdOrSubCategory = parts[1]; 
 
         highlightSidebarLink(sectionId);
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; // Reset mermaid render flag on any navigation
 
         if (sectionId === 'home') {
             displayDashboard();
@@ -1759,7 +1782,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             if(itemExists) {
                 displayItemDetail(sectionId, itemIdOrSubCategory);
             } else {
-                // Check if it's a subcategory (not explicitly implemented for this example beyond filter)
                 displaySectionContent(sectionId, itemIdOrSubCategory); 
             }
         } else if (sectionId) {
@@ -1778,16 +1800,29 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         userNameDisplayHeader.textContent = displayName;
         userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
         footerKbVersion.textContent = kbSystemData.meta.version;
+        
+        // Update footer year dynamically
+        const currentYear = new Date().getFullYear();
+        document.querySelector('footer span:first-child').innerHTML = `© ${currentYear} InfiniBase.Elmenisy. Version <span id="footerKbVersion">${kbSystemData.meta.version}</span>`;
+
 
         populateSidebar();
         applyPermanentDarkMode(); 
         handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
+        
         document.getElementById('logoutButton').addEventListener('click', () => {
-             if(confirm('Are you sure you want to logout?')) Auth.logout();
+            logoutConfirmModalOverlay.classList.remove('hidden');
         });
-        document.getElementById('reportErrorBtn').addEventListener('click', () => showToast('Issue reporting feature is under development.', 'info'));
+        closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        confirmLogoutBtn.addEventListener('click', () => {
+            Auth.logout();
+            logoutConfirmModalOverlay.classList.add('hidden');
+        });
+        
+        // Removed: document.getElementById('reportErrorBtn').addEventListener('click', () => showToast('Issue reporting feature is under development.', 'info'));
         
         closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
         cancelAddContentBtn.addEventListener('click', closeAddContentModal);
