@@ -131,10 +131,10 @@
         }
         .sidebar-link i {
             margin-right: 0.75rem; /* LTR */
-            width: 1.4rem; /* Adjusted for font-size */
-            font-size: 1.4rem; /* Increased icon size */
+            width: 1.5rem; /* Adjusted for font-size */
+            font-size: 1.5rem; /* Increased icon size */
             text-align: center;
-            color: var(--text-color-muted); /* Default icon color */
+            color: var(--primary-color-hover); /* Default icon color - MODIFIED */
             transition: color 0.2s ease;
         }
         .sidebar-link:hover {
@@ -142,7 +142,7 @@
             color: var(--text-color);
         }
         .sidebar-link:hover i {
-            color: var(--primary-color); /* Icon color on hover */
+            color: var(--primary-color); /* Icon color on hover - Brighter purple */
         }
         .sidebar-link.active {
             background-color: var(--bg-color-active); /* Primary color */
@@ -616,12 +616,16 @@
         /* Mermaid dark theme overrides */
         .mermaid-diagram-container text { 
             fill: var(--text-color) !important; 
-            font-size: 1em !important; /* Control mermaid font size if needed */
+            font-family: 'Inter', sans-serif !important; /* MODIFIED */
+            font-size: 13px !important; /* MODIFIED - Control mermaid font size */
         }
         .mermaid-diagram-container .edgeLabel { 
             /* background-color removed to allow span colors to be primary */
             color: var(--text-color) !important; 
         } 
+         .mermaid-diagram-container .edgeLabel span { /* Ensure span within edgeLabel also gets font size */
+            font-size: 13px !important; /* MODIFIED */
+        }
         .mermaid-diagram-container .label { color: var(--text-color) !important; }
         .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
         .mermaid-diagram-container .messageText { fill: var(--text-color) !important; }
@@ -870,13 +874,8 @@
             useMaxWidth: true,
         },
         themeVariables: {
-            // primaryColor: Node background (overridden by specific CSS .rect/.polygon fill)
-            // primaryTextColor: Node text color (overridden by specific CSS .text fill)
-            // primaryBorderColor: Node border (overridden by specific CSS .rect/.polygon stroke)
-            // lineColor: Edge color (overridden by specific CSS .edgePaths path stroke)
-            // textColor: General text color (overridden by specific CSS .text fill)
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), // Diagram bg (canvas)
-            // Note: Most visual aspects are controlled via specific CSS overrides below for finer control in dark mode
+            fontSize: '13px', // MODIFIED - Mermaid default font size
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), 
         }
     });
     
@@ -886,47 +885,47 @@
         "id": "s1_receive_request", "text": "Receive the customer request.", "type": "info", "next_id": "s2_check_inquiry_type"
       },
       {
-        "id": "s2_check_inquiry_type", "text": "Check the inquiry type: Is the order late?", "type": "decision",
+        "id": "s2_check_inquiry_type", "text": "Check the inquiry type:\nIs the order late?", "type": "decision", // Added \n for potential better wrapping
         "options": [ {"label": "Yes, order is late", "next_id": "s3_check_delivery_time_exceeded"}, {"label": "No, other issue", "next_id": "s_handle_other_issue"} ]
       },
       {
         "id": "s3_check_delivery_time_exceeded", "text": "Has the delivery time exceeded?", "type": "decision",
         "options": [ {"label": "Yes, > 15 mins", "next_id": "s5_apologize_check_order_type"}, {"label": "Yes, 0-15 mins", "next_id": "s4_inform_wait_add_note_0_15"}, {"label": "No, not yet exceeded", "next_id": "s4_inform_wait_add_note"} ]
       },
-      { "id": "s4_inform_wait_add_note", "text": "Not exceeded: Let customer wait, add note.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s4_inform_wait_add_note_0_15", "text": "Exceeded 0-15 mins: Apologize, add note, new ETA.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s4_inform_wait_add_note", "text": "Not exceeded: Let customer wait,\nadd note.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s4_inform_wait_add_note_0_15", "text": "Exceeded 0-15 mins: Apologize,\nadd note, new ETA.", "type": "info", "next_id": "s17_determine_responsibility"},
       {
-        "id": "s5_apologize_check_order_type", "text": "Exceeded > 15 mins: Apologize, add note. Check order type: Fast or Scheduled?", "type": "decision",
+        "id": "s5_apologize_check_order_type", "text": "Exceeded > 15 mins: Apologize, add note.\nCheck order type: Fast or Scheduled?", "type": "decision",
         "options": [ {"label": "Fast Order", "next_id": "s7_fast_check_delay_duration"}, {"label": "Scheduled Order", "next_id": "s12_scheduled_driver_left"} ]
       },
       {
-        "id": "s7_fast_check_delay_duration", "text": "Fast Order: Delay duration (after initial 15 mins)?", "type": "decision",
+        "id": "s7_fast_check_delay_duration", "text": "Fast Order:\nDelay duration (after initial 15 mins)?", "type": "decision",
         "options": [ {"label": "16–30 min total", "next_id": "s8_fast_comp_16_30"}, {"label": "31–45 min total", "next_id": "s9_fast_comp_31_45"}, {"label": "46–60 min total", "next_id": "s10_fast_comp_46_60"}, {"label": "> 60 min total", "next_id": "s11_fast_comp_over_60"} ]
       },
-      { "id": "s8_fast_comp_16_30", "text": "Fast (16–30 min): Compensate delivery fees only.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s9_fast_comp_31_45", "text": "Fast (31–45 min): Compensate delivery fees + 25% chef total.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s10_fast_comp_46_60", "text": "Fast (46–60 min): Compensate delivery fees + 50% chef total.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s11_fast_comp_over_60", "text": "Fast (> 60 min): Compensate full order fees.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s8_fast_comp_16_30", "text": "Fast (16–30 min):\nCompensate delivery fees only.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s9_fast_comp_31_45", "text": "Fast (31–45 min):\nCompensate delivery fees + 25% chef total.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s10_fast_comp_46_60", "text": "Fast (46–60 min):\nCompensate delivery fees + 50% chef total.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s11_fast_comp_over_60", "text": "Fast (> 60 min):\nCompensate full order fees.", "type": "info", "next_id": "s17_determine_responsibility"},
       {
-        "id": "s12_scheduled_driver_left", "text": "Scheduled (>15min delay): Driver left store?", "type": "decision",
+        "id": "s12_scheduled_driver_left", "text": "Scheduled (>15min delay):\nDriver left store?", "type": "decision",
         "options": [ {"label": "No, driver not left", "next_id": "s13_scheduled_inform_accelerate"}, {"label": "Yes, driver left", "next_id": "s14_scheduled_check_delay_duration"} ]
       },
-      { "id": "s13_scheduled_inform_accelerate", "text": "Scheduled, driver not left: Apologize, inform order acceleration.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s13_scheduled_inform_accelerate", "text": "Scheduled, driver not left:\nApologize, inform order acceleration.", "type": "info", "next_id": "s17_determine_responsibility"},
       {
-        "id": "s14_scheduled_check_delay_duration", "text": "Scheduled (driver left, >15min delay): Total delay duration?", "type": "decision",
+        "id": "s14_scheduled_check_delay_duration", "text": "Scheduled (driver left, >15min delay):\nTotal delay duration?", "type": "decision",
         "options": [ {"label": "31–60 min total", "next_id": "s15_scheduled_comp_31_60"}, {"label": "> 60 min total", "next_id": "s16_scheduled_comp_over_60"} ]
       },
-      { "id": "s15_scheduled_comp_31_60", "text": "Scheduled (31–60 min): Compensate 50%–100% order total.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s16_scheduled_comp_over_60", "text": "Scheduled (> 60 min): Compensate full order + 50 SAR.", "type": "info", "next_id": "s17_determine_responsibility"},
-      { "id": "s17_determine_responsibility", "text": "Determine responsibility (Store/Driver/Company), add deduction.", "type": "info", "next_id": "s18_check_customer_requests_compensation"},
+      { "id": "s15_scheduled_comp_31_60", "text": "Scheduled (31–60 min):\nCompensate 50%–100% order total.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s16_scheduled_comp_over_60", "text": "Scheduled (> 60 min):\nCompensate full order + 50 SAR.", "type": "info", "next_id": "s17_determine_responsibility"},
+      { "id": "s17_determine_responsibility", "text": "Determine responsibility (Store/Driver/Company),\nadd deduction.", "type": "info", "next_id": "s18_check_customer_requests_compensation"},
       {
         "id": "s18_check_customer_requests_compensation", "text": "Customer explicitly requests compensation?", "type": "decision",
         "options": [ {"label": "Yes, requests compensation", "next_id": "s_proceed_with_compensation_actions"}, {"label": "No/Resolved by apology", "next_id": "s_conclude_call_no_comp_request"} ]
       },
-      { "id": "s_handle_other_issue", "text": "Handle other non-delay issue. [Branch to other scenario]. End call.", "type": "info", "next_id": "s_conclude_call"},
-      { "id": "s_proceed_with_compensation_actions", "text": "Agent: \"Alright, based on the situation, here's the compensation...\"", "type": "info", "next_id": "s_conclude_call"},
-      { "id": "s_conclude_call_no_comp_request", "text": "Agent: \"Thank you for your understanding. We've noted the delay...\"", "type": "info", "next_id": "s_conclude_call"},
-      { "id": "s_conclude_call", "text": "Agent: Is there anything else? ... Thank you for calling The Chefz!", "type": "info" }
+      { "id": "s_handle_other_issue", "text": "Handle other non-delay issue.\n[Branch to other scenario]. End call.", "type": "info", "next_id": "s_conclude_call"},
+      { "id": "s_proceed_with_compensation_actions", "text": "Agent: \"Alright, based on the situation,\nhere's the compensation...\"", "type": "info", "next_id": "s_conclude_call"},
+      { "id": "s_conclude_call_no_comp_request", "text": "Agent: \"Thank you for your understanding.\nWe've noted the delay...\"", "type": "info", "next_id": "s_conclude_call"},
+      { "id": "s_conclude_call", "text": "Agent: Is there anything else?\n... Thank you for calling The Chefz!", "type": "info" }
     ];
 
     function generateMermaidFromJSON(jsonData) {
@@ -935,7 +934,8 @@
 
         jsonData.forEach(node => {
             const nodeId = node.id.replace(/-/g, '_');
-            let nodeLabel = `"${node.text.replace(/"/g, '#quot;').replace(/\n/g, '<br>')}"`; 
+            // Ensure text wraps by replacing \n with <br/>. Mermaid's htmlLabels handles this.
+            let nodeLabel = `"${node.text.replace(/"/g, '#quot;').replace(/\n/g, '<br/>')}"`; 
 
             if (node.type === 'decision') {
                 mermaidSyntax += `    ${nodeId}{${nodeLabel}};\n`;
@@ -949,6 +949,7 @@
                         } else if (option.label.toLowerCase().startsWith("no")) {
                             labelColor = 'var(--no-color)';
                         }
+                        // Using a span with explicit style for label color and weight. Font size will be inherited or can be set here too.
                         const optionLabel = `"<span style='color:${labelColor}; font-weight:bold;'>${optionLabelText}</span>"`;
                         
                         if (definedNodeIds.has(nextNodeId)) {
@@ -967,9 +968,6 @@
                     } else {
                          mermaidSyntax += `    ${nodeId} --> ${nextNodeId}((End: ${nextNodeId.replace(/s_/g, '').replace(/_/g, ' ')}));\n`;
                     }
-                } else {
-                    // If an info node has no next_id, it can be an endpoint for that path.
-                    // mermaidSyntax += `    ${nodeId} -.-> ${nodeId}_end((End Process));\n`; // This creates an extra node, might not be desired if it's truly the end.
                 }
             }
         });
@@ -1011,7 +1009,7 @@
     };
 
     let kbSystemData = {
-        meta: { version: '0.5.3', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, // Version updated
+        meta: { version: '0.5.4', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, // Version updated
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.' },
             {
@@ -1381,7 +1379,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             dashboardAddContentLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 // Open modal, default to first available non-home section or a sensible default like 'support'
-                const firstContentSection = kbSystemData.sections.find(s => s.id !== 'home' && s.items); // find a section that can have items
+                const firstContentSection = kbSystemData.sections.find(s => s.id !== 'home' && s.items !== undefined); // find a section that can have items
                 openAddContentModal(firstContentSection ? firstContentSection.id : 'support'); 
             });
         }
@@ -1441,6 +1439,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         let contentHTML = `<div>`;
         
+        // MODIFIED: Add "Add New Content" button for admins in non-home sections
         if (currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
                 <div style="text-align: right; margin-bottom: 1.5rem;"> <!-- LTR: align right -->
@@ -1477,6 +1476,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
+        // MODIFIED: Ensure event listener is attached if the button exists
         const openAddBtnInSection = document.getElementById('openAddContentBtnInSection');
         if (openAddBtnInSection) {
             openAddBtnInSection.addEventListener('click', (e) => {
@@ -1530,7 +1530,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                          <i class="${itemIconClass}" style="font-size: 1.5rem;"></i>
                          <h2 style="font-size: 1.5rem;">${escapeHTML(itemData.title)}</h2>
                     </div>
-                     <p class="item-summary" style="font-size: 0.9rem;">${escapeHTML(itemData.summary)}</p>
+                     <p class="item-summary" style="font-size: 0.9rem;">${escapeHTML(stripHtml(itemData.summary))}</p>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr style="margin-bottom: 1rem;">
                     <div class="kb-content">${itemData.content}</div>
@@ -1545,7 +1545,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                         <i class="${itemIconClass}"></i>
                         <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
-                    <p class="item-summary">${escapeHTML(itemData.summary)}</p>
+                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr>
                     <div class="kb-content">`;
