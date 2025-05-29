@@ -1126,63 +1126,70 @@
         return mermaidSyntax;
     }
 
+    /**
+     * @typedef {object} UserProfile
+     * @property {string} id - User UUID from Supabase Auth
+     * @property {string} [name] - User's full name (from 'users' table, column 'name')
+     * @property {string} [fullName] - User's full name (potentially from older localStorage or as an alias)
+     * @property {string} email - User's email
+     * @property {string} role - User's role (e.g., 'viewer', 'admin')
+     * @property {string} lastLogin - ISO string of last login time
+     */
+
     // --- Supabase Auth & User Management ---
     const Auth = {
+        /** @returns {Promise<UserProfile|null>} */
         async getCurrentUser() {
-            // Try to get from localStorage first for immediate UI update
             const storedUserString = localStorage.getItem('infiniBaseUser');
             if (storedUserString) {
                 try {
+                    /** @type {UserProfile} */
                     const localUser = JSON.parse(storedUserString);
-                    // Optionally: add a quick check against current session if needed,
-                    // but initializeApp will do a full check.
-                    // For now, trust localStorage if present for faster initial render.
-                    // This will be validated/updated in initializeApp anyway.
                     const { data: { session: quickSession } } = await supabase.auth.getSession();
                     if (quickSession && quickSession.user && quickSession.user.id === localUser.id) {
                          return localUser;
                     }
-                    // If no session or mismatched ID, localStorage is stale. Fall through to fetch.
                     localStorage.removeItem('infiniBaseUser');
-
                 } catch(e) {
                     console.warn("Error parsing stored user, clearing.", e);
                     localStorage.removeItem('infiniBaseUser');
                 }
             }
 
-            // If not in localStorage or stale, fetch from Supabase
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError || !session) {
                 console.log('No active Supabase session or error fetching session. Redirecting to login.');
-                window.location.href = 'login.html';
-                return null; // Should not reach here due to redirect
+                if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
+                     window.location.href = 'login.html';
+                }
+                return null; 
             }
 
-            // Session exists, let's get user details from our 'users' table
             const { data: userData, error: userFetchError } = await supabase
                 .from('users')
-                .select('id, full_name, email, role')
+                .select('id, name, email, role') // Fetching 'name' column
                 .eq('id', session.user.id)
                 .single();
 
             if (userFetchError || !userData) {
                 console.error('Error fetching user data from DB or user not found:', userFetchError);
-                // This case is problematic: user is authenticated with Supabase Auth, but no profile in 'users' table.
-                // Could be a signup interruption or DB issue. Log out to prevent further issues.
                 await supabase.auth.signOut();
-                localStorage.removeItem('infiniBaseUser'); // Clear any potentially stale item
-                window.location.href = 'login.html'; // Redirect to login
+                localStorage.removeItem('infiniBaseUser'); 
+                if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
+                    window.location.href = 'login.html';
+                }
                 return null;
             }
 
+            /** @type {UserProfile} */
             const userToStore = {
                 id: userData.id,
-                fullName: userData.full_name,
+                name: userData.name, // Storing the fetched 'name'
+                fullName: userData.name, // Also populating fullName for compatibility
                 email: userData.email,
                 role: userData.role,
-                lastLogin: new Date().toISOString() // Updated on each successful fetch
+                lastLogin: new Date().toISOString()
             };
             localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
             return userToStore;
@@ -1194,19 +1201,18 @@
                 showToast('Error signing out. Please try again.', 'error');
             } else {
                 localStorage.removeItem('infiniBaseUser');
-                localStorage.removeItem('justLoggedIn'); // Clear this flag
+                localStorage.removeItem('justLoggedIn'); 
                 showToast('You have been logged out successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'login.html';
                 }, 1500);
             }
         }
-        // isAuthenticated and promptLogin are effectively handled by getCurrentUser's redirect
     };
 
     // --- KB Data (Still client-side for this iteration) ---
     let kbSystemData = {
-        meta: { version: '0.6.2-supabase', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.6.3-supabase', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1305,7 +1311,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
 
     let quillEditor; 
-    let currentUser; // Will be populated by initializeApp
+    /** @type {UserProfile|null} */
+    let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
@@ -1539,8 +1546,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             return;
         }
 
-        // Admin Dashboard Content
-        const welcomeUser = currentUser.fullName || currentUser.email || 'Admin';
+        const welcomeUser = currentUser.name || currentUser.fullName || currentUser.email || 'Admin';
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
@@ -1704,7 +1710,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         let contentHTML = `<div>`;
         
-        // Show "Add Content" button if user is admin and not on the home/dashboard section
         if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
                 <div style="text-align: right; margin-bottom: 1.5rem;">
@@ -1778,7 +1783,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
                     <div class="comment-author">
-                        ${escapeHTML(comment.authorFullName || comment.authorEmail || 'Anonymous')}
+                        ${escapeHTML(comment.authorName || comment.authorFullName || comment.authorEmail || 'Anonymous')}
                         <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
                     </div>
                     <div class="comment-text">${escapeHTML(comment.text)}</div>
@@ -1961,7 +1966,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                     if(sec && sec.items){
                         sec.items = sec.items.filter(item => item.id !== iId);
                         showToast('Item deleted successfully.', 'success');
-                        window.location.hash = `#${sId}`; // Navigate back to section
+                        window.location.hash = `#${sId}`; 
                     }
                 }
             });
@@ -1989,22 +1994,21 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             }
 
             const currentItemData = kbSystemData.sections.find(s => s.id === currentOpenItem.sectionId)?.items?.find(i => i.id === currentOpenItem.itemId);
-            if (currentItemData) {
+            if (currentItemData && currentUser) { // Ensure currentUser is available
                 if (!currentItemData.comments) {
                     currentItemData.comments = [];
                 }
                 currentItemData.comments.push({
                     id: `cmt_${Date.now()}`,
                     authorEmail: currentUser.email,
-                    authorFullName: currentUser.fullName, // Add full name
-                    text: commentText,
+                    authorName: currentUser.name || currentUser.fullName, // Use 'name' or 'fullName'
                     timestamp: new Date().toISOString()
                 });
                 renderComments(currentItemData, 'commentDisplayAreaForItem'); 
                 commentTextEl.value = ''; 
                 showToast('Comment posted!', 'success');
             } else {
-                showToast('Error posting comment. Item not found.', 'error');
+                showToast('Error posting comment. Item or user data not found.', 'error');
             }
         });
     }
@@ -2062,7 +2066,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = ""; // Clear editing ID
+        editingItemIdInput.value = ""; 
         
         if (!quillEditor) {
             quillEditor = new Quill('#quillEditor', {
@@ -2085,7 +2089,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         if (itemToEdit) {
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
-            editingItemIdInput.value = itemToEdit.id; // Set editing ID
+            editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
@@ -2122,7 +2126,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         addContentModalOverlay.classList.add('hidden');
         templateSelectionContainer.classList.add('hidden'); 
         addContentForm.classList.add('hidden'); 
-        editingItemIdInput.value = ""; // Clear editing ID
+        editingItemIdInput.value = ""; 
     }
 
     contentTypeSelect.addEventListener('change', (e) => {
@@ -2146,6 +2150,10 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
     addContentForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!currentUser) {
+            showToast('Error: User not authenticated.', 'error');
+            return;
+        }
         const sectionId = addContentForm.dataset.sectionId;
         const section = kbSystemData.sections.find(s => s.id === sectionId);
         if (!section) {
@@ -2172,14 +2180,13 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             if (!itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
-            // Preserve views and comments if they exist
             itemData.views = itemData.views || 0;
             itemData.comments = itemData.comments || [];
         } else { 
             itemData = {
                 ...commonData,
                 id: `${sectionId}_item_${Date.now()}`,
-                createdBy: currentUser.email,
+                createdBy: currentUser.email, // Use email from the authenticated currentUser object
                 createdAt: new Date().toISOString(),
                 views: 0,
                 comments: []
@@ -2219,12 +2226,10 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         closeAddContentModal();
         
         if (editingId && currentOpenItem && currentOpenItem.itemId === editingId) {
-            // If editing the currently viewed item, refresh its detail view
             displayItemDetail(currentOpenItem.sectionId, currentOpenItem.itemId);
         } else {
-            // Otherwise, navigate to the section to see the new/updated card
             window.location.hash = `#${sectionId}`;
-            handleNavigation(); // Or just reload the current section content if already there
+            handleNavigation(); 
         }
     });
 
@@ -2279,7 +2284,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     
     // --- Routing and Initialization ---
     function handleNavigation() {
-        if (!currentUser) { // Ensure currentUser is loaded before navigating
+        if (!currentUser) { 
             console.log("Current user not yet loaded, deferring navigation.");
             return;
         }
@@ -2313,17 +2318,16 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     async function initializeApp() {
         currentUser = await Auth.getCurrentUser(); 
         if (!currentUser) {
-             // getCurrentUser already redirects to login if no session/user.
-             // This is a safeguard or if redirection somehow fails.
-            console.error("Initialization failed: No current user. Redirecting to login.");
-            if (window.location.pathname.includes("index.html")) { // Prevent redirect loops
+            console.error("Initialization failed: No current user. Redirecting to login (from initializeApp).");
+            // Auth.getCurrentUser already handles redirection, but this is a fallback.
+            // Only redirect if we are on a page that requires auth (e.g., index.html)
+            if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
                 window.location.href = 'login.html';
             }
             return;
         }
 
-
-        const displayName = currentUser.fullName || currentUser.email || 'User';
+        const displayName = currentUser.name || currentUser.fullName || currentUser.email || 'User';
         userNameDisplayHeader.textContent = displayName;
         userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
         footerKbVersion.textContent = kbSystemData.meta.version;
@@ -2332,10 +2336,9 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         const currentYear = new Date().getFullYear();
         document.querySelector('footer span:first-child').innerHTML = `© ${currentYear} InfiniBase.Elmenisy. Version <span id="footerKbVersion">${kbSystemData.meta.version}</span>`;
 
-
         populateSidebar();
         applyPermanentDarkMode(); 
-        handleNavigation(); // Now safe to call as currentUser is populated
+        handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
         
