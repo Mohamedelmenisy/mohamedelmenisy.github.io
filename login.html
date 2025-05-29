@@ -110,6 +110,12 @@
             display: none !important;
          }
     </style>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const supabase = supabase.createClient("https://aefiigottnlcmjzilqnh.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4");
+</script>
 </head>
 <body>
     <div class="login-container">
@@ -155,41 +161,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const storedUserString = localStorage.getItem('infiniBaseUser');
-            const pendingEmail = localStorage.getItem('pendingSignupEmail');
-            const pendingFullName = localStorage.getItem('pendingSignupFullName');
-
-            if (pendingEmail && pendingFullName) {
-                // Automatically log in the user who just signed up
-                const userToStore = {
-                    fullName: pendingFullName,
-                    email: pendingEmail,
-                    role: 'viewer', // New users default to 'viewer' role
-                    lastLogin: new Date().toISOString()
-                };
-                localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
-                localStorage.setItem('justLoggedIn', 'true');
-                localStorage.removeItem('pendingSignupEmail');
-                localStorage.removeItem('pendingSignupFullName');
-
-                const loginContainer = document.querySelector('.login-container');
-                if (loginContainer) {
-                    loginContainer.innerHTML = `<div style="color: var(--text-color); text-align: center; padding: 2rem 0; font-size: 1.2rem;">
-                        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='#6366f1' style='width: 3rem; height: 3rem; margin:0 auto 1rem auto;'>
-                           <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/>
-                        </svg>
-                        <h2 class="text-2xl font-bold mb-2" style="color: var(--text-color);">Welcome, ${pendingFullName}!</h2>
-                        <p style="color: var(--text-color-muted);">You have been successfully registered and logged in.</p>
-                        <p style="color: var(--text-color-muted); margin-top: 0.5rem;">Redirecting to dashboard...</p>
-                    </div>`;
-                }
-                
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 2500);
-                return; // Stop further execution if auto-login occurs
-            }
-
-
             if (storedUserString) {
                 try {
                     const user = JSON.parse(storedUserString);
@@ -201,16 +172,11 @@
                     document.getElementById('forceLogoutBtn').addEventListener('click', () => {
                         localStorage.removeItem('infiniBaseUser');
                         localStorage.removeItem('justLoggedIn');
-                        // Also clear any pending signup info if present, though unlikely here
-                        localStorage.removeItem('pendingSignupEmail');
-                        localStorage.removeItem('pendingSignupFullName');
                         window.location.reload();
                     });
                 } catch (e) {
                     localStorage.removeItem('infiniBaseUser');
                     localStorage.removeItem('justLoggedIn');
-                    localStorage.removeItem('pendingSignupEmail');
-                    localStorage.removeItem('pendingSignupFullName');
                     console.error("Error parsing stored user data:", e);
                 }
             }
@@ -248,29 +214,33 @@
             let userRole;
             let isAuthenticated = false;
 
-            // This part is now less likely to be hit for new signups due to auto-login
-            // but kept for robustness if auto-login somehow fails or is bypassed.
+            // Check if this is a login attempt immediately after signup
             const fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
             const emailFromSignup = localStorage.getItem('pendingSignupEmail');
 
             if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
-                // This path would be for a user who just signed up but auto-login didn't trigger
-                // For simulation, accept any password provided they entered the email from signup.
+                // For simulation, accept any password for a user who just signed up.
+                // In a real scenario, the password from signup would be hashed and stored.
+                // Here, we're just confirming the email matches.
                 userFullName = fullNameFromSignup;
                 userRole = 'viewer'; // New signups default to 'viewer' role
                 isAuthenticated = true;
                 
+                // Clear pending signup info
                 localStorage.removeItem('pendingSignupEmail');
                 localStorage.removeItem('pendingSignupFullName');
             } else if (email.toLowerCase() === 'admin@example.com' && password === 'adminpass') {
                 userFullName = 'Admin User';
-                userRole = 'admin'; 
+                userRole = 'admin'; // Role determined by pre-defined credentials
                 isAuthenticated = true;
             } else if (email.toLowerCase() === 'user@example.com' && password === 'userpass') {
                 userFullName = 'Viewer User';
-                userRole = 'viewer';
+                userRole = 'viewer'; // Role determined by pre-defined credentials
                 isAuthenticated = true;
             } else {
+                // For any other case, it's an invalid login attempt.
+                // In a real app, you would query Supabase to authenticate and get role.
+                // Here, we simulate that only the above are valid.
                 isAuthenticated = false;
             }
             
@@ -313,5 +283,39 @@
             }
         });
     </script>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    if (authError) {
+        alert('Login failed: ' + authError.message);
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('email, fullName, role')
+        .eq('email', email)
+        .single();
+
+    if (userError || !userData) {
+        alert('User role not found or invalid.');
+        return;
+    }
+
+    localStorage.setItem('infiniBaseUser', JSON.stringify({
+        fullName: userData.fullName,
+        email: userData.email,
+        role: userData.role
+    }));
+
+    alert('Login successful!');
+    window.location.href = 'index.html';
+});
+</script>
 </body>
 </html>
