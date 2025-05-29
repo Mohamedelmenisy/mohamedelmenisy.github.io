@@ -159,7 +159,7 @@
         const signupFormContainer = document.getElementById('signupFormContainer');
 
         signupBtn.addEventListener('click', async () => {
-            const fullName = fullNameInput.value.trim();
+            const fullName = fullNameInput.value.trim(); // This variable holds the user's full name from input
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
@@ -195,17 +195,14 @@
             }
 
             try {
-                // Sign up the user with Supabase Auth
-                // Pass fullName to options.data to store it in raw_user_meta_data
-                // This can be useful for display purposes or if you have triggers.
                 const { data: authResponse, error: authError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
                     options: {
                         data: { 
-                            full_name_meta: fullName // Stored in raw_user_meta_data. Use a distinct key.
-                                                 // Supabase Auth itself doesn't have a direct "display_name" top-level field.
-                                                 // The primary profile data (like full_name for your app) belongs in your 'users' table.
+                            // Storing in raw_user_meta_data. Supabase Auth itself doesn't have a direct "display_name".
+                            // The primary profile data (like full_name for your app) belongs in your 'users' table.
+                            form_input_full_name: fullName 
                         }
                     }
                 });
@@ -230,41 +227,28 @@
                     return;
                 }
 
-                // If auth signup was successful (authResponse.user exists)
                 if (authResponse.user) {
-                    const user = authResponse.user; // Convenience variable
+                    const user = authResponse.user;
 
-                    // Now, insert into your 'public.users' table
-                    // CRITICAL: Use user.id from the authResponse for the 'id' column in 'public.users'
-                    // This 'id' will be equal to auth.uid() for the currently signed-up user.
-                    // Ensure column names here (id, full_name, email, role) match your 'public.users' table schema.
+                    // CORRECTED INSERTION: Use 'name' as the key if your DB column is 'name'
                     const { error: insertError } = await supabase
-                        .from('users') // Your table name
+                        .from('users') 
                         .insert({
-                            id: user.id,          // This is the key for RLS (auth.uid() = id)
-                            full_name: fullName,  // Or 'name' if your column is named 'name'
-                            email: user.email,    // Use email from the authenticated user object
-                            role: 'viewer'        // Default role
-                            // Do not include 'is_admin' unless you have that column and intend to set it here.
+                            id: user.id,          
+                            email: user.email,    
+                            name: fullName,       // ✅ CORRECTED: Using 'name' key for the 'name' column
+                            role: 'viewer'        
                         });
 
                     if (insertError) {
                         console.error("Error inserting user into public.users:", insertError);
-                        // This is a critical error. The user is in auth.users but not in public.users.
-                        // You might want to inform the user and potentially log this for manual correction.
-                        // For now, show a detailed error.
                         errorDiv.textContent = `Signup partially successful (auth created), but profile creation failed: ${insertError.message}. Please contact support.`;
                         errorDiv.classList.remove('hidden');
                         signupBtn.disabled = false;
                         signupBtn.textContent = 'Sign Up';
-                        
-                        // Optional: Attempt to sign out the user if profile creation is absolutely mandatory
-                        // for app functioning, to avoid an inconsistent state.
-                        // await supabase.auth.signOut();
                         return;
                     }
                     
-                    // Full success: user in auth.users and public.users
                     console.log('Supabase Signup Successful & User Profile Created:', user);
                     
                     signupFormContainer.classList.add('hidden');
@@ -273,16 +257,11 @@
                     successDiv.textContent = "Signup successful! Redirecting to login...";
                     successDiv.classList.remove('hidden');
                     
-                    // If email confirmation is enabled in Supabase, user.identities[0].state might be 'pending_confirmation'
-                    // The login page will handle "Email not confirmed" error from Supabase if they try to log in too soon.
-                    // For this flow, we just redirect to login after successful signup & profile creation.
                     setTimeout(() => {
                         window.location.href = 'login.html'; 
                     }, 2000);
 
                 } else {
-                    // This case should ideally not be reached if authError is null.
-                    // It indicates an unexpected state in the authResponse.
                     errorDiv.textContent = 'An unexpected issue occurred with user registration. Please try again.';
                     errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
