@@ -136,7 +136,7 @@
             </div>
             <div class="mb-4 input-icon">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="passwordInput" placeholder="Password" required>
+                <input type="password" id="passwordInput" placeholder="Password (e.g., adminpass)" required>
             </div>
             <div class="flex justify-between items-center mb-6">
                 <label class="flex items-center text-sm" style="color: var(--text-color-muted);">
@@ -153,15 +153,6 @@
     </div>
 
     <script>
-        // Simulate a pre-existing user table in Supabase
-        const preExistingUsers = [
-            { email: 'admin@example.com', fullName: 'InfiniBase Admin', role: 'admin', password: 'adminpass' },
-            { email: 'viewer@example.com', fullName: 'Regular Viewer', role: 'viewer', password: 'userpass' },
-            { email: 'nada.mahmoud@thechefz.co', fullName: 'Nada Mahmoud', role: 'admin', password: 'password123' },
-            { email: 'm.elsayed@thechefz.co', fullName: 'Mohamed Elmenisy', role: 'viewer', password: 'password456' },
-            // Add more users as needed for testing
-        ];
-
         document.addEventListener('DOMContentLoaded', () => {
             const storedUserString = localStorage.getItem('infiniBaseUser');
             if (storedUserString) {
@@ -174,7 +165,7 @@
 
                     document.getElementById('forceLogoutBtn').addEventListener('click', () => {
                         localStorage.removeItem('infiniBaseUser');
-                        localStorage.removeItem('justLoggedIn'); // Clear this flag too
+                        localStorage.removeItem('justLoggedIn');
                         window.location.reload();
                     });
                 } catch (e) {
@@ -188,7 +179,7 @@
         document.getElementById('loginBtn').addEventListener('click', () => {
             const emailInput = document.getElementById('emailInput');
             const passwordInput = document.getElementById('passwordInput');
-            const email = emailInput.value.trim().toLowerCase();
+            const email = emailInput.value.trim();
             const password = passwordInput.value; 
 
             const errorMessageDiv = document.getElementById('errorMessage');
@@ -213,63 +204,64 @@
                 return;
             }
 
-            let loggedInUser = null;
+            let userFullName;
+            let userRole;
+            let isAuthenticated = false;
 
-            // 1. Check against pre-existing users (simulating Supabase lookup)
-            const foundUserInDb = preExistingUsers.find(u => u.email.toLowerCase() === email && u.password === password);
+            // Check if this is a login attempt immediately after signup
+            const fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
+            const emailFromSignup = localStorage.getItem('pendingSignupEmail');
 
-            if (foundUserInDb) {
-                loggedInUser = {
-                    fullName: foundUserInDb.fullName,
-                    email: foundUserInDb.email,
-                    role: foundUserInDb.role,
-                };
-            } else {
-                // 2. Handle users who just signed up (not yet in preExistingUsers conceptually)
-                // or generic test accounts if not found in preExistingUsers
-                const pendingSignupEmail = localStorage.getItem('pendingSignupEmail');
-                const pendingSignupFullName = localStorage.getItem('pendingSignupFullName');
-
-                if (pendingSignupEmail && pendingSignupEmail.toLowerCase() === email) {
-                    // User just signed up. Assign default 'viewer' role as they wouldn't be in preExistingUsers with a role yet.
-                    // We assume the password they just entered is correct for this new account.
-                    loggedInUser = {
-                        fullName: pendingSignupFullName,
-                        email: email,
-                        role: 'viewer', // Default role for new signups not in preExistingUsers
-                    };
-                } else {
-                    // Fallback for generic test accounts if not found in preExistingUsers and not a pending signup
-                    // This part might be redundant if all test users are in preExistingUsers
-                    if ((email === 'admin@example.com' && password === 'adminpass')) {
-                         loggedInUser = { fullName: 'Admin User (Generic)', email: email, role: 'admin' };
-                    } else if ((email === 'user@example.com' && password === 'userpass')) {
-                         loggedInUser = { fullName: 'Viewer User (Generic)', email: email, role: 'viewer' };
-                    }
-                }
-            }
-            
-            if (loggedInUser) {
-                loggedInUser.lastLogin = new Date().toISOString();
-                localStorage.setItem('infiniBaseUser', JSON.stringify(loggedInUser));
-                localStorage.setItem('justLoggedIn', 'true'); // Flag for index.html to show welcome
-
-                // Clear pending signup info as it's now used or irrelevant
+            if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
+                // For simulation, accept any password for a user who just signed up.
+                // In a real scenario, the password from signup would be hashed and stored.
+                // Here, we're just confirming the email matches.
+                userFullName = fullNameFromSignup;
+                userRole = 'viewer'; // New signups default to 'viewer' role
+                isAuthenticated = true;
+                
+                // Clear pending signup info
                 localStorage.removeItem('pendingSignupEmail');
                 localStorage.removeItem('pendingSignupFullName');
-
-                const loginBtn = document.getElementById('loginBtn');
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
-                loginBtn.disabled = true;
-
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
+            } else if (email.toLowerCase() === 'admin@example.com' && password === 'adminpass') {
+                userFullName = 'Admin User';
+                userRole = 'admin'; // Role determined by pre-defined credentials
+                isAuthenticated = true;
+            } else if (email.toLowerCase() === 'user@example.com' && password === 'userpass') {
+                userFullName = 'Viewer User';
+                userRole = 'viewer'; // Role determined by pre-defined credentials
+                isAuthenticated = true;
             } else {
+                // For any other case, it's an invalid login attempt.
+                // In a real app, you would query Supabase to authenticate and get role.
+                // Here, we simulate that only the above are valid.
+                isAuthenticated = false;
+            }
+            
+            if (!isAuthenticated) {
                 errorMessageDiv.textContent = 'Invalid email or password.';
                 errorMessageDiv.classList.remove('hidden');
                 passwordInput.focus();
+                return;
             }
+            
+            const userToStore = {
+                fullName: userFullName,
+                email: email,
+                role: userRole,
+                lastLogin: new Date().toISOString()
+            };
+
+            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
+            localStorage.setItem('justLoggedIn', 'true'); 
+
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
+            loginBtn.disabled = true;
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
         });
 
         document.getElementById('passwordInput').addEventListener('keypress', function(event) {
