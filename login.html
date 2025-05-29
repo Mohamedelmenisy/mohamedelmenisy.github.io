@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Login</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='%236366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='%236366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -81,16 +81,16 @@
             font-weight: 600;
             transition: background-color 0.2s;
         }
-        .login-button:hover {
+        .login-button:hover:not(:disabled) {
             background-color: var(--primary-color-hover);
         }
         .login-button:disabled {
-            background-color: #4338ca; /* Darker shade of primary for disabled */
+            background-color: #4338ca; 
             cursor: not-allowed;
             opacity: 0.7;
         }
         #errorMessage {
-            color: #f87171; /* Tailwind red-400 */
+            color: #f87171; 
             background-color: rgba(248, 113, 113, 0.1);
             border: 1px solid rgba(248, 113, 113, 0.3);
             padding: 10px;
@@ -98,15 +98,15 @@
             text-align: left;
         }
          #alreadyLoggedIn {
-            color: #6ee7b7; /* Tailwind green-300 for lighter text */
-            background-color: rgba(52, 211, 153, 0.1); /* green-400 with alpha */
+            color: #6ee7b7; 
+            background-color: rgba(52, 211, 153, 0.1); 
             border: 1px solid rgba(52, 211, 153, 0.2);
             padding: 1rem;
             border-radius: 8px;
          }
          #alreadyLoggedIn strong { color: var(--text-color); }
          #alreadyLoggedIn a { color: var(--primary-color); }
-         #alreadyLoggedIn button { color: #facc15; } /* Tailwind yellow-400 */
+         #alreadyLoggedIn button { color: #facc15; } 
          .hidden {
             display: none !important;
          }
@@ -164,7 +164,6 @@
         const emailInput = document.getElementById('emailInput');
         const passwordInput = document.getElementById('passwordInput');
         const errorMessageDiv = document.getElementById('errorMessage');
-        // const rememberMeCheckbox = document.getElementById('rememberMeCheckbox'); // Future use
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -172,26 +171,23 @@
             if (session && session.user) {
                 const { data: userData, error: userFetchError } = await supabase
                     .from('users')
-                    .select('id, full_name, email, role')
+                    .select('id, name, email, role') // Use 'name' to match DB
                     .eq('id', session.user.id)
                     .single();
 
                 if (userData) {
                     loginFormContainer.classList.add('hidden');
                     alreadyLoggedInDiv.classList.remove('hidden');
-                    loggedInUserNameEl.textContent = userData.full_name || userData.email;
+                    loggedInUserNameEl.textContent = userData.name || userData.email; // Use userData.name
                     
-                    // Store for potential immediate use by index.html if redirected
                     localStorage.setItem('infiniBaseUser', JSON.stringify({
                         id: userData.id,
-                        fullName: userData.full_name,
+                        name: userData.name, // Store 'name'
                         email: userData.email,
                         role: userData.role,
                         lastLogin: new Date().toISOString()
                     }));
                 } else {
-                    // Session exists, but user profile not found in DB. This is an anomaly.
-                    // Log them out to be safe and clear any inconsistent state.
                     console.error("Active session but no user profile in DB for ID:", session.user.id, userFetchError);
                     await supabase.auth.signOut();
                     localStorage.removeItem('infiniBaseUser');
@@ -200,10 +196,10 @@
         });
 
         forceLogoutBtn.addEventListener('click', async () => {
-            loginBtn.disabled = true;
+            loginBtn.disabled = true; // Disable button during async operation
             await supabase.auth.signOut();
             localStorage.removeItem('infiniBaseUser');
-            localStorage.removeItem('justLoggedIn'); // Ensure this is cleared
+            localStorage.removeItem('justLoggedIn'); 
             window.location.reload();
         });
 
@@ -247,8 +243,7 @@
                         errorMessageDiv.textContent = 'Invalid email or password.';
                     } else if (authError.message.includes("Email not confirmed")) {
                         errorMessageDiv.textContent = 'Please confirm your email address before logging in.';
-                    }
-                    else {
+                    } else {
                         errorMessageDiv.textContent = authError.message || 'Login failed. Please try again.';
                     }
                     errorMessageDiv.classList.remove('hidden');
@@ -259,21 +254,16 @@
                 }
 
                 if (authData.user) {
-                    // Successfully authenticated with Supabase Auth
-                    // Now, fetch user details (including role) from 'users' table
                     const { data: userData, error: userFetchError } = await supabase
                         .from('users')
-                        .select('id, full_name, email, role')
+                        .select('id, name, email, role') // Use 'name'
                         .eq('id', authData.user.id)
-                        .single(); // .single() expects one row or throws error if 0 or >1
+                        .single(); 
 
                     if (userFetchError || !userData) {
-                        // This is a critical issue: user authenticated but no profile in 'users' table.
-                        // This could happen if the insert after signup failed or was interrupted.
                         console.error("Login successful but failed to fetch user profile from DB:", userFetchError);
                         errorMessageDiv.textContent = 'Login succeeded but profile data is missing. Please contact support.';
                         errorMessageDiv.classList.remove('hidden');
-                        // Log the user out of the auth session to prevent inconsistent state
                         await supabase.auth.signOut(); 
                         loginBtn.disabled = false;
                         loginBtn.textContent = 'Login';
@@ -282,7 +272,9 @@
                     
                     const userToStore = {
                         id: userData.id,
-                        fullName: userData.full_name,
+                        name: userData.name, // Use 'name' from DB
+                        fullName: userData.name, // Adding fullName for compatibility if index.html expects it.
+                                                 // Ideally, index.html should also be updated to use 'name' consistently.
                         email: userData.email,
                         role: userData.role,
                         lastLogin: new Date().toISOString()
@@ -291,10 +283,8 @@
                     localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
                     localStorage.setItem('justLoggedIn', 'true'); 
 
-                    // No need for the loading spinner on button anymore, redirecting
                     window.location.href = 'index.html';
                 } else {
-                     // Fallback, should be caught by authError
                     errorMessageDiv.textContent = 'An unexpected error occurred during login.';
                     errorMessageDiv.classList.remove('hidden');
                     loginBtn.disabled = false;
