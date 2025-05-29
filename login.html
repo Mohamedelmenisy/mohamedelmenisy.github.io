@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfiniBase - Login</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='%236366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -110,12 +111,6 @@
             display: none !important;
          }
     </style>
-
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabase = supabase.createClient("https://aefiigottnlcmjzilqnh.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4");
-</script>
 </head>
 <body>
     <div class="login-container">
@@ -138,18 +133,18 @@
         <div id="loginFormContainer">
             <div class="mb-4 input-icon">
                 <i class="fas fa-envelope"></i>
-                <input type="email" id="emailInput" placeholder="Work Email (e.g., user@example.com)" required>
+                <input type="email" id="emailInput" placeholder="Work Email" required>
             </div>
             <div class="mb-4 input-icon">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="passwordInput" placeholder="Password (e.g., adminpass)" required>
+                <input type="password" id="passwordInput" placeholder="Password" required>
             </div>
             <div class="flex justify-between items-center mb-6">
                 <label class="flex items-center text-sm" style="color: var(--text-color-muted);">
-                    <input type="checkbox" class="mr-2 h-4 w-4 rounded focus:ring-offset-0" style="accent-color: var(--primary-color); background-color: var(--bg-color); border-color: var(--border-color);">
+                    <input type="checkbox" id="rememberMeCheckbox" class="mr-2 h-4 w-4 rounded focus:ring-offset-0" style="accent-color: var(--primary-color); background-color: var(--bg-color); border-color: var(--border-color);">
                     <span>Remember me</span>
                 </label>
-                <a href="#" class="text-sm hover:underline" style="color: var(--primary-color);">Forgot password?</a>
+                <a href="#" class="text-sm hover:underline" style="color: var(--primary-color);" onclick="alert('Password reset functionality is not yet implemented.'); return false;">Forgot password?</a>
             </div>
             <button id="loginBtn" class="login-button">Login</button>
             <p class="mt-6 text-sm" style="color: var(--text-color-muted);">
@@ -158,37 +153,64 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const storedUserString = localStorage.getItem('infiniBaseUser');
-            if (storedUserString) {
-                try {
-                    const user = JSON.parse(storedUserString);
-                    document.getElementById('loginFormContainer').classList.add('hidden');
-                    const alreadyLoggedInDiv = document.getElementById('alreadyLoggedIn');
-                    alreadyLoggedInDiv.classList.remove('hidden');
-                    document.getElementById('loggedInUserName').textContent = user.fullName || user.email;
+    <script type="module">
+        import { supabase } from './supabase.js';
 
-                    document.getElementById('forceLogoutBtn').addEventListener('click', () => {
-                        localStorage.removeItem('infiniBaseUser');
-                        localStorage.removeItem('justLoggedIn');
-                        window.location.reload();
-                    });
-                } catch (e) {
+        const loginFormContainer = document.getElementById('loginFormContainer');
+        const alreadyLoggedInDiv = document.getElementById('alreadyLoggedIn');
+        const loggedInUserNameEl = document.getElementById('loggedInUserName');
+        const forceLogoutBtn = document.getElementById('forceLogoutBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        // const rememberMeCheckbox = document.getElementById('rememberMeCheckbox'); // Future use
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (session && session.user) {
+                const { data: userData, error: userFetchError } = await supabase
+                    .from('users')
+                    .select('id, full_name, email, role')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (userData) {
+                    loginFormContainer.classList.add('hidden');
+                    alreadyLoggedInDiv.classList.remove('hidden');
+                    loggedInUserNameEl.textContent = userData.full_name || userData.email;
+                    
+                    // Store for potential immediate use by index.html if redirected
+                    localStorage.setItem('infiniBaseUser', JSON.stringify({
+                        id: userData.id,
+                        fullName: userData.full_name,
+                        email: userData.email,
+                        role: userData.role,
+                        lastLogin: new Date().toISOString()
+                    }));
+                } else {
+                    // Session exists, but user profile not found in DB. This is an anomaly.
+                    // Log them out to be safe and clear any inconsistent state.
+                    console.error("Active session but no user profile in DB for ID:", session.user.id, userFetchError);
+                    await supabase.auth.signOut();
                     localStorage.removeItem('infiniBaseUser');
-                    localStorage.removeItem('justLoggedIn');
-                    console.error("Error parsing stored user data:", e);
                 }
             }
         });
 
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const emailInput = document.getElementById('emailInput');
-            const passwordInput = document.getElementById('passwordInput');
+        forceLogoutBtn.addEventListener('click', async () => {
+            loginBtn.disabled = true;
+            await supabase.auth.signOut();
+            localStorage.removeItem('infiniBaseUser');
+            localStorage.removeItem('justLoggedIn'); // Ensure this is cleared
+            window.location.reload();
+        });
+
+        loginBtn.addEventListener('click', async () => {
             const email = emailInput.value.trim();
             const password = passwordInput.value; 
 
-            const errorMessageDiv = document.getElementById('errorMessage');
             errorMessageDiv.classList.add('hidden');
 
             if (!email) {
@@ -210,112 +232,93 @@
                 return;
             }
 
-            let userFullName;
-            let userRole;
-            let isAuthenticated = false;
-
-            // Check if this is a login attempt immediately after signup
-            const fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
-            const emailFromSignup = localStorage.getItem('pendingSignupEmail');
-
-            if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
-                // For simulation, accept any password for a user who just signed up.
-                // In a real scenario, the password from signup would be hashed and stored.
-                // Here, we're just confirming the email matches.
-                userFullName = fullNameFromSignup;
-                userRole = 'viewer'; // New signups default to 'viewer' role
-                isAuthenticated = true;
-                
-                // Clear pending signup info
-                localStorage.removeItem('pendingSignupEmail');
-                localStorage.removeItem('pendingSignupFullName');
-            } else if (email.toLowerCase() === 'admin@example.com' && password === 'adminpass') {
-                userFullName = 'Admin User';
-                userRole = 'admin'; // Role determined by pre-defined credentials
-                isAuthenticated = true;
-            } else if (email.toLowerCase() === 'user@example.com' && password === 'userpass') {
-                userFullName = 'Viewer User';
-                userRole = 'viewer'; // Role determined by pre-defined credentials
-                isAuthenticated = true;
-            } else {
-                // For any other case, it's an invalid login attempt.
-                // In a real app, you would query Supabase to authenticate and get role.
-                // Here, we simulate that only the above are valid.
-                isAuthenticated = false;
-            }
-            
-            if (!isAuthenticated) {
-                errorMessageDiv.textContent = 'Invalid email or password.';
-                errorMessageDiv.classList.remove('hidden');
-                passwordInput.focus();
-                return;
-            }
-            
-            const userToStore = {
-                fullName: userFullName,
-                email: email,
-                role: userRole,
-                lastLogin: new Date().toISOString()
-            };
-
-            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
-            localStorage.setItem('justLoggedIn', 'true'); 
-
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
             loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
 
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1000);
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (authError) {
+                    console.error("Supabase login error:", authError);
+                    if (authError.message.includes("Invalid login credentials")) {
+                        errorMessageDiv.textContent = 'Invalid email or password.';
+                    } else if (authError.message.includes("Email not confirmed")) {
+                        errorMessageDiv.textContent = 'Please confirm your email address before logging in.';
+                    }
+                    else {
+                        errorMessageDiv.textContent = authError.message || 'Login failed. Please try again.';
+                    }
+                    errorMessageDiv.classList.remove('hidden');
+                    passwordInput.focus();
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                    return;
+                }
+
+                if (authData.user) {
+                    // Successfully authenticated with Supabase Auth
+                    // Now, fetch user details (including role) from 'users' table
+                    const { data: userData, error: userFetchError } = await supabase
+                        .from('users')
+                        .select('id, full_name, email, role')
+                        .eq('id', authData.user.id)
+                        .single(); // .single() expects one row or throws error if 0 or >1
+
+                    if (userFetchError || !userData) {
+                        // This is a critical issue: user authenticated but no profile in 'users' table.
+                        // This could happen if the insert after signup failed or was interrupted.
+                        console.error("Login successful but failed to fetch user profile from DB:", userFetchError);
+                        errorMessageDiv.textContent = 'Login succeeded but profile data is missing. Please contact support.';
+                        errorMessageDiv.classList.remove('hidden');
+                        // Log the user out of the auth session to prevent inconsistent state
+                        await supabase.auth.signOut(); 
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Login';
+                        return;
+                    }
+                    
+                    const userToStore = {
+                        id: userData.id,
+                        fullName: userData.full_name,
+                        email: userData.email,
+                        role: userData.role,
+                        lastLogin: new Date().toISOString()
+                    };
+
+                    localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
+                    localStorage.setItem('justLoggedIn', 'true'); 
+
+                    // No need for the loading spinner on button anymore, redirecting
+                    window.location.href = 'index.html';
+                } else {
+                     // Fallback, should be caught by authError
+                    errorMessageDiv.textContent = 'An unexpected error occurred during login.';
+                    errorMessageDiv.classList.remove('hidden');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                }
+
+            } catch (e) {
+                console.error("Catch block error during login:", e);
+                errorMessageDiv.textContent = 'A system error occurred. Please try again later.';
+                errorMessageDiv.classList.remove('hidden');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
         });
 
-        document.getElementById('passwordInput').addEventListener('keypress', function(event) {
+        function handleEnterKey(event) {
             if (event.key === 'Enter') {
                 event.preventDefault(); 
-                document.getElementById('loginBtn').click();
+                loginBtn.click();
             }
-        });
-        document.getElementById('emailInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                document.getElementById('loginBtn').click();
-            }
-        });
+        }
+        passwordInput.addEventListener('keypress', handleEnterKey);
+        emailInput.addEventListener('keypress', handleEnterKey);
+
     </script>
-
-<script>
-document.getElementById('loginForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) {
-        alert('Login failed: ' + authError.message);
-        return;
-    }
-
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email, fullName, role')
-        .eq('email', email)
-        .single();
-
-    if (userError || !userData) {
-        alert('User role not found or invalid.');
-        return;
-    }
-
-    localStorage.setItem('infiniBaseUser', JSON.stringify({
-        fullName: userData.fullName,
-        email: userData.email,
-        role: userData.role
-    }));
-
-    alert('Login successful!');
-    window.location.href = 'index.html';
-});
-</script>
 </body>
 </html>
