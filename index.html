@@ -803,6 +803,31 @@
             display: block;
             color: var(--text-color-muted);
          }
+         /* Viewer Dashboard Message */
+        .viewer-dashboard-message .card {
+            text-align: center;
+            padding: 40px 20px;
+            min-height: auto; /* Override general card min-height if needed */
+        }
+        .viewer-dashboard-message .card i {
+            font-size: 2.5rem; /* Larger icon for emphasis */
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        .viewer-dashboard-message .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+        .viewer-dashboard-message .card p {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+            margin-bottom: 0; /* Adjust as needed */
+        }
+        .viewer-dashboard-message .card p.subtle-note {
+             font-size: 0.9rem;
+             margin-top: 1rem;
+        }
 
     </style>
 </head>
@@ -843,6 +868,7 @@
             </div>
 
             <form id="addContentForm" class="hidden">
+                <input type="hidden" id="editingItemId"> <!-- For storing ID when editing -->
                 <div class="form-group">
                     <label for="contentType">Content Type</label>
                     <select id="contentType">
@@ -937,6 +963,7 @@
                 <button id="logoutButton" class="button button-danger">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
+                 <div id="userRoleDisplaySidebar" style="font-size: 0.8rem; color: var(--text-color-muted); text-align: center; margin-top: 0.5rem;">Role: <span id="currentUserRoleSpan"></span></div>
             </div>
         </aside>
 
@@ -982,6 +1009,8 @@
     <div id="toastContainer"></div>
 
 <script type="module">
+    import { supabase } from './supabase.js';
+
     // --- Initialize Mermaid ---
     mermaid.initialize({ 
         startOnLoad: false,
@@ -1057,9 +1086,6 @@
 
         jsonData.forEach(node => {
             const nodeId = node.id.replace(/-/g, '_');
-            // Ensure quotes in text are handled for Mermaid syntax if any complex text added later.
-            // Current text in JSON doesn't use internal quotes that would break Mermaid.
-            // Using <br/> for newlines is standard.
             let nodeLabel = `"${node.text.replace(/"/g, '#quot;')}"`; 
 
             if (node.type === 'decision') {
@@ -1100,36 +1126,87 @@
         return mermaidSyntax;
     }
 
-
-    // --- Simulated Auth & Data ---
+    // --- Supabase Auth & User Management ---
     const Auth = {
-        isAuthenticated: () => !!localStorage.getItem('infiniBaseUser'), 
-        getCurrentUser: () => {
-            const storedUser = localStorage.getItem('infiniBaseUser');
-            if (storedUser) return JSON.parse(storedUser);
-            window.location.href = 'login.html';
-            return null; 
-        },
-        logout: () => {
-            localStorage.removeItem('infiniBaseUser');
-            localStorage.removeItem('justLoggedIn');
-            localStorage.removeItem('pendingSignupEmail');
-            localStorage.removeItem('pendingSignupFullName');
-            // Add any other app-specific keys here if necessary
-            showToast('You have been logged out successfully!', 'success'); // Changed message and type
-            setTimeout(() => {
+        async getCurrentUser() {
+            // Try to get from localStorage first for immediate UI update
+            const storedUserString = localStorage.getItem('infiniBaseUser');
+            if (storedUserString) {
+                try {
+                    const localUser = JSON.parse(storedUserString);
+                    // Optionally: add a quick check against current session if needed,
+                    // but initializeApp will do a full check.
+                    // For now, trust localStorage if present for faster initial render.
+                    // This will be validated/updated in initializeApp anyway.
+                    const { data: { session: quickSession } } = await supabase.auth.getSession();
+                    if (quickSession && quickSession.user && quickSession.user.id === localUser.id) {
+                         return localUser;
+                    }
+                    // If no session or mismatched ID, localStorage is stale. Fall through to fetch.
+                    localStorage.removeItem('infiniBaseUser');
+
+                } catch(e) {
+                    console.warn("Error parsing stored user, clearing.", e);
+                    localStorage.removeItem('infiniBaseUser');
+                }
+            }
+
+            // If not in localStorage or stale, fetch from Supabase
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !session) {
+                console.log('No active Supabase session or error fetching session. Redirecting to login.');
                 window.location.href = 'login.html';
-            }, 1500);
+                return null; // Should not reach here due to redirect
+            }
+
+            // Session exists, let's get user details from our 'users' table
+            const { data: userData, error: userFetchError } = await supabase
+                .from('users')
+                .select('id, full_name, email, role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (userFetchError || !userData) {
+                console.error('Error fetching user data from DB or user not found:', userFetchError);
+                // This case is problematic: user is authenticated with Supabase Auth, but no profile in 'users' table.
+                // Could be a signup interruption or DB issue. Log out to prevent further issues.
+                await supabase.auth.signOut();
+                localStorage.removeItem('infiniBaseUser'); // Clear any potentially stale item
+                window.location.href = 'login.html'; // Redirect to login
+                return null;
+            }
+
+            const userToStore = {
+                id: userData.id,
+                fullName: userData.full_name,
+                email: userData.email,
+                role: userData.role,
+                lastLogin: new Date().toISOString() // Updated on each successful fetch
+            };
+            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
+            return userToStore;
         },
-        promptLogin: () => {
-            if (!Auth.isAuthenticated()) {
-                window.location.href = 'login.html';
+        async logout() {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error("Error during sign out:", error);
+                showToast('Error signing out. Please try again.', 'error');
+            } else {
+                localStorage.removeItem('infiniBaseUser');
+                localStorage.removeItem('justLoggedIn'); // Clear this flag
+                showToast('You have been logged out successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
             }
         }
+        // isAuthenticated and promptLogin are effectively handled by getCurrentUser's redirect
     };
 
+    // --- KB Data (Still client-side for this iteration) ---
     let kbSystemData = {
-        meta: { version: '0.6.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.6.2-supabase', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1154,7 +1231,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                             </ul>
                         `,
                         tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop'],
-                        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // Approx 10 days ago
+                        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), 
                         views: Math.floor(Math.random()*150)+75,
                         comments: []
                     },
@@ -1164,7 +1241,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                         summary: 'Examples of when a driver is considered responsible for delays.',
                         content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1...</li><li>Example 2...</li></ul>',
                         tags: ['driver', 'responsibility', 'delay'],
-                        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // Approx 5 days ago
+                        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
                         views: Math.floor(Math.random()*80)+30,
                         comments: []
                     }
@@ -1202,6 +1279,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
     const userAvatar = document.getElementById('userAvatar');
     const footerKbVersion = document.getElementById('footerKbVersion');
+    const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
+
 
     const addContentModalOverlay = document.getElementById('addContentModalOverlay');
     const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
@@ -1213,6 +1292,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     const contentDetailContainer = document.getElementById('contentDetailContainer');
     const contentDetailLabel = document.getElementById('contentDetailLabel');
     const contentTagsInput = document.getElementById('contentTags');
+    const editingItemIdInput = document.getElementById('editingItemId');
     
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
@@ -1225,7 +1305,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
 
     let quillEditor; 
-    let currentUser = Auth.getCurrentUser(); 
+    let currentUser; // Will be populated by initializeApp
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
@@ -1277,7 +1357,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         }, duration);
     }
     
-    function applyPermanentDarkMode() { // Placeholder if more extensive theme updates are needed later
+    function applyPermanentDarkMode() { 
         [visitorsChartInstance, casesChartInstance, articlesChartInstance].forEach(chart => {
             if (chart) {
                 const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -1289,7 +1369,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                     chart.options.scales.y.ticks.color = ticksColor;
                     chart.options.scales.y.grid.color = gridColor;
                 }
-                if (chart.options.scales && chart.options.scales.x) { // Ensure x-axis is also styled
+                if (chart.options.scales && chart.options.scales.x) { 
                     chart.options.scales.x.ticks.color = ticksColor;
                     chart.options.scales.x.grid.color = gridColor;
                 }
@@ -1357,7 +1437,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         const initiallyHiddenParents = [];
         if (mermaidElements.length > 0) {
-            let currentEl = mermaidElements[0].parentElement; // Start from parent
+            let currentEl = mermaidElements[0].parentElement; 
             while(currentEl && currentEl !== document.body) {
                 if (currentEl.classList.contains('hidden') || (currentEl.style && currentEl.style.display === 'none')) {
                     if(currentEl.style) currentEl.dataset.originalDisplay = currentEl.style.display;
@@ -1365,15 +1445,12 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                     if(currentEl.style) currentEl.style.display = ''; 
                     initiallyHiddenParents.push(currentEl);
                 }
-                // Stop if we reach a major layout container that should be visible
                 if(currentEl.id === 'itemDetailViewPlaceholder' || currentEl.classList.contains('modal-overlay') || currentEl.classList.contains('content-wrapper')) break;
                 currentEl = currentEl.parentElement;
             }
         }
         
-
         try {
-            // Use a timeout to ensure the DOM is fully ready and styles applied, especially if elements were hidden.
             await new Promise(resolve => setTimeout(resolve, 50)); 
             await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
             element.dataset.mermaidRendered = 'true';
@@ -1384,18 +1461,16 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                     const errorMsg = document.createElement('p');
                     errorMsg.className = 'mermaid-error-msg';
                     errorMsg.style.color = 'red';
-                    errorMsg.textContent = `Error rendering diagram. Check console. Diagram Code: ${preElement.textContent.substring(0,100)}...`;
+                    errorMsg.textContent = `Error rendering diagram. Check console.`;
                     preElement.parentElement.insertBefore(errorMsg, preElement.nextSibling);
                 }
             });
         } finally {
             initiallyHiddenParents.forEach(p => {
-                p.classList.add('hidden'); // Re-hide if it was originally hidden.
-                                           // This might need more specific logic if 'hidden' is not the only way it was hidden.
+                p.classList.add('hidden'); 
                 if (p.dataset.originalDisplay && p.dataset.originalDisplay !== 'none') {
-                     p.style.display = p.dataset.originalDisplay; // Restore original display style if it wasn't 'none'
+                     p.style.display = p.dataset.originalDisplay; 
                 } else if (!p.classList.contains('hidden') && p.dataset.originalDisplay === 'none') {
-                    // If it should be hidden via style.display = 'none'
                     p.style.display = 'none';
                 }
                 delete p.dataset.originalDisplay;
@@ -1418,7 +1493,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; ctaText = 'View Design'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Design';}
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
-
 
         const cardIconContainerColor = 'var(--primary-color-hover)'; 
         const cardIconColor = 'var(--text-color-inverted)';
@@ -1451,7 +1525,22 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
-        const welcomeUser = currentUser.fullName || 'User';
+        if (!currentUser || currentUser.role !== 'admin') {
+            dashboardOverviewContainer.innerHTML = `
+                <div class="viewer-dashboard-message">
+                    <div class="card">
+                        <i class="fas fa-user-shield"></i>
+                        <h2>Access Restricted</h2>
+                        <p>The dashboard overview is available for administrators only.</p>
+                        <p class="subtle-note">You can navigate using the sidebar to view knowledge base content.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        // Admin Dashboard Content
+        const welcomeUser = currentUser.fullName || currentUser.email || 'Admin';
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
@@ -1480,7 +1569,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
-                <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p> <!-- Increased opacity and ensured color -->
+                <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p>
             </div>
 
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
@@ -1555,7 +1644,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             plugins: { 
                 legend: { 
                     labels: { color: legendColor, font: { family: 'Inter, sans-serif' } },
-                    position: 'top', // Ensure legend is clearly positioned
+                    position: 'top', 
                 },
                 tooltip: {
                     bodyFont: { family: 'Inter, sans-serif' },
@@ -1583,7 +1672,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         if (articlesCtx) {
             const policyCount = allItems.filter(i=>i.type === 'policy').length;
             const guideCount = allItems.filter(i=>i.type === 'guide').length;
-            // Ensure a minimum count for articles if policies/guides are present to avoid negative numbers
             let mainArticleCount = totalArticles - policyCount - guideCount;
             if (mainArticleCount < 0) mainArticleCount = 0; 
 
@@ -1593,7 +1681,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                 options: chartOptions('doughnut') 
             });
         }
-        applyPermanentDarkMode(); // Re-apply dark mode styles to charts after creation/update
+        applyPermanentDarkMode(); 
     }
     
     async function displaySectionContent(sectionId, subCategoryFilter = null) {
@@ -1616,7 +1704,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         let contentHTML = `<div>`;
         
-        if (currentUser.role === 'admin' && sectionId !== 'home') {
+        // Show "Add Content" button if user is admin and not on the home/dashboard section
+        if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
              contentHTML += `
                 <div style="text-align: right; margin-bottom: 1.5rem;">
                     <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
@@ -1683,19 +1772,16 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             return;
         }
         let commentsHTML = '';
-        // Sort comments by timestamp, newest first for example
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
         sortedComments.forEach(comment => {
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
                     <div class="comment-author">
-                        ${escapeHTML(comment.authorEmail || 'Anonymous')}
+                        ${escapeHTML(comment.authorFullName || comment.authorEmail || 'Anonymous')}
                         <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
                     </div>
                     <div class="comment-text">${escapeHTML(comment.text)}</div>
-                    <!-- Placeholder for reply button if needed later -->
-                    <!-- <button class="button-secondary button-small reply-to-comment-btn" data-comment-id="${comment.id}">Reply</button> -->
                 </div>
             `;
         });
@@ -1714,7 +1800,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
-        currentOpenItem = { sectionId, itemId }; // Store current item context
+        currentOpenItem = { sectionId, itemId }; 
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         dashboardOverviewContainer.classList.add('hidden');
@@ -1752,6 +1838,10 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                                 <i class="fas fa-level-up-alt"></i> Back to Parent: ${escapeHTML(truncateText(parentItemFull.title, 25))}
                                </button>`;
             }
+        }
+        if (currentUser && currentUser.role === 'admin') {
+             detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         detailHTML += `   <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                           <button id="shareItemBtn" class="button button-secondary"><i class="fas fa-share-alt"></i> Share Link</button>
@@ -1837,9 +1927,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        renderComments(itemData, 'commentDisplayAreaForItem'); // Initial render of comments
+        renderComments(itemData, 'commentDisplayAreaForItem'); 
         
-        // Ensure Mermaid diagrams are rendered *after* the HTML is in the DOM and visible.
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid') && itemDetailViewPlaceholder.dataset.mermaidRendered !== 'true') {
             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
@@ -1854,13 +1943,37 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                 window.location.hash = `#${e.currentTarget.dataset.parentSection}/${e.currentTarget.dataset.parentId}`;
             });
         }
+        if (currentUser && currentUser.role === 'admin') {
+            const editBtn = document.getElementById('editItemBtn');
+            if(editBtn) editBtn.addEventListener('click', (e) => {
+                const sId = e.currentTarget.dataset.sectionId;
+                const iId = e.currentTarget.dataset.itemId;
+                const sec = kbSystemData.sections.find(s => s.id === sId);
+                const item = sec?.items?.find(i => i.id === iId);
+                if (item) openAddContentModal(sId, item);
+            });
+            const deleteBtn = document.getElementById('deleteItemBtn');
+             if(deleteBtn) deleteBtn.addEventListener('click', (e) => {
+                const sId = e.currentTarget.dataset.sectionId;
+                const iId = e.currentTarget.dataset.itemId;
+                if(confirm(`Are you sure you want to delete item "${itemData.title}"? This cannot be undone.`)){
+                    const sec = kbSystemData.sections.find(s => s.id === sId);
+                    if(sec && sec.items){
+                        sec.items = sec.items.filter(item => item.id !== iId);
+                        showToast('Item deleted successfully.', 'success');
+                        window.location.hash = `#${sId}`; // Navigate back to section
+                    }
+                }
+            });
+        }
+
         document.getElementById('printItemBtn').addEventListener('click', () => window.print());
         document.getElementById('shareItemBtn').addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href)
                 .then(() => showToast('Link copied to clipboard!', 'success'))
                 .catch(() => showToast('Failed to copy link.', 'error'));
         });
-        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => showToast('PDF Download (simulated - this feature would require server-side or advanced client-side PDF generation).', 'info'));
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => showToast('PDF Download (simulated).', 'info'));
 
         document.getElementById('rateUpBtn').addEventListener('click', () => showToast('Thanks for your feedback!', 'success'));
         document.getElementById('rateDownBtn').addEventListener('click', () => showToast('Thanks for your feedback! We will review this content.', 'info'));
@@ -1882,12 +1995,13 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
                 }
                 currentItemData.comments.push({
                     id: `cmt_${Date.now()}`,
-                    authorEmail: currentUser.email, // Use current user's email
+                    authorEmail: currentUser.email,
+                    authorFullName: currentUser.fullName, // Add full name
                     text: commentText,
                     timestamp: new Date().toISOString()
                 });
-                renderComments(currentItemData, 'commentDisplayAreaForItem'); // Re-render comments section
-                commentTextEl.value = ''; // Clear textarea
+                renderComments(currentItemData, 'commentDisplayAreaForItem'); 
+                commentTextEl.value = ''; 
                 showToast('Comment posted!', 'success');
             } else {
                 showToast('Error posting comment. Item not found.', 'error');
@@ -1948,6 +2062,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
+        editingItemIdInput.value = ""; // Clear editing ID
         
         if (!quillEditor) {
             quillEditor = new Quill('#quillEditor', {
@@ -1970,6 +2085,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         if (itemToEdit) {
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
+            editingItemIdInput.value = itemToEdit.id; // Set editing ID
             document.getElementById('contentTitle').value = itemToEdit.title;
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
@@ -1977,7 +2093,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             if (itemToEdit.content) quillEditor.root.innerHTML = itemToEdit.content;
             else if (itemToEdit.resolution_steps) quillEditor.root.innerHTML = itemToEdit.resolution_steps;
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
-            addContentForm.dataset.itemId = itemToEdit.id; 
+            
             if (itemToEdit.attachments) {
                 if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
                 if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
@@ -1987,7 +2103,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             document.getElementById('contentTitle').focus();
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            delete addContentForm.dataset.itemId; 
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2007,6 +2122,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         addContentModalOverlay.classList.add('hidden');
         templateSelectionContainer.classList.add('hidden'); 
         addContentForm.classList.add('hidden'); 
+        editingItemIdInput.value = ""; // Clear editing ID
     }
 
     contentTypeSelect.addEventListener('change', (e) => {
@@ -2036,7 +2152,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             showToast('Error: Target section not found!', 'error'); return;
         }
         
-        const itemId = addContentForm.dataset.itemId; 
+        const editingId = editingItemIdInput.value; 
         let itemData;
 
         const commonData = {
@@ -2044,8 +2160,6 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag),
-            views: itemId ? (section.items.find(i => i.id === itemId)?.views || 0) : 0, // Preserve views if editing, else 0
-            comments: itemId ? (section.items.find(i => i.id === itemId)?.comments || []) : [] // Preserve comments
         };
 
         if (!commonData.title || !commonData.summary) {
@@ -2053,17 +2167,22 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             return;
         }
 
-        if (itemId) { 
-            itemData = section.items.find(i => i.id === itemId);
+        if (editingId) { 
+            itemData = section.items.find(i => i.id === editingId);
             if (!itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
+            // Preserve views and comments if they exist
+            itemData.views = itemData.views || 0;
+            itemData.comments = itemData.comments || [];
         } else { 
             itemData = {
                 ...commonData,
                 id: `${sectionId}_item_${Date.now()}`,
                 createdBy: currentUser.email,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                views: 0,
+                comments: []
             };
             kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date(itemData.createdAt).toLocaleDateString() };
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
@@ -2091,15 +2210,22 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         if (driveLink) itemData.attachments.drive = driveLink; else delete itemData.attachments.drive;
 
 
-        if (!itemId) { 
+        if (!editingId) { 
             if (!section.items) section.items = [];
             section.items.push(itemData);
         }
 
-        showToast(`Content '${itemData.title}' ${itemId ? 'updated' : 'saved'} successfully!`, 'success');
+        showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'} successfully!`, 'success');
         closeAddContentModal();
         
-        handleNavigation(); 
+        if (editingId && currentOpenItem && currentOpenItem.itemId === editingId) {
+            // If editing the currently viewed item, refresh its detail view
+            displayItemDetail(currentOpenItem.sectionId, currentOpenItem.itemId);
+        } else {
+            // Otherwise, navigate to the section to see the new/updated card
+            window.location.hash = `#${sectionId}`;
+            handleNavigation(); // Or just reload the current section content if already there
+        }
     });
 
     // --- Global Search ---
@@ -2153,13 +2279,16 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     
     // --- Routing and Initialization ---
     function handleNavigation() {
+        if (!currentUser) { // Ensure currentUser is loaded before navigating
+            console.log("Current user not yet loaded, deferring navigation.");
+            return;
+        }
         const hash = window.location.hash.substring(1) || 'home';
         const parts = hash.split('/');
         const sectionId = parts[0];
         const itemIdOrSubCategory = parts[1]; 
 
         highlightSidebarLink(sectionId);
-        // Crucially reset mermaidRendered flag for item detail view before loading new content
         if (itemDetailViewPlaceholder) itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         if (sectionId === 'home') {
@@ -2170,29 +2299,35 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             if(itemExists) {
                 displayItemDetail(sectionId, itemIdOrSubCategory);
             } else {
-                // Check if it's a subcategory (if your data model supports this concept explicitly)
-                // For now, assuming if not an item, it's a section view potentially filtered
                 displaySectionContent(sectionId, itemIdOrSubCategory); 
             }
         } else if (sectionId) {
             displaySectionContent(sectionId);
         } else {
-            displayDashboard(); // Default to dashboard
+            displayDashboard(); 
         }
         const contentWrapper = document.getElementById('contentWrapper');
         if (contentWrapper) contentWrapper.scrollTo(0,0);
     }
 
-    function initializeApp() {
-        Auth.promptLogin(); 
-        currentUser = Auth.getCurrentUser(); 
-        if (!currentUser) return; 
+    async function initializeApp() {
+        currentUser = await Auth.getCurrentUser(); 
+        if (!currentUser) {
+             // getCurrentUser already redirects to login if no session/user.
+             // This is a safeguard or if redirection somehow fails.
+            console.error("Initialization failed: No current user. Redirecting to login.");
+            if (window.location.pathname.includes("index.html")) { // Prevent redirect loops
+                window.location.href = 'login.html';
+            }
+            return;
+        }
 
 
         const displayName = currentUser.fullName || currentUser.email || 'User';
         userNameDisplayHeader.textContent = displayName;
         userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
         footerKbVersion.textContent = kbSystemData.meta.version;
+        currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         const currentYear = new Date().getFullYear();
         document.querySelector('footer span:first-child').innerHTML = `© ${currentYear} InfiniBase.Elmenisy. Version <span id="footerKbVersion">${kbSystemData.meta.version}</span>`;
@@ -2200,7 +2335,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         populateSidebar();
         applyPermanentDarkMode(); 
-        handleNavigation(); 
+        handleNavigation(); // Now safe to call as currentUser is populated
 
         window.addEventListener('hashchange', handleNavigation);
         
@@ -2209,8 +2344,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         });
         closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        confirmLogoutBtn.addEventListener('click', () => {
-            Auth.logout(); 
+        confirmLogoutBtn.addEventListener('click', async () => {
+            await Auth.logout(); 
             logoutConfirmModalOverlay.classList.add('hidden');
         });
         
