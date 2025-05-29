@@ -19,7 +19,7 @@
         }
         body {
             font-family: 'Inter', 'Arial', sans-serif;
-            background: linear-gradient(to right, #1a202c, #2d3748); /* Retaining distinct auth page gradient */
+            background: linear-gradient(to right, #1a202c, #2d3748);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -55,7 +55,7 @@
             transform: translateY(-50%);
             color: var(--text-color-muted);
         }
-        .input-icon input, .input-icon select {
+        .input-icon input { /* Removed select styling as it's not used */
             padding-left: 40px;
             width: 100%;
             padding-top: 0.75rem; padding-bottom: 0.75rem;
@@ -65,28 +65,28 @@
             color: var(--text-color);
             transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .input-icon input::placeholder, .input-icon select {
+        .input-icon input::placeholder {
             color: var(--text-color-muted);
         }
-        .input-icon input:focus, .input-icon select:focus {
+        .input-icon input:focus {
             outline: none;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4); /* primary-color with alpha */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
             border-color: var(--primary-color);
         }
         .signup-button {
             width: 100%;
             padding: 0.75rem;
             background-color: var(--primary-color);
-            color: white; /* Ensuring contrast on primary button */
+            color: white;
             border-radius: 0.375rem;
             font-weight: 600;
             transition: background-color 0.2s;
         }
-        .signup-button:hover {
+        .signup-button:hover:not(:disabled) {
             background-color: var(--primary-color-hover);
         }
         .signup-button:disabled {
-            background-color: #4b5563; /* A muted color for disabled state */
+            background-color: #4b5563; /* Tailwind gray-600 or similar */
             cursor: not-allowed;
             opacity: 0.7;
         }
@@ -97,9 +97,9 @@
             padding: 10px;
             border-radius: 6px;
             margin-bottom: 1rem;
-            text-align: left;
+            text-align: left; /* Retained from original */
         }
-        #successMessage {
+        #successMessageSignup { /* Renamed for clarity if there was a generic one elsewhere */
             color: #34d399; /* Tailwind green-400 */
             background-color: rgba(52, 211, 153, 0.15);
             border: 1px solid rgba(52, 211, 153, 0.3);
@@ -124,6 +124,7 @@
         <p class="mb-6" style="color: var(--text-color-muted);">Join our platform to manage your knowledge base.</p>
         
         <div id="errorMessageSignup" class="hidden"></div>
+        <div id="successMessageSignup" class="hidden"></div>
 
         <div id="signupFormContainer">
             <div class="input-icon">
@@ -143,10 +144,6 @@
                 Already have an account? <a href="login.html" style="color: var(--primary-color);" class="hover:underline">Login here</a>
             </p>
         </div>
-        <div id="successMessage" class="hidden">
-            Sign up successful! 🎉 Redirecting to login page...
-            <br>If not redirected, <a href="login.html" style="color: #6ee7b7;" class="hover:underline font-semibold">click here to log in</a>.
-        </div>
     </div>
 
     <script type="module">
@@ -156,8 +153,9 @@
         const fullNameInput = document.getElementById('fullNameInput');
         const emailInput = document.getElementById('emailInputSignup');
         const passwordInput = document.getElementById('passwordInputSignup');
+        
         const errorDiv = document.getElementById('errorMessageSignup');
-        const successMessageDiv = document.getElementById('successMessage');
+        const successDiv = document.getElementById('successMessageSignup'); // Corrected ID
         const signupFormContainer = document.getElementById('signupFormContainer');
 
         signupBtn.addEventListener('click', async () => {
@@ -165,7 +163,10 @@
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
+            // Hide messages initially
             errorDiv.classList.add('hidden');
+            successDiv.classList.add('hidden');
+            
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...';
 
@@ -202,65 +203,70 @@
                 });
 
                 if (authError) {
-                    if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) { // Supabase might return "Email rate limit exceeded" for frequent signups with same email
-                         errorDiv.textContent = 'This email is already registered. Please login or use a different email.';
-                    } else {
-                        errorDiv.textContent = authError.message || 'An error occurred during sign up.';
+                    // Check for duplicate email specifically
+                    if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) {
+                        errorDiv.textContent = "This email is already registered. Redirecting to login...";
+                        errorDiv.classList.remove('hidden');
+                        successDiv.classList.add('hidden'); // Ensure success message is hidden
+                        signupFormContainer.classList.add('hidden'); // Hide form as we are redirecting
+                        // Button remains disabled as page will redirect
+                        setTimeout(() => {
+                            window.location.href = "login.html";
+                        }, 2500);
+                        return; // Stop further processing
                     }
+                    
+                    // Handle other auth errors
+                    errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
                     errorDiv.classList.remove('hidden');
-                    emailInput.focus();
+                    emailInput.focus(); // Keep focus on email for general errors
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
                 }
 
+                // If auth signup was successful (authData.user exists)
                 if (authData.user) {
-                    // User signed up successfully, now insert into 'users' table
                     const { error: insertError } = await supabase
                         .from('users')
                         .insert({
-                            id: authData.user.id, // Important: use the id from auth.user
+                            id: authData.user.id,
                             full_name: fullName,
                             email: email,
-                            role: 'viewer' // Default role for new sign-ups
+                            role: 'viewer'
                         });
 
                     if (insertError) {
-                        // This is a critical error, user is in auth but not in users table.
-                        // Potentially try to clean up auth user or notify admin.
-                        // For now, show an error. User might need to contact support.
                         console.error("Error inserting user into public.users:", insertError);
-                        errorDiv.textContent = 'Signup partially successful, but profile creation failed. Please contact support.';
+                        errorDiv.textContent = 'Signup partially successful, but profile creation failed. Please contact support. ' + insertError.message;
                         errorDiv.classList.remove('hidden');
                         signupBtn.disabled = false;
                         signupBtn.textContent = 'Sign Up';
-                        // It's a tricky state. Ideally, we'd want a transaction or a way to roll back the auth.signUp.
-                        // Or, rely on a trigger in Supabase to create the user profile.
+                        // Consider logging out the auth user here if the profile creation is critical
+                        // await supabase.auth.signOut(); 
                         return;
                     }
                     
-                    // Signup and profile creation successful
+                    // Full success (auth and profile creation)
                     console.log('Supabase Signup Successful & User Profile Created:', authData.user);
                     
                     signupFormContainer.classList.add('hidden');
-                    errorDiv.classList.add('hidden');
-                    successMessageDiv.classList.remove('hidden');
+                    errorDiv.classList.add('hidden'); // Ensure error message is hidden
 
-                    // Optional: If Supabase email confirmation is enabled, the user won't be able to log in immediately.
-                    // The message should reflect that. For this exercise, assuming email confirmation is off or handled.
-                    if (authData.session) { // User is auto-logged in by Supabase after signup (if email confirmation is off)
-                         // No need to store pending info, login page will handle session.
-                    } else {
-                         successMessageDiv.innerHTML = `Sign up successful! 🎉 Please check your email to confirm your account before logging in. <br>Redirecting to login page...
-                         <br>If not redirected, <a href="login.html" style="color: #6ee7b7;" class="hover:underline font-semibold">click here to log in</a>.`;
-                    }
+                    successDiv.textContent = "Signup successful! Redirecting to login...";
+                    successDiv.classList.remove('hidden');
+                    // Button remains disabled as page will redirect
 
+                    // For users who need email confirmation, Supabase doesn't create a session immediately.
+                    // The redirection to login is appropriate in either case (confirmed or not).
+                    // If email confirmation is enabled, login page will handle "email not confirmed" error from Supabase.
 
                     setTimeout(() => {
                         window.location.href = 'login.html'; 
-                    }, 4000); // Increased timeout for reading confirmation message
+                    }, 2000);
+
                 } else {
-                    // Should not happen if authError is not present, but as a fallback
+                    // Fallback: Should ideally be caught by authError, but good to have.
                     errorDiv.textContent = 'An unexpected issue occurred. Please try again.';
                     errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
