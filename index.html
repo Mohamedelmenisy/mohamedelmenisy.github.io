@@ -1130,69 +1130,60 @@
      * @typedef {object} UserProfile
      * @property {string} id - User UUID from Supabase Auth
      * @property {string} [name] - User's full name (from 'users' table, column 'name')
-     * @property {string} [fullName] - User's full name (potentially from older localStorage or as an alias)
      * @property {string} email - User's email
      * @property {string} role - User's role (e.g., 'viewer', 'admin')
-     * @property {string} lastLogin - ISO string of last login time
+     * @property {string} [lastLogin] - ISO string of last login time (optional in this type, added by client)
      */
 
     // --- Supabase Auth & User Management ---
     const Auth = {
         /** @returns {Promise<UserProfile|null>} */
-        async getCurrentUser() {
-            const storedUserString = localStorage.getItem('infiniBaseUser');
-            if (storedUserString) {
-                try {
-                    /** @type {UserProfile} */
-                    const localUser = JSON.parse(storedUserString);
-                    const { data: { session: quickSession } } = await supabase.auth.getSession();
-                    if (quickSession && quickSession.user && quickSession.user.id === localUser.id) {
-                         return localUser;
-                    }
-                    localStorage.removeItem('infiniBaseUser');
-                } catch(e) {
-                    console.warn("Error parsing stored user, clearing.", e);
-                    localStorage.removeItem('infiniBaseUser');
-                }
-            }
-
+        async getCurrentUserProfile() {
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-            if (sessionError || !session) {
-                console.log('No active Supabase session or error fetching session. Redirecting to login.');
+            if (sessionError) {
+                console.error("Error fetching Supabase session:", sessionError);
+                // Potentially redirect or handle, but for now, assume no session means redirect.
+            }
+
+            if (!session || !session.user) {
+                console.log('No active Supabase session. Redirecting to login.');
+                // Only redirect if on a page that requires auth.
+                // This check prevents redirect loops if login.html itself calls this.
                 if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
                      window.location.href = 'login.html';
                 }
                 return null; 
             }
 
-            const { data: userData, error: userFetchError } = await supabase
-                .from('users')
-                .select('id, name, email, role') // Fetching 'name' column
-                .eq('id', session.user.id)
+            const userId = session.user.id;
+
+            const { data: userDataFromDB, error: dbError } = await supabase
+                .from("users")
+                .select("id, name, email, role") // Ensure these columns exist
+                .eq("id", userId)
                 .single();
 
-            if (userFetchError || !userData) {
-                console.error('Error fetching user data from DB or user not found:', userFetchError);
+            if (dbError || !userDataFromDB) {
+                console.error("Failed to fetch user profile from DB for user ID:", userId, dbError);
+                // This is a critical state: auth session exists, but no profile.
+                // Sign out the user to prevent inconsistent states.
                 await supabase.auth.signOut();
-                localStorage.removeItem('infiniBaseUser'); 
+                localStorage.removeItem("infiniBaseUser"); // Clear any stale local storage
                 if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
-                    window.location.href = 'login.html';
+                    window.location.href = "login.html";
                 }
                 return null;
             }
-
+            
             /** @type {UserProfile} */
-            const userToStore = {
-                id: userData.id,
-                name: userData.name, // Storing the fetched 'name'
-                fullName: userData.name, // Also populating fullName for compatibility
-                email: userData.email,
-                role: userData.role,
-                lastLogin: new Date().toISOString()
+            const comprehensiveUserProfile = {
+                ...userDataFromDB, // Spreads id, name, email, role from DB
+                lastLogin: new Date().toISOString() // Add/update lastLogin time
             };
-            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
-            return userToStore;
+
+            localStorage.setItem("infiniBaseUser", JSON.stringify(comprehensiveUserProfile));
+            return comprehensiveUserProfile;
         },
         async logout() {
             const { error } = await supabase.auth.signOut();
@@ -1212,7 +1203,7 @@
 
     // --- KB Data (Still client-side for this iteration) ---
     let kbSystemData = {
-        meta: { version: '0.6.3-supabase', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.6.4-supabase', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1546,7 +1537,8 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             return;
         }
 
-        const welcomeUser = currentUser.name || currentUser.fullName || currentUser.email || 'Admin';
+        // Admin Dashboard Content
+        const welcomeUser = currentUser.name || currentUser.email || 'Admin'; // Use .name from profile
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
@@ -1783,7 +1775,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
                     <div class="comment-author">
-                        ${escapeHTML(comment.authorName || comment.authorFullName || comment.authorEmail || 'Anonymous')}
+                        ${escapeHTML(comment.authorName || comment.authorEmail || 'Anonymous')}
                         <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
                     </div>
                     <div class="comment-text">${escapeHTML(comment.text)}</div>
@@ -1994,14 +1986,14 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             }
 
             const currentItemData = kbSystemData.sections.find(s => s.id === currentOpenItem.sectionId)?.items?.find(i => i.id === currentOpenItem.itemId);
-            if (currentItemData && currentUser) { // Ensure currentUser is available
+            if (currentItemData && currentUser) { 
                 if (!currentItemData.comments) {
                     currentItemData.comments = [];
                 }
                 currentItemData.comments.push({
                     id: `cmt_${Date.now()}`,
                     authorEmail: currentUser.email,
-                    authorName: currentUser.name || currentUser.fullName, // Use 'name' or 'fullName'
+                    authorName: currentUser.name, // Use .name from profile
                     timestamp: new Date().toISOString()
                 });
                 renderComments(currentItemData, 'commentDisplayAreaForItem'); 
@@ -2186,7 +2178,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
             itemData = {
                 ...commonData,
                 id: `${sectionId}_item_${Date.now()}`,
-                createdBy: currentUser.email, // Use email from the authenticated currentUser object
+                createdBy: currentUser.email, 
                 createdAt: new Date().toISOString(),
                 views: 0,
                 comments: []
@@ -2286,6 +2278,10 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     function handleNavigation() {
         if (!currentUser) { 
             console.log("Current user not yet loaded, deferring navigation.");
+            // initializeApp will call getCurrentUserProfile which redirects if needed.
+            // If initializeApp hasn't finished, currentUser will be null.
+            // We can add a small delay or rely on initializeApp to call handleNavigation again.
+            // For now, if initializeApp is in progress, it will call this again once currentUser is set.
             return;
         }
         const hash = window.location.hash.substring(1) || 'home';
@@ -2297,7 +2293,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
         if (itemDetailViewPlaceholder) itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         if (sectionId === 'home') {
-            displayDashboard();
+            displayDashboard(); // This function now handles role-based view
         } else if (itemIdOrSubCategory && sectionId) { 
             const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
             const itemExists = sectionData?.items?.some(i => i.id === itemIdOrSubCategory);
@@ -2316,18 +2312,25 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
     }
 
     async function initializeApp() {
-        currentUser = await Auth.getCurrentUser(); 
+        currentUser = await Auth.getCurrentUserProfile(); 
+        
         if (!currentUser) {
-            console.error("Initialization failed: No current user. Redirecting to login (from initializeApp).");
-            // Auth.getCurrentUser already handles redirection, but this is a fallback.
-            // Only redirect if we are on a page that requires auth (e.g., index.html)
+            // Auth.getCurrentUserProfile() handles redirection if no valid session/profile.
+            // This is a fallback or if the page isn't index.html but still tries to init.
+            console.error("Initialization failed: No current user profile returned from Auth.getCurrentUserProfile().");
+            // Avoid redirecting if already on login page or if not an auth-required page.
             if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
-                window.location.href = 'login.html';
+                 // It's possible Auth.getCurrentUserProfile already redirected.
+                 // If not, this is a last resort.
+                 if (!window.location.href.includes("login.html")) {
+                    window.location.href = 'login.html';
+                 }
             }
-            return;
+            return; // Stop further initialization
         }
 
-        const displayName = currentUser.name || currentUser.fullName || currentUser.email || 'User';
+        // User is authenticated, and profile is fetched
+        const displayName = currentUser.name || currentUser.email || 'User'; // Prioritize 'name'
         userNameDisplayHeader.textContent = displayName;
         userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
         footerKbVersion.textContent = kbSystemData.meta.version;
@@ -2338,7 +2341,7 @@ ${generateMermaidFromJSON(compensationFlowJsonData)}
 
         populateSidebar();
         applyPermanentDarkMode(); 
-        handleNavigation(); 
+        handleNavigation(); // Safe to call now as currentUser is populated
 
         window.addEventListener('hashchange', handleNavigation);
         
