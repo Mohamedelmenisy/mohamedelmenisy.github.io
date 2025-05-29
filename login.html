@@ -136,7 +136,7 @@
             </div>
             <div class="mb-4 input-icon">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="passwordInput" placeholder="Password (e.g., adminpass)" required>
+                <input type="password" id="passwordInput" placeholder="Password" required>
             </div>
             <div class="flex justify-between items-center mb-6">
                 <label class="flex items-center text-sm" style="color: var(--text-color-muted);">
@@ -153,6 +153,15 @@
     </div>
 
     <script>
+        // Simulate a pre-existing user table in Supabase
+        const preExistingUsers = [
+            { email: 'admin@example.com', fullName: 'InfiniBase Admin', role: 'admin', password: 'adminpass' },
+            { email: 'viewer@example.com', fullName: 'Regular Viewer', role: 'viewer', password: 'userpass' },
+            { email: 'nada.mahmoud@thechefz.co', fullName: 'Nada Mahmoud', role: 'admin', password: 'password123' },
+            { email: 'm.elsayed@thechefz.co', fullName: 'Mohamed Elmenisy', role: 'viewer', password: 'password456' },
+            // Add more users as needed for testing
+        ];
+
         document.addEventListener('DOMContentLoaded', () => {
             const storedUserString = localStorage.getItem('infiniBaseUser');
             if (storedUserString) {
@@ -165,7 +174,7 @@
 
                     document.getElementById('forceLogoutBtn').addEventListener('click', () => {
                         localStorage.removeItem('infiniBaseUser');
-                        localStorage.removeItem('justLoggedIn');
+                        localStorage.removeItem('justLoggedIn'); // Clear this flag too
                         window.location.reload();
                     });
                 } catch (e) {
@@ -179,7 +188,7 @@
         document.getElementById('loginBtn').addEventListener('click', () => {
             const emailInput = document.getElementById('emailInput');
             const passwordInput = document.getElementById('passwordInput');
-            const email = emailInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
             const password = passwordInput.value; 
 
             const errorMessageDiv = document.getElementById('errorMessage');
@@ -191,7 +200,7 @@
                 emailInput.focus();
                 return;
             }
-             if (!/^\S+@\S+\.\S+$/.test(email)) {
+            if (!/^\S+@\S+\.\S+$/.test(email)) {
                 errorMessageDiv.textContent = 'Please enter a valid email address.';
                 errorMessageDiv.classList.remove('hidden');
                 emailInput.focus();
@@ -204,61 +213,63 @@
                 return;
             }
 
+            let loggedInUser = null;
 
-            let fullNameFromSignup = localStorage.getItem('pendingSignupFullName');
-            let emailFromSignup = localStorage.getItem('pendingSignupEmail');
-            let roleFromSignup = localStorage.getItem('pendingSignupRole');
+            // 1. Check against pre-existing users (simulating Supabase lookup)
+            const foundUserInDb = preExistingUsers.find(u => u.email.toLowerCase() === email && u.password === password);
 
-            let userFullName;
-            let userRole;
-
-            if (emailFromSignup && emailFromSignup.toLowerCase() === email.toLowerCase()) {
-                userFullName = fullNameFromSignup;
-                userRole = roleFromSignup;
-                localStorage.removeItem('pendingSignupEmail');
-                localStorage.removeItem('pendingSignupFullName');
-                localStorage.removeItem('pendingSignupRole');
+            if (foundUserInDb) {
+                loggedInUser = {
+                    fullName: foundUserInDb.fullName,
+                    email: foundUserInDb.email,
+                    role: foundUserInDb.role,
+                };
             } else {
-                userFullName = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                if (password.toLowerCase() === 'adminpass' || email.toLowerCase().includes('admin@example.com')) {
-                    userRole = 'admin';
-                     if (email.toLowerCase().includes('admin@example.com') && password.toLowerCase() !== 'adminpass') {
-                        errorMessageDiv.textContent = 'Invalid credentials for admin user.';
-                        errorMessageDiv.classList.remove('hidden');
-                        passwordInput.focus();
-                        return;
-                     }
-                } else if (password.toLowerCase() === 'userpass' || email.toLowerCase().includes('user@example.com')) {
-                    userRole = 'viewer';
-                     if (email.toLowerCase().includes('user@example.com') && password.toLowerCase() !== 'userpass') {
-                        errorMessageDiv.textContent = 'Invalid credentials for user.';
-                        errorMessageDiv.classList.remove('hidden');
-                        passwordInput.focus();
-                        return;
-                     }
-                }
-                else { 
-                    userRole = 'viewer'; 
+                // 2. Handle users who just signed up (not yet in preExistingUsers conceptually)
+                // or generic test accounts if not found in preExistingUsers
+                const pendingSignupEmail = localStorage.getItem('pendingSignupEmail');
+                const pendingSignupFullName = localStorage.getItem('pendingSignupFullName');
+
+                if (pendingSignupEmail && pendingSignupEmail.toLowerCase() === email) {
+                    // User just signed up. Assign default 'viewer' role as they wouldn't be in preExistingUsers with a role yet.
+                    // We assume the password they just entered is correct for this new account.
+                    loggedInUser = {
+                        fullName: pendingSignupFullName,
+                        email: email,
+                        role: 'viewer', // Default role for new signups not in preExistingUsers
+                    };
+                } else {
+                    // Fallback for generic test accounts if not found in preExistingUsers and not a pending signup
+                    // This part might be redundant if all test users are in preExistingUsers
+                    if ((email === 'admin@example.com' && password === 'adminpass')) {
+                         loggedInUser = { fullName: 'Admin User (Generic)', email: email, role: 'admin' };
+                    } else if ((email === 'user@example.com' && password === 'userpass')) {
+                         loggedInUser = { fullName: 'Viewer User (Generic)', email: email, role: 'viewer' };
+                    }
                 }
             }
             
-            const userToStore = {
-                fullName: userFullName,
-                email: email,
-                role: userRole,
-                lastLogin: new Date().toISOString()
-            };
+            if (loggedInUser) {
+                loggedInUser.lastLogin = new Date().toISOString();
+                localStorage.setItem('infiniBaseUser', JSON.stringify(loggedInUser));
+                localStorage.setItem('justLoggedIn', 'true'); // Flag for index.html to show welcome
 
-            localStorage.setItem('infiniBaseUser', JSON.stringify(userToStore));
-            localStorage.setItem('justLoggedIn', 'true'); 
+                // Clear pending signup info as it's now used or irrelevant
+                localStorage.removeItem('pendingSignupEmail');
+                localStorage.removeItem('pendingSignupFullName');
 
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
-            loginBtn.disabled = true;
+                const loginBtn = document.getElementById('loginBtn');
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logging In...';
+                loginBtn.disabled = true;
 
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1000);
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            } else {
+                errorMessageDiv.textContent = 'Invalid email or password.';
+                errorMessageDiv.classList.remove('hidden');
+                passwordInput.focus();
+            }
         });
 
         document.getElementById('passwordInput').addEventListener('keypress', function(event) {
