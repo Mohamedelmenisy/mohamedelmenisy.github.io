@@ -55,7 +55,7 @@
             transform: translateY(-50%);
             color: var(--text-color-muted);
         }
-        .input-icon input { /* Removed select styling as it's not used */
+        .input-icon input {
             padding-left: 40px;
             width: 100%;
             padding-top: 0.75rem; padding-bottom: 0.75rem;
@@ -86,21 +86,21 @@
             background-color: var(--primary-color-hover);
         }
         .signup-button:disabled {
-            background-color: #4b5563; /* Tailwind gray-600 or similar */
+            background-color: #4b5563; 
             cursor: not-allowed;
             opacity: 0.7;
         }
         #errorMessageSignup {
-            color: #f87171; /* Tailwind red-400 */
+            color: #f87171; 
             background-color: rgba(248, 113, 113, 0.1);
             border: 1px solid rgba(248, 113, 113, 0.3);
             padding: 10px;
             border-radius: 6px;
             margin-bottom: 1rem;
-            text-align: left; /* Retained from original */
+            text-align: left;
         }
-        #successMessageSignup { /* Renamed for clarity if there was a generic one elsewhere */
-            color: #34d399; /* Tailwind green-400 */
+        #successMessageSignup { 
+            color: #34d399; 
             background-color: rgba(52, 211, 153, 0.15);
             border: 1px solid rgba(52, 211, 153, 0.3);
             padding: 12px 15px;
@@ -155,7 +155,7 @@
         const passwordInput = document.getElementById('passwordInputSignup');
         
         const errorDiv = document.getElementById('errorMessageSignup');
-        const successDiv = document.getElementById('successMessageSignup'); // Corrected ID
+        const successDiv = document.getElementById('successMessageSignup');
         const signupFormContainer = document.getElementById('signupFormContainer');
 
         signupBtn.addEventListener('click', async () => {
@@ -163,14 +163,12 @@
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
-            // Hide messages initially
             errorDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
             
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...';
 
-            // Client-side validation
             if (!fullName) {
                 errorDiv.textContent = 'Please enter your full name.';
                 errorDiv.classList.remove('hidden');
@@ -197,84 +195,102 @@
             }
 
             try {
-                const { data: authData, error: authError } = await supabase.auth.signUp({
+                // Sign up the user with Supabase Auth
+                // Pass fullName to options.data to store it in raw_user_meta_data
+                // This can be useful for display purposes or if you have triggers.
+                const { data: authResponse, error: authError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
+                    options: {
+                        data: { 
+                            full_name_meta: fullName // Stored in raw_user_meta_data. Use a distinct key.
+                                                 // Supabase Auth itself doesn't have a direct "display_name" top-level field.
+                                                 // The primary profile data (like full_name for your app) belongs in your 'users' table.
+                        }
+                    }
                 });
 
                 if (authError) {
-                    // Check for duplicate email specifically
                     if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) {
                         errorDiv.textContent = "This email is already registered. Redirecting to login...";
                         errorDiv.classList.remove('hidden');
-                        successDiv.classList.add('hidden'); // Ensure success message is hidden
-                        signupFormContainer.classList.add('hidden'); // Hide form as we are redirecting
-                        // Button remains disabled as page will redirect
+                        successDiv.classList.add('hidden'); 
+                        signupFormContainer.classList.add('hidden'); 
                         setTimeout(() => {
                             window.location.href = "login.html";
                         }, 2500);
-                        return; // Stop further processing
+                        return; 
                     }
                     
-                    // Handle other auth errors
                     errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
                     errorDiv.classList.remove('hidden');
-                    emailInput.focus(); // Keep focus on email for general errors
+                    emailInput.focus(); 
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
                 }
 
-                // If auth signup was successful (authData.user exists)
-                if (authData.user) {
+                // If auth signup was successful (authResponse.user exists)
+                if (authResponse.user) {
+                    const user = authResponse.user; // Convenience variable
+
+                    // Now, insert into your 'public.users' table
+                    // CRITICAL: Use user.id from the authResponse for the 'id' column in 'public.users'
+                    // This 'id' will be equal to auth.uid() for the currently signed-up user.
+                    // Ensure column names here (id, full_name, email, role) match your 'public.users' table schema.
                     const { error: insertError } = await supabase
-                        .from('users')
+                        .from('users') // Your table name
                         .insert({
-                            id: authData.user.id,
-                            full_name: fullName,
-                            email: email,
-                            role: 'viewer'
+                            id: user.id,          // This is the key for RLS (auth.uid() = id)
+                            full_name: fullName,  // Or 'name' if your column is named 'name'
+                            email: user.email,    // Use email from the authenticated user object
+                            role: 'viewer'        // Default role
+                            // Do not include 'is_admin' unless you have that column and intend to set it here.
                         });
 
                     if (insertError) {
                         console.error("Error inserting user into public.users:", insertError);
-                        errorDiv.textContent = 'Signup partially successful, but profile creation failed. Please contact support. ' + insertError.message;
+                        // This is a critical error. The user is in auth.users but not in public.users.
+                        // You might want to inform the user and potentially log this for manual correction.
+                        // For now, show a detailed error.
+                        errorDiv.textContent = `Signup partially successful (auth created), but profile creation failed: ${insertError.message}. Please contact support.`;
                         errorDiv.classList.remove('hidden');
                         signupBtn.disabled = false;
                         signupBtn.textContent = 'Sign Up';
-                        // Consider logging out the auth user here if the profile creation is critical
-                        // await supabase.auth.signOut(); 
+                        
+                        // Optional: Attempt to sign out the user if profile creation is absolutely mandatory
+                        // for app functioning, to avoid an inconsistent state.
+                        // await supabase.auth.signOut();
                         return;
                     }
                     
-                    // Full success (auth and profile creation)
-                    console.log('Supabase Signup Successful & User Profile Created:', authData.user);
+                    // Full success: user in auth.users and public.users
+                    console.log('Supabase Signup Successful & User Profile Created:', user);
                     
                     signupFormContainer.classList.add('hidden');
-                    errorDiv.classList.add('hidden'); // Ensure error message is hidden
+                    errorDiv.classList.add('hidden'); 
 
                     successDiv.textContent = "Signup successful! Redirecting to login...";
                     successDiv.classList.remove('hidden');
-                    // Button remains disabled as page will redirect
-
-                    // For users who need email confirmation, Supabase doesn't create a session immediately.
-                    // The redirection to login is appropriate in either case (confirmed or not).
-                    // If email confirmation is enabled, login page will handle "email not confirmed" error from Supabase.
-
+                    
+                    // If email confirmation is enabled in Supabase, user.identities[0].state might be 'pending_confirmation'
+                    // The login page will handle "Email not confirmed" error from Supabase if they try to log in too soon.
+                    // For this flow, we just redirect to login after successful signup & profile creation.
                     setTimeout(() => {
                         window.location.href = 'login.html'; 
                     }, 2000);
 
                 } else {
-                    // Fallback: Should ideally be caught by authError, but good to have.
-                    errorDiv.textContent = 'An unexpected issue occurred. Please try again.';
+                    // This case should ideally not be reached if authError is null.
+                    // It indicates an unexpected state in the authResponse.
+                    errorDiv.textContent = 'An unexpected issue occurred with user registration. Please try again.';
                     errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                 }
 
             } catch (e) {
-                console.error("Catch block error during signup:", e);
+                console.error("Catch block error during signup process:", e);
                 errorDiv.textContent = 'A system error occurred. Please try again later.';
                 errorDiv.classList.remove('hidden');
                 signupBtn.disabled = false;
