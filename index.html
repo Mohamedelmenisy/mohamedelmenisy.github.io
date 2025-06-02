@@ -757,22 +757,31 @@
             font-size: 11px !important;
         }
         
-        /* Styling for clickable buttons inside Mermaid nodes */
+        /* Styling for clickable buttons inside Mermaid nodes (OLD - kept for reference if used elsewhere) */
         .mermaid-diagram-container .mermaid-action-btn {
-            /* These are HTML elements, so standard CSS applies */
             background-color: var(--primary-color-hover); 
             color: white; 
             border:none; 
-            padding: 4px 8px; /* A bit more padding */
-            font-size: 11px; /* Consistent small size */
+            padding: 4px 8px; 
+            font-size: 11px; 
             border-radius:3px; 
             cursor:pointer; 
-            margin-top:4px; /* Space from text above */
-            display: inline-block; /* Important for layout */
+            margin-top:4px; 
+            display: inline-block;
         }
         .mermaid-diagram-container .mermaid-action-btn:hover { 
-            background-color: var(--primary-color); /* Lighter on hover */
+            background-color: var(--primary-color); 
         }
+        /* NEW: Styling for text that indicates an action when using click directive */
+        .mermaid-diagram-container .mermaid-action-text {
+            color: var(--primary-color); /* Link color */
+            text-decoration: underline;
+            font-weight: 500; /* Make it stand out a bit */
+            display: inline-block; /* If needed for layout */
+            margin-top: 4px; /* Consistent with old button margin */
+            font-size: 11px; /* Consistent small size */
+        }
+
         /* Links inside nodes */
         .mermaid-diagram-container a { color: var(--primary-color); fill: var(--primary-color) !important; } 
         .mermaid-diagram-container a text { color: var(--primary-color) !important; fill: var(--primary-color) !important; }
@@ -1217,14 +1226,10 @@
         theme: 'dark', 
         fontFamily: 'Inter, sans-serif',
         flowchart: { 
-            htmlLabels: true, 
+            htmlLabels: true, // Still useful for <br> and <span class='scriptText'>
             useMaxWidth: true,
-            // Default node padding can be set here if desired for flowchart type,
-            // but individual node padding is better controlled by CSS if complex.
-            // nodeSpacing: 50, // Example: space between nodes
-            // rankSpacing: 50, // Example: space between ranks (rows)
         },
-        themeVariables: { // These are general hints; CSS is more powerful
+        themeVariables: { 
             fontSize: '13px', 
             background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim(), 
             primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
@@ -1308,7 +1313,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.9.1-mermaid-fix', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.9.2-mermaid-click-directive', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1351,7 +1356,7 @@
     S1["Acknowledge & Listen to Customer <br/><span class='scriptText'>'Hello, ... How can I help?'</span>"]:::process
     D1{"Is complaint about a delay?"}:::decision
     
-    S2_Other["Handle Other Issue (Non-Delay) <br/><span class='scriptText'>'Could you provide more details...?'</span><br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"view_sop\",\"other_issues_sop\")'>View Other Issues SOP</button>"]:::process
+    S2_Other["Handle Other Issue (Non-Delay) <br/><span class='scriptText'>'Could you provide more details...?'</span><br/><span class='mermaid-action-text'>View Other Issues SOP</span>"]:::process
     S2_ConcludeOther["Conclude Call for Other Issue <br/><span class='scriptText'>'Anything else...? Thank you!'</span>"]:::process
     EndOther((End Interaction)):::startEnd
 
@@ -1366,19 +1371,19 @@
 
     %% Fast Order Branch
     Fast_D_DelayDur{"FAST Order: Delay Duration Post-15min?"}:::decision
-    Fast_Comp1["Offer: Delivery Fees Refund <br/>(16-30 min total)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"delivery_fees_fast\")'>Apply Comp</button>"]:::actionNode
-    Fast_Comp2["Offer: Delivery + 25% Food Refund <br/>(31-45 min total)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"delivery_25_food_fast\")'>Apply Comp</button>"]:::actionNode
-    Fast_Comp3["Offer: Delivery + 50% Food Refund <br/>(46-60 min total)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"delivery_50_food_fast\")'>Apply Comp</button>"]:::actionNode
-    Fast_Comp4["Offer: Full Order Refund <br/>(>60 min total)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"full_refund_fast\")'>Apply Comp</button>"]:::actionNode
+    Fast_Comp1["Offer: Delivery Fees Refund <br/>(16-30 min total)<br/><span class='mermaid-action-text'>Apply Comp</span>"]:::actionNode
+    Fast_Comp2["Offer: Delivery + 25% Food Refund <br/>(31-45 min total)<br/><span class='mermaid-action-text'>Apply Comp</span>"]:::actionNode
+    Fast_Comp3["Offer: Delivery + 50% Food Refund <br/>(46-60 min total)<br/><span class='mermaid-action-text'>Apply Comp</span>"]:::actionNode
+    Fast_Comp4["Offer: Full Order Refund <br/>(>60 min total)<br/><span class='mermaid-action-text'>Apply Comp</span>"]:::actionNode
 
     %% Scheduled Order Branch
     Sched_D_DriverLeft{"SCHEDULED Order: Driver Left Store?"}:::decision
     Sched_NotLeft["Inform: Driver not left. Expedite Prep. Add Note.<br/><span class='scriptText'>'Driver hasn't left, expediting...'</span>"]:::process
     Sched_Left_D_DelayDur{"Driver Left: Delay Duration Post-15min?"}:::decision
-    Sched_Comp1["Offer: 50-100% Total Order Value <br/>(31-60 min total, Agent Discretion)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"50_100_total_sched\")'>Apply Comp (Supervisor?)</button>"]:::actionNode
-    Sched_Comp2["Offer: Full Order Value + 50 SAR Goodwill <br/>(>60 min total)<br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"offer_compensation\",\"full_50sar_sched\")'>Apply Comp + Goodwill</button>"]:::actionNode
+    Sched_Comp1["Offer: 50-100% Total Order Value <br/>(31-60 min total, Agent Discretion)<br/><span class='mermaid-action-text'>Apply Comp (Supervisor?)</span>"]:::actionNode
+    Sched_Comp2["Offer: Full Order Value + 50 SAR Goodwill <br/>(>60 min total)<br/><span class='mermaid-action-text'>Apply Comp + Goodwill</span>"]:::actionNode
 
-    S5_Responsibility["INTERNAL: Determine Delay Responsibility <br/>(Store/Driver/Company) & Apply Deductions <br/><button class='mermaid-action-btn' onclick='handleMermaidAction(\"internal_sop\",\"deduction_policy\")'>View Deduction Policy</button>"]:::process
+    S5_Responsibility["INTERNAL: Determine Delay Responsibility <br/>(Store/Driver/Company) & Apply Deductions <br/><span class='mermaid-action-text'>View Deduction Policy</span>"]:::process
     
     D4_CustReqComp{"Cust. Explicitly Requests Comp <br/>OR Proactive Offer Due?"}:::decision
     S6_OfferComp["Inform Eligible Compensation Clearly <br/><span class='scriptText'>'Based on the situation... we offer [Comp Details]...'</span>"]:::process
@@ -1413,7 +1418,17 @@
     D4_CustReqComp -- Yes/Proactive --> S6_OfferComp; S6_OfferComp --> S7_ConcludeCall
     D4_CustReqComp -- No --> S6_NoReqComp; S6_NoReqComp --> S7_ConcludeCall
     
-    S7_ConcludeCall --> LogDetails; LogDetails --> End`,
+    S7_ConcludeCall --> LogDetails; LogDetails --> End
+
+    %% Click Actions
+    click S2_Other call handleMermaidAction("view_sop","other_issues_sop") "View SOP for other issues"
+    click Fast_Comp1 call handleMermaidAction("offer_compensation","delivery_fees_fast") "Apply Delivery Fees Compensation"
+    click Fast_Comp2 call handleMermaidAction("offer_compensation","delivery_25_food_fast") "Apply Delivery + 25% Food Compensation"
+    click Fast_Comp3 call handleMermaidAction("offer_compensation","delivery_50_food_fast") "Apply Delivery + 50% Food Compensation"
+    click Fast_Comp4 call handleMermaidAction("offer_compensation","full_refund_fast") "Apply Full Refund Compensation"
+    click Sched_Comp1 call handleMermaidAction("offer_compensation","50_100_total_sched") "Apply 50-100% Total Order Compensation"
+    click Sched_Comp2 call handleMermaidAction("offer_compensation","full_50sar_sched") "Apply Full Order + 50 SAR Goodwill Compensation"
+    click S5_Responsibility call handleMermaidAction("internal_sop","deduction_policy") "View Deduction Policy"`,
                         importantNotesHTML: `<ul>
                                 <li>Always determine the responsibility for the delay (Store, Driver, or Company) to apply any necessary deductions. This is critical for internal review.</li>
                                 <li>The maximum compensation for delivery fees is typically capped (e.g., $5 or local equivalent) if the actual delivery fee is less than this amount. Refer to the latest compensation matrix for exact figures.</li>
@@ -1638,8 +1653,8 @@
         if (activeLink) activeLink.classList.add('active');
     }
     
-    window.handleMermaidAction = function(actionType, data) {
-        console.log("Mermaid Action Triggered:", actionType, data);
+    window.handleMermaidAction = function(actionType, data) { // Make sure it's globally accessible
+        console.log("Mermaid Action Triggered via click directive:", actionType, data);
         let message = `Action: ${actionType}`;
         if (data) message += `\nData: ${data}`;
         
@@ -1665,11 +1680,10 @@
         elementToRenderIn.innerHTML = ''; 
         const uniqueDiagramId = `mermaid-${itemId}-${Date.now()}`; 
 
-        const pre = document.createElement('pre');
-        pre.id = uniqueDiagramId; 
-        pre.className = 'mermaid';
-        pre.textContent = mermaidDefinition;
-        // Do not append pre to elementToRenderIn if using mermaid.render directly to get SVG string
+        // const pre = document.createElement('pre'); // Not needed if using mermaid.render to string
+        // pre.id = uniqueDiagramId; 
+        // pre.className = 'mermaid';
+        // pre.textContent = mermaidDefinition;
         
         try {
             const hiddenAncestors = [];
@@ -1682,10 +1696,9 @@
                 parent = parent.parentElement;
             }
 
-            // Using mermaid.render to get SVG string and then inject it
             const {svg, bindFunctions} = await mermaid.render(uniqueDiagramId + "_svg", mermaidDefinition);
             elementToRenderIn.innerHTML = svg; 
-            if (bindFunctions && elementToRenderIn.firstChild) { // elementToRenderIn.firstChild should be the <svg> element
+            if (bindFunctions && elementToRenderIn.firstChild) { 
                  bindFunctions(elementToRenderIn.firstChild); 
             }
             elementToRenderIn.dataset.mermaidRendered = 'true';
@@ -1694,7 +1707,6 @@
 
         } catch (error) {
             console.error("Mermaid rendering error for ID", uniqueDiagramId, ":", error);
-            // Display error and the problematic definition for debugging
             elementToRenderIn.innerHTML = `
                 <p style="color:red; padding:10px; border:1px solid red; border-radius: var(--border-radius);">
                     <strong><i class="fas fa-exclamation-triangle"></i> Error Rendering Diagram</strong><br>
@@ -2242,9 +2254,8 @@
                     if (item.type === 'interactive_flow' && document.getElementById('editFlowDiagramSection')) {
                         document.getElementById('editFlowDiagramSection').classList.remove('hidden');
                         const mermaidTextarea = document.getElementById('mermaidGraphEditTextarea');
-                        mermaidTextarea.value = item.mermaidGraph; // Ensure it's up-to-date
+                        mermaidTextarea.value = item.mermaidGraph; 
                         mermaidTextarea.focus();
-                        // Hide the main diagram view while editing
                         const mainDiagramContainer = document.getElementById(`mermaidDiagramContainer_${itemId}`);
                         if(mainDiagramContainer) mainDiagramContainer.classList.add('hidden');
                     } else {
@@ -2315,12 +2326,12 @@
         if (saveMermaidBtn) {
             saveMermaidBtn.addEventListener('click', async () => {
                 const newMermaidGraph = document.getElementById('mermaidGraphEditTextarea').value;
-                itemData.mermaidGraph = newMermaidGraph; // Update in-memory data
+                itemData.mermaidGraph = newMermaidGraph; 
                 showToast('Mermaid diagram updated! Re-rendering...', 'success');
                 document.getElementById('editFlowDiagramSection').classList.add('hidden');
                 const diagramContainer = document.getElementById(`mermaidDiagramContainer_${itemId}`);
                 if (diagramContainer) {
-                    diagramContainer.classList.remove('hidden'); // Show main diagram container again
+                    diagramContainer.classList.remove('hidden'); 
                      await renderMermaidDiagramInElement(diagramContainer, newMermaidGraph, itemId);
                 }
             });
@@ -2331,7 +2342,7 @@
                 document.getElementById('mermaidGraphEditTextarea').value = itemData.mermaidGraph; 
                 document.getElementById('editFlowDiagramSection').classList.add('hidden');
                 const diagramContainer = document.getElementById(`mermaidDiagramContainer_${itemId}`);
-                if (diagramContainer) diagramContainer.classList.remove('hidden'); // Show main diagram container again
+                if (diagramContainer) diagramContainer.classList.remove('hidden'); 
             });
         }
     }
@@ -2414,7 +2425,7 @@
             
             if (itemToEdit.type === 'interactive_flow' && itemToEdit.mermaidGraph) {
                 mermaidGraphContentTextarea.value = itemToEdit.mermaidGraph;
-            } else if (itemToEdit.mermaidGraph) { // Also load if present for other types
+            } else if (itemToEdit.mermaidGraph) { 
                  mermaidGraphContentTextarea.value = itemToEdit.mermaidGraph;
             }
             
@@ -2455,13 +2466,13 @@
         const type = e.target.value;
         contentUrlContainer.classList.add('hidden');
         contentDetailContainer.classList.remove('hidden'); 
-        mermaidGraphContainer.classList.add('hidden'); // Hide by default
+        mermaidGraphContainer.classList.add('hidden'); 
 
         if (type === 'form_sheet' || type === 'design') {
             contentUrlContainer.classList.remove('hidden');
             contentDetailContainer.classList.add('hidden'); 
         } else if (type === 'interactive_flow') {
-            mermaidGraphContainer.classList.remove('hidden'); // Show for interactive flow
+            mermaidGraphContainer.classList.remove('hidden'); 
             contentDetailLabel.textContent = 'Introduction / Description (Optional)'; 
         } else if (type === 'case') {
             contentDetailLabel.textContent = 'Case Details / Resolution Steps';
@@ -2471,7 +2482,7 @@
             contentDetailLabel.textContent = 'Guide Content';
         } else if (type === 'policy') {
             contentDetailLabel.textContent = 'Policy Details';
-            mermaidGraphContainer.classList.remove('hidden'); // Also show for policy as it might have a diagram
+            mermaidGraphContainer.classList.remove('hidden'); 
         }
     });
 
@@ -2524,25 +2535,22 @@
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
         }
         
-        // Handle mermaidGraph for relevant types
         if (itemData.type === 'interactive_flow' || itemData.type === 'policy') {
-            itemData.mermaidGraph = mermaidGraphContentTextarea.value.trim() || null; // Store null if empty
+            itemData.mermaidGraph = mermaidGraphContentTextarea.value.trim() || null; 
              if (itemData.type === 'interactive_flow' && !itemData.mermaidGraph) { 
                 showToast('Mermaid graph definition is required for Interactive Flow.', 'error'); return; 
             }
         } else {
-            delete itemData.mermaidGraph; // Remove if not relevant type
+            delete itemData.mermaidGraph; 
         }
 
-        // Handle main content (Quill or URL)
         if (itemData.type === 'case') {
             itemData.resolution_steps = mainQuillEditor.root.innerHTML;
             itemData.status = itemData.status || 'New'; 
-            delete itemData.content; // Clear content if it's a case
+            delete itemData.content; 
         } else if (['article', 'guide', 'interactive_flow', 'policy'].includes(itemData.type)) {
-            // For interactive_flow and policy, quill content is intro/description
             itemData.content = mainQuillEditor.root.innerHTML;
-            delete itemData.resolution_steps; // Clear resolution_steps if not a case
+            delete itemData.resolution_steps; 
         } else if (itemData.type === 'form_sheet' || itemData.type === 'design') {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
@@ -2574,8 +2582,7 @@
         if (editingId && currentOpenItem && currentOpenItem.itemId === editingId) {
             displayItemDetail(currentOpenItem.sectionId, currentOpenItem.itemId); 
         } else {
-            window.location.hash = `#${sectionId}`; // Navigate to section list
-            // handleNavigation(); // Not needed if hashchange listener handles it
+            window.location.hash = `#${sectionId}`; 
         }
     });
 
