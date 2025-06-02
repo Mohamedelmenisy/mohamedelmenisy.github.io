@@ -13,6 +13,8 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 
     <style>
         :root {
@@ -62,6 +64,10 @@
             margin: 0;
             line-height: 1.6;
             font-size: 16px;
+        }
+
+        a { /* Apply to all links */
+            text-decoration-skip-ink: none;
         }
 
         .container-fluid {
@@ -982,7 +988,6 @@
         .step-body {
             padding: 0 1.5rem 1.5rem 1.5rem; /* No top padding, handled by header bottom padding */
             display: none; /* Collapsed by default */
-            /* border-top: 1px solid var(--border-color); Re-evaluating this, header has bottom border */
             background-color: var(--bg-color); /* Slightly darker for content area */
         }
         .step-card.expanded > .step-body { 
@@ -990,23 +995,26 @@
             border-top: 1px solid var(--border-color-darker); /* Add separator only when expanded */
         }
         
-        .step-body .kb-content { padding-top: 1rem; } /* Add some space if using kb-content inside */
+        .step-body .kb-content { padding-top: 1rem; } 
         .step-body p, .step-body ul, .step-body ol {
             margin-bottom: 0.75em;
             color: var(--text-color-subtle);
         }
         .step-body strong { color: var(--text-color); }
-        .step-body ul, .step-body ol { padding-left: 25px; } /* Increased padding for LTR */
+        .step-body ul, .step-body ol { padding-left: 25px; } 
         
+        /* Updated .step-link style per request */
         .step-link {
-            color: #3b82f6; /* Tailwind blue-500 */
-            font-weight: 500;
+            color: #60a5fa; /* لون أزرق جميل */
+            font-weight: 500; /* Retained for consistency, can be removed if not desired */
             text-decoration: none;
-            border-bottom: 1px dashed #3b82f6;
+            border-bottom: 1px dotted #60a5fa;
+            text-decoration-skip-ink: none; /* Added as per request */
         }
         .step-link:hover {
-            color: #60a5fa; /* Tailwind blue-400 */
-            border-bottom-style: solid;
+            text-decoration: underline; /* Standard underline on hover */
+            border-bottom-style: solid; /* Retained for emphasis, can be changed to 'none' if only underline is desired */
+            color: #7dd3fc; /* Slightly lighter blue on hover */
         }
         
         .important-notes-card {
@@ -1088,6 +1096,132 @@
             display: flex;
             justify-content: flex-end;
             gap: 0.75rem;
+        }
+
+        /* Print Styles */
+        @media print {
+            body, .container-fluid {
+                margin: 0;
+                padding: 0;
+                background-color: white !important;
+                color: black !important;
+                font-size: 12pt; /* Adjust base font size for print */
+            }
+            .sidebar, .content-header, .sidebar-footer, footer,
+            .mobile-sidebar-toggle, #toastContainer,
+            .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn), /* Keep Print/PDF button placeholders if needed, or hide all */
+            .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"], /* More specific hiding */
+            .flow-controls, .flow-title-bar #flowTopActions,
+            .item-feedback-section, .comments-section,
+            .modal-overlay,
+            .copy-script-btn,
+            .dashboard-overview-container,
+            .search-container, .user-profile,
+            .mark-step-done-btn, .toggle-step-details-btn,
+            #openAddContentBtnInSection
+            {
+                display: none !important;
+            }
+
+            .content-wrapper {
+                margin-left: 0 !important;
+                padding: 1cm !important; /* A4-like margins */
+                overflow: visible !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+            #pageContentArea { padding: 0 !important; }
+            
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, .interactive-flow-container {
+                display: block !important; /* Ensure the content is visible */
+            }
+            .card, .interactive-flow-container, .mermaid-diagram-card, .step-card {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                margin-bottom: 0.5cm !important;
+                background-color: white !important;
+                page-break-inside: avoid;
+            }
+            
+            .card *, .interactive-flow-container *, .mermaid-diagram-card *, .step-card * {
+                color: black !important;
+                background-color: transparent !important;
+            }
+             h1, h2, h3, h4, h5, h6 { color: black !important; } /* Ensure heading colors */
+
+            .step-card.expanded > .step-body,
+            .interactive-flow-container .step-card .step-body { /* Force expand all step bodies for print */
+                display: block !important;
+            }
+             .interactive-flow-container .step-card:not(.expanded) .step-body { /* Alternative for non-expanded steps */
+                display: block !important;
+            }
+             .step-card .toggle-step-details-btn i.fa-chevron-down {
+                transform: rotate(180deg); /* Visually indicate expansion if icon not hidden */
+            }
+            .important-notes-card { display: block !important; } /* Show important notes */
+            .agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block) {
+                display: block !important; /* Show all content if agent script mode was active */
+            }
+
+
+            .kb-content a {
+                color: #0066cc !important;
+                text-decoration: underline !important;
+            }
+            .kb-content a[href^="http"]::after, 
+            .kb-content a[href^="https"]::after { /* Show URL for external links */
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #555 !important;
+                word-break: break-all;
+            }
+            .kb-content a[href^="#"]::after { /* Don't show URL for internal/anchor links */
+                content: "";
+            }
+             .step-link::after { content: ""; } /* Ensure step links don't show href */
+
+
+            /* Mermaid diagrams for print */
+            .mermaid-diagram-container { background-color: white !important; }
+            .mermaid-diagram-container svg {
+                background-color: white !important;
+                max-width: 100% !important; /* Ensure it fits */
+                height: auto !important;
+            }
+            .mermaid-diagram-container text,
+            .mermaid-diagram-container .edgeLabel,
+            .mermaid-diagram-container .label,
+            .mermaid-diagram-container .messageText {
+                fill: black !important;
+                font-family: 'Arial', sans-serif !important; /* Common print font */
+            }
+            .mermaid-diagram-container .actor {
+                stroke: #333 !important;
+                fill: white !important;
+            }
+            .mermaid-diagram-container rect,
+            .mermaid-diagram-container polygon,
+            .mermaid-diagram-container ellipse,
+            .mermaid-diagram-container circle {
+                stroke: #333 !important;
+                fill: #f0f0f0 !important; /* Light fill for nodes */
+            }
+            .mermaid-diagram-container .cluster rect {
+                fill: #e8e8e8 !important; /* Slightly darker for clusters */
+                stroke: #aaa !important;
+            }
+            .mermaid-diagram-container .arrowheadPath {
+                fill: #333 !important;
+            }
+            .mermaid-diagram-container .edgePaths path {
+                stroke: #333 !important;
+            }
+            pre.mermaid { /* Ensure mermaid code block itself is not overly styled for print */
+                background-color: #f8f8f8 !important;
+                border: 1px solid #ddd !important;
+                padding: 8px !important;
+            }
         }
 
     </style>
@@ -1397,7 +1531,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.8.0-interactive-flow-v2', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.8.1-print-pdf', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1410,13 +1544,13 @@
                         content: `
                             <p>This guide outlines the steps for handling customer inquiries regarding order delays and potential compensation, following The Chefz guidelines. Use the controls above to navigate and manage the flow.</p>
                             <ol>
-                                <li>
+                                <li id="sup_flow_compensation_step_0">
                                     <strong>Receive Customer Request</strong>
                                     <p>Acknowledge the customer's contact and the reason for their call/message.</p>
                                     <blockquote>"Hello, thank you for calling The Chefz. My name is [Your Name]. How can I help you today?"</blockquote>
                                     <p>Then, listen carefully to the customer's concern. If it's about a delay, proceed to the next step.</p>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_1">
                                     <strong>Identify Inquiry Type</strong>
                                     <p>Ask the customer or check the system for the nature of the inquiry:</p>
                                     <ul>
@@ -1438,7 +1572,7 @@
                                         </li>
                                     </ul>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_2">
                                     <strong>Assess Delivery Time Exceeded</strong>
                                     <p>If the order is late, determine if the official delivery time has been exceeded. Check the order details in the system.</p>
                                     <ul>
@@ -1462,7 +1596,7 @@
                                         </li>
                                     </ul>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_3">
                                     <strong>Check Order Type (for delays > 15 minutes)</strong>
                                     <p>Based on system information, identify if the order is Fast or Scheduled.</p>
                                     <ul>
@@ -1500,13 +1634,13 @@
                                         </li>
                                     </ul>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_4">
                                     <strong>Determine Responsibility & Add Deduction (Internal Step)</strong>
                                     <p>This is an internal step after assessing the delay and potential compensation. Identify whether the delay was due to the Store, Driver, or a Company-wide issue. Apply any necessary deductions as per internal policy. This step is crucial for internal tracking and accountability but may not be fully detailed to the customer unless relevant to the explanation.</p>
                                     <p><em>Internal Note: Check SOP XXX for deduction codes.</em></p>
                                     <p>Once responsibility is determined, <a href="#sup_flow_compensation_step_5" class="step-link" data-target-step-index="5">proceed to Step 6</a>.</p>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_5">
                                     <strong>Address Customer's Compensation Request / Proactive Offer</strong>
                                     <ul>
                                         <li>
@@ -1522,7 +1656,7 @@
                                     </ul>
                                     <p>Then <a href="#sup_flow_compensation_step_6" class="step-link" data-target-step-index="6">proceed to conclude the call (Step 7)</a>.</p>
                                 </li>
-                                <li>
+                                <li id="sup_flow_compensation_step_6">
                                     <strong>Conclude the Call</strong>
                                     <p>Offer further assistance and thank the customer.</p>
                                     <blockquote>"Is there anything else I can help you with today? ... Thank you for calling The Chefz! We appreciate your patience and understanding."</blockquote>
@@ -1629,7 +1763,7 @@
     let flowInPlaceQuillEditor; // For in-place editing of flow content
     /** @type {UserProfile|null} */
     let currentUser = null; 
-    let currentOpenItem = null;
+    let currentOpenItem = null; // Stores { sectionId, itemId, title }
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
     // State for interactive flow
@@ -2129,9 +2263,8 @@
             flowContainer.classList.add('agent-script-mode-active');
         }
         
-        const itemIconClass = 'fas fa-project-diagram'; // Specific icon for flows
+        const itemIconClass = 'fas fa-project-diagram'; 
 
-        // Title Bar
         const titleBar = document.createElement('div');
         titleBar.className = 'flow-title-bar';
         let titleBarHtml = `<h2><i class="${itemIconClass}"></i> ${escapeHTML(itemData.title)}</h2>`;
@@ -2143,7 +2276,6 @@
         titleBar.innerHTML = titleBarHtml;
         flowContainer.appendChild(titleBar);
 
-        // Controls Bar
         const controlsBar = document.createElement('div');
         controlsBar.className = 'flow-controls';
         controlsBar.innerHTML = `
@@ -2156,7 +2288,6 @@
         `;
         flowContainer.appendChild(controlsBar);
         
-        // In-place Editor Placeholder
         const flowInPlaceEditorDiv = document.createElement('div');
         flowInPlaceEditorDiv.id = 'flowInPlaceEditorContainer';
         flowInPlaceEditorDiv.classList.add('hidden');
@@ -2184,15 +2315,22 @@
         let doneSteps = JSON.parse(localStorage.getItem(doneStepsKey) || '{}');
 
         steps.forEach((stepLi, index) => {
-            const stepId = `${itemData.id}_step_${index}`; // Unique ID for the step card DOM element
-            const stepDataId = `step_${index}`; // Shorter ID for internal logic like doneSteps
+            // Ensure each LI step has a unique ID based on its original ID attribute or generate one if missing
+            let stepLiOriginalId = stepLi.id;
+            if (!stepLiOriginalId) { // If the LI in HTML doesn't have an ID, generate one.
+                stepLiOriginalId = `${itemData.id}_auto_step_${index}`;
+                // console.warn(`Step LI at index ${index} for item ${itemData.id} was missing an ID. Generated: ${stepLiOriginalId}. Anchors might not work as expected without explicit IDs in content.`);
+            }
 
             const stepCard = document.createElement('div');
             stepCard.className = 'step-card';
-            stepCard.id = stepId;
-            stepCard.dataset.stepDataId = stepDataId; // Use this for doneSteps
+            // Use the original ID from the LI for the step card's ID, so anchors work.
+            stepCard.id = stepLiOriginalId; 
+            const stepDataId = `step_${index}`; // For internal logic like doneSteps (0-based index)
+            stepCard.dataset.stepDataId = stepDataId; 
 
-            if (flowState.expandedSteps.has(stepId)) {
+
+            if (flowState.expandedSteps.has(stepCard.id)) { // Use stepCard.id (which is stepLiOriginalId)
                 stepCard.classList.add('expanded');
             }
 
@@ -2224,24 +2362,13 @@
             const stepBody = document.createElement('div');
             stepBody.className = 'step-body';
             const tempBodyContent = stepLi.cloneNode(true);
-            // Remove the first <strong> if it was the title, to avoid duplication in body
-            const firstChildStrong = tempBodyContent.querySelector('strong:first-child');
-            if (firstChildStrong && firstChildStrong.textContent.trim() === stepTitleText) {
-                if (firstChildStrong.parentElement === tempBodyContent) { // only remove if it's a direct child used as title
-                     // And if it's the very first element, or wrapped in a <p> that's the first element
-                    if (tempBodyContent.firstChild === firstChildStrong || (tempBodyContent.firstChild.tagName === 'P' && tempBodyContent.firstChild.firstChild === firstChildStrong)) {
-                         // A bit complex to remove without breaking structure. Simpler to just let it be.
-                         // Or, we can wrap innerHTML in a div and then process.
-                    }
-                }
-            }
-             // Re-clone to ensure clean processing for agent script blocks
+            
             const cleanStepLiContent = stepLi.cloneNode(true);
             cleanStepLiContent.querySelectorAll('blockquote').forEach(bq => {
                 bq.classList.add('agent-script-block');
-                bq.innerHTML = `<i class="fas fa-comment-dots"></i> ${bq.innerHTML}`; // Add icon inside
+                bq.innerHTML = `<i class="fas fa-comment-dots"></i> ${bq.innerHTML}`; 
                 const copyBtn = document.createElement('button');
-                copyBtn.className = 'copy-script-btn'; // No button-secondary, it's small
+                copyBtn.className = 'copy-script-btn'; 
                 copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
                 copyBtn.title = 'Copy script';
                 copyBtn.onclick = (e) => {
@@ -2262,9 +2389,9 @@
                 if (e.target.closest('.mark-step-done-btn') || e.target.closest('.copy-script-btn')) return;
                 stepCard.classList.toggle('expanded');
                 if (stepCard.classList.contains('expanded')) {
-                    flowState.expandedSteps.add(stepId);
+                    flowState.expandedSteps.add(stepCard.id);
                 } else {
-                    flowState.expandedSteps.delete(stepId);
+                    flowState.expandedSteps.delete(stepCard.id);
                 }
             });
             
@@ -2278,24 +2405,23 @@
                 this.querySelector('.mark-step-text').textContent = doneSteps[currentStepDataId] ? 'Done' : 'Mark Done';
             });
 
-            // Make "Proceed to step X" links functional
             stepBody.querySelectorAll('a.step-link').forEach(link => {
-                const targetStepIndex = link.dataset.targetStepIndex; // Expecting data-target-step-index="N" (0-based)
-                 if (targetStepIndex !== undefined) {
-                    const targetFullStepId = `${itemData.id}_step_${targetStepIndex}`;
+                const targetStepIdFromHref = link.getAttribute('href'); // e.g., "#sup_flow_compensation_step_2"
+                 if (targetStepIdFromHref && targetStepIdFromHref.startsWith('#')) {
+                    const targetFullStepId = targetStepIdFromHref.substring(1); // "sup_flow_compensation_step_2"
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         const targetEl = document.getElementById(targetFullStepId);
-                        if (targetEl) {
+                        if (targetEl && targetEl.classList.contains('step-card')) {
                             if (!targetEl.classList.contains('expanded')) {
-                                targetEl.querySelector('.step-header .toggle-step-details-btn').click(); // Expand if not already
+                                targetEl.querySelector('.step-header .toggle-step-details-btn').click(); 
                             }
                             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             targetEl.style.transition = 'outline 0.1s ease-in-out';
                             targetEl.style.outline = '3px solid var(--primary-color-hover)';
                             setTimeout(() => targetEl.style.outline = 'none', 1500);
                         } else {
-                            console.warn("Target step link not found:", targetFullStepId);
+                            console.warn("Target step link not found or not a step-card:", targetFullStepId);
                         }
                     });
                 }
@@ -2314,7 +2440,7 @@
                  notesHTML += `<p>Could not parse notes list automatically.</p>`
             }
             notesContainer.innerHTML = notesHTML;
-            if (flowState.isAgentScriptModeActive) notesContainer.classList.add('hidden'); // Hide notes in agent script mode
+            if (flowState.isAgentScriptModeActive) notesContainer.classList.add('hidden'); 
             flowContainer.appendChild(notesContainer);
         }
 
@@ -2358,7 +2484,7 @@
 
                 flowInPlaceEditorDiv.classList.remove('hidden');
                 if (!flowInPlaceQuillEditor) {
-                    flowInPlaceQuillEditor = new Quill('#flowQuillEditor', { // Scoped to the flow editor div
+                    flowInPlaceQuillEditor = new Quill('#flowQuillEditor', { 
                         theme: 'snow',
                         modules: { 
                             toolbar: [
@@ -2389,7 +2515,7 @@
                 stepsArea.classList.remove('hidden');
                 controlsBar.classList.remove('hidden');
                 const notesCard = flowContainer.querySelector('.important-notes-card');
-                if (notesCard) notesCard.classList.remove('hidden', flowState.isAgentScriptModeActive && notesCard); // Respect agent mode
+                if (notesCard) notesCard.classList.remove('hidden', flowState.isAgentScriptModeActive && notesCard); 
                 if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.remove('hidden');
 
                 renderInteractiveFlowContent(itemData, sectionId, container); 
@@ -2408,6 +2534,90 @@
         });
     }
 
+    async function downloadItemAsPDF(itemToDownload) {
+        if (!itemToDownload || !itemToDownload.title) {
+            showToast('Error preparing PDF: Item data is missing.', 'error');
+            return;
+        }
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        showToast('Generating PDF, please wait...', 'info', 5000);
+
+        const element = document.getElementById('itemDetailViewPlaceholder');
+        if (!element) {
+            showToast('Error preparing PDF: Content area not found.', 'error');
+            return;
+        }
+
+        // Clone the element to modify for PDF without affecting the live view
+        const elementToPrint = element.cloneNode(true);
+        elementToPrint.style.padding = "20px"; // Add some padding to the cloned container
+        elementToPrint.style.width = "210mm"; // A4 width approximation for layout
+        elementToPrint.style.backgroundColor = "white"; // Ensure white background for PDF
+        
+        // Remove elements not desired in PDF
+        const selectorsToRemove = [
+            '.item-actions-bar', '.flow-controls', '.item-feedback-section', 
+            '.comments-section', '#flowInPlaceEditorContainer', '.copy-script-btn',
+            '.mark-step-done-btn', '.toggle-step-details-btn'
+        ];
+        selectorsToRemove.forEach(selector => {
+            elementToPrint.querySelectorAll(selector).forEach(el => el.remove());
+        });
+
+        // Ensure all steps in an interactive flow are expanded in the clone
+        if (itemToDownload.id === 'sup_flow_compensation') { // Or a more generic check for flow type
+             elementToPrint.querySelectorAll('.step-card:not(.expanded)').forEach(sc => {
+                sc.classList.add('expanded'); // Visually expand
+                const body = sc.querySelector('.step-body');
+                if(body) body.style.display = 'block'; // Ensure JS-controlled display is overridden
+            });
+            // Ensure agent script mode specific hidden elements are shown if agent script mode was active
+             elementToPrint.querySelectorAll('.agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block)').forEach(el => el.style.display = 'block');
+             const notesCard = elementToPrint.querySelector('.important-notes-card');
+             if (notesCard) notesCard.style.display = 'block';
+        }
+        
+        // Temporarily append to body for html2pdf to correctly render styles, but keep it off-screen
+        elementToPrint.style.position = 'absolute';
+        elementToPrint.style.left = '-9999px';
+        document.body.appendChild(elementToPrint);
+
+
+        // Render Mermaid diagrams in the clone if not already rendered or if source was hidden
+        if (elementToPrint.querySelector('pre.mermaid')) {
+            await renderMermaidDiagramsInElement(elementToPrint); // Re-run on clone
+        }
+
+
+        const opt = {
+            margin: [10, 10, 10, 10], // mm top, left, bottom, right
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: {
+                scale: 2, // Better quality
+                logging: false,
+                useCORS: true, // For external images if any
+                onclone: (doc) => { // Ensure all text is selectable and visible
+                    doc.querySelectorAll('*').forEach(node => {
+                        node.style.color = getComputedStyle(node).color;
+                        node.style.backgroundColor = getComputedStyle(node).backgroundColor;
+                    });
+                }
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Try to respect page breaks
+        };
+
+        try {
+            await html2pdf().from(elementToPrint).set(opt).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showToast('Error generating PDF. Check console.', 'error');
+        } finally {
+             document.body.removeChild(elementToPrint); // Clean up the cloned element
+        }
+    }
 
     async function displayItemDetail(sectionId, itemId) {
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
@@ -2420,7 +2630,7 @@
             itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
-        currentOpenItem = { sectionId, itemId }; 
+        currentOpenItem = { sectionId, itemId, title: itemData.title }; // Store title for PDF filename
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         dashboardOverviewContainer.classList.add('hidden');
@@ -2436,7 +2646,7 @@
 
         if (itemData.id === 'sup_flow_compensation') {
             renderInteractiveFlowContent(itemData, sectionId, itemDetailViewPlaceholder);
-            const actionsBar = document.createElement('div'); // Actions for the item itself, not flow steps
+            const actionsBar = document.createElement('div'); 
             actionsBar.className = 'item-actions-bar';
             actionsBar.style.marginTop = "1.5rem"; 
             let actionsBarHTML = `
@@ -2444,8 +2654,6 @@
                     <i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}
                 </button>`;
             if (currentUser && currentUser.role === 'admin') {
-                // The "Edit Flow Content" is now part of renderInteractiveFlowContent.
-                // This edit can be for metadata like title, summary, tags.
                 actionsBarHTML += `<button id="editItemMetadataBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-tags"></i> Edit Metadata</button>`;
                 actionsBarHTML += `<button id="deleteItemBtnGlobal" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-trash-alt"></i> Delete Flow Item</button>`;
             }
@@ -2462,7 +2670,7 @@
              if (currentUser && currentUser.role === 'admin') {
                 const editMetaBtn = document.getElementById('editItemMetadataBtn');
                 if(editMetaBtn) editMetaBtn.addEventListener('click', (e) => {
-                    openAddContentModal(sectionId, itemData); // Main modal for metadata
+                    openAddContentModal(sectionId, itemData); 
                 });
                 const deleteGlobalBtn = document.getElementById('deleteItemBtnGlobal');
                 if(deleteGlobalBtn) deleteGlobalBtn.addEventListener('click', (e) => {
@@ -2476,19 +2684,17 @@
                     }
                 });
             }
-            // Common print/share/download handlers
             document.getElementById('printItemBtn')?.addEventListener('click', () => window.print());
             document.getElementById('shareItemBtn')?.addEventListener('click', () => {
                 navigator.clipboard.writeText(window.location.href)
                     .then(() => showToast('Link copied to clipboard!', 'success'))
                     .catch(() => showToast('Failed to copy link.', 'error'));
             });
-            document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => showToast('PDF Download (simulated).', 'info'));
+            document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => downloadItemAsPDF(itemData));
             return; 
         }
 
 
-        // Standard item display logic
         let itemIconClass = 'fas fa-file-alt';
         if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
         else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
@@ -2648,7 +2854,7 @@
                 .then(() => showToast('Link copied to clipboard!', 'success'))
                 .catch(() => showToast('Failed to copy link.', 'error'));
         });
-        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => showToast('PDF Download (simulated).', 'info'));
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
         document.getElementById('rateUpBtn').addEventListener('click', () => showToast('Thanks for your feedback!', 'success'));
         document.getElementById('rateDownBtn').addEventListener('click', () => showToast('Thanks for your feedback! We will review this content.', 'info'));
@@ -2667,24 +2873,29 @@
                 commentTextEl.focus();
                 return;
             }
-
-            const currentItemData = kbSystemData.sections.find(s => s.id === currentOpenItem.sectionId)?.items?.find(i => i.id === currentOpenItem.itemId);
-            if (currentItemData && currentUser) { 
-                if (!currentItemData.comments) {
-                    currentItemData.comments = [];
+            
+            // Use currentOpenItem which should be correctly set
+            if (currentOpenItem && currentOpenItem.sectionId && currentOpenItem.itemId) {
+                const currentItemDataRef = kbSystemData.sections.find(s => s.id === currentOpenItem.sectionId)?.items?.find(i => i.id === currentOpenItem.itemId);
+                if (currentItemDataRef && currentUser) { 
+                    if (!currentItemDataRef.comments) {
+                        currentItemDataRef.comments = [];
+                    }
+                    currentItemDataRef.comments.push({
+                        id: `cmt_${Date.now()}`,
+                        authorEmail: currentUser.email,
+                        authorName: currentUser.name, 
+                        text: commentText, 
+                        timestamp: new Date().toISOString()
+                    });
+                    renderComments(currentItemDataRef, 'commentDisplayAreaForItem'); 
+                    commentTextEl.value = ''; 
+                    showToast('Comment posted!', 'success');
+                } else {
+                     showToast('Error posting comment. Item or user data not found.', 'error');
                 }
-                currentItemData.comments.push({
-                    id: `cmt_${Date.now()}`,
-                    authorEmail: currentUser.email,
-                    authorName: currentUser.name, 
-                    text: commentText, 
-                    timestamp: new Date().toISOString()
-                });
-                renderComments(currentItemData, 'commentDisplayAreaForItem'); 
-                commentTextEl.value = ''; 
-                showToast('Comment posted!', 'success');
             } else {
-                showToast('Error posting comment. Item or user data not found.', 'error');
+                 showToast('Error posting comment. Current item context is missing.', 'error');
             }
         });
     }
@@ -2745,7 +2956,7 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
-            mainQuillEditor = new Quill('#quillEditor', { // Main modal editor
+            mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: [
@@ -2761,7 +2972,7 @@
                 placeholder: 'Enter detailed content here...'
             });
         }
-        mainQuillEditor.root.innerHTML = '<p><br></p>'; // Clear it
+        mainQuillEditor.root.innerHTML = '<p><br></p>'; 
 
         if (itemToEdit) {
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
@@ -2772,9 +2983,13 @@
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             
             let contentToEdit = '';
-            if (itemToEdit.content) contentToEdit = itemToEdit.content;
-            else if (itemToEdit.resolution_steps) contentToEdit = itemToEdit.resolution_steps;
-            // For interactive flow, content is HTML, so mainQuillEditor is fine.
+            if (itemToEdit.id === 'sup_flow_compensation' && itemToEdit.content) { // Special handling for flow if its content structure is different
+                 contentToEdit = itemToEdit.content; // Assuming flow content is editable as HTML
+            } else if (itemToEdit.content) {
+                 contentToEdit = itemToEdit.content;
+            } else if (itemToEdit.resolution_steps) {
+                 contentToEdit = itemToEdit.resolution_steps;
+            }
             mainQuillEditor.root.innerHTML = contentToEdit || '<p><br></p>';
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
@@ -2863,7 +3078,7 @@
             itemData.lastModified = new Date().toISOString();
             itemData.views = itemData.views || 0;
             itemData.comments = itemData.comments || [];
-            itemData.feedback = itemData.feedback || []; // Ensure feedback array exists
+            itemData.feedback = itemData.feedback || []; 
         } else { 
             itemData = {
                 ...commonData,
@@ -2872,13 +3087,17 @@
                 createdAt: new Date().toISOString(),
                 views: 0,
                 comments: [],
-                feedback: [] // Initialize feedback array
+                feedback: [] 
             };
             kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date(itemData.createdAt).toLocaleDateString() };
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
         }
 
-        if (itemData.type === 'case') {
+        // Handle content based on type - This is important for editing interactive flows vs regular articles
+        if (itemData.id === 'sup_flow_compensation' || (itemData.type === 'article' && itemData.tags.includes('interactive'))) {
+             // If editing an interactive flow, mainQuillEditor HTML is the source
+             itemData.content = mainQuillEditor.root.innerHTML;
+        } else if (itemData.type === 'case') {
             itemData.resolution_steps = mainQuillEditor.root.innerHTML;
             itemData.status = itemData.status || 'New'; 
         } else if (['article', 'guide', 'policy'].includes(itemData.type)) {
@@ -2886,7 +3105,10 @@
         } else if (itemData.type === 'form_sheet' || itemData.type === 'design') {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
+             delete itemData.content; // Clear content field for URL types
+             delete itemData.resolution_steps;
         }
+
 
         itemData.attachments = itemData.attachments || {};
         const pdfFile = document.getElementById('pdfFile').files[0];
@@ -2909,9 +3131,10 @@
         closeAddContentModal();
         
         if (editingId && currentOpenItem && currentOpenItem.itemId === editingId) {
+             currentOpenItem.title = itemData.title; // Update title in currentOpenItem for PDF
             displayItemDetail(currentOpenItem.sectionId, currentOpenItem.itemId);
         } else {
-            window.location.hash = `#${sectionId}`;
+            window.location.hash = `#${sectionId}`; // For new items, navigate to section
             handleNavigation(); 
         }
     });
@@ -2924,8 +3147,8 @@
         }
         reportFeedbackForm.reset();
         feedbackItemIdInput.value = itemId;
-        feedbackItemTitleInput.value = itemTitle; // Store original title
-        feedbackItemTitleDisplay.textContent = itemTitle; // Display potentially truncated/escaped title
+        feedbackItemTitleInput.value = itemTitle; 
+        feedbackItemTitleDisplay.textContent = itemTitle; 
         feedbackUserNameInput.value = currentUser.name || '';
         feedbackUserEmailInput.value = currentUser.email || '';
         reportFeedbackModalOverlay.classList.remove('hidden');
