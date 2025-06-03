@@ -1378,6 +1378,23 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModalOverlay" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 30rem;">
+            <div class="modal-header">
+                <h2 id="deleteConfirmModalTitle">Confirm Deletion</h2>
+                <button id="closeDeleteConfirmModalBtn" class="close-button" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage">Are you sure you want to delete this item? This action cannot be undone.</p>
+            </div>
+            <div class="modal-actions no-border">
+                <button type="button" id="confirmDeleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Confirm Delete</button>
+                <button type="button" id="cancelDeleteItemBtn" class="button-secondary"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </div>
+    </div>
+
 
     <div class="container-fluid">
         <aside class="sidebar" id="sidebar">
@@ -1520,7 +1537,8 @@
                 showToast('Error signing out. Please try again.', 'error');
             } else {
                 localStorage.removeItem('infiniBaseUser');
-                localStorage.removeItem('justLoggedIn'); 
+                localStorage.removeItem('justLoggedIn');
+                localStorage.removeItem('infiniBase_agentScriptMode'); // Clear agent script mode on logout
                 showToast('You have been logged out successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'login.html';
@@ -1531,7 +1549,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.8.1-print-pdf', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.8.2-print-pdf-enh', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1758,6 +1776,13 @@
     const feedbackUserEmailInput = document.getElementById('feedbackUserEmail');
     const feedbackCommentTextarea = document.getElementById('feedbackComment');
 
+    // Delete Confirmation Modal Elements
+    const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
+    const closeDeleteConfirmModalBtn = document.getElementById('closeDeleteConfirmModalBtn');
+    const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
+    const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
+    const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
+
 
     let mainQuillEditor; // For the modal
     let flowInPlaceQuillEditor; // For in-place editing of flow content
@@ -1768,7 +1793,7 @@
 
     // State for interactive flow
     let flowState = {
-        isAgentScriptModeActive: false,
+        isAgentScriptModeActive: localStorage.getItem('infiniBase_agentScriptMode') === 'true',
         expandedSteps: new Set(), // Stores IDs of expanded steps
         // doneSteps will be loaded from localStorage per item
     };
@@ -2259,7 +2284,7 @@
 
         const flowContainer = document.createElement('div');
         flowContainer.className = 'interactive-flow-container';
-        if (flowState.isAgentScriptModeActive) {
+        if (flowState.isAgentScriptModeActive) { // Apply persisted state
             flowContainer.classList.add('agent-script-mode-active');
         }
         
@@ -2315,22 +2340,19 @@
         let doneSteps = JSON.parse(localStorage.getItem(doneStepsKey) || '{}');
 
         steps.forEach((stepLi, index) => {
-            // Ensure each LI step has a unique ID based on its original ID attribute or generate one if missing
             let stepLiOriginalId = stepLi.id;
-            if (!stepLiOriginalId) { // If the LI in HTML doesn't have an ID, generate one.
+            if (!stepLiOriginalId) { 
                 stepLiOriginalId = `${itemData.id}_auto_step_${index}`;
-                // console.warn(`Step LI at index ${index} for item ${itemData.id} was missing an ID. Generated: ${stepLiOriginalId}. Anchors might not work as expected without explicit IDs in content.`);
             }
 
             const stepCard = document.createElement('div');
             stepCard.className = 'step-card';
-            // Use the original ID from the LI for the step card's ID, so anchors work.
             stepCard.id = stepLiOriginalId; 
-            const stepDataId = `step_${index}`; // For internal logic like doneSteps (0-based index)
+            const stepDataId = `step_${index}`; 
             stepCard.dataset.stepDataId = stepDataId; 
 
 
-            if (flowState.expandedSteps.has(stepCard.id)) { // Use stepCard.id (which is stepLiOriginalId)
+            if (flowState.expandedSteps.has(stepCard.id)) { 
                 stepCard.classList.add('expanded');
             }
 
@@ -2361,21 +2383,29 @@
 
             const stepBody = document.createElement('div');
             stepBody.className = 'step-body';
-            const tempBodyContent = stepLi.cloneNode(true);
             
             const cleanStepLiContent = stepLi.cloneNode(true);
             cleanStepLiContent.querySelectorAll('blockquote').forEach(bq => {
+                const scriptTextForCopy = bq.textContent.trim(); // Capture before modification
                 bq.classList.add('agent-script-block');
-                bq.innerHTML = `<i class="fas fa-comment-dots"></i> ${bq.innerHTML}`; 
+                bq.innerHTML = `<i class="fas fa-comment-dots"></i> ${bq.innerHTML}`; // Add icon
+                
                 const copyBtn = document.createElement('button');
                 copyBtn.className = 'copy-script-btn'; 
                 copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
                 copyBtn.title = 'Copy script';
                 copyBtn.onclick = (e) => {
                     e.stopPropagation();
-                    navigator.clipboard.writeText(bq.textContent.replace('Copy', '').trim())
-                        .then(() => showToast('Script copied!', 'success'))
-                        .catch(() => showToast('Failed to copy.', 'error'));
+                    if (scriptTextForCopy) {
+                        navigator.clipboard.writeText(scriptTextForCopy)
+                            .then(() => showToast('Script copied to clipboard ✅', 'success'))
+                            .catch(err => {
+                                console.error('Failed to copy script: ', err);
+                                showToast('Failed to copy script.', 'error');
+                            });
+                    } else {
+                        showToast('No script text found to copy.', 'info');
+                    }
                 };
                 bq.appendChild(copyBtn);
             });
@@ -2406,9 +2436,9 @@
             });
 
             stepBody.querySelectorAll('a.step-link').forEach(link => {
-                const targetStepIdFromHref = link.getAttribute('href'); // e.g., "#sup_flow_compensation_step_2"
+                const targetStepIdFromHref = link.getAttribute('href'); 
                  if (targetStepIdFromHref && targetStepIdFromHref.startsWith('#')) {
-                    const targetFullStepId = targetStepIdFromHref.substring(1); // "sup_flow_compensation_step_2"
+                    const targetFullStepId = targetStepIdFromHref.substring(1); 
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         const targetEl = document.getElementById(targetFullStepId);
@@ -2464,6 +2494,7 @@
         });
         document.getElementById('toggleAgentScriptModeBtn').addEventListener('click', (e) => {
             flowState.isAgentScriptModeActive = !flowState.isAgentScriptModeActive;
+            localStorage.setItem('infiniBase_agentScriptMode', flowState.isAgentScriptModeActive); // Save to localStorage
             flowContainer.classList.toggle('agent-script-mode-active', flowState.isAgentScriptModeActive);
             document.getElementById('agentScriptModeBtnText').textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
             const notesCard = flowContainer.querySelector('.important-notes-card');
@@ -2515,7 +2546,7 @@
                 stepsArea.classList.remove('hidden');
                 controlsBar.classList.remove('hidden');
                 const notesCard = flowContainer.querySelector('.important-notes-card');
-                if (notesCard) notesCard.classList.remove('hidden', flowState.isAgentScriptModeActive && notesCard); 
+                if (notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive && notesCard); 
                 if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.remove('hidden');
 
                 renderInteractiveFlowContent(itemData, sectionId, container); 
@@ -2529,7 +2560,7 @@
             stepsArea.classList.remove('hidden');
             controlsBar.classList.remove('hidden');
             const notesCard = flowContainer.querySelector('.important-notes-card');
-            if (notesCard) notesCard.classList.remove('hidden', flowState.isAgentScriptModeActive && notesCard);
+            if (notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive && notesCard);
              if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.remove('hidden');
         });
     }
@@ -2655,7 +2686,7 @@
                 </button>`;
             if (currentUser && currentUser.role === 'admin') {
                 actionsBarHTML += `<button id="editItemMetadataBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-tags"></i> Edit Metadata</button>`;
-                actionsBarHTML += `<button id="deleteItemBtnGlobal" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-trash-alt"></i> Delete Flow Item</button>`;
+                actionsBarHTML += `<button id="deleteItemBtnGlobal" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Flow Item</button>`;
             }
              actionsBarHTML += `   <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                           <button id="shareItemBtn" class="button button-secondary"><i class="fas fa-share-alt"></i> Share Link</button>
@@ -2674,14 +2705,10 @@
                 });
                 const deleteGlobalBtn = document.getElementById('deleteItemBtnGlobal');
                 if(deleteGlobalBtn) deleteGlobalBtn.addEventListener('click', (e) => {
-                     if(confirm(`Are you sure you want to delete item "${itemData.title}"? This cannot be undone.`)){
-                        const sec = kbSystemData.sections.find(s => s.id === sectionId);
-                        if(sec && sec.items){
-                            sec.items = sec.items.filter(item => item.id !== itemId);
-                            showToast('Item deleted successfully.', 'success');
-                            window.location.hash = `#${sectionId}`; 
-                        }
-                    }
+                    const sId = e.currentTarget.dataset.sectionId;
+                    const iId = e.currentTarget.dataset.itemId;
+                    const iTitle = e.currentTarget.dataset.itemTitle;
+                    openDeleteConfirmModal(sId, iId, iTitle);
                 });
             }
             document.getElementById('printItemBtn')?.addEventListener('click', () => window.print());
@@ -2722,7 +2749,7 @@
         }
         if (currentUser && currentUser.role === 'admin') {
              detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
-             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         detailHTML += `   <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                           <button id="shareItemBtn" class="button button-secondary"><i class="fas fa-share-alt"></i> Share Link</button>
@@ -2837,14 +2864,8 @@
              if(deleteBtn) deleteBtn.addEventListener('click', (e) => {
                 const sId = e.currentTarget.dataset.sectionId;
                 const iId = e.currentTarget.dataset.itemId;
-                if(confirm(`Are you sure you want to delete item "${itemData.title}"? This cannot be undone.`)){
-                    const sec = kbSystemData.sections.find(s => s.id === sId);
-                    if(sec && sec.items){
-                        sec.items = sec.items.filter(item => item.id !== iId);
-                        showToast('Item deleted successfully.', 'success');
-                        window.location.hash = `#${sId}`; 
-                    }
-                }
+                const iTitle = e.currentTarget.dataset.itemTitle;
+                openDeleteConfirmModal(sId, iId, iTitle);
             });
         }
 
@@ -2874,7 +2895,6 @@
                 return;
             }
             
-            // Use currentOpenItem which should be correctly set
             if (currentOpenItem && currentOpenItem.sectionId && currentOpenItem.itemId) {
                 const currentItemDataRef = kbSystemData.sections.find(s => s.id === currentOpenItem.sectionId)?.items?.find(i => i.id === currentOpenItem.itemId);
                 if (currentItemDataRef && currentUser) { 
@@ -2983,8 +3003,8 @@
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             
             let contentToEdit = '';
-            if (itemToEdit.id === 'sup_flow_compensation' && itemToEdit.content) { // Special handling for flow if its content structure is different
-                 contentToEdit = itemToEdit.content; // Assuming flow content is editable as HTML
+            if (itemToEdit.id === 'sup_flow_compensation' && itemToEdit.content) { 
+                 contentToEdit = itemToEdit.content; 
             } else if (itemToEdit.content) {
                  contentToEdit = itemToEdit.content;
             } else if (itemToEdit.resolution_steps) {
@@ -3093,9 +3113,7 @@
             kbSystemData.meta.editsThisWeek = (kbSystemData.meta.editsThisWeek || 0) + 1;
         }
 
-        // Handle content based on type - This is important for editing interactive flows vs regular articles
         if (itemData.id === 'sup_flow_compensation' || (itemData.type === 'article' && itemData.tags.includes('interactive'))) {
-             // If editing an interactive flow, mainQuillEditor HTML is the source
              itemData.content = mainQuillEditor.root.innerHTML;
         } else if (itemData.type === 'case') {
             itemData.resolution_steps = mainQuillEditor.root.innerHTML;
@@ -3105,7 +3123,7 @@
         } else if (itemData.type === 'form_sheet' || itemData.type === 'design') {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this content type.', 'error'); return; }
-             delete itemData.content; // Clear content field for URL types
+             delete itemData.content; 
              delete itemData.resolution_steps;
         }
 
@@ -3131,10 +3149,10 @@
         closeAddContentModal();
         
         if (editingId && currentOpenItem && currentOpenItem.itemId === editingId) {
-             currentOpenItem.title = itemData.title; // Update title in currentOpenItem for PDF
+             currentOpenItem.title = itemData.title; 
             displayItemDetail(currentOpenItem.sectionId, currentOpenItem.itemId);
         } else {
-            window.location.hash = `#${sectionId}`; // For new items, navigate to section
+            window.location.hash = `#${sectionId}`; 
             handleNavigation(); 
         }
     });
@@ -3185,6 +3203,45 @@
             showToast('Error: Could not find item to attach feedback to.', 'error');
         }
         closeReportFeedbackModal();
+    });
+    
+    // --- Delete Confirmation Modal Logic ---
+    function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
+        deleteConfirmMessage.innerHTML = `Are you sure you want to delete the item: "<strong>${escapeHTML(itemTitle)}</strong>"?<br>This action cannot be undone.`;
+        confirmDeleteItemBtn.dataset.sectionId = sectionId;
+        confirmDeleteItemBtn.dataset.itemId = itemId;
+        deleteConfirmModalOverlay.classList.remove('hidden');
+    }
+
+    closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+
+    confirmDeleteItemBtn.addEventListener('click', () => {
+        const sectionId = confirmDeleteItemBtn.dataset.sectionId;
+        const itemId = confirmDeleteItemBtn.dataset.itemId;
+        const section = kbSystemData.sections.find(s => s.id === sectionId);
+
+        if (section && section.items) {
+            const itemIndex = section.items.findIndex(item => item.id === itemId);
+            if (itemIndex > -1) {
+                const deletedItemTitle = section.items[itemIndex].title;
+                section.items.splice(itemIndex, 1);
+                showToast(`Item "${deletedItemTitle}" deleted successfully.`, 'success');
+                deleteConfirmModalOverlay.classList.add('hidden');
+                
+                if (currentOpenItem && currentOpenItem.itemId === itemId) {
+                    window.location.hash = `#${sectionId}`;
+                } else { 
+                    handleNavigation(); 
+                }
+            } else {
+                showToast('Error: Item not found for deletion.', 'error');
+                deleteConfirmModalOverlay.classList.add('hidden');
+            }
+        } else {
+            showToast('Error: Section not found for deletion.', 'error');
+            deleteConfirmModalOverlay.classList.add('hidden');
+        }
     });
 
 
