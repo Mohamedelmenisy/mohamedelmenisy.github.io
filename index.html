@@ -1457,24 +1457,19 @@
     import { supabase } from './supabase.js';
 
     // =================================================================================
-    // IMMEDIATE SESSION CHECK (Added to solve mobile loading issue)
+    // IMMEDIATE SESSION CHECK
+    // This check runs before any app logic to prevent rendering a blank UI.
     // =================================================================================
-    // This is a quick, blocking check that runs before any other app logic.
-    // It halts module execution until the session status is known, preventing
-    // the UI from rendering in a "logged out" or "empty" state.
     const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession();
 
     if (initialSessionError) {
         console.error("Critical error during initial session check. Redirecting.", initialSessionError.message);
-        // On any error, we can't trust the state, so redirect to login.
         window.location.href = 'login.html';
     } else if (!initialSession) {
-        // If no session exists, redirect to the login page.
-        // The rest of this script will not be executed.
         console.log("No initial session found. Redirecting to login.");
         window.location.href = 'login.html';
     }
-    // If a session exists, the script continues to execute normally.
+    // If a session exists, the script continues.
     // =================================================================================
 
 
@@ -1511,39 +1506,62 @@
     const Auth = {
         /** @returns {Promise<UserProfile|null>} */
         async getCurrentUserProfile() {
-            // The initial session check has already run. This function now fetches the full profile.
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-            if (sessionError) {
-                console.error("Error fetching Supabase session:", sessionError);
-                // As a fallback, redirect if something went wrong here.
-                window.location.href = 'login.html';
-                return null;
-            }
-
-            if (!session || !session.user) {
-                // This case should be caught by the initial top-level check, but as a robust fallback:
-                console.log('No active Supabase session found during profile fetch. Redirecting.');
+            if (sessionError || !session || !session.user) {
+                console.error("Error fetching Supabase session or session invalid:", sessionError);
                 window.location.href = 'login.html';
                 return null; 
             }
 
-            const userId = session.user.id;
+            const authUser = session.user;
+            const userId = authUser.id;
 
-            const { data: userDataFromDB, error: dbError } = await supabase
+            // Step 1: Attempt to fetch the user profile from the 'users' table.
+            let { data: userDataFromDB, error: dbError } = await supabase
                 .from("users")
                 .select("id, name, email, role") 
                 .eq("id", userId)
                 .single();
 
-            if (dbError || !userDataFromDB) {
-                console.error("Failed to fetch user profile from DB for user ID:", userId, dbError);
+            // Step 2: Handle different outcomes of the fetch attempt.
+            if (dbError && dbError.code !== 'PGRST116') {
+                // An unexpected database error occurred (not a "no rows found" error).
+                console.error("Unexpected DB error fetching user profile:", dbError);
                 await supabase.auth.signOut();
-                localStorage.removeItem("infiniBaseUser"); 
                 window.location.href = "login.html";
                 return null;
             }
+
+            if (!userDataFromDB) {
+                // This is the key scenario: The user is authenticated but has no profile in our 'users' table.
+                // We will create one for them on the fly.
+                console.warn(`Profile for user ${userId} not found. Creating a new profile in 'users' table.`);
+                
+                const { data: newProfile, error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                        id: userId,
+                        email: authUser.email,
+                        // Use full_name from sign-up metadata if available, otherwise derive from email.
+                        name: authUser.user_metadata?.full_name || authUser.email.split('@')[0], 
+                        role: 'viewer' // Assign a default role for all new sign-ups.
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error("Fatal: Failed to create new user profile in DB after login:", insertError);
+                    await supabase.auth.signOut();
+                    window.location.href = "login.html";
+                    return null;
+                }
+                
+                console.log("Successfully created and fetched new user profile:", newProfile);
+                userDataFromDB = newProfile; // Assign the newly created profile to continue the process.
+            }
             
+            // Step 3: If we have a profile (either fetched or newly created), format and return it.
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
                 ...userDataFromDB, 
@@ -3351,14 +3369,14 @@
     }
 
     async function initializeApp() {
-        // The top-level session check ensures we don't get here without a session.
-        // Now, we proceed to get the full user profile details.
+        // The top-level session check ensures we don't get here without a valid session.
+        // Now, we proceed to get the full user profile, creating it if it doesn't exist.
         currentUser = await Auth.getCurrentUserProfile(); 
         
         if (!currentUser) {
-            // This is a fallback. The initial check should have already redirected.
-            console.error("Initialization failed: No current user profile could be fetched.");
-            window.location.href = 'login.html'; // Extra safety redirect
+            // This is a final fallback. `getCurrentUserProfile` should handle redirects,
+            // but if it somehow returns null, we must stop execution.
+            console.error("Initialization failed: No user profile could be obtained.");
             return; 
         }
 
