@@ -1456,6 +1456,28 @@
 <script type="module">
     import { supabase } from './supabase.js';
 
+    // =================================================================================
+    // IMMEDIATE SESSION CHECK (Added to solve mobile loading issue)
+    // =================================================================================
+    // This is a quick, blocking check that runs before any other app logic.
+    // It halts module execution until the session status is known, preventing
+    // the UI from rendering in a "logged out" or "empty" state.
+    const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession();
+
+    if (initialSessionError) {
+        console.error("Critical error during initial session check. Redirecting.", initialSessionError.message);
+        // On any error, we can't trust the state, so redirect to login.
+        window.location.href = 'login.html';
+    } else if (!initialSession) {
+        // If no session exists, redirect to the login page.
+        // The rest of this script will not be executed.
+        console.log("No initial session found. Redirecting to login.");
+        window.location.href = 'login.html';
+    }
+    // If a session exists, the script continues to execute normally.
+    // =================================================================================
+
+
     // --- Initialize Mermaid ---
     mermaid.initialize({ 
         startOnLoad: false,
@@ -1489,17 +1511,20 @@
     const Auth = {
         /** @returns {Promise<UserProfile|null>} */
         async getCurrentUserProfile() {
+            // The initial session check has already run. This function now fetches the full profile.
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError) {
                 console.error("Error fetching Supabase session:", sessionError);
+                // As a fallback, redirect if something went wrong here.
+                window.location.href = 'login.html';
+                return null;
             }
 
             if (!session || !session.user) {
-                console.log('No active Supabase session. Redirecting to login.');
-                if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
-                     window.location.href = 'login.html';
-                }
+                // This case should be caught by the initial top-level check, but as a robust fallback:
+                console.log('No active Supabase session found during profile fetch. Redirecting.');
+                window.location.href = 'login.html';
                 return null; 
             }
 
@@ -1515,9 +1540,7 @@
                 console.error("Failed to fetch user profile from DB for user ID:", userId, dbError);
                 await supabase.auth.signOut();
                 localStorage.removeItem("infiniBaseUser"); 
-                if (window.location.pathname.includes("index.html") || window.location.pathname === '/' || window.location.pathname === '') {
-                    window.location.href = "login.html";
-                }
+                window.location.href = "login.html";
                 return null;
             }
             
@@ -1969,31 +1992,6 @@
 
 
     // --- Content Display ---
-    /**
-     * Centralized function to manage which main content view is visible.
-     * @param {'dashboardOverviewContainer' | 'standardSectionContentPlaceholder' | 'itemDetailViewPlaceholder'} viewId The ID of the container to show.
-     */
-    function showView(viewId) {
-        const views = [
-            'dashboardOverviewContainer',
-            'standardSectionContentPlaceholder',
-            'itemDetailViewPlaceholder'
-        ];
-        views.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (id === viewId) {
-                    el.classList.remove('hidden');
-                } else {
-                    el.classList.add('hidden');
-                }
-            }
-        });
-        if (viewId !== 'itemDetailViewPlaceholder') {
-            itemDetailViewPlaceholder.dataset.mermaidRendered = 'false';
-        }
-    }
-
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
         let ctaText = 'View Details';
@@ -2032,7 +2030,10 @@
     }
 
     async function displayDashboard() {
-        showView('dashboardOverviewContainer');
+        dashboardOverviewContainer.classList.remove('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
@@ -2197,7 +2198,10 @@
     
     async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
-        showView('standardSectionContentPlaceholder');
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.remove('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
@@ -2674,14 +2678,18 @@
         const itemData = sectionData?.items?.find(i => i.id === itemId);
 
         if (!sectionData || !itemData) {
-            showView('standardSectionContentPlaceholder');
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
+            itemDetailViewPlaceholder.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden');
+            itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
-
-        showView('itemDetailViewPlaceholder');
         currentOpenItem = { sectionId, itemId, title: itemData.title }; // Store title for PDF filename
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
+
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.remove('hidden');
 
         let bcHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
@@ -3343,10 +3351,14 @@
     }
 
     async function initializeApp() {
+        // The top-level session check ensures we don't get here without a session.
+        // Now, we proceed to get the full user profile details.
         currentUser = await Auth.getCurrentUserProfile(); 
         
         if (!currentUser) {
-            console.error("Initialization failed: No current user profile.");
+            // This is a fallback. The initial check should have already redirected.
+            console.error("Initialization failed: No current user profile could be fetched.");
+            window.location.href = 'login.html'; // Extra safety redirect
             return; 
         }
 
