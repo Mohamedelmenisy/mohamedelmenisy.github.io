@@ -1969,6 +1969,31 @@
 
 
     // --- Content Display ---
+    /**
+     * Centralized function to manage which main content view is visible.
+     * @param {'dashboardOverviewContainer' | 'standardSectionContentPlaceholder' | 'itemDetailViewPlaceholder'} viewId The ID of the container to show.
+     */
+    function showView(viewId) {
+        const views = [
+            'dashboardOverviewContainer',
+            'standardSectionContentPlaceholder',
+            'itemDetailViewPlaceholder'
+        ];
+        views.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === viewId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
+        });
+        if (viewId !== 'itemDetailViewPlaceholder') {
+            itemDetailViewPlaceholder.dataset.mermaidRendered = 'false';
+        }
+    }
+
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
         let ctaText = 'View Details';
@@ -2007,10 +2032,7 @@
     }
 
     async function displayDashboard() {
-        dashboardOverviewContainer.classList.remove('hidden');
-        standardSectionContentPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
+        showView('dashboardOverviewContainer');
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
@@ -2175,10 +2197,7 @@
     
     async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
-        dashboardOverviewContainer.classList.add('hidden');
-        standardSectionContentPlaceholder.classList.remove('hidden');
-        itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
+        showView('standardSectionContentPlaceholder');
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
@@ -2655,18 +2674,14 @@
         const itemData = sectionData?.items?.find(i => i.id === itemId);
 
         if (!sectionData || !itemData) {
+            showView('standardSectionContentPlaceholder');
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
-            itemDetailViewPlaceholder.classList.add('hidden');
-            standardSectionContentPlaceholder.classList.remove('hidden');
-            itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
+
+        showView('itemDetailViewPlaceholder');
         currentOpenItem = { sectionId, itemId, title: itemData.title }; // Store title for PDF filename
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
-
-        dashboardOverviewContainer.classList.add('hidden');
-        standardSectionContentPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.classList.remove('hidden');
 
         let bcHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
