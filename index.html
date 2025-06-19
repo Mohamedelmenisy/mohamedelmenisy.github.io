@@ -1429,7 +1429,7 @@
     // This object now serves primarily for defining the static sidebar structure.
     // Item data will be fetched from Supabase. The 'items' array here is for fallback/reference.
     let kbSystemData = {
-        meta: { version: '1.0.0-beta', lastGlobalUpdate: new Date().toISOString() }, 
+        meta: { version: '1.0.1-hotfix', lastGlobalUpdate: new Date().toISOString() }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1792,10 +1792,10 @@
         const welcomeUser = currentUser.name || 'Admin';
         
         // Fetch real data from Supabase
-        const { count: totalArticles, error: articlesError } = await supabase.from('items').select('id', { count: 'exact', head: true }).in('type', ['article', 'guide', 'policy']);
-        const { count: totalCases, error: casesError } = await supabase.from('items').select('id', { count: 'exact', head: true }).eq('type', 'case');
-        const { data: latestItem, error: latestItemError } = await supabase.from('items').select('title, created_at').order('created_at', { ascending: false }).limit(1).single();
-        const { data: mostUsedItems, error: mostUsedError } = await supabase.from('items').select('id, title, views, section_id').order('views', { ascending: false }).limit(3);
+        const { count: totalArticles, error: articlesError } = await supabase.from('call_scenarios').select('id', { count: 'exact', head: true }).in('type', ['article', 'guide', 'policy']);
+        const { count: totalCases, error: casesError } = await supabase.from('call_scenarios').select('id', { count: 'exact', head: true }).eq('type', 'case');
+        const { data: latestItem, error: latestItemError } = await supabase.from('call_scenarios').select('title, created_at').order('created_at', { ascending: false }).limit(1).single();
+        const { data: mostUsedItems, error: mostUsedError } = await supabase.from('call_scenarios').select('id, title, views, section_id').order('views', { ascending: false, nulls: 'last' }).limit(3);
 
         const lastAdded = latestItem ? { title: latestItem.title, date: new Date(latestItem.created_at).toLocaleDateString() } : { title: "N/A", date: "N/A" };
 
@@ -1830,7 +1830,7 @@
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="dashboard-info-card">
-                    <h3>🔥 Most Used Articles</h3>
+                    <h3>🔥 Most Used Scenarios</h3>
                     <ul>${mostUsedItems && mostUsedItems.length ? mostUsedItems.map(item => {
                         return `<li>
                             <a href="#${item.section_id}/${item.id}">${escapeHTML(item.title)}</a> 
@@ -1841,7 +1841,7 @@
                 <div class="dashboard-info-card">
                     <h3>💡 Quick Links & System Info</h3>
                      <ul>
-                        <li><a href="#support/sup_flow_compensation"><i class="fas fa-project-diagram fa-fw"></i> View Compensation Scenario</a></li>
+                        <li><a href="#support"><i class="fas fa-project-diagram fa-fw"></i> View Support Scenarios</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
                         <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(lastAdded.title)} <span class="meta">(${escapeHTML(lastAdded.date)})</span></li>
                      </ul>
@@ -1905,7 +1905,7 @@
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
 
         // Fetch items from Supabase
-        const { data: items, error } = await supabase.from('items').select('*').eq('section_id', sectionId);
+        const { data: items, error } = await supabase.from('call_scenarios').select('*').eq('section_id', sectionId);
         if (error) {
             showToast('Failed to load content for this section.', 'error');
             console.error('Error fetching section content:', error);
@@ -1950,7 +1950,8 @@
         const now = Date.now();
 
         if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
-            const { error } = await supabase.rpc('increment_view_count', { item_uuid: itemId });
+            // Assumes an RPC function `increment_view_count(scenario_uuid UUID)` exists
+            const { error } = await supabase.rpc('increment_view_count', { scenario_uuid: itemId });
             if (error) {
                 console.error('Failed to increment view count:', error);
             } else {
@@ -2010,7 +2011,7 @@
 
     async function displayItemDetail(sectionId, itemId) {
         const { data: itemData, error: itemError } = await supabase
-            .from('items')
+            .from('call_scenarios')
             .select('*')
             .eq('id', itemId)
             .single();
@@ -2066,7 +2067,7 @@
                     <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
                    </div>`;
         
-        const { data: childItems, error: childError } = await supabase.from('items').select('id, title, section_id').eq('parent_id', itemData.id);
+        const { data: childItems, error: childError } = await supabase.from('call_scenarios').select('id, title, section_id').eq('parent_id', itemData.id);
         if (childItems && childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
                             <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
@@ -2157,7 +2158,7 @@
         const { data: existingFeedback, error: feedbackError } = await supabase
             .from('kb_feedback')
             .select('id')
-            .eq('item_id', itemData.id)
+            .eq('scenario_id', itemData.id)
             .eq('user_id', currentUser.id)
             .maybeSingle();
 
@@ -2166,7 +2167,7 @@
             feedbackInteractionContainer.innerHTML = ''; // Remove buttons
         } else {
              rateYesBtn.addEventListener('click', async () => {
-                const { error } = await supabase.from('kb_feedback').insert({ item_id: itemData.id, user_id: currentUser.id, is_helpful: true });
+                const { error } = await supabase.from('kb_feedback').insert({ scenario_id: itemData.id, user_id: currentUser.id, is_helpful: true });
                 if (error) {
                     showToast('Could not save feedback.', 'error'); console.error(error);
                 } else {
@@ -2186,7 +2187,7 @@
                 e.preventDefault();
                 const reason = document.getElementById('feedbackReason').value.trim();
                 if (reason) {
-                    const { error } = await supabase.from('kb_feedback').insert({ item_id: itemData.id, user_id: currentUser.id, is_helpful: false, comment: reason });
+                    const { error } = await supabase.from('kb_feedback').insert({ scenario_id: itemData.id, user_id: currentUser.id, is_helpful: false, comment: reason });
                     if(error){
                          showToast('Could not save feedback.', 'error'); console.error(error);
                     } else {
@@ -2211,7 +2212,7 @@
             }
 
             const { error } = await supabase.from('kb_comments').insert({
-                item_id: itemData.id,
+                scenario_id: itemData.id,
                 user_id: currentUser.id,
                 content: commentText
             });
@@ -2234,7 +2235,7 @@
         const { data: comments, error } = await supabase
             .from('kb_comments')
             .select('*, author:users(name, avatar_url)')
-            .eq('item_id', itemId)
+            .eq('scenario_id', itemId)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -2251,7 +2252,7 @@
         let commentsHTML = '';
         comments.forEach(comment => {
             const authorName = comment.author?.name || 'User';
-            const authorAvatar = comment.author?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=random&color=fff&rounded=true&font-size=0.5`;
+            const authorAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=random&color=fff&rounded=true&font-size=0.5`;
 
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
@@ -2321,7 +2322,7 @@
     // --- Add/Edit Content Modal Logic ---
     async function populateParentItemDropdown(currentSectionId, currentItemId = null) {
         contentParentIdSelect.innerHTML = '<option value="">-- No Parent --</option>';
-        const { data: items, error } = await supabase.from('items').select('id, title').eq('section_id', currentSectionId);
+        const { data: items, error } = await supabase.from('call_scenarios').select('id, title').eq('section_id', currentSectionId);
         if (error) {
             console.error("Failed to load parent items:", error);
             return;
@@ -2429,11 +2430,11 @@
         let result;
         if (editingId) {
             // Update
-            const { data, error } = await supabase.from('items').update(itemData).eq('id', editingId).select().single();
+            const { data, error } = await supabase.from('call_scenarios').update(itemData).eq('id', editingId).select().single();
             result = { data, error };
         } else {
             // Insert
-            const { data, error } = await supabase.from('items').insert(itemData).select().single();
+            const { data, error } = await supabase.from('call_scenarios').insert(itemData).select().single();
             result = { data, error };
         }
 
@@ -2443,6 +2444,7 @@
         } else {
             showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
             closeAddContentModal();
+            await cacheAllItems(); // Recache items after add/edit
             window.location.hash = `#${sectionId}/${result.data.id}`;
             handleNavigation(); // Force refresh of the view
         }
@@ -2460,7 +2462,7 @@
         const sectionId = confirmDeleteItemBtn.dataset.sectionId;
         const itemId = confirmDeleteItemBtn.dataset.itemId;
         
-        const { error } = await supabase.from('items').delete().eq('id', itemId);
+        const { error } = await supabase.from('call_scenarios').delete().eq('id', itemId);
 
         if (error) {
             showToast(`Error deleting item: ${error.message}`, 'error');
@@ -2468,6 +2470,7 @@
         } else {
              showToast(`Item successfully deleted.`, 'success');
              deleteConfirmModalOverlay.classList.add('hidden');
+             await cacheAllItems(); // Recache items after delete
              window.location.hash = `#${sectionId}`;
         }
     });
@@ -2481,12 +2484,13 @@
         if (query.length < 2) {
             searchResultsContainer.classList.add('hidden'); return;
         }
-
-        const { data: results, error } = await supabase.from('items').select('id, title, summary, section_id').textSearch('fts', query, { type: 'plain' });
+        // Assuming your RLS policies and `fts` column on `call_scenarios` are set up
+        const { data: results, error } = await supabase.from('call_scenarios').select('id, title, summary, section_id').textSearch('fts', query, { type: 'plain' });
         
         searchResultsContainer.innerHTML = '';
         if (error) {
              searchResultsContainer.innerHTML = `<div style="padding: 10px; color: var(--text-color-muted);">Error during search.</div>`;
+             console.error("Search error:", error);
         } else if (results && results.length) {
             results.slice(0, 7).forEach(r => {
                 const sectionName = kbSystemData.sections.find(s => s.id === r.section_id)?.name || 'Unknown';
@@ -2524,7 +2528,7 @@
     }
     
     async function cacheAllItems() {
-        const { data, error } = await supabase.from('items').select('id, title, parent_id');
+        const { data, error } = await supabase.from('call_scenarios').select('id, title, parent_id');
         if (error) {
             console.error("Could not cache items for parent/child lookup", error);
         } else {
