@@ -1682,7 +1682,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.9.0-interactive-topics', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.9.1-hotfix', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -3145,34 +3145,34 @@
         });
     }
 
-    // UPDATED: contentTemplates with improved troubleshooting guide
+    // UPDATED: contentTemplates with improved troubleshooting guide, now using backticks for safety
     const contentTemplates = {
         standard_article: {
             type: 'article',
             titlePrefix: 'New Article: ',
             summary: 'A general article about [topic].',
-            content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here. You can use lists, paragraphs, etc.]</p><ul><li>Point 1</li><li>Point 2</li></ul><h2>Conclusion</h2><p>[Summarize the key takeaways.]</p>',
+            content: `<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here. You can use lists, paragraphs, etc.]</p><ul><li>Point 1</li><li>Point 2</li></ul><h2>Conclusion</h2><p>[Summarize the key takeaways.]</p>`,
             tags: ['article']
         },
         troubleshooting_guide: {
             type: 'case', 
             titlePrefix: 'Case: Troubleshooting ',
             summary: 'A step-by-step guide to resolve [issue], explaining the cause and solution.',
-            content: '<h3>Case Description</h3><p>[Clearly describe the problem or issue this guide addresses. What is the user trying to do? What is failing?]</p><h3>Symptoms</h3><ul><li>[Symptom 1, e.g., "User receives error message 'X'."]</li><li>[Symptom 2, e.g., "The button for 'Y' is greyed out."]</li></ul><h3>Understanding the Cause</h3><p>[Explain *why* this problem occurs. This is the "knowledge" part. e.g., "This issue is typically caused by a mismatch in user permissions..."]</p><!-- Insert illustrative image here --><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved. e.g., "Ask the user to log out and log back in, then confirm they can now click the button."]</p>',
+            content: `<h3>Case Description</h3><p>[Clearly describe the problem or issue this guide addresses. What is the user trying to do? What is failing?]</p><h3>Symptoms</h3><ul><li>[Symptom 1, e.g., "User receives error message 'X'."]</li><li>[Symptom 2, e.g., "The button for 'Y' is greyed out."]</li></ul><h3>Understanding the Cause</h3><p>[Explain *why* this problem occurs. This is the "knowledge" part. e.g., "This issue is typically caused by a mismatch in user permissions..."]</p><!-- Insert illustrative image here --><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved. e.g., "Ask the user to log out and log back in, then confirm they can now click the button."]</p>`,
             tags: ['troubleshooting', 'guide', 'case']
         },
         policy_document: {
             type: 'policy',
             titlePrefix: 'Policy: ',
             summary: 'Official policy regarding [subject matter].',
-            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p><h2>4. Responsibilities</h2><p>[Outline responsibilities related to this policy.]</p>',
+            content: `<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p><h2>4. Responsibilities</h2><p>[Outline responsibilities related to this policy.]</p>`,
             tags: ['policy', 'official']
         },
          blank: {
             type: 'article', 
             titlePrefix: '',
             summary: '',
-            content: '<p><br></p>', 
+            content: `<p><br></p>`, 
             tags: []
         }
     };
@@ -3267,17 +3267,23 @@
         const imageUrlInput = document.getElementById('contentImageUrl');
         const url = imageUrlInput.value.trim();
         if (url && mainQuillEditor) {
-            const range = mainQuillEditor.getSelection(true); // Get cursor position
-            // The third argument 'user' is important to trigger change events
-            mainQuillEditor.insertText(range.index, '\n', 'user');
-            mainQuillEditor.insertEmbed(range.index + 1, 'image', url, 'user');
-            mainQuillEditor.formatText(range.index + 1, 1, { class: 'kb-img' }); // Apply custom class
-            mainQuillEditor.insertText(range.index + 2, '\n', 'user');
-            mainQuillEditor.setSelection(range.index + 3); // Move cursor after image
-            imageUrlInput.value = ''; // Clear the input
-            showToast('Image inserted into content.', 'success');
+            try {
+                // Validate if it's a reasonable URL format
+                new URL(url);
+                const range = mainQuillEditor.getSelection(true); // Get cursor position
+                // The third argument 'user' is important to trigger change events
+                mainQuillEditor.insertText(range.index, '\n', 'user');
+                mainQuillEditor.insertEmbed(range.index + 1, 'image', url, 'user');
+                mainQuillEditor.formatText(range.index + 1, 1, { class: 'kb-img' }); // Apply custom class
+                mainQuillEditor.insertText(range.index + 2, '\n', 'user');
+                mainQuillEditor.setSelection(range.index + 3); // Move cursor after image
+                imageUrlInput.value = ''; // Clear the input
+                showToast('Image inserted into content.', 'success');
+            } catch (_) {
+                showToast('Please enter a valid, full URL (e.g., https://...).', 'error');
+            }
         } else {
-            showToast('Please enter a valid image URL.', 'error');
+            showToast('Please enter an image URL first.', 'error');
         }
     });
 
