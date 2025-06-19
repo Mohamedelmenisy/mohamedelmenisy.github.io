@@ -453,6 +453,20 @@
         }
         .form-group textarea { min-height: 100px; }
         
+        /* New: for image URL input group in modal */
+        .form-group-inline {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+        .form-group-inline .form-control {
+            flex-grow: 1;
+        }
+        .form-group-inline .button {
+            flex-shrink: 0;
+            padding: 0.6rem 0.8rem; /* Adjust padding to match input height */
+        }
+        
         .form-group input::placeholder,
         .form-group textarea::placeholder {
             color: var(--text-color-muted);
@@ -615,6 +629,14 @@
             margin: 0;
             font-size: 85%;
             border-radius: 3px;
+        }
+        /* New: Style for images inside content */
+        .kb-content .kb-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
         }
         mark {
             padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold;
@@ -1005,7 +1027,7 @@
         
         /* Updated .step-link style per request */
         .step-link {
-            color: #60a5fa; /* لون أزرق جميل */
+            color: #60a5fa; /* A nice blue color */
             font-weight: 500; /* Retained for consistency, can be removed if not desired */
             text-decoration: none;
             border-bottom: 1px dotted #60a5fa;
@@ -1098,6 +1120,73 @@
             gap: 0.75rem;
         }
 
+        /* NEW: Styles for Interactive Topics on Click */
+        .topic-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1rem 0;
+        }
+        .topic {
+            position: relative;
+            background-color: var(--bg-color-alt);
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            min-width: 200px;
+            text-align: center;
+        }
+        .topic:hover {
+            border-color: var(--primary-color);
+            color: var(--text-color-inverted);
+            background-color: var(--primary-color-hover);
+        }
+        .topic .sub-content, .topic .nested-sub {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 0;
+            left: calc(100% + 10px); /* Appear to the right */
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            box-shadow: var(--card-hover-shadow);
+            z-index: 10;
+            width: max-content; /* Adjust width to content */
+            min-width: 220px;
+            text-align: left;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .topic .sub-content.active, .topic .nested-sub.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .topic .sub-content {
+            /* Position relative to .topic */
+        }
+        .topic .nested-sub {
+            /* Position relative to its parent .sub-content */
+            left: calc(100% + 10px);
+        }
+        .sub-content-item, .nested-sub-item {
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: background-color 0.2s ease;
+            position: relative; /* For nested sub positioning */
+        }
+        .sub-content-item:hover, .nested-sub-item:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-color);
+        }
+
+
         /* Print Styles */
         @media print {
             body, .container-fluid {
@@ -1118,7 +1207,8 @@
             .dashboard-overview-container,
             .search-container, .user-profile,
             .mark-step-done-btn, .toggle-step-details-btn,
-            #openAddContentBtnInSection
+            #openAddContentBtnInSection,
+            .topic-container /* Hide interactive topics in print */
             {
                 display: none !important;
             }
@@ -1289,6 +1379,17 @@
                     <input type="url" id="contentUrl">
                 </div>
 
+                <!-- NEW: Image URL input -->
+                <div class="form-group">
+                    <label for="contentImageUrl">Image URL (Optional)</label>
+                    <div class="form-group-inline">
+                        <div class="form-control">
+                            <input type="url" id="contentImageUrl" placeholder="https://example.com/image.png">
+                        </div>
+                        <button type="button" id="insertImageBtn" class="button button-secondary"><i class="fas fa-image"></i> Insert Image</button>
+                    </div>
+                </div>
+
                 <div class="form-group" id="contentDetailContainer">
                     <label for="contentDetail" id="contentDetailLabel">Details / Content</label>
                     <div id="quillEditor"></div> <!-- Quill editor container -->
@@ -1307,7 +1408,7 @@
                     <input type="file" id="pdfFile" accept=".pdf">
                 </div>
                 <div class="form-group">
-                    <label for="imageFile">Upload Image</label>
+                    <label for="imageFile">Upload Image (Attachment)</label>
                     <input type="file" id="imageFile" accept="image/*">
                 </div>
                 <div class="form-group">
@@ -1458,7 +1559,6 @@
 
     // =================================================================================
     // IMMEDIATE SESSION CHECK
-    // This check runs before any app logic to prevent rendering a blank UI.
     // =================================================================================
     const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession();
 
@@ -1469,7 +1569,6 @@
         console.log("No initial session found. Redirecting to login.");
         window.location.href = 'login.html';
     }
-    // If a session exists, the script continues.
     // =================================================================================
 
 
@@ -1517,16 +1616,13 @@
             const authUser = session.user;
             const userId = authUser.id;
 
-            // Step 1: Attempt to fetch the user profile from the 'users' table.
             let { data: userDataFromDB, error: dbError } = await supabase
                 .from("users")
                 .select("id, name, email, role") 
                 .eq("id", userId)
                 .single();
 
-            // Step 2: Handle different outcomes of the fetch attempt.
             if (dbError && dbError.code !== 'PGRST116') {
-                // An unexpected database error occurred (not a "no rows found" error).
                 console.error("Unexpected DB error fetching user profile:", dbError);
                 await supabase.auth.signOut();
                 window.location.href = "login.html";
@@ -1534,8 +1630,6 @@
             }
 
             if (!userDataFromDB) {
-                // This is the key scenario: The user is authenticated but has no profile in our 'users' table.
-                // We will create one for them on the fly.
                 console.warn(`Profile for user ${userId} not found. Creating a new profile in 'users' table.`);
                 
                 const { data: newProfile, error: insertError } = await supabase
@@ -1543,9 +1637,8 @@
                     .insert({
                         id: userId,
                         email: authUser.email,
-                        // Use full_name from sign-up metadata if available, otherwise derive from email.
                         name: authUser.user_metadata?.full_name || authUser.email.split('@')[0], 
-                        role: 'viewer' // Assign a default role for all new sign-ups.
+                        role: 'viewer'
                     })
                     .select()
                     .single();
@@ -1558,10 +1651,9 @@
                 }
                 
                 console.log("Successfully created and fetched new user profile:", newProfile);
-                userDataFromDB = newProfile; // Assign the newly created profile to continue the process.
+                userDataFromDB = newProfile;
             }
             
-            // Step 3: If we have a profile (either fetched or newly created), format and return it.
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
                 ...userDataFromDB, 
@@ -1579,7 +1671,7 @@
             } else {
                 localStorage.removeItem('infiniBaseUser');
                 localStorage.removeItem('justLoggedIn');
-                localStorage.removeItem('infiniBase_agentScriptMode'); // Clear agent script mode on logout
+                localStorage.removeItem('infiniBase_agentScriptMode');
                 showToast('You have been logged out successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'login.html';
@@ -1590,7 +1682,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.8.2-print-pdf-enh', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.9.0-interactive-topics', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1750,6 +1842,58 @@
                     }
                 ]
             },
+            {
+                id: 'interactive_scenarios', name: 'Interactive Scenarios', icon: 'fas fa-mouse-pointer', description: 'Click-based interactive content.', iconColor: '#f472b6', items: [
+                    {
+                        id: 'is_main_demo', type: 'article',
+                        title: 'Interactive Topic Demonstration',
+                        summary: 'A demonstration of the interactive topic feature, which shows nested content on click.',
+                        content: `
+                            <p>Click on the topics below to reveal more information. Clicking anywhere else on the page will close them.</p>
+                            <div class="topic-container">
+                                <div class="topic">
+                                    Main Scenario: Order Delay
+                                    <div class="sub-content">
+                                        <div class="sub-content-item">
+                                            Delay &lt; 15 mins
+                                            <div class="nested-sub">
+                                                <div class="nested-sub-item">Action: Apologize & provide ETA.</div>
+                                            </div>
+                                        </div>
+                                        <div class="sub-content-item">
+                                            Delay &gt; 15 mins
+                                            <div class="nested-sub">
+                                                <div class="nested-sub-item">Action: Check order type (Fast/Scheduled).</div>
+                                                <div class="nested-sub-item">Action: Follow compensation matrix.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="topic">
+                                    Main Scenario: Wrong Item
+                                    <div class="sub-content">
+                                        <div class="sub-content-item">Step 1: Verify with customer.</div>
+                                        <div class="sub-content-item">Step 2: Check with restaurant.</div>
+                                        <div class="sub-content-item">Step 3: Offer re-delivery or refund.</div>
+                                    </div>
+                                </div>
+                                <div class="topic">
+                                    Main Scenario: Payment Issue
+                                    <div class="sub-content">
+                                        <div class="sub-content-item">Credit Card Failed</div>
+                                        <div class="sub-content-item">COD Issue</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `,
+                        tags: ['interactive', 'demo'],
+                        createdAt: new Date().toISOString(),
+                        views: 15,
+                        comments: [],
+                        feedback: []
+                    }
+                ]
+            },
             { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
                  { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: Math.floor(Math.random()*40)+15, comments: [], feedback: [] }
             ] }, 
@@ -1796,6 +1940,7 @@
     const contentDetailLabel = document.getElementById('contentDetailLabel');
     const contentTagsInput = document.getElementById('contentTags');
     const editingItemIdInput = document.getElementById('editingItemId');
+    const insertImageBtn = document.getElementById('insertImageBtn'); // New button
     
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
@@ -1836,7 +1981,6 @@
     let flowState = {
         isAgentScriptModeActive: localStorage.getItem('infiniBase_agentScriptMode') === 'true',
         expandedSteps: new Set(), // Stores IDs of expanded steps
-        // doneSteps will be loaded from localStorage per item
     };
 
     // --- Utility Functions ---
@@ -1913,7 +2057,7 @@
         let menuHTML = '';
         const mainSections = ['home'];
         const knowledgeAreas = [
-            'support', 'partner_care', 'logistics', 'customer_care', 
+            'support', 'interactive_scenarios', 'partner_care', 'logistics', 'customer_care', 
             'distribution_followup', 'logistics_driver_complaints', 'logistics_3pl', 
             'order_at_store_mac', 'logistics_admin', 'operating_systems'
         ];
@@ -2069,7 +2213,6 @@
             return;
         }
 
-        // Admin Dashboard Content
         const welcomeUser = currentUser.name || currentUser.email || 'Admin'; 
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
@@ -2155,6 +2298,7 @@
                     <h3>Quick Links</h3>
                     <ul>
                         ${compensationFlowItem ? `<li><a href="#support/${compensationFlowItem.id}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>` : ''}
+                        <li><a href="#interactive_scenarios"><i class="fas fa-mouse-pointer fa-fw"></i> Interactive Demos</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
                     </ul>
                      <h3 style="margin-top: 1.5rem;">💡 Content Suggestions</h3>
@@ -2214,6 +2358,48 @@
         applyPermanentDarkMode(); 
     }
     
+    // NEW: Function to handle interactive topic logic
+    function initializeInteractiveTopics() {
+        const topicContainers = document.querySelectorAll('.topic-container');
+        if (topicContainers.length === 0) return;
+
+        const allTopics = document.querySelectorAll('.topic, .sub-content-item');
+
+        allTopics.forEach(topic => {
+            topic.addEventListener('click', e => {
+                e.stopPropagation(); // Prevent click from bubbling up to document
+                const subContent = topic.querySelector('.sub-content, .nested-sub');
+                if (!subContent) return;
+
+                const isActive = subContent.classList.contains('active');
+
+                // Hide all other active sub-contents at the same or deeper level
+                const parentContainer = e.currentTarget.closest('.topic-container, .sub-content, .nested-sub');
+                parentContainer.querySelectorAll('.active').forEach(activeEl => {
+                    if (activeEl !== subContent) {
+                         activeEl.classList.remove('active');
+                    }
+                });
+
+                // Toggle the current one
+                if (!isActive) {
+                    subContent.classList.add('active');
+                } else {
+                    subContent.classList.remove('active');
+                }
+            });
+        });
+
+        // Global click listener to close all pop-ups
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.topic-container')) {
+                document.querySelectorAll('.sub-content.active, .nested-sub.active').forEach(el => {
+                    el.classList.remove('active');
+                });
+            }
+        });
+    }
+
     async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
@@ -2620,56 +2806,48 @@
             return;
         }
 
-        // Clone the element to modify for PDF without affecting the live view
         const elementToPrint = element.cloneNode(true);
-        elementToPrint.style.padding = "20px"; // Add some padding to the cloned container
-        elementToPrint.style.width = "210mm"; // A4 width approximation for layout
-        elementToPrint.style.backgroundColor = "white"; // Ensure white background for PDF
+        elementToPrint.style.padding = "20px";
+        elementToPrint.style.width = "210mm";
+        elementToPrint.style.backgroundColor = "white"; 
         
-        // Remove elements not desired in PDF
         const selectorsToRemove = [
             '.item-actions-bar', '.flow-controls', '.item-feedback-section', 
             '.comments-section', '#flowInPlaceEditorContainer', '.copy-script-btn',
-            '.mark-step-done-btn', '.toggle-step-details-btn'
+            '.mark-step-done-btn', '.toggle-step-details-btn', '.topic-container'
         ];
         selectorsToRemove.forEach(selector => {
             elementToPrint.querySelectorAll(selector).forEach(el => el.remove());
         });
 
-        // Ensure all steps in an interactive flow are expanded in the clone
-        if (itemToDownload.id === 'sup_flow_compensation') { // Or a more generic check for flow type
+        if (itemToDownload.id === 'sup_flow_compensation') {
              elementToPrint.querySelectorAll('.step-card:not(.expanded)').forEach(sc => {
-                sc.classList.add('expanded'); // Visually expand
+                sc.classList.add('expanded');
                 const body = sc.querySelector('.step-body');
-                if(body) body.style.display = 'block'; // Ensure JS-controlled display is overridden
+                if(body) body.style.display = 'block';
             });
-            // Ensure agent script mode specific hidden elements are shown if agent script mode was active
              elementToPrint.querySelectorAll('.agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block)').forEach(el => el.style.display = 'block');
              const notesCard = elementToPrint.querySelector('.important-notes-card');
              if (notesCard) notesCard.style.display = 'block';
         }
         
-        // Temporarily append to body for html2pdf to correctly render styles, but keep it off-screen
         elementToPrint.style.position = 'absolute';
         elementToPrint.style.left = '-9999px';
         document.body.appendChild(elementToPrint);
 
-
-        // Render Mermaid diagrams in the clone if not already rendered or if source was hidden
         if (elementToPrint.querySelector('pre.mermaid')) {
-            await renderMermaidDiagramsInElement(elementToPrint); // Re-run on clone
+            await renderMermaidDiagramsInElement(elementToPrint);
         }
 
-
         const opt = {
-            margin: [10, 10, 10, 10], // mm top, left, bottom, right
+            margin: [10, 10, 10, 10],
             filename: filename,
             image: { type: 'jpeg', quality: 0.95 },
             html2canvas: {
-                scale: 2, // Better quality
+                scale: 2,
                 logging: false,
-                useCORS: true, // For external images if any
-                onclone: (doc) => { // Ensure all text is selectable and visible
+                useCORS: true,
+                onclone: (doc) => {
                     doc.querySelectorAll('*').forEach(node => {
                         node.style.color = getComputedStyle(node).color;
                         node.style.backgroundColor = getComputedStyle(node).backgroundColor;
@@ -2677,7 +2855,7 @@
                 }
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Try to respect page breaks
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         try {
@@ -2687,7 +2865,7 @@
             console.error("Error generating PDF:", error);
             showToast('Error generating PDF. Check console.', 'error');
         } finally {
-             document.body.removeChild(elementToPrint); // Clean up the cloned element
+             document.body.removeChild(elementToPrint);
         }
     }
 
@@ -2702,7 +2880,7 @@
             itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
-        currentOpenItem = { sectionId, itemId, title: itemData.title }; // Store title for PDF filename
+        currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         dashboardOverviewContainer.classList.add('hidden');
@@ -2762,7 +2940,6 @@
             return; 
         }
 
-
         let itemIconClass = 'fas fa-file-alt';
         if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
         else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
@@ -2770,6 +2947,9 @@
         else if (itemData.type === 'design') itemIconClass = 'fas fa-palette';
         else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
+        
+        // Special icon for our new interactive demo section
+        if (sectionId === 'interactive_scenarios') itemIconClass = 'fas fa-mouse-pointer';
 
         const childItems = kbSystemData.sections.flatMap(s => s.items || [])
                                .filter(child => child.parentId === itemData.id)
@@ -2881,7 +3061,11 @@
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid') && itemDetailViewPlaceholder.dataset.mermaidRendered !== 'true') {
             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
-
+        
+        // NEW: After rendering content, initialize interactive topic listeners if they exist
+        if(itemDetailViewPlaceholder.querySelector('.topic-container')){
+            initializeInteractiveTopics();
+        }
 
         document.getElementById('backToSectionBtn').addEventListener('click', () => {
             window.location.hash = `#${sectionId}`;
@@ -2961,7 +3145,7 @@
         });
     }
 
-
+    // UPDATED: contentTemplates with improved troubleshooting guide
     const contentTemplates = {
         standard_article: {
             type: 'article',
@@ -2973,8 +3157,8 @@
         troubleshooting_guide: {
             type: 'case', 
             titlePrefix: 'Case: Troubleshooting ',
-            summary: 'A step-by-step guide to resolve [issue].',
-            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Symptoms</h3><ul><li>[Symptom 1]</li><li>[Symptom 2]</li></ul><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved.]</p>',
+            summary: 'A step-by-step guide to resolve [issue], explaining the cause and solution.',
+            content: '<h3>Case Description</h3><p>[Clearly describe the problem or issue this guide addresses. What is the user trying to do? What is failing?]</p><h3>Symptoms</h3><ul><li>[Symptom 1, e.g., "User receives error message 'X'."]</li><li>[Symptom 2, e.g., "The button for 'Y' is greyed out."]</li></ul><h3>Understanding the Cause</h3><p>[Explain *why* this problem occurs. This is the "knowledge" part. e.g., "This issue is typically caused by a mismatch in user permissions..."]</p><!-- Insert illustrative image here --><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved. e.g., "Ask the user to log out and log back in, then confirm they can now click the button."]</p>',
             tags: ['troubleshooting', 'guide', 'case']
         },
         policy_document: {
@@ -3076,6 +3260,25 @@
         button.addEventListener('click', () => {
             applyTemplate(button.dataset.template);
         });
+    });
+
+    // NEW: Event listener for inserting an image from a URL
+    insertImageBtn.addEventListener('click', () => {
+        const imageUrlInput = document.getElementById('contentImageUrl');
+        const url = imageUrlInput.value.trim();
+        if (url && mainQuillEditor) {
+            const range = mainQuillEditor.getSelection(true); // Get cursor position
+            // The third argument 'user' is important to trigger change events
+            mainQuillEditor.insertText(range.index, '\n', 'user');
+            mainQuillEditor.insertEmbed(range.index + 1, 'image', url, 'user');
+            mainQuillEditor.formatText(range.index + 1, 1, { class: 'kb-img' }); // Apply custom class
+            mainQuillEditor.insertText(range.index + 2, '\n', 'user');
+            mainQuillEditor.setSelection(range.index + 3); // Move cursor after image
+            imageUrlInput.value = ''; // Clear the input
+            showToast('Image inserted into content.', 'success');
+        } else {
+            showToast('Please enter a valid image URL.', 'error');
+        }
     });
 
 
@@ -3369,13 +3572,9 @@
     }
 
     async function initializeApp() {
-        // The top-level session check ensures we don't get here without a valid session.
-        // Now, we proceed to get the full user profile, creating it if it doesn't exist.
         currentUser = await Auth.getCurrentUserProfile(); 
         
         if (!currentUser) {
-            // This is a final fallback. `getCurrentUserProfile` should handle redirects,
-            // but if it somehow returns null, we must stop execution.
             console.error("Initialization failed: No user profile could be obtained.");
             return; 
         }
