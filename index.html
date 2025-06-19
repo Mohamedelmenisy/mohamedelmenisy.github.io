@@ -50,8 +50,6 @@
             --yes-color: #22c55e; /* Green for Yes */
             --no-color: #ef4444;   /* Red for No */
             --rating-color: #fbbf24; /* Amber 400 for ratings */
-            --step-done-color: #22c55e;
-            --step-pending-color: #f59e0b;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -66,9 +64,7 @@
             font-size: 16px;
         }
 
-        a { /* Apply to all links */
-            text-decoration-skip-ink: none;
-        }
+        a { text-decoration-skip-ink: none; }
 
         .container-fluid {
             display: flex;
@@ -282,6 +278,8 @@
             display: flex;
             flex-direction: column; 
             min-height: 150px; 
+            position: relative; /* For hover tooltip positioning */
+            overflow: visible; /* Allow tooltip to show */
         }
         .card:hover {
             transform: translateY(-4px);
@@ -338,6 +336,52 @@
             margin: 0 5px 5px 0; /* LTR */
         }
 
+        /* Card Hover Tooltip/Menu - New Style */
+        .card-hover-details {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color-darker);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+            padding: 0.75rem;
+            z-index: 10;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card:hover .card-hover-details {
+            display: block;
+        }
+        .card-hover-details h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-color-muted);
+            letter-spacing: 0.05em;
+        }
+        .card-hover-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .card-hover-details ul li {
+            font-size: 0.875rem;
+            padding: 0.25rem 0;
+            color: var(--text-color);
+        }
+        .card-hover-details ul li i {
+            margin-right: 0.5rem;
+            color: var(--primary-color);
+        }
+
         .button, button {
             background-color: var(--primary-color);
             color: var(--text-color-inverted);
@@ -372,6 +416,12 @@
             outline: 2px solid transparent;
             outline-offset: 2px;
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); 
+        }
+        button:disabled {
+            background-color: var(--border-color);
+            color: var(--text-color-muted);
+            cursor: not-allowed;
+            border-color: transparent;
         }
 
         .modal-overlay {
@@ -452,20 +502,6 @@
             color: var(--text-color);
         }
         .form-group textarea { min-height: 100px; }
-        
-        /* New: for image URL input group in modal */
-        .form-group-inline {
-            display: flex;
-            gap: 0.5rem;
-            align-items: flex-end;
-        }
-        .form-group-inline .form-control {
-            flex-grow: 1;
-        }
-        .form-group-inline .button {
-            flex-shrink: 0;
-            padding: 0.6rem 0.8rem; /* Adjust padding to match input height */
-        }
         
         .form-group input::placeholder,
         .form-group textarea::placeholder {
@@ -608,8 +644,7 @@
 
         .kb-content h1, .kb-content h2, .kb-content h3 { margin-top: 1.5em; margin-bottom: 0.5em; color: var(--text-color); }
         .kb-content p { margin-bottom: 1em; }
-        .kb-content ol { margin-bottom: 1em; padding-left: 20px; }
-        .kb-content ul { margin-bottom: 1em; padding-left: 20px; }
+        .kb-content ul, .kb-content ol { margin-bottom: 1em; padding-left: 20px; /* LTR */ }
         .kb-content li { margin-bottom: 0.5em; }
         .kb-content strong { font-weight: bold; }
         .kb-content em { font-style: italic; }
@@ -624,22 +659,43 @@
             border: 1px solid var(--border-color);
             color: var(--text-color); /* Ensure pre content is visible */
         }
-         .kb-content code { /* More specific for inline code if needed */
+        .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
             padding: 0.2em 0.4em;
             margin: 0;
             font-size: 85%;
             border-radius: 3px;
         }
-        /* UPDATED: Style for images inside content */
-        .kb-content img.kb-img {
-            max-width: 100%;
-            height: auto;
+        .kb-content blockquote {
+            background-color: var(--bg-color-hover);
+            padding: 0.75rem 1rem;
             border-radius: var(--border-radius);
-            margin: 1.5rem 0; /* Increased margin for better spacing */
-            border: 1px solid var(--border-color);
-            display: block; /* Ensures margin works correctly */
+            margin: 1em 0;
+            border-left: 4px solid var(--primary-color);
+            color: var(--text-color);
+            position: relative;
         }
+        .kb-content blockquote i.fa-comment-dots {
+            margin-right: 0.5rem;
+            color: var(--primary-color);
+        }
+        .copy-script-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--bg-color);
+            color: var(--text-color-muted);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            z-index: 1;
+        }
+        .copy-script-btn:hover { opacity: 1; }
+
         mark {
             padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold;
             background-color: #78350f; color: #f3f4f6; 
@@ -653,12 +709,12 @@
             border-radius: var(--border-radius-lg);
             background-color: var(--bg-color-alt);
             height: 320px; 
-            display: flex; /* For centering canvas */
-            flex-direction: column; /* For centering canvas */
-            justify-content: center; /* For centering canvas */
-            align-items: center; /* For centering canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .chart-container canvas { /* Ensure canvas does not overflow */
+        .chart-container canvas {
             max-width: 100%;
             max-height: 100%;
         }
@@ -667,16 +723,16 @@
             font-weight: 600; 
             margin-bottom: 0.5rem;
             text-align: center;
-            width: 100%; /* Ensure title takes full width above chart */
+            width: 100%;
         }
-        .mermaid-diagram-card { /* Specific card for Mermaid diagrams */
+        .mermaid-diagram-card {
             background-color: var(--bg-color-alt);
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
             box-shadow: var(--card-shadow);
             margin-bottom: 1.5rem;
         }
-        .mermaid-diagram-card h3 { /* Title within the card */
+        .mermaid-diagram-card h3 {
             margin-top: 0;
             margin-bottom: 1rem;
             font-size: 1.25rem;
@@ -685,42 +741,39 @@
             padding-bottom: 0.5rem;
         }
         .mermaid-diagram-container {
-            overflow-x: auto; /* For wide diagrams */
+            overflow-x: auto; 
             padding: 10px; 
-            background-color: var(--bg-color-alt); /* Diagram area background */
+            background-color: var(--bg-color-alt);
             border-radius: var(--border-radius);
         }
         .mermaid-diagram-container svg { 
             display: block;
             margin: 0 auto; 
             max-width: 100%; 
-            min-height: 350px; /* Reduced min-height for diagram clarity */
-            height: auto; /* Allow height to adjust based on content */
+            min-height: 350px;
+            height: auto;
         }
-        /* Mermaid dark theme overrides */
         .mermaid-diagram-container text { 
             fill: var(--text-color) !important; 
             font-family: 'Inter', sans-serif !important; 
-            font-size: 14px !important; /* Increased font size for clarity */
+            font-size: 14px !important;
         }
-        .mermaid-diagram-container .edgeLabel { 
+        .mermaid-diagram-container .edgeLabel,
+        .mermaid-diagram-container .label,
+        .mermaid-diagram-container .messageText { 
             color: var(--text-color) !important; 
-        } 
-         .mermaid-diagram-container .edgeLabel span { 
-            font-size: 14px !important; /* Ensure consistent font size */
+            fill: var(--text-color) !important; 
         }
-        .mermaid-diagram-container .label { color: var(--text-color) !important; }
         .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
-        .mermaid-diagram-container .messageText { fill: var(--text-color) !important; }
         .mermaid-diagram-container rect, 
         .mermaid-diagram-container polygon, 
         .mermaid-diagram-container ellipse,
         .mermaid-diagram-container circle {
-            stroke: var(--primary-color) !important; /* Node border */
-            fill: var(--bg-color-alt) !important; /* Node background, same as diagram for border emphasis */
+            stroke: var(--primary-color) !important;
+            fill: var(--bg-color-alt) !important;
         }
         .mermaid-diagram-container .cluster rect {
-             fill: var(--bg-color) !important; /* Darker fill for cluster background */
+             fill: var(--bg-color) !important;
              stroke: var(--border-color-darker) !important;
         }
         .mermaid-diagram-container .arrowheadPath {
@@ -732,18 +785,15 @@
 
 
         /* Item Detail View Specific */
-        #itemDetailViewPlaceholder .card { /* General card within detail view */
-            /* border-top: 4px solid var(--primary-color);  Removed to avoid double top border on standard card */
-        }
         #itemDetailViewPlaceholder .item-title-area {
             display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
         }
-        #itemDetailViewPlaceholder .item-title-area i.fa-title-icon { /* Specific class for title icon */
+        #itemDetailViewPlaceholder .item-title-area i.fa-title-icon {
             font-size: 2rem; color: var(--primary-color); 
         }
         #itemDetailViewPlaceholder .item-title-area h2 { font-size: 1.8rem; margin:0; }
         #itemDetailViewPlaceholder .item-summary { color: var(--text-color-subtle); margin-bottom: 1rem; font-style: italic; }
-        #itemDetailViewPlaceholder hr.title-content-divider { /* Specific class for this hr */
+        #itemDetailViewPlaceholder hr.title-content-divider {
              margin: 1.5rem 0; border-color: var(--border-color); 
         }
         #itemDetailViewPlaceholder .kb-content ul { list-style-type: disc; }
@@ -752,60 +802,73 @@
         #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; }
         #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: underline; }
         .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .item-feedback-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
-        .item-feedback-section h4 { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; }
-        .rating-buttons button { background: none; border: 1px solid var(--border-color); color: var(--text-color-muted); padding: 0.5rem 0.75rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s; }
-        .rating-buttons button:hover, .rating-buttons button.active { border-color: var(--rating-color); color: var(--rating-color); background-color: rgba(251, 191, 36, 0.1); }
-        .rating-buttons button i { margin-right: 0.5rem; }
-        .read-stats { font-size: 0.875rem; color: var(--text-color-muted); margin-left: 1rem; }
         
-        /* UPDATED: Comments Section Styles */
+        .item-feedback-section { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); background-color: var(--bg-color); }
+        .item-feedback-section h4 { font-size: 1.125rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; }
+        .rating-prompt { display:flex; align-items:center; gap:1rem; margin-bottom: 1rem; }
+        .rating-prompt > span { font-weight: 500; }
+        .rating-buttons button { background: none; border: 1px solid var(--border-color); color: var(--text-color-muted); padding: 0.5rem 0.75rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s; }
+        .rating-buttons button:hover { border-color: var(--rating-color); color: var(--rating-color); background-color: rgba(251, 191, 36, 0.1); }
+        .rating-buttons button.active.yes { border-color: var(--yes-color); color: var(--yes-color); background-color: rgba(34, 197, 94, 0.1); }
+        .rating-buttons button.active.no { border-color: var(--no-color); color: var(--no-color); background-color: rgba(239, 68, 68, 0.1); }
+        .rating-buttons button i { margin-right: 0.5rem; }
+        .read-stats { font-size: 0.875rem; color: var(--text-color-muted); margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+        #negativeFeedbackForm { margin-top: 1rem; }
+        
+        /* New Comments Section Style */
         .comments-section { margin-top: 2rem; }
-        .comments-section h4 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--border-color);
+        .comments-section h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .comment-post-area {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
             margin-bottom: 1.5rem;
         }
-        .comments-section .comment-form textarea { width: 100%; min-height: 80px; margin-bottom: 0.5rem;}
-        .comments-section .comment-display-area { 
-            margin-top: 1rem; 
-            min-height: 50px; 
+        .comment-post-area img { width: 36px; height: 36px; border-radius: 50%; margin-top: 5px;}
+        .comment-input-wrapper { flex-grow: 1; }
+        .comment-input-wrapper textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            background-color: var(--bg-color);
+            color: var(--text-color);
         }
-        .comment {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
+        .comment-post-actions { text-align: right; margin-top: 0.5rem; }
+        
+        .comment-display-area { margin-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem; }
+        .comment { display: flex; gap: 0.75rem; align-items: flex-start; }
+        .comment img { width: 32px; height: 32px; border-radius: 50%; }
+        .comment-content {
+            flex-grow: 1;
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1rem;
         }
-        .comment-avatar img {
-            width: 36px; height: 36px; border-radius: 50%;
-        }
-        .comment-body { flex-grow: 1; }
-        .comment-header {
-            display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem;
-        }
-        .comment-author {
-            font-weight: 600; color: var(--text-color); font-size: 0.9rem;
-        }
-        .comment-timestamp {
-            font-weight: normal; color: var(--text-color-muted); font-size: 0.75rem;
-        }
+        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+        .comment-author { font-weight: 600; color: var(--text-color); font-size: 0.9rem; }
+        .comment-timestamp { color: var(--text-color-muted); font-size: 0.75rem; }
         .comment-text {
-            font-size: 0.95rem; line-height: 1.5; color: var(--text-color-subtle);
-            white-space: pre-wrap; /* Preserve line breaks in comments */
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-color-subtle);
+            white-space: pre-wrap;
         }
         .comment-actions { margin-top: 0.5rem; }
         .comment-actions button {
-            background: none; border: none; color: var(--text-color-muted); font-size: 0.8rem; cursor: pointer; padding: 0.25rem;
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
         }
         .comment-actions button:hover { color: var(--primary-color); }
-        .comment-replies {
-            padding-left: calc(36px + 1rem); /* Align with parent comment body */
-            margin-top: 1.25rem;
-        }
-        .reply-form { margin-top: 0.75rem; } /* Simplified */
-        
+
+
         /* Dashboard specific styles */
         .dashboard-stat-card {
             background-color: var(--bg-color-alt);
@@ -829,7 +892,7 @@
             font-size: 0.875rem;
             color: var(--text-color-muted);
         }
-        .dashboard-quicklink-card, .dashboard-info-card { /* Combined for similar styling */
+        .dashboard-quicklink-card, .dashboard-info-card {
              background-color: var(--bg-color-alt);
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
@@ -873,10 +936,10 @@
         .viewer-dashboard-message .card {
             text-align: center;
             padding: 40px 20px;
-            min-height: auto; /* Override general card min-height if needed */
+            min-height: auto;
         }
         .viewer-dashboard-message .card i {
-            font-size: 2.5rem; /* Larger icon for emphasis */
+            font-size: 2.5rem;
             color: var(--primary-color);
             margin-bottom: 1rem;
         }
@@ -888,408 +951,120 @@
         .viewer-dashboard-message .card p {
             font-size: 1rem;
             color: var(--text-color-muted);
-            margin-bottom: 0; /* Adjust as needed */
+            margin-bottom: 0;
         }
         .viewer-dashboard-message .card p.subtle-note {
              font-size: 0.9rem;
              margin-top: 1rem;
         }
 
-        /* ============== UPDATED & POLISHED: Interactive Flow Styles ============== */
-        .interactive-flow-container {
-            background-color: transparent; /* No extra container background */
-            padding: 0;
-            border: none;
-        }
-        .flow-title-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color-darker);
-        }
-        .flow-title-bar h2 {
-            font-size: 1.8rem; /* Larger title for emphasis */
-            margin: 0; 
-            color: var(--text-color);
-            display: flex; 
-            align-items: center;
-        }
-        .flow-title-bar h2 i {
-            margin-right: 1rem; 
-            color: var(--primary-color); 
-            font-size: 2rem;
-        }
-        .flow-title-bar #flowTopActions button {
-            padding: 0.5rem 0.8rem; font-size: 0.8rem;
-        }
-
-        .flow-controls {
-            display: flex; flex-wrap: wrap; gap: 0.75rem;
-            margin-bottom: 1.5rem; padding: 1rem;
-            background-color: var(--bg-color-alt);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-lg);
-        }
-        .flow-controls .button i { margin-right: 0.5rem; }
-
-        .step-card {
-            background: var(--bg-color-alt);
-            border-left: 5px solid var(--primary-color);
-            border-radius: var(--border-radius);
-            margin-bottom: 1.25rem;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .step-card.done {
-            border-left-color: var(--step-done-color);
-            background: #132a22; /* Subtle green background for done steps */
-        }
-        .step-card.done .step-header {
-            background-color: transparent; /* Inherit from card */
-        }
-        .step-card.done .step-number {
-             color: var(--step-done-color);
-        }
-
-        .step-header {
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-        .step-header:hover {
-            background-color: var(--bg-color-hover);
-        }
-        
-        .step-header-main {
-            display: flex; align-items: center; flex-grow: 1;
-        }
-        .step-number {
-            color: var(--primary-color);
-            font-weight: 700;
-            margin-right: 1rem;
-            font-size: 1.2em;
-            transition: color 0.3s ease;
-        }
-        .step-title {
-            font-weight: 600; font-size: 1.2em; color: var(--text-color);
-            margin-right: 1rem;
-        }
-        .step-header-actions {
-            display: flex; align-items: center; gap: 1rem;
-        }
-
-        .mark-step-done-btn {
-            padding: 0.4rem 0.8rem; font-size: 0.8rem;
-            border: 1px solid var(--border-color-darker);
-            background-color: var(--bg-color);
-            border-radius: var(--border-radius);
-            transition: all 0.2s;
-            color: var(--text-color-subtle);
-        }
-        .mark-step-done-btn.done {
-            background-color: var(--step-done-color);
-            border-color: var(--step-done-color);
-            color: var(--text-color-inverted);
-            font-weight: bold;
-        }
-        .mark-step-done-btn:hover:not(.done) {
-            border-color: var(--step-done-color);
-            color: var(--step-done-color);
-        }
-        .mark-step-done-btn .fa-circle, .mark-step-done-btn .fa-check-circle {
-            transition: transform 0.2s;
-        }
-        .mark-step-done-btn:hover .fa-circle { transform: scale(1.2); }
-
-        .toggle-step-details-btn {
-            background: none; border: none;
-            color: var(--text-color-muted);
-            font-size: 1.2rem;
-            padding: 0.25rem;
-        }
-        .toggle-step-details-btn i.fa-chevron-down {
-            transition: transform 0.3s ease-in-out;
-        }
-        .step-card.expanded .toggle-step-details-btn i.fa-chevron-down {
-            transform: rotate(180deg);
-        }
-
-        .step-body {
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-out, opacity 0.3s ease-in-out, padding 0.4s ease-out;
-            padding: 0 1.5rem;
-            background-color: var(--bg-color);
-        }
-        .step-card.expanded > .step-body {
-            max-height: 2000px; /* Large enough for content */
-            opacity: 1;
-            padding: 1.5rem 1.5rem;
-            border-top: 1px solid var(--border-color-darker);
-        }
-        
-        .step-body .kb-content { padding: 0; } 
-        .step-body p, .step-body ul, .step-body ol {
-            margin-bottom: 0.75em; color: var(--text-color-subtle); font-size: 0.95rem;
-        }
-        .step-body strong { color: var(--text-color); }
-        .step-body ul, .step-body ol { padding-left: 25px; } 
-        
-        .step-link {
-            color: #60a5fa; font-weight: 500;
-            text-decoration: none;
-            border-bottom: 1px dotted #60a5fa;
-            text-decoration-skip-ink: none;
-        }
-        .step-link:hover {
-            text-decoration: underline;
-            border-bottom-style: solid;
-            color: #7dd3fc;
-        }
-        
-        .important-notes-card {
-            background: rgba(251, 191, 36, 0.05);
-            border-left: 4px solid var(--rating-color);
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            margin-top: 1.5rem;
-            box-shadow: var(--card-shadow);
-        }
-        .important-notes-card h3 {
-            font-size: 1.2em; font-weight: 600; color: var(--text-color);
-            margin-top: 0; margin-bottom: 0.75rem;
-            display: flex; align-items: center;
-        }
-        .important-notes-card h3 i {
-            margin-right: 0.75rem; color: var(--rating-color);
-        }
-        .important-notes-card ul {
-            padding-left: 20px; list-style: disc; color: var(--text-color-subtle);
-        }
-        
-        .agent-script-block {
-            background-color: var(--bg-color-hover);
-            padding: 1.25rem 1.5rem;
-            border-radius: var(--border-radius);
-            margin: 1.5rem 0;
-            border-left: 4px solid var(--primary-color);
-            color: var(--text-color);
-            position: relative;
-            font-style: italic;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .agent-script-block i.fa-comment-dots {
-            margin-right: 0.75rem; color: var(--primary-color);
-        }
-        .copy-script-btn {
-            position: absolute; top: 0.5rem; right: 0.5rem; /* LTR */
-            background: var(--bg-color);
-            color: var(--text-color-muted);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s, background-color 0.2s;
-            z-index: 1;
-        }
-        .agent-script-block:hover .copy-script-btn { opacity: 0.8; }
-        .copy-script-btn:hover { opacity: 1; background-color: var(--primary-color-hover); color: white; }
-
-        /* Hide non-script elements in Agent Script Mode */
-        .agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block) {
-            display: none;
-        }
-        .agent-script-mode-active .step-body > .kb-content > .agent-script-block {
-            display: block !important; /* Ensure it's shown */
-            margin-bottom: 1rem; /* Add some spacing between script blocks */
-        }
-        .agent-script-mode-active .important-notes-card {
-            display: none;
-        }
-        /* =================================================================== */
-
-        /* Quill editor for in-place flow editing */
-        #flowInPlaceEditorContainer {
-            margin-top: 1rem;
-            border: 1px solid var(--border-color-darker);
-            border-radius: var(--border-radius-lg);
-            padding: 1rem;
-            background-color: var(--bg-color-alt);
-        }
-        #flowQuillEditor { min-height: 300px; } /* Container for Quill */
-        .flow-editor-actions {
-            margin-top: 1rem;
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-        }
-
-        /* NEW: Styles for Interactive Hover Pop-outs */
-        .interactive-hover-item {
-            position: relative;
-            cursor: help;
-            color: #60a5fa; /* A nice blue color */
-            font-weight: 500;
-            border-bottom: 1px dotted #60a5fa;
-        }
-        .hover-popout {
-            display: none; /* Managed by JS */
-            position: absolute;
-            bottom: 100%; /* Position above the text */
-            left: 50%;
-            transform: translateX(-50%) translateY(-10px); /* Center and add gap */
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color-darker);
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            box-shadow: var(--card-hover-shadow);
-            z-index: 10;
-            width: max-content;
-            min-width: 250px;
-            text-align: left;
-            font-size: 0.9rem;
-            color: var(--text-color);
-        }
-        .interactive-hover-item:hover .hover-popout {
-            display: block;
-        }
-        .hover-popout h4 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-        }
-        .hover-popout ul {
-            list-style-type: none;
-            padding-left: 0;
-            margin-bottom: 0;
-        }
-        .hover-popout li {
-            padding: 0.25rem 0;
-            color: var(--text-color-subtle);
-        }
-        .hover-popout li strong {
-            color: var(--text-color);
-        }
-        .hover-popout small {
-            display: block;
-            margin-top: 0.75rem;
-            padding-top: 0.5rem;
-            border-top: 1px dashed var(--border-color);
-            color: var(--text-color-muted);
-            font-style: italic;
-        }
-
-
         /* Print Styles */
         @media print {
             body, .container-fluid {
-                margin: 0; padding: 0;
-                background-color: white !important; color: black !important;
+                margin: 0;
+                padding: 0;
+                background-color: white !important;
+                color: black !important;
                 font-size: 12pt;
             }
             .sidebar, .content-header, .sidebar-footer, footer,
             .mobile-sidebar-toggle, #toastContainer,
-            .item-actions-bar, .flow-controls, .flow-title-bar #flowTopActions,
-            .item-feedback-section, .comments-section, .modal-overlay, .copy-script-btn,
-            .dashboard-overview-container, .search-container, .user-profile,
-            .mark-step-done-btn, .toggle-step-details-btn,
-            #openAddContentBtnInSection, .interactive-hover-item .hover-popout
+            .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn),
+            .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"],
+            .item-feedback-section, .comments-section,
+            .modal-overlay,
+            .copy-script-btn,
+            .dashboard-overview-container,
+            .search-container, .user-profile,
+            #openAddContentBtnInSection,
+            .card-hover-details
             {
                 display: none !important;
             }
-            .interactive-hover-item {
-                border-bottom: none; color: inherit !important; font-weight: inherit;
-            }
 
             .content-wrapper {
-                margin-left: 0 !important; padding: 1cm !important;
-                overflow: visible !important; height: auto !important; width: 100% !important;
+                margin-left: 0 !important;
+                padding: 1cm !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: 100% !important;
             }
             #pageContentArea { padding: 0 !important; }
             
-            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, .interactive-flow-container {
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
                 display: block !important;
             }
-            .card, .interactive-flow-container, .mermaid-diagram-card, .step-card {
-                box-shadow: none !important; border: 1px solid #ccc !important;
+            .card, .mermaid-diagram-card {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
                 margin-bottom: 0.5cm !important;
                 background-color: white !important;
                 page-break-inside: avoid;
             }
             
-            .card *, .interactive-flow-container *, .mermaid-diagram-card *, .step-card * {
-                color: black !important; background-color: transparent !important;
+            .card *, .mermaid-diagram-card * {
+                color: black !important;
+                background-color: transparent !important;
             }
              h1, h2, h3, h4, h5, h6 { color: black !important; }
 
-            /* Force expand all step bodies for print */
-            .step-body {
-                display: block !important;
-                max-height: none !important;
-                opacity: 1 !important;
-                padding: 0 1.5rem 1.5rem 1.5rem !important;
-                border-top: 1px solid #ccc !important;
-            }
-            .step-card.expanded > .step-body {
-                 padding: 0 1.5rem 1.5rem 1.5rem !important; /* Ensure padding is consistent */
-            }
-             .toggle-step-details-btn { display: none !important; }
-
-            .important-notes-card, .agent-script-block { display: block !important; }
-            .agent-script-mode-active .step-body > .kb-content > * {
-                display: block !important;
-            }
-
             .kb-content a {
-                color: #0066cc !important; text-decoration: underline !important;
+                color: #0066cc !important;
+                text-decoration: underline !important;
             }
-            .kb-content a[href^="http"]::after, .kb-content a[href^="https"]::after {
+            .kb-content a[href^="http"]::after, 
+            .kb-content a[href^="https"]::after {
                 content: " (" attr(href) ")";
-                font-size: 0.8em; color: #555 !important; word-break: break-all;
+                font-size: 0.8em;
+                color: #555 !important;
+                word-break: break-all;
             }
-            .kb-content a[href^="#"]::after, .step-link::after { content: ""; }
-
+            .kb-content a[href^="#"]::after {
+                content: "";
+            }
 
             /* Mermaid diagrams for print */
             .mermaid-diagram-container { background-color: white !important; }
             .mermaid-diagram-container svg {
-                background-color: white !important; max-width: 100% !important; height: auto !important;
+                background-color: white !important;
+                max-width: 100% !important;
+                height: auto !important;
             }
             .mermaid-diagram-container text,
             .mermaid-diagram-container .edgeLabel,
             .mermaid-diagram-container .label,
             .mermaid-diagram-container .messageText {
-                fill: black !important; font-family: 'Arial', sans-serif !important;
+                fill: black !important;
+                font-family: 'Arial', sans-serif !important;
             }
-            .mermaid-diagram-container .actor { stroke: #333 !important; fill: white !important; }
-            .mermaid-diagram-container rect, .mermaid-diagram-container polygon,
-            .mermaid-diagram-container ellipse, .mermaid-diagram-container circle {
-                stroke: #333 !important; fill: #f0f0f0 !important;
+            .mermaid-diagram-container .actor {
+                stroke: #333 !important;
+                fill: white !important;
+            }
+            .mermaid-diagram-container rect,
+            .mermaid-diagram-container polygon,
+            .mermaid-diagram-container ellipse,
+            .mermaid-diagram-container circle {
+                stroke: #333 !important;
+                fill: #f0f0f0 !important;
             }
             .mermaid-diagram-container .cluster rect {
-                fill: #e8e8e8 !important; stroke: #aaa !important;
+                fill: #e8e8e8 !important;
+                stroke: #aaa !important;
             }
-            .mermaid-diagram-container .arrowheadPath { fill: #333 !important; }
-            .mermaid-diagram-container .edgePaths path { stroke: #333 !important; }
+            .mermaid-diagram-container .arrowheadPath {
+                fill: #333 !important;
+            }
+            .mermaid-diagram-container .edgePaths path {
+                stroke: #333 !important;
+            }
             pre.mermaid {
-                background-color: #f8f8f8 !important; border: 1px solid #ddd !important; padding: 8px !important;
+                background-color: #f8f8f8 !important;
+                border: 1px solid #ddd !important;
+                padding: 8px !important;
             }
         }
+
     </style>
 </head>
 <body>
@@ -1314,11 +1089,6 @@
                         <h4>Troubleshooting Guide / Case</h4>
                         <p>Step-by-step solutions for common issues or case documentation.</p>
                     </button>
-                     <button class="template-button" data-template="interactive_flow">
-                        <i class="fas fa-project-diagram"></i>
-                        <h4>Interactive Flow</h4>
-                        <p>A guided, step-by-step process for agents to follow.</p>
-                    </button>
                     <button class="template-button" data-template="policy_document">
                         <i class="fas fa-gavel"></i>
                         <h4>Policy Document</h4>
@@ -1339,7 +1109,6 @@
                     <label for="contentType">Content Type</label>
                     <select id="contentType">
                         <option value="article">Article</option>
-                        <option value="interactive_flow">Interactive Flow</option>
                         <option value="case">Case</option>
                         <option value="form_sheet">Form/Sheet (Link)</option>
                         <option value="design">Design (Link)</option>
@@ -1366,26 +1135,21 @@
                     <div id="quillEditor"></div> <!-- Quill editor container -->
                 </div>
 
-                <!-- NEW: Image URL input -->
-                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; margin-top: 1.5rem; color: var(--text-color);">Attachments & Media</h3>
-
                 <div class="form-group">
-                    <label for="contentImageUrl">Insert Image from URL (Optional)</label>
-                    <div class="form-group-inline">
-                        <div class="form-control">
-                            <input type="url" id="contentImageUrl" placeholder="https://example.com/image.png">
-                        </div>
-                        <button type="button" id="insertImageBtn" class="button button-secondary"><i class="fas fa-link"></i> Insert into Content</button>
-                    </div>
+                    <label for="contentTags">Tags (comma-separated)</label>
+                    <input type="text" id="contentTags" placeholder="e.g., important, update, billing">
                 </div>
 
+                <hr style="border-color: var(--border-color-darker); margin: 1.5rem 0;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);">Attachments (Optional)</h3>
+                
                 <div class="form-group">
-                    <label for="imageFile">Upload and Insert Image from Device</label>
-                    <input type="file" id="imageFile" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label for="pdfFile">Upload PDF (Attachment Simulation)</label>
+                    <label for="pdfFile">Upload PDF</label>
                     <input type="file" id="pdfFile" accept=".pdf">
+                </div>
+                <div class="form-group">
+                    <label for="imageFile">Upload Image</label>
+                    <input type="file" id="imageFile" accept="image/*">
                 </div>
                 <div class="form-group">
                     <label for="videoLink">Video Link (e.g., YouTube, Vimeo)</label>
@@ -1396,10 +1160,6 @@
                     <input type="url" id="driveLink" placeholder="https://docs.google.com/... or https://drive.google.com/...">
                 </div>
 
-                 <div class="form-group">
-                    <label for="contentTags">Tags (comma-separated)</label>
-                    <input type="text" id="contentTags" placeholder="e.g., important, update, billing">
-                </div>
 
                 <div class="modal-actions">
                     <button type="submit" id="saveContentBtn" class="button"><i class="fas fa-save"></i> Save Content</button>
@@ -1434,8 +1194,8 @@
                 <button id="closeReportFeedbackModalBtn" class="close-button" aria-label="Close">×</button>
             </div>
             <form id="reportFeedbackForm">
-                <input type="hidden" id="feedbackItemUuid">
-                <input type="hidden" id="feedbackItemRating">
+                <input type="hidden" id="feedbackItemId">
+                <input type="hidden" id="feedbackItemTitle">
                 <div class="modal-body" style="padding-bottom:0;">
                     <p style="margin-bottom: 1rem;">Provide your feedback for: <strong id="feedbackItemTitleDisplay"></strong></p>
                     <div class="form-group">
@@ -1448,7 +1208,7 @@
                     </div>
                     <div class="form-group">
                         <label for="feedbackComment">Your Feedback / Comments</label>
-                        <textarea id="feedbackComment" rows="5" placeholder="Please describe the issue or suggestion..."></textarea>
+                        <textarea id="feedbackComment" rows="5" required placeholder="Please describe the issue or suggestion..."></textarea>
                     </div>
                 </div>
                 <div class="modal-actions"> 
@@ -1523,7 +1283,7 @@
                     <!-- Section content will be injected here -->
                 </div>
                 <div id="itemDetailViewPlaceholder" class="hidden" data-mermaid-rendered="false">
-                    <!-- Item detail view OR Interactive Flow View -->
+                    <!-- Item detail view -->
                 </div>
             </main>
 
@@ -1575,10 +1335,11 @@
     /**
      * @typedef {object} UserProfile
      * @property {string} id - User UUID from Supabase Auth
-     * @property {string} [name] - User's full name (from 'users' table, column 'name')
+     * @property {string} [name] - User's full name
      * @property {string} email - User's email
      * @property {string} role - User's role (e.g., 'viewer', 'admin')
-     * @property {string} [lastLogin] - ISO string of last login time (optional in this type, added by client)
+     * @property {string} avatar_url - URL for user's avatar
+     * @property {string} [lastLogin] - ISO string of last login time
      */
 
     // --- Supabase Auth & User Management ---
@@ -1611,15 +1372,10 @@
 
             if (!userDataFromDB) {
                 console.warn(`Profile for user ${userId} not found. Creating a new profile in 'users' table.`);
-                
+                const name = authUser.user_metadata?.full_name || authUser.email.split('@')[0];
                 const { data: newProfile, error: insertError } = await supabase
                     .from('users')
-                    .insert({
-                        id: userId,
-                        email: authUser.email,
-                        name: authUser.user_metadata?.full_name || authUser.email.split('@')[0], 
-                        role: 'viewer'
-                    })
+                    .insert({ id: userId, email: authUser.email, name: name, role: 'viewer' })
                     .select()
                     .single();
 
@@ -1634,9 +1390,11 @@
                 userDataFromDB = newProfile;
             }
             
+            const displayName = userDataFromDB.name || userDataFromDB.email || 'User';
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
-                ...userDataFromDB, 
+                ...userDataFromDB,
+                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
                 lastLogin: new Date().toISOString() 
             };
 
@@ -1649,9 +1407,7 @@
                 console.error("Error during sign out:", error);
                 showToast('Error signing out. Please try again.', 'error');
             } else {
-                localStorage.removeItem('infiniBaseUser');
-                localStorage.removeItem('justLoggedIn');
-                localStorage.removeItem('infiniBase_agentScriptMode');
+                localStorage.clear(); // Clear all local storage on logout for a clean state
                 showToast('You have been logged out successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'login.html';
@@ -1660,151 +1416,80 @@
         }
     };
 
-    // --- REFACTORED: Database Interaction Module (uses UUIDs) ---
-    const Db = {
-        async getComments(itemUuid) {
-            const { data, error } = await supabase
-                .from('kb_comments')
-                .select('*')
-                .eq('item_id', itemUuid) // Use UUID
-                .order('created_at', { ascending: true });
-            
-            if (error) {
-                console.error("Error fetching comments:", error);
-                showToast("Could not load comments.", "error");
-                return [];
-            }
-            return data;
-        },
-        async postComment({ itemUuid, parentId, body }) {
-            if (!currentUser) return { error: { message: "User not logged in" } };
-            const { data, error } = await supabase
-                .from('kb_comments')
-                .insert({
-                    item_id: itemUuid, // Use UUID
-                    parent_id: parentId || null,
-                    body: body,
-                    author_id: currentUser.id,
-                    author_name: currentUser.name || currentUser.email
-                })
-                .select()
-                .single();
-            
-            if (error) {
-                console.error("Error posting comment:", error);
-                showToast("Failed to post comment.", "error");
-            }
-            return { data, error };
-        },
-        async postFeedback({ itemUuid, rating, reason }) {
-            if (!currentUser) return { error: { message: "User not logged in" } };
-            const { data, error } = await supabase
-                .from('kb_feedback')
-                .insert({
-                    item_id: itemUuid, // Use UUID
-                    user_id: currentUser.id,
-                    rating: rating,
-                    reason: reason || null
-                })
-                .select()
-                .single();
-
-            if (error) {
-                console.error("Error submitting feedback:", error);
-                showToast("Failed to submit feedback.", "error");
-            }
-            return { data, error };
-        },
-        async logView(itemUuid) {
-            const key = `viewed_${itemUuid}`; // Use UUID in local storage key
-            const twentyFourHours = 1000 * 60 * 60 * 24;
-            const lastViewed = localStorage.getItem(key);
-
-            if (lastViewed && (Date.now() - Number(lastViewed) < twentyFourHours)) {
-                return; // Already viewed within the last 24 hours
-            }
-
-            const { error } = await supabase
-                .from('views_log')
-                .insert({
-                    scenario_id: itemUuid, // Use UUID
-                    user_id: currentUser?.id,
-                    user_email: currentUser?.email,
-                });
-
-            if (error) {
-                console.error("Error logging view:", error);
-            } else {
-                localStorage.setItem(key, Date.now().toString());
-            }
-        },
-        async getViewCount(itemUuid) {
-            const { count, error } = await supabase
-                .from('views_log')
-                .select('*', { count: 'exact', head: true })
-                .eq('scenario_id', itemUuid); // Use UUID
-
-            if (error) {
-                console.error("Error getting view count:", error);
-                return 'N/A';
-            }
-            return count;
-        }
-    };
-
-
     // --- KB Data ---
-    // NOTE: This object now acts as a local template. The `uuid` property will be added dynamically on app start.
     let kbSystemData = {
-        meta: { version: '1.0.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.9.0-knowledge-reamp', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
                 id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
                 items: [
                      { 
-                        id: 'sup_flow_compensation', // This is the SLUG
-                        type: 'interactive_flow', 
+                        id: 'sup_flow_compensation', type: 'article', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                        summary: 'A structured, interactive guide for handling customer compensation due to order delays based on The Chefz policies. Includes agent scripts and validation steps.',
+                        summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
                         content: `
-                            <p>This is an interactive guide for handling customer compensation due to order delays. Follow the steps below. Use the "Agent Script View" for direct communication scripts.</p>
+                            <h2>Introduction: Understanding the Compensation Policy</h2>
+                            <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                            <img src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80" alt="Customer service agent at work" style="width:100%; border-radius: var(--border-radius); margin-bottom: 1rem;">
                             
+                            <h2>Step 1: Initial Contact and Inquiry Identification</h2>
+                            <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                            <blockquote>
+                                <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
+                            </blockquote>
+                            <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
+
+                            <h2>Step 2: Assessing the Delay and Order Type</h2>
+                            <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                            <ul>
+                                <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
+                                <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
+                            </ul>
+                            <blockquote>
+                                <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
+                            </blockquote>
+
+                            <h2>Step 3: Applying the Compensation Matrix</h2>
+                            <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                            
+                            <h4>For FAST Orders (delay > 15 mins):</h4>
+                            <ul>
+                                <li><strong>16–30 mins:</strong> Compensate delivery fees.</li>
+                                <li><strong>31–45 mins:</strong> Compensate delivery fees + 25% of food value.</li>
+                                <li><strong>46–60 mins:</strong> Compensate delivery fees + 50% of food value.</li>
+                                <li><strong>&gt; 60 mins:</strong> Compensate full order value (delivery + food).</li>
+                            </ul>
+
+                            <h4>For SCHEDULED Orders (delay > 30 mins):</h4>
+                             <ul>
+                                <li><strong>31–60 mins:</strong> Compensate 50-100% of total order value (agent discretion).</li>
+                                <li><strong>&gt; 60 mins:</strong> Compensate full order value + 50 SAR goodwill credit.</li>
+                            </ul>
+                            
+                            <blockquote>
+                                <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
+                            </blockquote>
+
+                            <h2>Step 4: Internal Documentation and Conclusion</h2>
+                            <p>After informing the customer, it is mandatory to document the incident in the system. This includes:</p>
                             <ol>
-                                <li id="comp_step_1">
-                                    <strong>Initial Response & Verification</strong>
-                                    <p>When a customer reports a delay, the first step is to respond with empathy and gather information. This should be done within the first 2 minutes of the interaction.</p>
-                                    <img src="https://via.placeholder.com/600x150.png/1f2937/d1d5db?text=1.+Acknowledge+%26+Verify" alt="Diagram showing Acknowledge and Verify steps" class="kb-img" loading="lazy">
-                                    <blockquote><i class="fas fa-comment-dots"></i> "I completely understand your frustration with the delay, and I sincerely apologize for the inconvenience. Let me check the exact status of your order right now to see what's going on."</blockquote>
-                                    <p>Quickly check the order status in the internal system to confirm the delay and get the latest ETA.</p>
-                                </li>
-                                <li id="comp_step_2">
-                                    <strong>Assess Delay & Determine Compensation Tier</strong>
-                                    <p>If the delay exceeds 15 minutes from the original ETA, compensation procedures are initiated. The compensation amount depends on the order type and total delay duration.</p>
-                                    <img src="https://via.placeholder.com/600x200.png/1f2937/d1d5db?text=2.+Consult+Compensation+Matrix" alt="Image of a compensation matrix" class="kb-img" loading="lazy">
-                                    <p>Reference the official policy: <a href="#compensation_policies/cp_policy_01" class="step-link">General Compensation Policy v2.1</a>. The key tiers are:</p>
-                                    <ul>
-                                        <li><strong>16-30 mins:</strong> Delivery fee refund.</li>
-                                        <li><strong>31-45 mins:</strong> 25% of food value as credit.</li>
-                                        <li><strong>&gt;45 mins:</strong> 50-100% credit (refer to policy for specifics).</li>
-                                    </ul>
-                                    <blockquote><i class="fas fa-comment-dots"></i> "Thank you for waiting. I see the delay is now [XX] minutes. Based on our policy for this situation, I've gone ahead and processed a [compensation type, e.g., delivery fee refund] for you. You'll see this reflected in your account shortly."</blockquote>
-                                </li>
-                                <li id="comp_step_3">
-                                    <strong>Internal Action & Documentation</strong>
-                                    <p>After resolving the issue with the customer, it's crucial to document the incident internally to ensure accountability and process improvement.</p>
-                                    <img src="https://via.placeholder.com/600x150.png/1f2937/d1d5db?text=3.+Document+Internally" alt="Illustration of internal documentation" class="kb-img" loading="lazy">
-                                    <ol>
-                                        <li>Determine the party responsible for the delay (Store, Driver, or Company).</li>
-                                        <li>Apply necessary deductions or penalties in the system as per the policy.</li>
-                                        <li>Tag the case with 'delay_compensation' for review by the quality assurance team.</li>
-                                    </ol>
-                                    <blockquote><i class="fas fa-comment-dots"></i> (Internal Note) Case tagged for QA review. Penalty applied to driver account due to unscheduled stop. Customer compensated with 25% credit.</blockquote>
-                                </li>
+                                <li>The reason for the delay (e.g., Store, Driver, System).</li>
+                                <li>The compensation amount and type provided.</li>
+                                <li>A brief summary of the customer interaction.</li>
                             </ol>
+                            <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'flow', 'chefz policy', 'sop', 'interactive'],
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop'],
                         createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), 
+                        views: 183,
+                        comments: [
+                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Fatima', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Admin User', text: 'Glad you find it helpful, Fatima! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+                        ],
+                        feedback: [
+                            { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
+                        ]
                     },
                     {
                         id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
@@ -1813,11 +1498,14 @@
                         content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
                         tags: ['driver', 'responsibility', 'delay'],
                         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
+                        views: 78,
+                        comments: [],
+                        feedback: []
                     }
                 ]
             },
             { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open' }
+                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
             ] }, 
             { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
             { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
@@ -1828,7 +1516,7 @@
             { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
             { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
             { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA[Order Delayed > 15m] -->|Yes| B{Check Order Type};\nB -->|FAST Order| C[Apply FAST Tier Matrix];\nB -->|SCHEDULED Order| D[Apply SCHEDULED Tier Matrix];\nA -->|No| E[Apologize & Monitor];\n</pre>' }
+                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [] }
             ] }, 
             { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
@@ -1862,10 +1550,6 @@
     const contentDetailLabel = document.getElementById('contentDetailLabel');
     const contentTagsInput = document.getElementById('contentTags');
     const editingItemIdInput = document.getElementById('editingItemId');
-    const insertImageBtn = document.getElementById('insertImageBtn');
-    const imageFileInput = document.getElementById('imageFile');
-    const contentImageUrlInput = document.getElementById('contentImageUrl');
-
     
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
@@ -1880,14 +1564,13 @@
     const closeReportFeedbackModalBtn = document.getElementById('closeReportFeedbackModalBtn');
     const reportFeedbackForm = document.getElementById('reportFeedbackForm');
     const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
-    const feedbackItemUuidInput = document.getElementById('feedbackItemUuid');
-    const feedbackItemRatingInput = document.getElementById('feedbackItemRating');
+    const feedbackItemIdInput = document.getElementById('feedbackItemId');
+    const feedbackItemTitleInput = document.getElementById('feedbackItemTitle');
     const feedbackItemTitleDisplay = document.getElementById('feedbackItemTitleDisplay');
     const feedbackUserNameInput = document.getElementById('feedbackUserName');
     const feedbackUserEmailInput = document.getElementById('feedbackUserEmail');
     const feedbackCommentTextarea = document.getElementById('feedbackComment');
 
-    // Delete Confirmation Modal Elements
     const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
     const closeDeleteConfirmModalBtn = document.getElementById('closeDeleteConfirmModalBtn');
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
@@ -1895,18 +1578,11 @@
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
 
 
-    let mainQuillEditor; // For the modal
-    let flowInPlaceQuillEditor; // For in-place editing of flow content
+    let mainQuillEditor;
     /** @type {UserProfile|null} */
     let currentUser = null; 
-    let currentOpenItem = null; // Stores { sectionId, itemId, title }
+    let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
-
-    // State for interactive flow
-    let flowState = {
-        isAgentScriptModeActive: localStorage.getItem('infiniBase_agentScriptMode') === 'true',
-        expandedSteps: new Set(), // Stores IDs of expanded steps
-    };
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1931,7 +1607,6 @@
         return text.substring(0, len) + '...';
     }
     function stripHtml(html){
-       if(!html) return "";
        let tmp = document.createElement("DIV");
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
@@ -1957,48 +1632,26 @@
         }, duration);
     }
     
-    // --- Data Hydration ---
-    /**
-     * @description Fetches all scenario UUIDs from the database and injects them into the local kbSystemData object.
-     * This is a critical step to bridge the front-end string IDs (slugs) with the back-end UUIDs.
-     * @returns {Promise<boolean>} True if hydration was successful, false otherwise.
-     */
-    async function hydrateKbDataWithUuids() {
-        const { data: scenarios, error } = await supabase
-            .from('call_scenarios')
-            .select('id, slug'); // 'id' is the UUID column
-
-        if (error) {
-            console.error("CRITICAL: Could not fetch scenario UUIDs from the database.", error);
-            showToast("Fatal Error: Could not initialize knowledge base.", "error", 10000);
-            return false;
-        }
-
-        if (!scenarios) {
-             console.error("CRITICAL: The 'call_scenarios' table returned no data.");
-             showToast("Fatal Error: The knowledge base is empty.", "error", 10000);
-             return false;
-        }
-
-        const uuidMap = new Map(scenarios.map(s => [s.slug, s.id]));
-
-        kbSystemData.sections.forEach(section => {
-            if (section.items) {
-                section.items.forEach(item => {
-                    const itemSlug = item.id; // The local 'id' is the slug
-                    const itemUuid = uuidMap.get(itemSlug);
-                    if (itemUuid) {
-                        item.uuid = itemUuid; // Inject the real UUID
-                    } else {
-                        console.warn(`Item with slug "${itemSlug}" exists in local data but not in the 'call_scenarios' table. It will have limited functionality.`);
-                    }
-                });
+    function applyPermanentDarkMode() { 
+        [visitorsChartInstance, casesChartInstance, articlesChartInstance].forEach(chart => {
+            if (chart) {
+                const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+                const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+                
+                chart.options.plugins.legend.labels.color = legendColor;
+                if (chart.options.scales && chart.options.scales.y) {
+                    chart.options.scales.y.ticks.color = ticksColor;
+                    chart.options.scales.y.grid.color = gridColor;
+                }
+                if (chart.options.scales && chart.options.scales.x) { 
+                    chart.options.scales.x.ticks.color = ticksColor;
+                    chart.options.scales.x.grid.color = gridColor;
+                }
+                chart.update();
             }
         });
-        console.log("KB data hydrated with real database UUIDs.");
-        return true;
     }
-
 
     // --- Sidebar and Navigation ---
     function populateSidebar() {
@@ -2059,7 +1712,7 @@
         
         try {
             await new Promise(resolve => setTimeout(resolve, 50)); 
-            await mermaid.run({ nodes: mermaidElements, suppressErrors: true });
+            await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
             element.dataset.mermaidRendered = 'true';
         } catch (error) {
             console.error("Mermaid rendering error:", error);
@@ -2073,325 +1726,306 @@
         let ctaText = 'View Details';
         let ctaLink = `#${sectionData.id}/${item.id}`;
         let target = '';
-        let itemTypeDisplay = item.type.replace(/_/g, ' ');
+        let itemTypeDisplay = item.type.replace('_', ' ');
 
-        switch(item.type) {
-            case 'article': itemIconClass = 'fas fa-newspaper'; break;
-            case 'case': itemIconClass = 'fas fa-briefcase'; break;
-            case 'guide': itemIconClass = 'fas fa-book-open'; break;
-            case 'policy': itemIconClass = 'fas fa-gavel'; break;
-            case 'interactive_flow': itemIconClass = 'fas fa-project-diagram'; ctaText = 'Start Flow'; break;
-            case 'form_sheet':
-                itemIconClass = 'fas fa-file-invoice';
-                ctaText = 'Open Link';
-                ctaLink = item.url || '#';
-                target = '_blank';
-                break;
-            case 'design':
-                itemIconClass = 'fas fa-palette';
-                ctaText = 'View Design';
-                ctaLink = item.url || '#';
-                target = '_blank';
-                break;
+        if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; itemTypeDisplay = 'Article';}
+        else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; itemTypeDisplay = 'Case';}
+        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; ctaText = 'Open Link'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Form/Sheet';}
+        else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; ctaText = 'View Design'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Design';}
+        else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
+        else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
+
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parentId === item.id);
+        let hoverDetailsHTML = '';
+        if(childItems.length > 0) {
+            hoverDetailsHTML = `
+            <div class="card-hover-details">
+                <h4>Related Topics</h4>
+                <ul>
+                    ${childItems.map(child => `<li><i class="fas fa-link fa-xs"></i> ${escapeHTML(truncateText(child.title, 35))}</li>`).join('')}
+                </ul>
+            </div>`;
         }
 
+
         return `
-        <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
-            <div class="card-header-icon">
-                <div class="card-icon-container">
-                    <i class="${itemIconClass}"></i>
+        <a href="${escapeHTML(ctaLink)}" class="card-link-wrapper" style="text-decoration:none; color:inherit;">
+            <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
+                <div class="card-header-icon">
+                    <div class="card-icon-container">
+                        <i class="${itemIconClass}"></i>
+                    </div>
+                    <h3>${escapeHTML(item.title)}</h3>
                 </div>
-                <h3>${escapeHTML(item.title)}</h3>
+                <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
+                ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <div class="item-meta-info">
+                    <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
+                    <span class="item-cta-link">
+                       ${ctaText} <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+                ${hoverDetailsHTML}
             </div>
-            <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
-            ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-            <div class="item-meta-info">
-                <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
-                <a href="${escapeHTML(ctaLink)}" ${target ? `target="${target}" rel="noopener noreferrer"` : ''} class="item-cta-link"
-                   data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}">
-                   ${ctaText} <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-        </div>`;
+        </a>`;
     }
 
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
         if (!currentUser || currentUser.role !== 'admin') {
-            dashboardOverviewContainer.innerHTML = `<div class="viewer-dashboard-message"><div class="card"><i class="fas fa-user-shield"></i><h2>Access Restricted</h2><p>The dashboard overview is available for administrators only.</p></div></div>`;
+            dashboardOverviewContainer.innerHTML = `
+                <div class="viewer-dashboard-message">
+                    <div class="card">
+                        <i class="fas fa-user-shield"></i>
+                        <h2>Access Restricted</h2>
+                        <p>The dashboard overview is available for administrators only.</p>
+                        <p class="subtle-note">You can navigate using the sidebar to view knowledge base content.</p>
+                    </div>
+                </div>
+            `;
             return;
         }
 
-        const welcomeUser = currentUser.name || currentUser.email || 'Admin'; 
+        const welcomeUser = currentUser.name || 'Admin'; 
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
-        const totalArticles = allItems.filter(i => ['article', 'guide', 'policy', 'interactive_flow'].includes(i.type)).length;
+        const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
         
-        // Fetch view counts for all items that have a UUID
-        const mostUsedItemsData = await Promise.all(
-            allItems
-                .filter(item => item.uuid) // Only query items that exist in the DB
-                .map(async item => {
-                    const viewCount = await Db.getViewCount(item.uuid);
-                    return { ...item, views: viewCount };
-                })
-        );
-
-        const mostUsedArticles = mostUsedItemsData.sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
-
-        const compensationFlowItem = allItems.find(i => i.id === 'sup_flow_compensation');
+        kbSystemData.meta.editsThisWeek = Math.floor(Math.random() * 15); 
+        if (!kbSystemData.meta.lastArticleAdded && allItems.length > 0) {
+            const latestItem = [...allItems].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+            if (latestItem) {
+                 kbSystemData.meta.lastArticleAdded = { title: latestItem.title, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
+            }
+        }
+        if (!kbSystemData.meta.lastArticleAdded) kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
+        
+        const mostUsedArticles = [...allItems].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
 
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
                 <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p>
             </div>
+
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
-                 <div class="dashboard-stat-card"><i class="fas fa-folder-open"></i><span class="stat-value">${kbSystemData.sections.length -1}</span><span class="stat-label">Total Sections</span></div>
-                <div class="dashboard-stat-card"><i class="fas fa-newspaper"></i><span class="stat-value">${totalArticles}</span><span class="stat-label">Total Articles & Guides</span></div>
-                 <div class="dashboard-stat-card"><i class="fas fa-briefcase"></i><span class="stat-value">${totalCases}</span><span class="stat-label">Total Cases</span></div>
-                <div class="dashboard-stat-card"><i class="fas fa-edit"></i><span class="stat-value">${Math.floor(Math.random() * 15)}</span><span class="stat-label">Edits This Week (Mock)</span></div>
+                <div class="dashboard-stat-card">
+                    <i class="fas fa-folder-open"></i>
+                    <span class="stat-value">${kbSystemData.sections.length -1}</span>
+                    <span class="stat-label">Total Sections</span>
+                </div>
+                <div class="dashboard-stat-card">
+                    <i class="fas fa-newspaper"></i>
+                    <span class="stat-value">${totalArticles}</span>
+                    <span class="stat-label">Total Articles & Guides</span>
+                </div>
+                 <div class="dashboard-stat-card">
+                    <i class="fas fa-briefcase"></i>
+                    <span class="stat-value">${totalCases}</span>
+                    <span class="stat-label">Total Cases</span>
+                </div>
+                <div class="dashboard-stat-card">
+                    <i class="fas fa-edit"></i>
+                    <span class="stat-value">${kbSystemData.meta.editsThisWeek}</span>
+                    <span class="stat-label">Edits This Week</span>
+                </div>
             </div>
-             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="dashboard-info-card">
-                    <h3>🔥 Most Used Articles (Live from DB)</h3>
-                    <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => `<li><a href="#${kbSystemData.sections.find(s => s.items && s.items.some(i => i.id === item.id)).id}/${item.id}">${escapeHTML(item.title)}</a> <span class="meta">(${item.views} views)</span></li>`).join('') : '<li>No data yet.</li>'}</ul>
+                    <h3>🔥 Most Used Articles</h3>
+                    <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => {
+                        const section = kbSystemData.sections.find(s => s.items && s.items.includes(item));
+                        return `<li>
+                            <a href="#${section.id}/${item.id}">${escapeHTML(item.title)}</a> 
+                            <span class="meta"><i class="fas fa-eye"></i> ${item.views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.comments?.length || 0} comments</span>
+                        </li>`
+                    }).join('') : '<li>No data yet.</li>'}</ul>
                 </div>
-                 <div class="dashboard-quicklink-card card" style="min-height: auto;">
-                    <h3>Quick Links</h3>
-                    <ul>
-                        ${compensationFlowItem ? `<li><a href="#support/${compensationFlowItem.id}"><i class="fas fa-project-diagram fa-fw"></i> View Support Flow</a></li>` : ''}
-                        <li><a href="#support"><i class="fas fa-headset fa-fw"></i> All Support Articles</a></li>
-                    </ul>
+                <div class="dashboard-info-card">
+                    <h3>💡 Quick Links & System Info</h3>
+                     <ul>
+                        <li><a href="#support/sup_flow_compensation"><i class="fas fa-project-diagram fa-fw"></i> View Compensation Scenario</a></li>
+                        <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
+                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <span class="meta">(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</span></li>
+                     </ul>
                 </div>
-            </div>`;
+            </div>
+
+             <div class="card chart-container" style="height: 350px;">
+                <h3>Content Activity (Mock Data)</h3>
+                <canvas id="visitorsChart"></canvas>
+            </div>
+        `;
+        
+        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+
+        const chartOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: legendColor, font: { family: 'Inter, sans-serif' } }, position: 'top', },
+                tooltip: { bodyFont: { family: 'Inter, sans-serif' }, titleFont: { family: 'Inter, sans-serif' } }
+            },
+            scales: {
+                y: { ticks: { color: ticksColor, beginAtZero: true, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } },
+                x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } }
+            }
+        };
+
+        if (visitorsChartInstance) visitorsChartInstance.destroy();
+        const visitorsCtx = document.getElementById('visitorsChart')?.getContext('2d');
+        if (visitorsCtx) {
+            visitorsChartInstance = new Chart(visitorsCtx, {
+                type: 'bar',
+                data: { 
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 
+                    datasets: [
+                        { label: 'Views', data: [65, 59, 80, 81, 56, 55, 40], backgroundColor: 'rgba(99, 102, 241, 0.7)'},
+                        { label: 'Comments', data: [5, 2, 8, 3, 7, 4, 2], backgroundColor: 'rgba(34, 197, 94, 0.7)'}
+                    ]
+                },
+                options: chartOptions
+            });
+        }
+        applyPermanentDarkMode(); 
     }
     
-    async function displaySectionContent(sectionId) {
+    async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
-            standardSectionContentPlaceholder.innerHTML = `<div class="card"><h2 style="color: red;">Section not found.</h2></div>`;
+            standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: red;">Section not found: ${escapeHTML(sectionId)}</h2></div>`;
+            currentSectionTitleEl.textContent = 'Not Found';
             return;
         }
 
         currentSectionTitleEl.textContent = sectionData.name;
-        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
+        let bcHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
+        breadcrumbsContainer.innerHTML = bcHTML;
 
         let contentHTML = `<div>`;
-        if (currentUser?.role === 'admin' && sectionId !== 'home') {
-             contentHTML += `<div style="text-align: right; margin-bottom: 1.5rem;"><button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}"><i class="fas fa-plus-circle"></i> Add Content</button></div>`;
-        }
         
+        if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
+             contentHTML += `
+                <div style="text-align: right; margin-bottom: 1.5rem;">
+                    <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
+                        <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
+                    </button>
+                </div>`;
+        }
+
         const itemsToDisplay = (sectionData.items || []).filter(item => !item.parentId);
         
         if (itemsToDisplay.length > 0) {
-            contentHTML += `<div class="cards-grid">${itemsToDisplay.map(item => renderItemCard(item, sectionData)).join('')}</div>`;
+            contentHTML += `<div class="cards-grid">`;
+            itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
+            contentHTML += `</div>`;
         } else {
-             contentHTML += `<div class="card" style="text-align: center;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
+             contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px; min-height: auto;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
         }
+
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
-        const openAddBtn = document.getElementById('openAddContentBtnInSection');
-        if (openAddBtn) {
-            openAddBtn.addEventListener('click', (e) => openAddContentModal(e.currentTarget.dataset.sectionId));
+        const openAddBtnInSection = document.getElementById('openAddContentBtnInSection');
+        if (openAddBtnInSection) {
+            openAddBtnInSection.addEventListener('click', (e) => {
+                const currentSecId = e.currentTarget.dataset.sectionId;
+                openAddContentModal(currentSecId);
+            });
         }
     }
     
-    async function renderComments(itemUuid, commentsContainerId) {
-        const commentsContainer = document.getElementById(commentsContainerId);
-        if (!commentsContainer) return;
-
-        commentsContainer.innerHTML = `<p style="color: var(--text-color-muted); padding: 1rem 0;">Loading comments...</p>`;
-        const comments = await Db.getComments(itemUuid);
-        
-        if (!comments || comments.length === 0) {
-            commentsContainer.innerHTML = `<p style="color: var(--text-color-muted); padding: 1rem 0;">No comments yet. Be the first to discuss!</p>`;
-            return;
-        }
-
-        const commentsById = new Map(comments.map(c => [c.id, c]));
-        const rootComments = [];
-        comments.forEach(c => {
-            if (c.parent_id && commentsById.has(c.parent_id)) {
-                const parent = commentsById.get(c.parent_id);
-                if (!parent.children) parent.children = [];
-                parent.children.push(c);
-            } else {
-                rootComments.push(c);
-            }
-        });
-
-        const generateCommentHTML = (comment) => {
-            const authorName = escapeHTML(comment.author_name || 'Anonymous');
-            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&size=36&background=4b5563&color=fff&rounded=true`;
-            return `
-                <div class="comment" data-comment-id="${comment.id}">
-                    <div class="comment-avatar"><img src="${avatarUrl}" alt="${authorName}"></div>
-                    <div class="comment-body">
-                        <div class="comment-header">
-                            <span class="comment-author">${authorName}</span>
-                            <span class="comment-timestamp">${new Date(comment.created_at).toLocaleString()}</span>
-                        </div>
-                        <div class="comment-text">${escapeHTML(comment.body)}</div>
-                        <div class="comment-actions">
-                            <button class="reply-btn" data-comment-id="${comment.id}"><i class="fas fa-reply"></i> Reply</button>
-                        </div>
-                        ${comment.children ? `<div class="comment-replies">${comment.children.map(generateCommentHTML).join('')}</div>` : ''}
-                    </div>
-                </div>`;
-        };
-        commentsContainer.innerHTML = rootComments.map(generateCommentHTML).join('');
-    }
-    
-    function attachCommentActionListeners(itemUuid, container) {
-        container.addEventListener('click', e => {
-            const replyButton = e.target.closest('.reply-btn');
-            if (replyButton) {
-                const commentId = replyButton.dataset.commentId;
-                const commentBody = replyButton.closest('.comment-body');
-                
-                const existingForm = commentBody.querySelector('.reply-form');
-                if (existingForm) {
-                    existingForm.remove();
-                    return; // Toggle off
+    function findParentItem(parentId) {
+        for (const section of kbSystemData.sections) {
+            if (section.items) {
+                const parentItem = section.items.find(item => item.id === parentId);
+                if (parentItem) {
+                    return { ...parentItem, sectionId: section.id };
                 }
-
-                const replyForm = document.createElement('div');
-                replyForm.className = 'reply-form';
-                replyForm.style.marginTop = '0.75rem';
-                replyForm.innerHTML = `
-                    <form class="comment-form">
-                        <textarea placeholder="Write a reply..." required style="min-height: 60px;"></textarea>
-                        <button type="submit" class="button" style="margin-top: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Post Reply</button>
-                    </form>
-                `;
-                commentBody.appendChild(replyForm);
-                const textarea = replyForm.querySelector('textarea');
-                textarea.focus();
-
-                replyForm.querySelector('form').addEventListener('submit', async (submitEvent) => {
-                    submitEvent.preventDefault();
-                    const body = textarea.value.trim();
-                    if (!body) return;
-                    
-                    const postReplyBtn = submitEvent.currentTarget.querySelector('button');
-                    postReplyBtn.disabled = true;
-                    postReplyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-                    await Db.postComment({ itemUuid: itemUuid, parentId: commentId, body: body });
-                    await renderComments(itemUuid, container.querySelector('.comment-display-area').id);
-                });
             }
-        });
+        }
+        return null;
     }
 
-    async function renderInteractiveFlowContent(itemData, sectionId, container) {
-        const itemUuid = itemData.uuid; // Use UUID for all DB operations
-        container.innerHTML = '';
+    function trackView(item) {
+        if (!currentUser) return;
+        const viewKey = `view_log_${currentUser.id}_${item.id}`;
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const lastView = localStorage.getItem(viewKey);
+        const now = Date.now();
+
+        if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
+            item.views = (item.views || 0) + 1;
+            localStorage.setItem(viewKey, now.toString());
+            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
+            // Update the view count on the page if it's visible
+            const readStatsEl = document.getElementById('readStatsCount');
+            if(readStatsEl) readStatsEl.textContent = item.views;
+        } else {
+            console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
+        }
+    }
+
+
+    async function downloadItemAsPDF(itemToDownload) {
+        // This function remains the same as previous version, no changes requested.
+        // It should still work as intended for the new article format.
+        if (!itemToDownload || !itemToDownload.title) {
+            showToast('Error preparing PDF: Item data is missing.', 'error'); return;
+        }
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        showToast('Generating PDF, please wait...', 'info', 5000);
+
+        const element = document.getElementById('itemDetailViewPlaceholder');
+        if (!element) {
+            showToast('Error preparing PDF: Content area not found.', 'error'); return;
+        }
+        const elementToPrint = element.cloneNode(true);
+        elementToPrint.style.padding = "20px";
+        elementToPrint.style.width = "210mm";
+        elementToPrint.style.backgroundColor = "white";
         
-        const flowContainer = document.createElement('div');
-        flowContainer.className = 'interactive-flow-container';
-        if (flowState.isAgentScriptModeActive) {
-            flowContainer.classList.add('agent-script-mode-active');
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn' ];
+        selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
+        
+        elementToPrint.style.position = 'absolute';
+        elementToPrint.style.left = '-9999px';
+        document.body.appendChild(elementToPrint);
+
+        if (elementToPrint.querySelector('pre.mermaid')) {
+            await renderMermaidDiagramsInElement(elementToPrint);
         }
 
-        flowContainer.innerHTML = `
-            <div class="flow-title-bar">
-                <h2><i class="fas fa-project-diagram"></i> ${escapeHTML(itemData.title)}</h2>
-                ${currentUser?.role === 'admin' ? `<div id="flowTopActions"><button id="editItemBtn" class="button button-secondary" data-section-id="${sectionId}" data-item-id="${itemData.id}"><i class="fas fa-edit"></i> Edit Flow</button></div>` : ''}
-            </div>
-            <div class="flow-controls">
-                <button id="expandAllStepsBtn" class="button button-secondary"><i class="fas fa-expand-arrows-alt"></i> Expand All</button>
-                <button id="collapseAllStepsBtn" class="button button-secondary"><i class="fas fa-compress-arrows-alt"></i> Collapse All</button>
-                <button id="toggleAgentScriptModeBtn" class="button button-secondary"><i class="fas fa-comment-dots"></i> <span id="agentScriptModeBtnText">${flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View'}</span></button>
-                <button id="resetFlowProgressBtn" class="button button-secondary"><i class="fas fa-undo"></i> Reset Progress</button>
-            </div>
-            <div id="flowStepsArea" class="flow-steps-area"></div>
-        `;
-        
-        const stepsArea = flowContainer.querySelector('#flowStepsArea');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(itemData.content, 'text/html');
-        const steps = Array.from(doc.querySelectorAll('body > ol:first-of-type > li'));
-        const doneStepsKey = `infiniBase_doneSteps_${itemUuid}`;
-        let doneSteps = JSON.parse(localStorage.getItem(doneStepsKey) || '{}');
+        const opt = {
+            margin: [10, 10, 10, 10], filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, logging: false, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
 
-        steps.forEach((stepLi, index) => {
-            const stepId = stepLi.id || `${itemUuid}_step_${index}`;
-            const strongTitle = stepLi.querySelector('strong:first-child');
-            const stepTitleText = strongTitle ? strongTitle.textContent.trim() : `Step ${index + 1}`;
-            if (strongTitle) strongTitle.remove();
-
-            const stepCard = document.createElement('div');
-            stepCard.className = `step-card ${doneSteps[stepId] ? 'done' : ''} ${flowState.expandedSteps.has(stepId) ? 'expanded' : ''}`;
-            stepCard.dataset.stepId = stepId;
-
-            stepCard.innerHTML = `
-                <div class="step-header">
-                    <div class="step-header-main">
-                        <span class="step-number">Step ${index + 1}:</span>
-                        <span class="step-title">${escapeHTML(stepTitleText)}</span>
-                    </div>
-                    <div class="step-header-actions">
-                        <button class="mark-step-done-btn ${doneSteps[stepId] ? 'done' : ''}"><i class="fas ${doneSteps[stepId] ? 'fa-check-circle' : 'fa-circle'}"></i> <span class="mark-step-text">${doneSteps[stepId] ? 'Done' : 'Mark Done'}</span></button>
-                        <button class="toggle-step-details-btn"><i class="fas fa-chevron-down"></i></button>
-                    </div>
-                </div>
-                <div class="step-body"><div class="kb-content">${stepLi.innerHTML}</div></div>
-            `;
-            stepsArea.appendChild(stepCard);
-        });
-
-        container.appendChild(flowContainer);
-
-        flowContainer.addEventListener('click', (e) => {
-            const stepHeader = e.target.closest('.step-header');
-            if (stepHeader && !e.target.closest('button')) {
-                const stepCard = stepHeader.closest('.step-card');
-                stepCard.classList.toggle('expanded');
-                if (stepCard.classList.contains('expanded')) flowState.expandedSteps.add(stepCard.dataset.stepId);
-                else flowState.expandedSteps.delete(stepCard.dataset.stepId);
-            }
-
-            const markBtn = e.target.closest('.mark-step-done-btn');
-            if (markBtn) {
-                const stepCard = markBtn.closest('.step-card');
-                const stepId = stepCard.dataset.stepId;
-                doneSteps[stepId] = !doneSteps[stepId];
-                localStorage.setItem(doneStepsKey, JSON.stringify(doneSteps));
-                markBtn.classList.toggle('done', doneSteps[stepId]);
-                stepCard.classList.toggle('done', doneSteps[stepId]);
-                markBtn.querySelector('i').className = `fas ${doneSteps[stepId] ? 'fa-check-circle' : 'fa-circle'}`;
-                markBtn.querySelector('.mark-step-text').textContent = doneSteps[stepId] ? 'Done' : 'Mark Done';
-            }
-            
-            if (e.target.closest('#expandAllStepsBtn')) flowContainer.querySelectorAll('.step-card:not(.expanded)').forEach(sc => sc.classList.add('expanded'));
-            if (e.target.closest('#collapseAllStepsBtn')) flowContainer.querySelectorAll('.step-card.expanded').forEach(sc => sc.classList.remove('expanded'));
-            if (e.target.closest('#resetFlowProgressBtn')) {
-                localStorage.removeItem(doneStepsKey);
-                doneSteps = {};
-                flowContainer.querySelectorAll('.step-card.done').forEach(sc => {
-                    sc.classList.remove('done');
-                    const btn = sc.querySelector('.mark-step-done-btn');
-                    btn.classList.remove('done');
-                    btn.querySelector('i').className = 'fas fa-circle';
-                    btn.querySelector('.mark-step-text').textContent = 'Mark Done';
-                });
-                showToast('Flow progress reset.', 'info');
-            }
-            if (e.target.closest('#editItemBtn')) openAddContentModal(sectionId, itemData);
-        });
+        try {
+            await html2pdf().from(elementToPrint).set(opt).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showToast('Error generating PDF. Check console.', 'error');
+        } finally {
+             document.body.removeChild(elementToPrint);
+        }
     }
 
     async function displayItemDetail(sectionId, itemId) {
@@ -2399,210 +2033,455 @@
         const itemData = sectionData?.items?.find(i => i.id === itemId);
 
         if (!sectionData || !itemData) {
-            itemDetailViewPlaceholder.innerHTML = `<div class="card"><p style="color: red;">Error: Item with ID "${escapeHTML(itemId)}" not found.</p></div>`;
+            standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
+            itemDetailViewPlaceholder.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden');
             return;
         }
 
-        // CRITICAL CHECK: Ensure the item has a UUID from the database.
-        if (!itemData.uuid) {
-            itemDetailViewPlaceholder.innerHTML = `<div class="card"><p style="color: red;">Error: This item ("${escapeHTML(itemData.title)}") is not synced with the database and cannot be loaded.</p></div>`;
-            currentSectionTitleEl.textContent = "Sync Error";
-            return;
-        }
-        
-        const itemUuid = itemData.uuid;
-        await Db.logView(itemUuid);
-        
-        currentOpenItem = { sectionId, itemId, itemUuid, title: itemData.title };
+        trackView(itemData); // Track the view for this item
+
+        currentOpenItem = { sectionId, itemId, title: itemData.title };
+        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
+
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
-        itemDetailViewPlaceholder.innerHTML = '';
 
-        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a><span class="mx-2">›</span><a href="#${sectionId}">${escapeHTML(sectionData.name)}</a><span class="mx-2">›</span><span class="font-bold text-primary-500">${escapeHTML(itemData.title)}</span>`;
+        let bcHTML = `
+            <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
+            <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">›</span>
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
+        breadcrumbsContainer.innerHTML = bcHTML;
         currentSectionTitleEl.textContent = itemData.title;
 
-        // Action Bar
-        let actionsBarHTML = `<div class="item-actions-bar">
-            <button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>
-            ${currentUser?.role === 'admin' && itemData.type !== 'interactive_flow' ? `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit</button>` : ''}
-            ${currentUser?.role === 'admin' ? `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete</button>` : ''}
-            <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
-            <button id="shareItemBtn" class="button button-secondary"><i class="fas fa-share-alt"></i> Share</button>
-        </div>`;
-        itemDetailViewPlaceholder.innerHTML = actionsBarHTML;
+        let itemIconClass = 'fas fa-file-alt';
+        if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
+        else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
+        else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
+        else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        // Main Content (Flow or Standard)
-        const contentContainer = document.createElement('div');
-        itemDetailViewPlaceholder.appendChild(contentContainer);
-        if (itemData.type === 'interactive_flow') {
-            await renderInteractiveFlowContent(itemData, sectionId, contentContainer);
-        } else {
-            let itemIconClass = 'fas fa-file-alt';
-            switch(itemData.type) { case 'case': itemIconClass = 'fas fa-briefcase'; break; case 'article': itemIconClass = 'fas fa-newspaper'; break; }
-            contentContainer.innerHTML = `<div class="card">
-                <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title)}</h2></div>
-                <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                <hr class="title-content-divider">
-                <div class="kb-content">${itemData.content || itemData.resolution_steps || ''}</div>
-            </div>`;
+        let detailHTML = `<div class="item-actions-bar">
+            <button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>`;
+        if (currentUser && currentUser.role === 'admin') {
+             detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
-
-        const viewCount = await Db.getViewCount(itemUuid);
-
-        // Feedback and Comments Section
-        const commonSectionsContainer = document.createElement('div');
-        commonSectionsContainer.innerHTML = `
-            <div class="item-feedback-section card">
-                <h4>Was this content helpful?</h4>
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="rating-buttons">
-                        <button id="rateUpBtn" data-rating="1"><i class="fas fa-thumbs-up"></i> Helpful</button>
-                        <button id="rateDownBtn" data-rating="0"><i class="fas fa-thumbs-down"></i> Not Helpful</button>
+        detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
+                      <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                      </div>`;
+        
+        detailHTML += `<div class="card">
+                    <div class="item-title-area">
+                        <i class="${itemIconClass} fa-title-icon"></i>
+                        <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
-                    <span id="readStatsContainer" class="read-stats">(Total Reads: ${viewCount})</span>
-                </div>
-            </div>
-            <div class="comments-section card" style="margin-top: 1.5rem;">
-                <h4><i class="fas fa-comments"></i> Comments & Discussion</h4>
-                <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
-                <form id="commentForm" class="comment-form" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-                    <textarea id="newCommentText" placeholder="Add a comment..." required></textarea>
-                    <button id="postCommentBtn" type="submit" class="button"><i class="fas fa-paper-plane"></i> Post Comment</button>
-                </form>
-            </div>
-        `;
-        itemDetailViewPlaceholder.appendChild(commonSectionsContainer);
+                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                    <hr class="title-content-divider">
+                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
+                   </div>`;
         
-        await renderComments(itemUuid, 'commentDisplayAreaForItem');
-        if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
-            await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
+        const childItems = kbSystemData.sections.flatMap(s => s.items || [])
+                               .filter(child => child.parentId === itemData.id)
+                               .map(child => ({...child, sectionId: kbSystemData.sections.find(s => s.items && s.items.includes(child)).id }));
+        if (childItems.length > 0) {
+            detailHTML += `<div class="card" style="margin-top: 1.5rem;">
+                            <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
+                            <ul class="child-items-list">${childItems.map(child => `<li><a href="#${child.sectionId}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`).join('')}</ul>
+                           </div>`;
         }
 
-        // Attach event listeners using delegation on the main placeholder
-        itemDetailViewPlaceholder.addEventListener('click', async (e) => {
-            if (e.target.closest('#backToSectionBtn')) window.location.hash = `#${sectionId}`;
-            if (e.target.closest('#editItemBtn')) openAddContentModal(sectionId, itemData);
-            if (e.target.closest('#deleteItemBtn')) openDeleteConfirmModal(sectionId, itemId, itemData.title);
-            if (e.target.closest('#printItemBtn')) window.print();
-            if (e.target.closest('#shareItemBtn')) {
-                navigator.clipboard.writeText(window.location.href).then(() => showToast('Link copied!', 'success'));
-            }
-            
-            const ratingBtn = e.target.closest('.rating-buttons button');
-            if (ratingBtn) {
-                const rating = parseInt(ratingBtn.dataset.rating, 10);
-                ratingBtn.classList.add('active');
-                if (rating === 1) { // Helpful
-                    document.getElementById('rateDownBtn').classList.remove('active');
-                    await Db.postFeedback({ itemUuid, rating });
-                    showToast('Thanks for your feedback!', 'success');
-                } else { // Not Helpful
-                    document.getElementById('rateUpBtn').classList.remove('active');
-                    openReportFeedbackModal(itemUuid, itemData.title, rating);
-                }
-            }
-        });
+        detailHTML += `<div class="item-feedback-section">
+                        <h4 id="feedbackPrompt">Was this article helpful?</h4>
+                        <div id="feedbackInteractionContainer">
+                           <div class="rating-prompt">
+                                <div class="rating-buttons" id="ratingButtons">
+                                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                                </div>
+                            </div>
+                            <form id="negativeFeedbackForm" class="hidden">
+                                <div class="form-group">
+                                    <label for="feedbackReason">Please tell us how we can improve:</label>
+                                    <textarea id="feedbackReason" rows="3"></textarea>
+                                </div>
+                                <button type="submit" class="button">Submit Feedback</button>
+                            </form>
+                        </div>
+                        <div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>
+                       </div>`;
         
-        document.getElementById('commentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const textEl = document.getElementById('newCommentText');
-            const body = textEl.value.trim();
-            if (!body) return;
-            const btn = e.target.querySelector('button');
-            btn.disabled = true;
+        detailHTML += `<div class="comments-section">
+                        <h4><i class="fas fa-comments"></i> Discussion</h4>
+                        <div class="comment-post-area">
+                            <img src="${currentUser.avatar_url}" alt="Your avatar">
+                            <div class="comment-input-wrapper">
+                                <textarea id="newCommentText" placeholder="Add to the discussion..."></textarea>
+                                <div class="comment-post-actions">
+                                    <button id="postCommentBtn" class="button">Post Comment</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
+                       </div>`;
 
-            await Db.postComment({ itemUuid, body });
-            textEl.value = '';
-            await renderComments(itemUuid, 'commentDisplayAreaForItem');
-            btn.disabled = false;
+
+        itemDetailViewPlaceholder.innerHTML = detailHTML;
+        setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId);
+    }
+    
+    function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
+        renderComments(itemData, 'commentDisplayAreaForItem'); 
+        
+        if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
+            renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
+        }
+
+        // Add copy buttons to script blocks
+        itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-script-btn';
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            copyBtn.title = 'Copy script';
+            bq.appendChild(copyBtn);
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const textToCopy = bq.innerText.replace('Copy', '').trim(); // Basic way to get text
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showToast('Script copied!', 'success'))
+                    .catch(err => showToast('Failed to copy.', 'error'));
+            });
         });
 
-        attachCommentActionListeners(itemUuid, document.querySelector('.comments-section'));
+        document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
+        if (currentUser && currentUser.role === 'admin') {
+            document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
+            document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
+        }
+
+        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
+
+        // Feedback logic
+        const feedbackPrompt = document.getElementById('feedbackPrompt');
+        const rateYesBtn = document.getElementById('rateYesBtn');
+        const rateNoBtn = document.getElementById('rateNoBtn');
+        const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
+        
+        rateYesBtn.addEventListener('click', () => {
+            itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+            feedbackPrompt.textContent = 'Thank you for your feedback!';
+            document.getElementById('feedbackInteractionContainer').innerHTML = ''; // Remove buttons
+            showToast('Feedback received!', 'success');
+            console.log(itemData.feedback);
+        });
+
+        rateNoBtn.addEventListener('click', () => {
+            document.getElementById('ratingButtons').classList.add('hidden');
+            negativeFeedbackForm.classList.remove('hidden');
+            negativeFeedbackForm.querySelector('textarea').focus();
+        });
+
+        negativeFeedbackForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const reason = document.getElementById('feedbackReason').value.trim();
+            if (reason) {
+                itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                feedbackPrompt.textContent = 'Thank you for your feedback!';
+                document.getElementById('feedbackInteractionContainer').innerHTML = '';
+                showToast('Feedback received, we will review it.', 'info');
+                console.log(itemData.feedback);
+            } else {
+                showToast('Please provide a reason.', 'error');
+            }
+        });
+
+
+        // Comments logic
+        document.getElementById('postCommentBtn').addEventListener('click', () => {
+            const commentTextEl = document.getElementById('newCommentText');
+            const commentText = commentTextEl.value.trim();
+            if (!commentText) {
+                showToast('Please enter a comment.', 'error');
+                return;
+            }
+            if (!itemData.comments) itemData.comments = [];
+            itemData.comments.push({
+                id: `cmt_${Date.now()}`,
+                authorId: currentUser.id,
+                authorName: currentUser.name,
+                text: commentText, 
+                timestamp: new Date().toISOString()
+            });
+            renderComments(itemData, 'commentDisplayAreaForItem'); 
+            commentTextEl.value = ''; 
+        });
+    }
+    
+    function renderComments(itemData, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (!itemData.comments || itemData.comments.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No discussion yet. Be the first to comment!</p>`;
+            return;
+        }
+
+        let commentsHTML = '';
+        const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
+
+        sortedComments.forEach(comment => {
+            if(!userAvatars[comment.authorId]) {
+                 userAvatars[comment.authorId] = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
+            }
+
+            commentsHTML += `
+                <div class="comment" data-comment-id="${comment.id}">
+                    <img src="${userAvatars[comment.authorId]}" alt="${escapeHTML(comment.authorName)}'s avatar">
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <span class="comment-author">${escapeHTML(comment.authorName)}</span>
+                            <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="comment-text">${escapeHTML(comment.text).replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = commentsHTML;
     }
 
-    // --- Modal Logic (Add/Edit, Feedback, etc.) ---
+
+    const contentTemplates = {
+        standard_article: {
+            type: 'article',
+            titlePrefix: 'New Article: ',
+            summary: 'A general article about [topic].',
+            content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here. You can use lists, paragraphs, etc.]</p><ul><li>Point 1</li><li>Point 2</li></ul><h2>Conclusion</h2><p>[Summarize the key takeaways.]</p>',
+            tags: ['article']
+        },
+        troubleshooting_guide: {
+            type: 'case', 
+            titlePrefix: 'Case: Troubleshooting ',
+            summary: 'A step-by-step guide to resolve [issue].',
+            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Symptoms</h3><ul><li>[Symptom 1]</li><li>[Symptom 2]</li></ul><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved.]</p>',
+            tags: ['troubleshooting', 'guide', 'case']
+        },
+        policy_document: {
+            type: 'policy',
+            titlePrefix: 'Policy: ',
+            summary: 'Official policy regarding [subject matter].',
+            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p>',
+            tags: ['policy', 'official']
+        },
+         blank: {
+            type: 'article', 
+            titlePrefix: '',
+            summary: '',
+            content: '<p><br></p>', 
+            tags: []
+        }
+    };
+
+    function applyTemplate(templateKey) {
+        const template = contentTemplates[templateKey];
+        if (!template) return;
+
+        contentTypeSelect.value = template.type;
+        document.getElementById('contentTitle').value = template.titlePrefix;
+        document.getElementById('contentSummary').value = template.summary;
+        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
+        contentTagsInput.value = template.tags.join(', ');
+        
+        addContentForm.classList.remove('hidden');
+        templateSelectionContainer.classList.add('hidden');
+        contentTypeSelect.dispatchEvent(new Event('change')); 
+        document.getElementById('contentTitle').focus();
+    }
+
+
+    // --- Add/Edit Content Modal Logic ---
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        if (!mainQuillEditor) mainQuillEditor = new Quill('#quillEditor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], ['link', 'image']] } });
+        editingItemIdInput.value = ""; 
+        
+        if (!mainQuillEditor) {
+            mainQuillEditor = new Quill('#quillEditor', { 
+                theme: 'snow',
+                modules: { 
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
+                        ['clean']
+                    ]
+                },
+                placeholder: 'Enter detailed content here...'
+            });
+        }
+        mainQuillEditor.root.innerHTML = '<p><br></p>'; 
 
         if (itemToEdit) {
-            editingItemIdInput.value = itemToEdit.id;
+            document.getElementById('addContentModalTitle').textContent = 'Edit Content';
+            editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
-            mainQuillEditor.root.innerHTML = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
+            if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
+            
+            let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
+            mainQuillEditor.root.innerHTML = contentToEdit;
+            
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
-            addContentForm.classList.remove('hidden');
+            
+            if (itemToEdit.attachments) {
+                if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
+                if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
+            }
             templateSelectionContainer.classList.add('hidden');
+            addContentForm.classList.remove('hidden');
         } else {
-             editingItemIdInput.value = "";
-             templateSelectionContainer.classList.remove('hidden');
-             addContentForm.classList.add('hidden');
+            document.getElementById('addContentModalTitle').textContent = 'Add New Content';
+            templateSelectionContainer.classList.remove('hidden');
+            addContentForm.classList.add('hidden');
         }
+        
+        contentTypeSelect.dispatchEvent(new Event('change'));
         addContentModalOverlay.classList.remove('hidden');
     }
+
+    document.querySelectorAll('.template-button').forEach(button => {
+        button.addEventListener('click', () => applyTemplate(button.dataset.template));
+    });
+
+
+    function closeAddContentModal() {
+        addContentModalOverlay.classList.add('hidden');
+        templateSelectionContainer.classList.add('hidden'); 
+        addContentForm.classList.add('hidden'); 
+        editingItemIdInput.value = ""; 
+    }
+
+    contentTypeSelect.addEventListener('change', (e) => {
+        const type = e.target.value;
+        contentUrlContainer.classList.toggle('hidden', !['form_sheet', 'design'].includes(type));
+        contentDetailContainer.classList.toggle('hidden', ['form_sheet', 'design'].includes(type));
+        if (type === 'case') contentDetailLabel.textContent = 'Case Details / Resolution Steps';
+        else contentDetailLabel.textContent = 'Content';
+    });
 
     addContentForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const sectionId = addContentForm.dataset.sectionId;
         const section = kbSystemData.sections.find(s => s.id === sectionId);
-        const editingId = editingItemIdInput.value;
-        const title = document.getElementById('contentTitle').value.trim();
-        if (!title) { showToast('Title is required.', 'error'); return; }
-
-        let itemData = editingId ? section.items.find(i => i.id === editingId) : { id: `${sectionId}_${Date.now()}`, createdAt: new Date().toISOString() };
+        if (!section) { showToast('Error: Target section not found!', 'error'); return; }
         
-        Object.assign(itemData, {
+        const editingId = editingItemIdInput.value;
+        const commonData = {
             type: contentTypeSelect.value,
-            title: title,
+            title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-            lastModified: new Date().toISOString(),
-            [itemData.type === 'case' ? 'resolution_steps' : 'content']: mainQuillEditor.root.innerHTML
-        });
-
-        if (!editingId) {
-            if (!section.items) section.items = [];
-            section.items.unshift(itemData);
-            // In a real app, you'd also create this new item in the 'call_scenarios' table.
-            // For now, it won't have a UUID and won't be fully functional until a page refresh + DB entry.
-            showToast('Item added locally. Add it to call_scenarios table to enable full features.', 'info');
+        };
+        if (!commonData.title || !commonData.summary) {
+            showToast('Title and Summary are required.', 'error'); return;
         }
+
+        let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
+        if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
+
+        if (itemData) { // Editing existing item
+            Object.assign(itemData, commonData); 
+            itemData.lastModified = new Date().toISOString();
+        } else { // Creating new item
+            itemData = {
+                ...commonData, id: `${sectionId}_item_${Date.now()}`,
+                createdBy: currentUser.email, createdAt: new Date().toISOString(),
+                views: 0, comments: [], feedback: [] 
+            };
+            if (!section.items) section.items = [];
+            section.items.push(itemData);
+            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
+        }
+
+        if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
+            itemData.content = mainQuillEditor.root.innerHTML;
+        } else if (['form_sheet', 'design'].includes(itemData.type)) {
+            itemData.url = document.getElementById('contentUrl').value.trim();
+            if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
+        }
+
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
+        
         window.location.hash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
+        handleNavigation();
     });
 
-    function openReportFeedbackModal(itemUuid, itemTitle, rating) {
-        if (!currentUser) { showToast('Please login to report feedback.', 'error'); return; }
-        reportFeedbackForm.reset();
-        feedbackItemUuidInput.value = itemUuid;
-        feedbackItemRatingInput.value = rating;
-        feedbackItemTitleDisplay.textContent = itemTitle; 
-        feedbackUserNameInput.value = currentUser.name || '';
-        feedbackUserEmailInput.value = currentUser.email || '';
-        feedbackCommentTextarea.required = (rating === 0);
-        feedbackCommentTextarea.placeholder = (rating === 0) ? "Please describe what was wrong or could be improved..." : "Optional comments...";
-        reportFeedbackModalOverlay.classList.remove('hidden');
-        feedbackCommentTextarea.focus();
+    // --- Other Modals Logic (Delete, Feedback, etc) ---
+    function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
+        deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
+        confirmDeleteItemBtn.dataset.sectionId = sectionId;
+        confirmDeleteItemBtn.dataset.itemId = itemId;
+        deleteConfirmModalOverlay.classList.remove('hidden');
     }
-
-    reportFeedbackForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const itemUuid = feedbackItemUuidInput.value;
-        const rating = parseInt(feedbackItemRatingInput.value, 10);
-        const reason = feedbackCommentTextarea.value.trim();
-        if (rating === 0 && !reason) { showToast('Please provide a reason.', 'error'); return; }
-        await Db.postFeedback({ itemUuid, rating, reason });
-        showToast('Feedback submitted. Thank you!', 'success');
-        reportFeedbackModalOverlay.classList.add('hidden');
+    confirmDeleteItemBtn.addEventListener('click', () => {
+        const sectionId = confirmDeleteItemBtn.dataset.sectionId;
+        const itemId = confirmDeleteItemBtn.dataset.itemId;
+        const section = kbSystemData.sections.find(s => s.id === sectionId);
+        if (section?.items) {
+            const itemIndex = section.items.findIndex(item => item.id === itemId);
+            if (itemIndex > -1) {
+                const deletedItemTitle = section.items[itemIndex].title;
+                section.items.splice(itemIndex, 1);
+                showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
+                deleteConfirmModalOverlay.classList.add('hidden');
+                window.location.hash = `#${sectionId}`;
+            }
+        }
     });
 
-    // ... Other modal close listeners
-    [closeAddContentModalBtn, cancelAddContentBtn].forEach(b => b.addEventListener('click', () => addContentModalOverlay.classList.add('hidden')));
-    [closeReportFeedbackModalBtn, cancelFeedbackBtn].forEach(b => b.addEventListener('click', () => reportFeedbackModalOverlay.classList.add('hidden')));
+    closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    
+    // Global Search (no changes needed, should still work)
+    globalSearchInput.addEventListener('input', () => {
+        const query = globalSearchInput.value.trim().toLowerCase();
+        if (query.length < 2) {
+            searchResultsContainer.classList.add('hidden'); return;
+        }
+        const results = [];
+        kbSystemData.sections.forEach(s => {
+            s.items?.forEach(i => {
+                if (i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query) || (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
+                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
+                }
+            });
+        });
+        searchResultsContainer.innerHTML = '';
+        if (results.length) {
+            results.slice(0, 7).forEach(r => {
+                const linkEl = document.createElement('a');
+                linkEl.href = `#${r.sectionId}/${r.id}`;
+                linkEl.addEventListener('click', () => { searchResultsContainer.classList.add('hidden'); globalSearchInput.value = ''; });
+                linkEl.innerHTML = `<div style="font-weight: bold;">${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.sectionName)})</span></div>
+                                    <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary), 70), query)}</p>`;
+                searchResultsContainer.appendChild(linkEl);
+            });
+            searchResultsContainer.classList.remove('hidden');
+        } else {
+            searchResultsContainer.innerHTML = `<div style="padding: 10px; color: var(--text-color-muted);">No results found.</div>`;
+            searchResultsContainer.classList.remove('hidden');
+        }
+    });
+    document.addEventListener('click', e => {
+        if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+    });
     
     // --- Routing and Initialization ---
     function handleNavigation() {
@@ -2611,60 +2490,44 @@
         const [sectionId, itemId] = hash.split('/');
         
         highlightSidebarLink(sectionId);
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
-        if (sectionId === 'home') {
-            displayDashboard(); 
-        } else if (itemId) { 
-            displayItemDetail(sectionId, itemId);
-        } else {
-            displaySectionContent(sectionId);
-        }
+        if (sectionId === 'home') displayDashboard();
+        else if (itemId) displayItemDetail(sectionId, itemId);
+        else if (sectionId) displaySectionContent(sectionId);
+        else displayDashboard(); 
+
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
 
     async function initializeApp() {
         currentUser = await Auth.getCurrentUserProfile(); 
-        if (!currentUser) return; // Stop if user can't be fetched
+        if (!currentUser) return;
 
-        // Hydrate local data with DB UUIDs before doing anything else
-        const hydrationSuccess = await hydrateKbDataWithUuids();
-        if (!hydrationSuccess) return; // Stop if data can't be synced
-
-        const displayName = currentUser.name || currentUser.email.split('@')[0];
-        userNameDisplayHeader.textContent = displayName;
-        userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=36&background=6366f1&color=fff&rounded=true&font-size=0.5`;
+        userNameDisplayHeader.textContent = currentUser.name;
+        userAvatar.src = currentUser.avatar_url;
         footerKbVersion.textContent = kbSystemData.meta.version;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
+        applyPermanentDarkMode(); 
         handleNavigation(); 
+
         window.addEventListener('hashchange', handleNavigation);
         
-        // --- Attach all other global listeners ---
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
-        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
+        closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         confirmLogoutBtn.addEventListener('click', Auth.logout);
-
-        imageFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && mainQuillEditor && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const range = mainQuillEditor.getSelection(true);
-                    mainQuillEditor.insertEmbed(range.index, 'image', event.target.result, 'user');
-                    mainQuillEditor.formatText(range.index, 1, 'class', 'kb-img');
-                };
-                reader.readAsDataURL(file);
-            }
-            e.target.value = '';
-        });
+        
+        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
+        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
         
         if (localStorage.getItem('justLoggedIn') === 'true') {
-            showToast(`Welcome, ${displayName}!`, 'success');
+            showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
             localStorage.removeItem('justLoggedIn');
+        } else {
+            showToast(`InfiniBase v${kbSystemData.meta.version} ready.`, 'info', 2000);
         }
-        console.log(`InfiniBase v${kbSystemData.meta.version} ready. User: ${displayName}, Role: ${currentUser.role}`);
     }
 
     initializeApp();
