@@ -1005,15 +1005,15 @@
         
         /* Updated .step-link style per request */
         .step-link {
-            color: #60a5fa; /* لون أزرق جميل */
-            font-weight: 500; /* Retained for consistency, can be removed if not desired */
+            color: #60a5fa; /* A nice blue color */
+            font-weight: 500; 
             text-decoration: none;
             border-bottom: 1px dotted #60a5fa;
-            text-decoration-skip-ink: none; /* Added as per request */
+            text-decoration-skip-ink: none; 
         }
         .step-link:hover {
             text-decoration: underline; /* Standard underline on hover */
-            border-bottom-style: solid; /* Retained for emphasis, can be changed to 'none' if only underline is desired */
+            border-bottom-style: solid; 
             color: #7dd3fc; /* Slightly lighter blue on hover */
         }
         
@@ -1395,6 +1395,31 @@
         </div>
     </div>
 
+    <!-- Not Helpful Reason Modal (NEW) -->
+    <div id="notHelpfulReasonModalOverlay" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 32rem;">
+            <div class="modal-header">
+                <h2 id="notHelpfulReasonModalTitle">Provide Feedback</h2>
+                <button id="closeNotHelpfulReasonModalBtn" class="close-button" aria-label="Close">×</button>
+            </div>
+            <form id="notHelpfulReasonForm">
+                <input type="hidden" id="notHelpfulItemId">
+                <input type="hidden" id="notHelpfulItemTitle">
+                <div class="modal-body" style="padding-bottom:0;">
+                    <p style="margin-bottom: 1rem;">You found "<strong><span id="notHelpfulItemTitleDisplay"></span></strong>" not helpful. Could you tell us why? Your feedback helps us improve.</p>
+                    <div class="form-group">
+                        <label for="notHelpfulReasonComment">Reason (optional, but recommended)</label>
+                        <textarea id="notHelpfulReasonComment" rows="4" placeholder="e.g., The information is outdated, the steps are confusing, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="submitNotHelpfulReasonBtn" class="button"><i class="fas fa-paper-plane"></i> Submit Feedback</button>
+                    <button type="button" id="cancelNotHelpfulReasonBtn" class="button-secondary"><i class="fas fa-times"></i> Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <div class="container-fluid">
         <aside class="sidebar" id="sidebar">
@@ -1590,7 +1615,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.8.2-print-pdf-enh', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '0.9.0-feedback-final', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1824,6 +1849,16 @@
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
 
+    // Not Helpful Reason Modal Elements (NEW)
+    const notHelpfulReasonModalOverlay = document.getElementById('notHelpfulReasonModalOverlay');
+    const closeNotHelpfulReasonModalBtn = document.getElementById('closeNotHelpfulReasonModalBtn');
+    const notHelpfulReasonForm = document.getElementById('notHelpfulReasonForm');
+    const cancelNotHelpfulReasonBtn = document.getElementById('cancelNotHelpfulReasonBtn');
+    const notHelpfulItemIdInput = document.getElementById('notHelpfulItemId');
+    const notHelpfulItemTitleInput = document.getElementById('notHelpfulItemTitle');
+    const notHelpfulItemTitleDisplay = document.getElementById('notHelpfulItemTitleDisplay');
+    const notHelpfulReasonCommentTextarea = document.getElementById('notHelpfulReasonComment');
+
 
     let mainQuillEditor; // For the modal
     let flowInPlaceQuillEditor; // For in-place editing of flow content
@@ -1948,12 +1983,16 @@
         navigationMenu.innerHTML = menuHTML;
     }
 
-    mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
-    sidebar.addEventListener('click', (e) => {
-        if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
-            sidebar.classList.add('closed');
-        }
-    });
+    if (mobileSidebarToggle) {
+        mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
+    }
+    if (sidebar) {
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
+                sidebar.classList.add('closed');
+            }
+        });
+    }
 
     function highlightSidebarLink(sectionId) {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
@@ -2467,14 +2506,16 @@
             });
             
             const markDoneBtn = stepHeader.querySelector('.mark-step-done-btn');
-            markDoneBtn.addEventListener('click', function() {
-                const currentStepDataId = this.dataset.stepDataId;
-                doneSteps[currentStepDataId] = !doneSteps[currentStepDataId];
-                localStorage.setItem(doneStepsKey, JSON.stringify(doneSteps));
-                this.classList.toggle('done', doneSteps[currentStepDataId]);
-                this.querySelector('i').className = `fas ${doneSteps[currentStepDataId] ? 'fa-check-circle' : 'fa-circle'}`;
-                this.querySelector('.mark-step-text').textContent = doneSteps[currentStepDataId] ? 'Done' : 'Mark Done';
-            });
+            if (markDoneBtn) {
+                markDoneBtn.addEventListener('click', function() {
+                    const currentStepDataId = this.dataset.stepDataId;
+                    doneSteps[currentStepDataId] = !doneSteps[currentStepDataId];
+                    localStorage.setItem(doneStepsKey, JSON.stringify(doneSteps));
+                    this.classList.toggle('done', doneSteps[currentStepDataId]);
+                    this.querySelector('i').className = `fas ${doneSteps[currentStepDataId] ? 'fa-check-circle' : 'fa-circle'}`;
+                    this.querySelector('.mark-step-text').textContent = doneSteps[currentStepDataId] ? 'Done' : 'Mark Done';
+                });
+            }
 
             stepBody.querySelectorAll('a.step-link').forEach(link => {
                 const targetStepIdFromHref = link.getAttribute('href'); 
@@ -2485,7 +2526,8 @@
                         const targetEl = document.getElementById(targetFullStepId);
                         if (targetEl && targetEl.classList.contains('step-card')) {
                             if (!targetEl.classList.contains('expanded')) {
-                                targetEl.querySelector('.step-header .toggle-step-details-btn').click(); 
+                                const toggleBtn = targetEl.querySelector('.step-header .toggle-step-details-btn');
+                                if (toggleBtn) toggleBtn.click(); 
                             }
                             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             targetEl.style.transition = 'outline 0.1s ease-in-out';
@@ -2517,7 +2559,9 @@
 
         container.appendChild(flowContainer);
 
-        document.getElementById('expandAllStepsBtn').addEventListener('click', () => {
+        // Attach event listeners with defensive checks
+        const expandAllBtn = document.getElementById('expandAllStepsBtn');
+        if (expandAllBtn) expandAllBtn.addEventListener('click', () => {
             stepsArea.querySelectorAll('.step-card').forEach(sc => {
                 if (!sc.classList.contains('expanded')) {
                     sc.classList.add('expanded');
@@ -2525,7 +2569,9 @@
                 }
             });
         });
-        document.getElementById('collapseAllStepsBtn').addEventListener('click', () => {
+
+        const collapseAllBtn = document.getElementById('collapseAllStepsBtn');
+        if (collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
             stepsArea.querySelectorAll('.step-card').forEach(sc => {
                  if (sc.classList.contains('expanded')) {
                     sc.classList.remove('expanded');
@@ -2533,15 +2579,20 @@
                 }
             });
         });
-        document.getElementById('toggleAgentScriptModeBtn').addEventListener('click', (e) => {
+
+        const toggleAgentScriptBtn = document.getElementById('toggleAgentScriptModeBtn');
+        if (toggleAgentScriptBtn) toggleAgentScriptBtn.addEventListener('click', (e) => {
             flowState.isAgentScriptModeActive = !flowState.isAgentScriptModeActive;
             localStorage.setItem('infiniBase_agentScriptMode', flowState.isAgentScriptModeActive); // Save to localStorage
             flowContainer.classList.toggle('agent-script-mode-active', flowState.isAgentScriptModeActive);
-            document.getElementById('agentScriptModeBtnText').textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
+            const btnText = document.getElementById('agentScriptModeBtnText');
+            if(btnText) btnText.textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
             const notesCard = flowContainer.querySelector('.important-notes-card');
             if(notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive);
         });
-        document.getElementById('reportFlowFeedbackBtn').addEventListener('click', (e) => {
+
+        const reportFlowFeedbackBtn = document.getElementById('reportFlowFeedbackBtn');
+        if (reportFlowFeedbackBtn) reportFlowFeedbackBtn.addEventListener('click', (e) => {
             openReportFeedbackModal(e.currentTarget.dataset.itemId, e.currentTarget.dataset.itemTitle);
         });
         
@@ -2552,7 +2603,8 @@
                 controlsBar.classList.add('hidden');
                 const notesCard = flowContainer.querySelector('.important-notes-card');
                 if (notesCard) notesCard.classList.add('hidden');
-                if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.add('hidden');
+                const flowTopActions = titleBar.querySelector('#flowTopActions');
+                if (flowTopActions) flowTopActions.classList.add('hidden');
 
                 flowInPlaceEditorDiv.classList.remove('hidden');
                 if (!flowInPlaceQuillEditor) {
@@ -2574,7 +2626,8 @@
             });
         }
 
-        document.getElementById('saveFlowChangesBtn').addEventListener('click', () => {
+        const saveFlowChangesBtn = document.getElementById('saveFlowChangesBtn');
+        if (saveFlowChangesBtn) saveFlowChangesBtn.addEventListener('click', () => {
             const updatedHtml = flowInPlaceQuillEditor.root.innerHTML;
             const currentItemInSystem = kbSystemData.sections.find(s => s.id === sectionId)?.items?.find(i => i.id === itemData.id);
             if (currentItemInSystem) {
@@ -2588,7 +2641,8 @@
                 controlsBar.classList.remove('hidden');
                 const notesCard = flowContainer.querySelector('.important-notes-card');
                 if (notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive && notesCard); 
-                if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.remove('hidden');
+                const flowTopActions = titleBar.querySelector('#flowTopActions');
+                if (flowTopActions) flowTopActions.classList.remove('hidden');
 
                 renderInteractiveFlowContent(itemData, sectionId, container); 
             } else {
@@ -2596,13 +2650,15 @@
             }
         });
 
-        document.getElementById('cancelFlowEditBtn').addEventListener('click', () => {
+        const cancelFlowEditBtn = document.getElementById('cancelFlowEditBtn');
+        if (cancelFlowEditBtn) cancelFlowEditBtn.addEventListener('click', () => {
             flowInPlaceEditorDiv.classList.add('hidden');
             stepsArea.classList.remove('hidden');
             controlsBar.classList.remove('hidden');
             const notesCard = flowContainer.querySelector('.important-notes-card');
             if (notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive && notesCard);
-             if (titleBar.querySelector('#flowTopActions')) titleBar.querySelector('#flowTopActions').classList.remove('hidden');
+            const flowTopActions = titleBar.querySelector('#flowTopActions');
+            if (flowTopActions) flowTopActions.classList.remove('hidden');
         });
     }
 
@@ -2702,6 +2758,25 @@
             itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
             return;
         }
+
+        // Log unique view (per user's request)
+        const viewLogKey = `viewed_${itemData.id}`;
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const lastViewed = localStorage.getItem(viewLogKey);
+
+        if (!lastViewed || (Date.now() - Number(lastViewed) > twelveHours)) {
+            console.log(`Logging new unique view for item: ${itemData.id}`);
+            if (itemData.views !== undefined) {
+                itemData.views++;
+            } else {
+                // Initialize views with a random number if it's not set, as per original logic
+                itemData.views = (Math.floor(Math.random() * 200) + 10);
+            }
+            // In a real app with Supabase, this would be an insert/update call.
+            // For this simulation, we just update the local object and localStorage.
+            localStorage.setItem(viewLogKey, Date.now().toString());
+        }
+
         currentOpenItem = { sectionId, itemId, title: itemData.title }; // Store title for PDF filename
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
@@ -2736,9 +2811,11 @@
             actionsBar.innerHTML = actionsBarHTML;
             itemDetailViewPlaceholder.appendChild(actionsBar); 
 
-            document.getElementById('backToSectionBtn').addEventListener('click', () => {
+            const backToSectionBtn = document.getElementById('backToSectionBtn');
+            if (backToSectionBtn) backToSectionBtn.addEventListener('click', () => {
                 window.location.hash = `#${sectionId}`;
             });
+
              if (currentUser && currentUser.role === 'admin') {
                 const editMetaBtn = document.getElementById('editItemMetadataBtn');
                 if(editMetaBtn) editMetaBtn.addEventListener('click', (e) => {
@@ -2752,13 +2829,18 @@
                     openDeleteConfirmModal(sId, iId, iTitle);
                 });
             }
-            document.getElementById('printItemBtn')?.addEventListener('click', () => window.print());
-            document.getElementById('shareItemBtn')?.addEventListener('click', () => {
+            const printBtn = document.getElementById('printItemBtn');
+            if(printBtn) printBtn.addEventListener('click', () => window.print());
+
+            const shareBtn = document.getElementById('shareItemBtn');
+            if(shareBtn) shareBtn.addEventListener('click', () => {
                 navigator.clipboard.writeText(window.location.href)
                     .then(() => showToast('Link copied to clipboard!', 'success'))
                     .catch(() => showToast('Failed to copy link.', 'error'));
             });
-            document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => downloadItemAsPDF(itemData));
+
+            const downloadPdfBtn = document.getElementById('downloadPdfItemBtn');
+            if(downloadPdfBtn) downloadPdfBtn.addEventListener('click', () => downloadItemAsPDF(itemData));
             return; 
         }
 
@@ -2845,7 +2927,7 @@
         
         if (childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
-                            <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem;">Child Items</h3>
+                            <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem;">Child Items / Related Links</h3>
                             <ul class="child-items-list">`;
             childItems.forEach(child => {
                  detailHTML += `<li><a href="#${child.sectionId}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)} (${escapeHTML(child.type)})</a></li>`;
@@ -2855,14 +2937,14 @@
 
         detailHTML += `<div class="item-feedback-section card">
                         <h4>Rate this Content</h4>
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
                             <div class="rating-buttons">
                                 <button id="rateUpBtn"><i class="fas fa-thumbs-up"></i> Helpful</button>
                                 <button id="rateDownBtn"><i class="fas fa-thumbs-down"></i> Not Helpful</button>
                             </div>
-                            <span class="read-stats">(Total Reads: ${itemData.views || Math.floor(Math.random() * 200) + 10})</span>
+                            <span class="read-stats">(Total Reads: ${itemData.views})</span>
                         </div>
-                        <button id="reportFeedbackForItemBtn" class="button button-secondary" data-item-id="${itemData.id}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-flag"></i> Report Feedback</button>
+                        <button id="reportFeedbackForItemBtn" class="button button-secondary" data-item-id="${itemData.id}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-flag"></i> Report a Problem</button>
                        </div>`;
         
         detailHTML += `<div class="comments-section card" style="margin-top: 1.5rem;">
@@ -2882,16 +2964,19 @@
             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-
-        document.getElementById('backToSectionBtn').addEventListener('click', () => {
+        // Attach event listeners using defensive checks
+        const backToSectionBtn = document.getElementById('backToSectionBtn');
+        if (backToSectionBtn) backToSectionBtn.addEventListener('click', () => {
             window.location.hash = `#${sectionId}`;
         });
+        
         const backToParentBtn = document.getElementById('backToParentBtn');
         if (backToParentBtn) {
             backToParentBtn.addEventListener('click', (e) => {
                 window.location.hash = `#${e.currentTarget.dataset.parentSection}/${e.currentTarget.dataset.parentId}`;
             });
         }
+        
         if (currentUser && currentUser.role === 'admin') {
             const editBtn = document.getElementById('editItemBtn');
             if(editBtn) editBtn.addEventListener('click', (e) => {
@@ -2910,24 +2995,56 @@
             });
         }
 
-        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
-        document.getElementById('shareItemBtn').addEventListener('click', () => {
+        const printBtn = document.getElementById('printItemBtn');
+        if (printBtn) printBtn.addEventListener('click', () => window.print());
+        
+        const shareBtn = document.getElementById('shareItemBtn');
+        if (shareBtn) shareBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href)
                 .then(() => showToast('Link copied to clipboard!', 'success'))
                 .catch(() => showToast('Failed to copy link.', 'error'));
         });
-        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
-        document.getElementById('rateUpBtn').addEventListener('click', () => showToast('Thanks for your feedback!', 'success'));
-        document.getElementById('rateDownBtn').addEventListener('click', () => showToast('Thanks for your feedback! We will review this content.', 'info'));
+        const downloadPdfBtn = document.getElementById('downloadPdfItemBtn');
+        if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', () => downloadItemAsPDF(itemData));
         
+        // NEW/UPDATED Feedback Logic
+        const rateUpBtn = document.getElementById('rateUpBtn');
+        if (rateUpBtn) {
+            rateUpBtn.addEventListener('click', () => {
+                if (itemData && currentUser) {
+                    if (!itemData.feedback) itemData.feedback = [];
+                    itemData.feedback.push({
+                        rating: 1, // 1 for helpful
+                        userName: currentUser.name,
+                        userEmail: currentUser.email,
+                        timestamp: new Date().toISOString()
+                    });
+                    showToast('Thanks for your feedback!', 'success');
+                    console.log("Logged 'Helpful' feedback for item:", itemData.id);
+                    rateUpBtn.classList.add('active');
+                    const rateDownBtn = document.getElementById('rateDownBtn');
+                    if (rateDownBtn) rateDownBtn.classList.remove('active');
+                }
+            });
+        }
+        
+        const rateDownBtn = document.getElementById('rateDownBtn');
+        if (rateDownBtn) {
+            rateDownBtn.addEventListener('click', () => {
+                if (itemData) {
+                    openNotHelpfulReasonModal(itemData.id, itemData.title);
+                }
+            });
+        }
+
         const reportFeedbackForItemBtn = document.getElementById('reportFeedbackForItemBtn');
         if(reportFeedbackForItemBtn) reportFeedbackForItemBtn.addEventListener('click', (e) => {
             openReportFeedbackModal(e.currentTarget.dataset.itemId, e.currentTarget.dataset.itemTitle);
         });
 
-
-        document.getElementById('postCommentBtn').addEventListener('click', () => {
+        const postCommentBtn = document.getElementById('postCommentBtn');
+        if (postCommentBtn) postCommentBtn.addEventListener('click', () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
             if (!commentText) {
@@ -3233,18 +3350,68 @@
         if (item) {
             if (!item.feedback) item.feedback = [];
             item.feedback.push({
+                isGeneralReport: true, // Differentiate from rating
+                comment: comment,
                 userName: feedbackUserNameInput.value,
                 userEmail: feedbackUserEmailInput.value,
-                comment: comment,
                 timestamp: new Date().toISOString()
             });
             showToast('Feedback submitted successfully. Thank you!', 'success');
-            console.log("Feedback submitted for item:", itemId, item.feedback.slice(-1)[0]);
+            console.log("General feedback report submitted for item:", itemId, item.feedback.slice(-1)[0]);
         } else {
             showToast('Error: Could not find item to attach feedback to.', 'error');
         }
         closeReportFeedbackModal();
     });
+
+    // --- Not Helpful Reason Modal Logic (NEW) ---
+    function openNotHelpfulReasonModal(itemId, itemTitle) {
+        if (!currentUser) {
+            showToast('Please login to provide feedback.', 'error');
+            return;
+        }
+        notHelpfulReasonForm.reset();
+        notHelpfulItemIdInput.value = itemId;
+        notHelpfulItemTitleInput.value = itemTitle;
+        notHelpfulItemTitleDisplay.textContent = itemTitle;
+        notHelpfulReasonModalOverlay.classList.remove('hidden');
+        notHelpfulReasonCommentTextarea.focus();
+    }
+
+    function closeNotHelpfulReasonModal() {
+        notHelpfulReasonModalOverlay.classList.add('hidden');
+    }
+
+    if (notHelpfulReasonForm) {
+        notHelpfulReasonForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemId = notHelpfulItemIdInput.value;
+            const reason = notHelpfulReasonCommentTextarea.value.trim();
+            const item = kbSystemData.sections.flatMap(s => s.items || []).find(i => i.id === itemId);
+
+            if (item && currentUser) {
+                if (!item.feedback) item.feedback = [];
+                item.feedback.push({
+                    rating: 0, // 0 for not helpful
+                    reason: reason,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    timestamp: new Date().toISOString()
+                });
+                showToast('Thank you for your feedback, we will review this item.', 'success');
+                console.log("Logged 'Not Helpful' feedback for item:", itemId, item.feedback.slice(-1)[0]);
+                
+                // Visually update the button
+                const rateDownBtn = document.getElementById('rateDownBtn');
+                if (rateDownBtn) rateDownBtn.classList.add('active');
+                const rateUpBtn = document.getElementById('rateUpBtn');
+                if (rateUpBtn) rateUpBtn.classList.remove('active');
+            } else {
+                showToast('Error: Could not save feedback.', 'error');
+            }
+            closeNotHelpfulReasonModal();
+        });
+    }
     
     // --- Delete Confirmation Modal Logic ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
@@ -3254,10 +3421,10 @@
         deleteConfirmModalOverlay.classList.remove('hidden');
     }
 
-    closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
-    cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
-
-    confirmDeleteItemBtn.addEventListener('click', () => {
+    if (closeDeleteConfirmModalBtn) closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    if (cancelDeleteItemBtn) cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    
+    if (confirmDeleteItemBtn) confirmDeleteItemBtn.addEventListener('click', () => {
         const sectionId = confirmDeleteItemBtn.dataset.sectionId;
         const itemId = confirmDeleteItemBtn.dataset.itemId;
         const section = kbSystemData.sections.find(s => s.id === sectionId);
@@ -3287,50 +3454,53 @@
 
 
     // --- Global Search ---
-    globalSearchInput.addEventListener('input', () => {
-        const query = globalSearchInput.value.trim().toLowerCase();
-        if (query.length < 2) {
-            searchResultsContainer.classList.add('hidden');
-            return;
-        }
-        const results = [];
-        kbSystemData.sections.forEach(s => {
-            if (s.id === 'home') return; 
-            s.items?.forEach(i => {
-                if (i.title.toLowerCase().includes(query) || 
-                    (i.summary && stripHtml(i.summary).toLowerCase().includes(query)) || 
-                    (i.content && stripHtml(i.content).toLowerCase().includes(query)) ||
-                    (i.resolution_steps && stripHtml(i.resolution_steps).toLowerCase().includes(query)) ||
-                    (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
-                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
-                }
-            });
-        });
-        searchResultsContainer.innerHTML = '';
-        if (results.length) {
-            results.slice(0, 7).forEach(r => {
-                const linkEl = document.createElement('a');
-                linkEl.href = `#${r.sectionId}/${r.id}`;
-                 linkEl.addEventListener('click', () => {
-                    searchResultsContainer.classList.add('hidden');
-                    globalSearchInput.value = '';
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener('input', () => {
+            const query = globalSearchInput.value.trim().toLowerCase();
+            if (query.length < 2) {
+                searchResultsContainer.classList.add('hidden');
+                return;
+            }
+            const results = [];
+            kbSystemData.sections.forEach(s => {
+                if (s.id === 'home') return; 
+                s.items?.forEach(i => {
+                    if (i.title.toLowerCase().includes(query) || 
+                        (i.summary && stripHtml(i.summary).toLowerCase().includes(query)) || 
+                        (i.content && stripHtml(i.content).toLowerCase().includes(query)) ||
+                        (i.resolution_steps && stripHtml(i.resolution_steps).toLowerCase().includes(query)) ||
+                        (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
+                        results.push({ ...i, sectionId: s.id, sectionName: s.name });
+                    }
                 });
-
-                linkEl.innerHTML = `
-                    <div style="font-weight: bold;">${highlightText(r.title, query)}
-                        <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.type.replace('_', ' '))} in ${escapeHTML(r.sectionName)})</span>
-                    </div>
-                    <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary || r.content || r.resolution_steps), 70), query)}</p>`;
-                searchResultsContainer.appendChild(linkEl);
             });
-            searchResultsContainer.classList.remove('hidden');
-        } else {
-            searchResultsContainer.innerHTML = `<div style="padding: 10px; font-size: 0.9em; color: var(--text-color-muted);">No results found.</div>`;
-            searchResultsContainer.classList.remove('hidden');
-        }
-    });
+            searchResultsContainer.innerHTML = '';
+            if (results.length) {
+                results.slice(0, 7).forEach(r => {
+                    const linkEl = document.createElement('a');
+                    linkEl.href = `#${r.sectionId}/${r.id}`;
+                    linkEl.addEventListener('click', () => {
+                        searchResultsContainer.classList.add('hidden');
+                        globalSearchInput.value = '';
+                    });
+
+                    linkEl.innerHTML = `
+                        <div style="font-weight: bold;">${highlightText(r.title, query)}
+                            <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.type.replace('_', ' '))} in ${escapeHTML(r.sectionName)})</span>
+                        </div>
+                        <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary || r.content || r.resolution_steps), 70), query)}</p>`;
+                    searchResultsContainer.appendChild(linkEl);
+                });
+                searchResultsContainer.classList.remove('hidden');
+            } else {
+                searchResultsContainer.innerHTML = `<div style="padding: 10px; font-size: 0.9em; color: var(--text-color-muted);">No results found.</div>`;
+                searchResultsContainer.classList.remove('hidden');
+            }
+        });
+    }
+
     document.addEventListener('click', e => {
-        if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+        if (searchResultsContainer && !globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
             searchResultsContainer.classList.add('hidden');
         }
     });
@@ -3387,7 +3557,8 @@
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         const currentYear = new Date().getFullYear();
-        document.querySelector('footer span:first-child').innerHTML = `© ${currentYear} InfiniBase.Elmenisy. Version <span id="footerKbVersion">${kbSystemData.meta.version}</span>`;
+        const footerSpan = document.querySelector('footer span:first-child');
+        if (footerSpan) footerSpan.innerHTML = `© ${currentYear} InfiniBase.Elmenisy. Version <span id="footerKbVersion">${kbSystemData.meta.version}</span>`;
 
         populateSidebar();
         applyPermanentDarkMode(); 
@@ -3395,21 +3566,26 @@
 
         window.addEventListener('hashchange', handleNavigation);
         
-        logoutButton.addEventListener('click', () => {
+        if(logoutButton) logoutButton.addEventListener('click', () => {
             logoutConfirmModalOverlay.classList.remove('hidden');
         });
-        closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        confirmLogoutBtn.addEventListener('click', async () => {
+        if(closeLogoutConfirmModalBtn) closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        if(cancelLogoutBtn) cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        if(confirmLogoutBtn) confirmLogoutBtn.addEventListener('click', async () => {
             await Auth.logout(); 
             logoutConfirmModalOverlay.classList.add('hidden');
         });
         
-        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
-        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
+        if(closeAddContentModalBtn) closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
+        if(cancelAddContentBtn) cancelAddContentBtn.addEventListener('click', closeAddContentModal);
         
-        closeReportFeedbackModalBtn.addEventListener('click', closeReportFeedbackModal);
-        cancelFeedbackBtn.addEventListener('click', closeReportFeedbackModal);
+        if(closeReportFeedbackModalBtn) closeReportFeedbackModalBtn.addEventListener('click', closeReportFeedbackModal);
+        if(cancelFeedbackBtn) cancelFeedbackBtn.addEventListener('click', closeReportFeedbackModal);
+
+        // New modal listeners
+        if(closeNotHelpfulReasonModalBtn) closeNotHelpfulReasonModalBtn.addEventListener('click', closeNotHelpfulReasonModal);
+        if(cancelNotHelpfulReasonBtn) cancelNotHelpfulReasonBtn.addEventListener('click', closeNotHelpfulReasonModal);
+
         
         if (window.innerWidth < 768) {
             sidebar.classList.add('closed');
