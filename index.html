@@ -1662,11 +1662,11 @@
 
     // --- NEW: Database Interaction Module ---
     const Db = {
-        async getComments(itemId) {
+        async getComments(itemUuid) {
             const { data, error } = await supabase
                 .from('kb_comments')
                 .select('*')
-                .eq('item_id', itemId)
+                .eq('item_id', itemUuid)
                 .order('created_at', { ascending: true });
             
             if (error) {
@@ -1676,12 +1676,12 @@
             }
             return data;
         },
-        async postComment({ itemId, parentId, body }) {
+        async postComment({ itemUuid, parentId, body }) {
             if (!currentUser) return { error: { message: "User not logged in" } };
             const { data, error } = await supabase
                 .from('kb_comments')
                 .insert({
-                    item_id: itemId,
+                    item_id: itemUuid,
                     parent_id: parentId || null,
                     body: body,
                     author_id: currentUser.id,
@@ -1696,12 +1696,12 @@
             }
             return { data, error };
         },
-        async postFeedback({ itemId, rating, reason }) {
+        async postFeedback({ itemUuid, rating, reason }) {
             if (!currentUser) return { error: { message: "User not logged in" } };
             const { data, error } = await supabase
                 .from('kb_feedback')
                 .insert({
-                    item_id: itemId,
+                    item_id: itemUuid,
                     user_id: currentUser.id,
                     rating: rating,
                     reason: reason || null
@@ -1713,9 +1713,9 @@
             }
             return { data, error };
         },
-        async logView(itemId) {
+        async logView(itemUuid) {
             const today = new Date().toISOString().split('T')[0];
-            const viewKey = `viewed_${itemId}_${today}`;
+            const viewKey = `viewed_${itemUuid}_${today}`;
 
             if (localStorage.getItem(viewKey)) {
                 return; // Already viewed today
@@ -1724,7 +1724,7 @@
             const { error } = await supabase
                 .from('views_log')
                 .insert({
-                    scenario_id: itemId,
+                    scenario_id: itemUuid,
                     user_id: currentUser?.id,
                     user_email: currentUser?.email,
                     // Optional: add session_id, device_info if needed
@@ -1737,11 +1737,11 @@
                 localStorage.setItem(viewKey, 'true');
             }
         },
-        async getViewCount(itemId) {
+        async getViewCount(itemUuid) {
             const { count, error } = await supabase
                 .from('views_log')
                 .select('*', { count: 'exact', head: true })
-                .eq('scenario_id', itemId);
+                .eq('scenario_id', itemUuid);
 
             if (error) {
                 console.error("Error getting view count:", error);
@@ -1761,7 +1761,9 @@
                 id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
                 items: [
                      { 
-                        id: 'sup_flow_compensation', type: 'interactive_flow', 
+                        id: 'sup_flow_compensation',
+                        uuid: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+                        type: 'interactive_flow', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A structured, interactive guide for handling customer compensation due to order delays based on The Chefz policies. Includes agent scripts and validation steps.',
                         content: `
@@ -1771,14 +1773,14 @@
                                 <li id="comp_step_1">
                                     <strong>Initial Response & Verification</strong>
                                     <p>When a customer reports a delay, the first step is to respond with empathy and gather information. This should be done within the first 2 minutes of the interaction.</p>
-                                    <img src="https://via.placeholder.com/600x150.png/1f2937/d1d5db?text=1.+Acknowledge+%26+Verify" alt="Diagram showing Acknowledge and Verify steps" class="kb-img" loading="lazy">
+                                    <img src="https://placehold.co/600x150/1f2937/d1d5db?text=1.+Acknowledge+%26+Verify" alt="Diagram showing Acknowledge and Verify steps" class="kb-img" loading="lazy">
                                     <blockquote><i class="fas fa-comment-dots"></i> "I completely understand your frustration with the delay, and I sincerely apologize for the inconvenience. Let me check the exact status of your order right now to see what's going on."</blockquote>
                                     <p>Quickly check the order status in the internal system to confirm the delay and get the latest ETA.</p>
                                 </li>
                                 <li id="comp_step_2">
                                     <strong>Assess Delay & Determine Compensation Tier</strong>
                                     <p>If the delay exceeds 15 minutes from the original ETA, compensation procedures are initiated. The compensation amount depends on the order type and total delay duration.</p>
-                                    <img src="https://via.placeholder.com/600x200.png/1f2937/d1d5db?text=2.+Consult+Compensation+Matrix" alt="Image of a compensation matrix" class="kb-img" loading="lazy">
+                                    <img src="https://placehold.co/600x200/1f2937/d1d5db?text=2.+Consult+Compensation+Matrix" alt="Image of a compensation matrix" class="kb-img" loading="lazy">
                                     <p>Reference the official policy: <a href="#compensation_policies/cp_policy_01" class="step-link">General Compensation Policy v2.1</a>. The key tiers are:</p>
                                     <ul>
                                         <li><strong>16-30 mins:</strong> Delivery fee refund.</li>
@@ -1790,7 +1792,7 @@
                                 <li id="comp_step_3">
                                     <strong>Internal Action & Documentation</strong>
                                     <p>After resolving the issue with the customer, it's crucial to document the incident internally to ensure accountability and process improvement.</p>
-                                    <img src="https://via.placeholder.com/600x150.png/1f2937/d1d5db?text=3.+Document+Internally" alt="Illustration of internal documentation" class="kb-img" loading="lazy">
+                                    <img src="https://placehold.co/600x150/1f2937/d1d5db?text=3.+Document+Internally" alt="Illustration of internal documentation" class="kb-img" loading="lazy">
                                     <ol>
                                         <li>Determine the party responsible for the delay (Store, Driver, or Company).</li>
                                         <li>Apply necessary deductions or penalties in the system as per the policy.</li>
@@ -1804,7 +1806,10 @@
                         createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), 
                     },
                     {
-                        id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
+                        id: 'sup_child_example',
+                        uuid: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
+                        type: 'article',
+                        parentId: 'sup_flow_compensation',
                         title: 'Child Article: Detailed Scenarios for Driver Responsibility',
                         summary: 'Examples of when a driver is considered responsible for delays.',
                         content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
@@ -1814,7 +1819,7 @@
                 ]
             },
             { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open' }
+                 { id: 'pc_case_01', uuid: 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open' }
             ] }, 
             { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
             { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
@@ -1825,7 +1830,7 @@
             { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
             { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
             { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA[Order Delayed > 15m] -->|Yes| B{Check Order Type};\nB -->|FAST Order| C[Apply FAST Tier Matrix];\nB -->|SCHEDULED Order| D[Apply SCHEDULED Tier Matrix];\nA -->|No| E[Apologize & Monitor];\n</pre>' }
+                { id: 'cp_policy_01', uuid: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA[Order Delayed > 15m] -->|Yes| B{Check Order Type};\nB -->|FAST Order| C[Apply FAST Tier Matrix];\nB -->|SCHEDULED Order| D[Apply SCHEDULED Tier Matrix];\nA -->|No| E[Apologize & Monitor];\n</pre>' }
             ] }, 
             { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
@@ -2158,7 +2163,7 @@
         const compensationFlowItem = kbSystemData.sections.find(s => s.id === 'support')?.items?.find(i => i.id === 'sup_flow_compensation');
 
         const mostUsedItemsData = await Promise.all(allItems.map(async item => {
-            const viewCount = await Db.getViewCount(item.id);
+            const viewCount = await Db.getViewCount(item.uuid);
             return { ...item, views: viewCount };
         }));
 
@@ -2394,12 +2399,11 @@
         return null;
     }
 
-    // UPDATED: Renders comments from DB in a nested structure
-    async function renderComments(itemId, commentsContainerId) {
+    async function renderComments(itemUuid, commentsContainerId) {
         const commentsContainer = document.getElementById(commentsContainerId);
         if (!commentsContainer) return;
 
-        const comments = await Db.getComments(itemId);
+        const comments = await Db.getComments(itemUuid);
         if (!comments || comments.length === 0) {
             commentsContainer.innerHTML = `<p style="color: var(--text-color-muted); padding: 1rem 0;">No comments yet. Be the first to discuss!</p>`;
             return;
@@ -2439,12 +2443,12 @@
         };
         
         commentsContainer.innerHTML = rootComments.map(generateCommentHTML).join('');
-        attachCommentActionListeners(itemId, commentsContainerId);
+        attachCommentActionListeners(itemUuid, commentsContainerId);
     }
     
-    // NEW: Helper to attach listeners to dynamic comment buttons
-    function attachCommentActionListeners(itemId, containerId) {
+    function attachCommentActionListeners(itemUuid, containerId) {
         const container = document.getElementById(containerId);
+        if (!container) return;
         container.querySelectorAll('.reply-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const commentId = e.currentTarget.dataset.commentId;
@@ -2474,8 +2478,8 @@
                     const body = textarea.value.trim();
                     if (!body) return;
 
-                    await Db.postComment({ itemId: itemId, parentId: commentId, body: body });
-                    renderComments(itemId, containerId); // Re-render all comments to show the new one
+                    await Db.postComment({ itemUuid: itemUuid, parentId: commentId, body: body });
+                    renderComments(itemUuid, containerId); // Re-render all comments to show the new one
                 });
             });
         });
@@ -2644,19 +2648,27 @@
 
 
         // Add event listeners for flow controls
-        document.getElementById('expandAllStepsBtn').addEventListener('click', () => {
+        const expandAllBtn = document.getElementById('expandAllStepsBtn');
+        if(expandAllBtn) expandAllBtn.addEventListener('click', () => {
             stepsArea.querySelectorAll('.step-card:not(.expanded)').forEach(sc => sc.classList.add('expanded'));
         });
-        document.getElementById('collapseAllStepsBtn').addEventListener('click', () => {
+        
+        const collapseAllBtn = document.getElementById('collapseAllStepsBtn');
+        if(collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
             stepsArea.querySelectorAll('.step-card.expanded').forEach(sc => sc.classList.remove('expanded'));
         });
-        document.getElementById('toggleAgentScriptModeBtn').addEventListener('click', () => {
+
+        const toggleAgentModeBtn = document.getElementById('toggleAgentScriptModeBtn');
+        if(toggleAgentModeBtn) toggleAgentModeBtn.addEventListener('click', () => {
             flowState.isAgentScriptModeActive = !flowState.isAgentScriptModeActive;
             localStorage.setItem('infiniBase_agentScriptMode', flowState.isAgentScriptModeActive);
             flowContainer.classList.toggle('agent-script-mode-active', flowState.isAgentScriptModeActive);
-            document.getElementById('agentScriptModeBtnText').textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
+            const btnText = document.getElementById('agentScriptModeBtnText');
+            if(btnText) btnText.textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
         });
-        document.getElementById('resetFlowProgressBtn').addEventListener('click', () => {
+        
+        const resetProgressBtn = document.getElementById('resetFlowProgressBtn');
+        if(resetProgressBtn) resetProgressBtn.addEventListener('click', () => {
              localStorage.removeItem(doneStepsKey);
              doneSteps = {};
              stepsArea.querySelectorAll('.step-card.done').forEach(sc => {
@@ -2743,8 +2755,8 @@
             return;
         }
 
-        // Log the view in the database
-        await Db.logView(itemId);
+        // Log the view in the database using the UUID
+        await Db.logView(itemData.uuid);
         
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2825,8 +2837,8 @@
             itemDetailViewPlaceholder.innerHTML += childItemsHTML;
         }
         
-        // Fetch real view count
-        const viewCount = await Db.getViewCount(itemId);
+        // Fetch real view count using UUID
+        const viewCount = await Db.getViewCount(itemData.uuid);
 
         let commonSectionsHTML = `
             <div class="item-feedback-section card">
@@ -2838,7 +2850,7 @@
                     </div>
                     <span id="readStatsContainer" class="read-stats">(Total Reads: ${viewCount})</span>
                 </div>
-                <button id="reportFeedbackForItemBtn" class="button button-secondary" data-item-id="${itemData.id}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-flag"></i> Report another issue</button>
+                <button id="reportFeedbackForItemBtn" class="button button-secondary" data-item-uuid="${itemData.uuid}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-flag"></i> Report another issue</button>
             </div>
             <div class="comments-section card" style="margin-top: 1.5rem;">
                 <h4><i class="fas fa-comments"></i> Comments & Discussion</h4>
@@ -2849,69 +2861,82 @@
                 </form>
             </div>`;
         itemDetailViewPlaceholder.innerHTML += commonSectionsHTML;
-        await renderComments(itemId, 'commentDisplayAreaForItem');
+        await renderComments(itemData.uuid, 'commentDisplayAreaForItem');
         
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid') && itemDetailViewPlaceholder.dataset.mermaidRendered !== 'true') {
             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
         initializeInteractiveHoverItems();
         
-        // --- Attach Common Event Listeners ---
-        document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
+        // --- Attach Common Event Listeners (with null checks) ---
+        const backToSectionBtn = document.getElementById('backToSectionBtn');
+        if (backToSectionBtn) backToSectionBtn.addEventListener('click', () => window.location.hash = `#${sectionId}`);
+        
         const backToParentBtn = document.getElementById('backToParentBtn');
         if (backToParentBtn) {
             backToParentBtn.addEventListener('click', (e) => window.location.hash = `#${e.currentTarget.dataset.parentSection}/${e.currentTarget.dataset.parentId}`);
         }
+        
         const editBtn = document.getElementById('editItemBtn');
         if(editBtn) editBtn.addEventListener('click', (e) => {
             openAddContentModal(e.currentTarget.dataset.sectionId, itemData);
         });
+        
         const deleteBtn = document.getElementById('deleteItemBtn');
         if(deleteBtn) deleteBtn.addEventListener('click', (e) => {
             openDeleteConfirmModal(e.currentTarget.dataset.sectionId, e.currentTarget.dataset.itemId, e.currentTarget.dataset.itemTitle);
         });
-        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
-        document.getElementById('shareItemBtn').addEventListener('click', () => {
+        
+        const printBtn = document.getElementById('printItemBtn');
+        if(printBtn) printBtn.addEventListener('click', () => window.print());
+
+        const shareBtn = document.getElementById('shareItemBtn');
+        if(shareBtn) shareBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href)
                 .then(() => showToast('Link copied!', 'success'))
                 .catch(() => showToast('Failed to copy.', 'error'));
         });
-        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
+        
+        const downloadPdfBtn = document.getElementById('downloadPdfItemBtn');
+        if(downloadPdfBtn) downloadPdfBtn.addEventListener('click', () => downloadItemAsPDF(itemData));
         
         // Feedback button listeners
         const rateUpBtn = document.getElementById('rateUpBtn');
         const rateDownBtn = document.getElementById('rateDownBtn');
-        rateUpBtn.addEventListener('click', async () => {
-            await Db.postFeedback({ itemId, rating: 1 });
+        if(rateUpBtn) rateUpBtn.addEventListener('click', async () => {
+            await Db.postFeedback({ itemUuid: itemData.uuid, rating: 1 });
             showToast('Thanks for your feedback!', 'success');
             rateUpBtn.classList.add('active');
-            rateDownBtn.classList.remove('active');
+            if(rateDownBtn) rateDownBtn.classList.remove('active');
         });
-        rateDownBtn.addEventListener('click', () => {
+        if(rateDownBtn) rateDownBtn.addEventListener('click', () => {
             const reason = prompt("Sorry to hear that. What could be improved?");
             if (reason !== null) { // User didn't cancel prompt
-                Db.postFeedback({ itemId, rating: 0, reason: reason });
+                Db.postFeedback({ itemUuid: itemData.uuid, rating: 0, reason: reason });
                 showToast('Thanks! We will review this content.', 'info');
                 rateDownBtn.classList.add('active');
-                rateUpBtn.classList.remove('active');
+                if(rateUpBtn) rateUpBtn.classList.remove('active');
             }
         });
 
-        document.getElementById('reportFeedbackForItemBtn').addEventListener('click', (e) => {
-            openReportFeedbackModal(e.currentTarget.dataset.itemId, e.currentTarget.dataset.itemTitle);
+        const reportFeedbackBtn = document.getElementById('reportFeedbackForItemBtn');
+        if(reportFeedbackBtn) reportFeedbackBtn.addEventListener('click', (e) => {
+            // This modal is separate, using its own logic. Ensure it has what it needs.
+            openReportFeedbackModal(e.currentTarget.dataset.itemUuid, e.currentTarget.dataset.itemTitle);
         });
 
         // Comment form listener
-        document.getElementById('commentForm').addEventListener('submit', async (e) => {
+        const commentForm = document.getElementById('commentForm');
+        if(commentForm) commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const commentTextEl = document.getElementById('newCommentText');
             const body = commentTextEl.value.trim();
             if (!body) return;
             
-            await Db.postComment({ itemId, body });
+            await Db.postComment({ itemUuid: itemData.uuid, body });
             commentTextEl.value = ''; 
             showToast('Comment posted!', 'success');
-            await renderComments(itemId, 'commentDisplayAreaForItem');
+            await renderComments(itemData.uuid, 'commentDisplayAreaForItem');
         });
     }
 
@@ -3074,6 +3099,10 @@
         } else {
             itemData = {
                 id: `${sectionId}_item_${Date.now()}`,
+                uuid: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                }), // Generate new UUID for new item
                 createdBy: currentUser.email, createdAt: new Date().toISOString()
             };
         }
@@ -3118,10 +3147,10 @@
     });
 
     // --- Report Feedback Modal Logic ---
-    function openReportFeedbackModal(itemId, itemTitle) {
+    function openReportFeedbackModal(itemUuid, itemTitle) {
         if (!currentUser) { showToast('Please login to report feedback.', 'error'); return; }
         reportFeedbackForm.reset();
-        feedbackItemIdInput.value = itemId;
+        feedbackItemIdInput.value = itemUuid; // Storing UUID now
         feedbackItemTitleDisplay.textContent = itemTitle; 
         feedbackUserNameInput.value = currentUser.name || '';
         feedbackUserEmailInput.value = currentUser.email || '';
@@ -3133,14 +3162,14 @@
         reportFeedbackModalOverlay.classList.add('hidden');
     }
 
-    reportFeedbackForm.addEventListener('submit', (e) => {
+    reportFeedbackForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const itemId = feedbackItemIdInput.value;
+        const itemUuid = feedbackItemIdInput.value;
         const comment = feedbackCommentTextarea.value.trim();
         if (!comment) { showToast('Please enter your feedback.', 'error'); return; }
 
-        // This would ideally submit to a separate feedback table in a real app
-        console.log(`Feedback for ${itemId}: ${comment}`);
+        // This now uses the Db module correctly
+        await Db.postFeedback({ itemUuid: itemUuid, rating: 0, reason: `Reported Issue: ${comment}` });
         showToast('Feedback submitted. Thank you!', 'success');
         
         closeReportFeedbackModal();
