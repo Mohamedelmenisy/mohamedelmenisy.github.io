@@ -50,6 +50,8 @@
             --yes-color: #22c55e; /* Green for Yes */
             --no-color: #ef4444;   /* Red for No */
             --rating-color: #fbbf24; /* Amber 400 for ratings */
+            --step-done-color: #22c55e;
+            --step-pending-color: #f59e0b;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -278,8 +280,8 @@
             display: flex;
             flex-direction: column; 
             min-height: 150px; 
-            position: relative; /* For hover tooltip positioning */
-            overflow: visible; /* Allow tooltip to show */
+            position: relative;
+            overflow: visible; 
         }
         .card:hover {
             transform: translateY(-4px);
@@ -301,6 +303,8 @@
             color: var(--text-color-inverted);  
         }
         .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
+        .card h3 a { color: inherit; text-decoration: none; }
+        .card h3 a:hover { color: var(--primary-color); text-decoration: underline; }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
         .card .item-meta-info {
             margin-top: auto; 
@@ -336,7 +340,6 @@
             margin: 0 5px 5px 0; /* LTR */
         }
 
-        /* Card Hover Tooltip/Menu - New Style */
         .card-hover-details {
             display: none;
             position: absolute;
@@ -381,6 +384,73 @@
             margin-right: 0.5rem;
             color: var(--primary-color);
         }
+
+        .card-actions-menu-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 50%;
+            line-height: 1;
+            z-index: 5;
+        }
+        .card-actions-menu-btn:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-color);
+        }
+        .card-actions-menu-btn:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6);
+        }
+        .card-actions-menu {
+            display: none;
+            position: absolute;
+            top: 2.5rem;
+            right: 1rem;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+            min-width: 160px;
+            padding: 0.5rem 0;
+            animation: fadeIn 0.1s ease-out;
+        }
+        .card-actions-menu.visible {
+            display: block;
+        }
+        .card-actions-menu a, .card-actions-menu button {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            text-align: left;
+            padding: 0.6rem 1rem;
+            font-size: 0.875rem;
+            color: var(--text-color);
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .card-actions-menu a:hover, .card-actions-menu button:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-color);
+        }
+        .card-actions-menu a i, .card-actions-menu button i {
+            width: 1rem;
+            text-align: center;
+            margin-right: 0.25rem;
+            color: var(--text-color-muted);
+        }
+        .card-actions-menu a:hover i, .card-actions-menu button:hover i {
+            color: var(--primary-color);
+        }
+
 
         .button, button {
             background-color: var(--primary-color);
@@ -958,6 +1028,204 @@
              margin-top: 1rem;
         }
 
+        /* Interactive Flow Styles */
+        .interactive-flow-container {
+            background-color: var(--bg-color); 
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
+        }
+        .flow-title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color-darker);
+        }
+        .flow-title-bar h2 {
+            font-size: 1.6rem;
+            margin: 0;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+        }
+        .flow-title-bar h2 i {
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+        .flow-title-bar #flowTopActions button { 
+            padding: 0.5rem 0.8rem;
+            font-size: 0.8rem;
+        }
+        .flow-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: var(--bg-color-alt);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+        .flow-controls .button i { margin-right: 0.5rem; }
+        .step-card {
+            background: var(--bg-color-alt);
+            border-left: 4px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 0;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+        }
+        .step-card[data-step-color="blue"] { border-left-color: #3b82f6; }
+        .step-card[data-step-color="green"] { border-left-color: #10b981; }
+        .step-card[data-step-color="amber"] { border-left-color: #f59e0b; }
+        .step-card[data-step-color="red"] { border-left-color: #ef4444; }
+        .step-card[data-step-color="purple"] { border-left-color: #8b5cf6; }
+
+        .step-header {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background-color: var(--bg-color-alt); 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .step-card.expanded > .step-header {
+             border-bottom-color: var(--border-color-darker); 
+        }
+        .step-header-main {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        .step-number {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-right: 0.75rem;
+            font-size: 1.1em;
+            transition: color 0.3s ease;
+        }
+        .step-card[data-step-color="blue"] .step-number { color: #3b82f6; }
+        .step-card[data-step-color="green"] .step-number { color: #10b981; }
+        .step-card[data-step-color="amber"] .step-number { color: #f59e0b; }
+        .step-card[data-step-color="red"] .step-number { color: #ef4444; }
+        .step-card[data-step-color="purple"] .step-number { color: #8b5cf6; }
+
+        .step-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: var(--text-color);
+            margin-right: 1rem; 
+        }
+        .step-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .mark-step-done-btn {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            border: 1px solid var(--border-color-darker);
+            background-color: transparent;
+            border-radius: var(--border-radius);
+            transition: all 0.2s;
+            color: var(--text-color-subtle); 
+        }
+        .mark-step-done-btn.done {
+            background-color: var(--step-done-color);
+            border-color: var(--step-done-color);
+            color: var(--text-color-inverted);
+        }
+        .mark-step-done-btn:hover:not(.done) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .toggle-step-details-btn {
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            font-size: 1.2rem;
+            padding: 0.25rem;
+        }
+        .toggle-step-details-btn i.fa-chevron-down { transition: transform 0.2s ease-in-out; }
+        .step-card.expanded .toggle-step-details-btn i.fa-chevron-down { transform: rotate(180deg); }
+
+        .step-body {
+            padding: 0 1.5rem 1.5rem 1.5rem; 
+            display: none; 
+            background-color: var(--bg-color); 
+        }
+        .step-card.expanded > .step-body { 
+            display: block; 
+            border-top: 1px solid var(--border-color-darker); 
+        }
+        .step-body .kb-content { padding-top: 1rem; } 
+        .step-link {
+            color: #60a5fa; 
+            font-weight: 500; 
+            text-decoration: none;
+            border-bottom: 1px dotted #60a5fa;
+            text-decoration-skip-ink: none; 
+        }
+        .step-link:hover {
+            text-decoration: underline; 
+            border-bottom-style: solid;
+            color: #7dd3fc; 
+        }
+        .important-notes-card {
+            background: var(--bg-color-alt);
+            border-left: 4px solid var(--rating-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: var(--card-shadow);
+        }
+        .important-notes-card h3 {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+        }
+        .important-notes-card h3 i {
+            margin-right: 0.75rem;
+            color: var(--rating-color);
+        }
+        .important-notes-card ul {
+            padding-left: 20px;
+            list-style: disc;
+            color: var(--text-color-subtle);
+        }
+        .agent-script-mode-active .step-body > .kb-content > *:not(blockquote) {
+            display: none;
+        }
+        .agent-script-mode-active .step-body > .kb-content > blockquote {
+            display: block !important;
+            margin-bottom: 1rem;
+        }
+        #flowInPlaceEditorContainer {
+            margin-top: 1rem;
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius-lg);
+            padding: 1rem;
+            background-color: var(--bg-color-alt);
+        }
+        #flowQuillEditor { min-height: 300px; }
+        .flow-editor-actions {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+
         /* Print Styles */
         @media print {
             body, .container-fluid {
@@ -971,13 +1239,16 @@
             .mobile-sidebar-toggle, #toastContainer,
             .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn),
             .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"],
+            .flow-controls, .flow-title-bar #flowTopActions,
             .item-feedback-section, .comments-section,
             .modal-overlay,
             .copy-script-btn,
             .dashboard-overview-container,
             .search-container, .user-profile,
+            .mark-step-done-btn, .toggle-step-details-btn,
             #openAddContentBtnInSection,
-            .card-hover-details
+            .card-hover-details,
+            .card-actions-menu-btn, .card-actions-menu
             {
                 display: none !important;
             }
@@ -991,10 +1262,10 @@
             }
             #pageContentArea { padding: 0 !important; }
             
-            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, .interactive-flow-container {
                 display: block !important;
             }
-            .card, .mermaid-diagram-card {
+            .card, .interactive-flow-container, .mermaid-diagram-card, .step-card {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
                 margin-bottom: 0.5cm !important;
@@ -1002,11 +1273,21 @@
                 page-break-inside: avoid;
             }
             
-            .card *, .mermaid-diagram-card * {
+            .card *, .interactive-flow-container *, .mermaid-diagram-card *, .step-card * {
                 color: black !important;
                 background-color: transparent !important;
             }
              h1, h2, h3, h4, h5, h6 { color: black !important; }
+
+            .step-card.expanded > .step-body,
+            .interactive-flow-container .step-card .step-body {
+                display: block !important;
+            }
+            .step-card .toggle-step-details-btn i.fa-chevron-down { display: none; }
+            .important-notes-card { display: block !important; }
+            .agent-script-mode-active .step-body > .kb-content > * {
+                display: block !important; /* Show all content in print */
+            }
 
             .kb-content a {
                 color: #0066cc !important;
@@ -1019,7 +1300,7 @@
                 color: #555 !important;
                 word-break: break-all;
             }
-            .kb-content a[href^="#"]::after {
+            .kb-content a[href^="#"]::after, .step-link::after {
                 content: "";
             }
 
@@ -1064,7 +1345,6 @@
                 padding: 8px !important;
             }
         }
-
     </style>
 </head>
 <body>
@@ -1137,7 +1417,7 @@
 
                 <div class="form-group">
                     <label for="contentTags">Tags (comma-separated)</label>
-                    <input type="text" id="contentTags" placeholder="e.g., important, update, billing">
+                    <input type="text" id="contentTags" placeholder="e.g., important, update, billing, interactive">
                 </div>
 
                 <hr style="border-color: var(--border-color-darker); margin: 1.5rem 0;">
@@ -1283,7 +1563,7 @@
                     <!-- Section content will be injected here -->
                 </div>
                 <div id="itemDetailViewPlaceholder" class="hidden" data-mermaid-rendered="false">
-                    <!-- Item detail view -->
+                    <!-- Item detail view OR Interactive Flow View -->
                 </div>
             </main>
 
@@ -1418,7 +1698,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '0.9.0-knowledge-reamp', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        meta: { version: '1.0.0-final', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1427,69 +1707,70 @@
                      { 
                         id: 'sup_flow_compensation', type: 'article', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                        summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
+                        summary: 'Interactive flowchart for handling customer compensation due to order delays based on The Chefz policies.',
                         content: `
-                            <h2>Introduction: Understanding the Compensation Policy</h2>
-                            <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
-                            <img src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80" alt="Customer service agent at work" style="width:100%; border-radius: var(--border-radius); margin-bottom: 1rem;">
-                            
-                            <h2>Step 1: Initial Contact and Inquiry Identification</h2>
-                            <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
-                            </blockquote>
-                            <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
-
-                            <h2>Step 2: Assessing the Delay and Order Type</h2>
-                            <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
-                            <ul>
-                                <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
-                                <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
-                            </ul>
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
-                            </blockquote>
-
-                            <h2>Step 3: Applying the Compensation Matrix</h2>
-                            <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
-                            
-                            <h4>For FAST Orders (delay > 15 mins):</h4>
-                            <ul>
-                                <li><strong>16–30 mins:</strong> Compensate delivery fees.</li>
-                                <li><strong>31–45 mins:</strong> Compensate delivery fees + 25% of food value.</li>
-                                <li><strong>46–60 mins:</strong> Compensate delivery fees + 50% of food value.</li>
-                                <li><strong>&gt; 60 mins:</strong> Compensate full order value (delivery + food).</li>
-                            </ul>
-
-                            <h4>For SCHEDULED Orders (delay > 30 mins):</h4>
-                             <ul>
-                                <li><strong>31–60 mins:</strong> Compensate 50-100% of total order value (agent discretion).</li>
-                                <li><strong>&gt; 60 mins:</strong> Compensate full order value + 50 SAR goodwill credit.</li>
-                            </ul>
-                            
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
-                            </blockquote>
-
-                            <h2>Step 4: Internal Documentation and Conclusion</h2>
-                            <p>After informing the customer, it is mandatory to document the incident in the system. This includes:</p>
                             <ol>
-                                <li>The reason for the delay (e.g., Store, Driver, System).</li>
-                                <li>The compensation amount and type provided.</li>
-                                <li>A brief summary of the customer interaction.</li>
+                                <li id="sup_flow_compensation_step_0">
+                                    <strong>Receive Customer Request & Acknowledge</strong>
+                                    <p>First, acknowledge the customer's frustration and verify their order details to proceed.</p>
+                                    <blockquote><i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"</blockquote>
+                                    <p>If it's about a delay, <a href="#sup_flow_compensation_step_1" class="step-link">proceed to the next step</a>. If it's another issue (e.g., food quality), please refer to the specific article for that topic.</p>
+                                </li>
+                                <li id="sup_flow_compensation_step_1">
+                                    <strong>Assess the Delay & Check System</strong>
+                                    <p>Using the system, check the delay duration against the ETA. It's critical to know if the order is <strong>Fast</strong> or <strong>Scheduled</strong>, as compensation policies differ.</p>
+                                    <ul>
+                                        <li><strong>Delay of 0-15 minutes:</strong> Apologize, provide a new realistic ETA. No compensation is usually required unless the customer is highly dissatisfied.</li>
+                                        <li><strong>Delay of more than 15 minutes:</strong> This is a significant delay requiring a proactive resolution. <a href="#sup_flow_compensation_step_2" class="step-link">Proceed to the Compensation Matrix</a>.</li>
+                                    </ul>
+                                    <blockquote><i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."</blockquote>
+                                </li>
+                                <li id="sup_flow_compensation_step_2">
+                                    <strong>Apply the Compensation Matrix</strong>
+                                    <p>Use the official compensation policy based on the delay duration and order type. Agent discretion may be used within these limits.</p>
+                                    <h4>For FAST Orders (delay > 15 mins):</h4>
+                                    <ul>
+                                        <li><strong>16–30 mins:</strong> Compensate delivery fees.</li>
+                                        <li><strong>31–45 mins:</strong> Compensate delivery fees + 25% of food value.</li>
+                                        <li><strong>46–60 mins:</strong> Compensate delivery fees + 50% of food value.</li>
+                                        <li><strong>&gt; 60 mins:</strong> Compensate full order value (delivery + food).</li>
+                                    </ul>
+                                    <h4>For SCHEDULED Orders (delay > 30 mins):</h4>
+                                    <ul>
+                                        <li><strong>31–60 mins:</strong> Compensate 50-100% of total order value (agent discretion).</li>
+                                        <li><strong>&gt; 60 mins:</strong> Compensate full order value + 50 SAR goodwill credit.</li>
+                                    </ul>
+                                    <blockquote><i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."</blockquote>
+                                    <p>After applying compensation, <a href="#sup_flow_compensation_step_3" class="step-link">proceed to the final steps</a>.</p>
+                                </li>
+                                <li id="sup_flow_compensation_step_3">
+                                    <strong>Document and Conclude</strong>
+                                    <p>After informing the customer, you must document the incident in the system. Include:</p>
+                                    <ol>
+                                        <li>Reason for delay (e.g., Store, Driver, System).</li>
+                                        <li>Compensation amount and type.</li>
+                                        <li>A brief summary of the interaction.</li>
+                                    </ol>
+                                    <p>Conclude the call by ensuring the customer is satisfied with the resolution and offering any further assistance.</p>
+                                    <blockquote><i class="fas fa-comment-dots"></i> "Is there anything else I can assist you with today? Thank you again for your patience, and we hope to serve you better next time."</blockquote>
+                                </li>
                             </ol>
-                            <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
+                            <p><strong>Important Notes:</strong></p>
+                            <ul>
+                                <li>Always determine the responsibility for the delay (Store, Driver, or Company) to apply any necessary deductions. This is critical for internal review.</li>
+                                <li>If the customer specifically asks for compensation, even for minor delays, address it empathetically based on the policy. Do not dismiss their request.</li>
+                                <li>Maintain a polite and professional tone throughout the interaction.</li>
+                                <li>Document everything: notes on the delay, communication, and any compensation provided.</li>
+                            </ul>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop'],
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop', 'interactive'],
                         createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), 
                         views: 183,
                         comments: [
-                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Fatima', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Admin User', text: 'Glad you find it helpful, Fatima! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new interactive format is fantastic! Much easier to follow.', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Mohamed Elmenisy', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
                         ],
-                        feedback: [
-                            { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
-                        ]
+                        feedback: []
                     },
                     {
                         id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
@@ -1579,12 +1860,44 @@
 
 
     let mainQuillEditor;
+    let flowInPlaceQuillEditor;
     /** @type {UserProfile|null} */
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
+    
+    // State for interactive flow
+    let flowState = {
+        isAgentScriptModeActive: localStorage.getItem('infiniBase_agentScriptMode') === 'true',
+        expandedSteps: new Set(),
+    };
 
-    // --- Utility Functions ---
+    // --- Utility & Data Persistence Functions ---
+    function saveKbData() {
+        try {
+            localStorage.setItem('infiniBaseKbData', JSON.stringify(kbSystemData));
+            console.log('KB data saved to localStorage.');
+        } catch (e) {
+            console.error('Failed to save KB data to localStorage:', e);
+        }
+    }
+
+    function loadKbData() {
+        const savedData = localStorage.getItem('infiniBaseKbData');
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                // Simple validation
+                if (parsedData && parsedData.meta && parsedData.sections) {
+                    kbSystemData = parsedData;
+                    console.log('KB data loaded from localStorage.');
+                }
+            } catch (e) {
+                console.error('Failed to load/parse KB data from localStorage:', e);
+            }
+        }
+    }
+
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         const el = document.createElement('div');
@@ -1734,6 +2047,7 @@
         else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; ctaText = 'View Design'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Design';}
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
+        if (item.tags && item.tags.includes('interactive')) { itemIconClass = 'fas fa-project-diagram'; itemTypeDisplay = 'Interactive Flow';}
 
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parentId === item.id);
         let hoverDetailsHTML = '';
@@ -1747,27 +2061,40 @@
             </div>`;
         }
 
+        let adminActions = '';
+        if (currentUser && currentUser.role === 'admin') {
+            adminActions = `
+                <button class="menu-action-edit" data-section-id="${sectionData.id}" data-item-id="${item.id}"><i class="fas fa-edit"></i> Edit</button>
+                <button class="menu-action-delete" data-section-id="${sectionData.id}" data-item-id="${item.id}" data-item-title="${escapeHTML(item.title)}"><i class="fas fa-trash-alt"></i> Delete</button>
+            `;
+        }
+        
+        const targetAttr = target ? `target="${target}" rel="noopener noreferrer"` : '';
 
         return `
-        <a href="${escapeHTML(ctaLink)}" class="card-link-wrapper" style="text-decoration:none; color:inherit;">
-            <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
-                <div class="card-header-icon">
-                    <div class="card-icon-container">
-                        <i class="${itemIconClass}"></i>
-                    </div>
-                    <h3>${escapeHTML(item.title)}</h3>
-                </div>
-                <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
-                ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <div class="item-meta-info">
-                    <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
-                    <span class="item-cta-link">
-                       ${ctaText} <i class="fas fa-arrow-right"></i>
-                    </span>
-                </div>
-                ${hoverDetailsHTML}
+        <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
+            <button class="card-actions-menu-btn" aria-label="More options"><i class="fas fa-ellipsis-v"></i></button>
+            <div class="card-actions-menu">
+                <a href="${escapeHTML(ctaLink)}" ${targetAttr}><i class="fas fa-eye"></i> View</a>
+                ${adminActions}
             </div>
-        </a>`;
+            
+            <div class="card-header-icon">
+                <div class="card-icon-container">
+                    <i class="${itemIconClass}"></i>
+                </div>
+                <h3><a href="${escapeHTML(ctaLink)}" ${targetAttr}>${escapeHTML(item.title)}</a></h3>
+            </div>
+            <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
+            ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div class="item-meta-info">
+                <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
+                <a href="${escapeHTML(ctaLink)}" class="item-cta-link" ${targetAttr}>
+                   ${ctaText} <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            ${hoverDetailsHTML}
+        </div>`;
     }
 
     async function displayDashboard() {
@@ -1970,19 +2297,206 @@
         if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
             item.views = (item.views || 0) + 1;
             localStorage.setItem(viewKey, now.toString());
-            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
-            // Update the view count on the page if it's visible
+            saveKbData();
             const readStatsEl = document.getElementById('readStatsCount');
             if(readStatsEl) readStatsEl.textContent = item.views;
-        } else {
-            console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
         }
+    }
+
+    // --- Interactive Flow Rendering ---
+    function renderInteractiveFlowContent(itemData, sectionId, container) {
+        container.innerHTML = ''; 
+        let originalFlowHtmlContent = itemData.content;
+
+        const flowContainer = document.createElement('div');
+        flowContainer.className = 'interactive-flow-container';
+        if (flowState.isAgentScriptModeActive) {
+            flowContainer.classList.add('agent-script-mode-active');
+        }
+        
+        const itemIconClass = 'fas fa-project-diagram'; 
+
+        const titleBar = document.createElement('div');
+        titleBar.className = 'flow-title-bar';
+        let titleBarHtml = `<h2><i class="${itemIconClass}"></i> ${escapeHTML(itemData.title)}</h2>`;
+        if (currentUser && currentUser.role === 'admin') {
+             titleBarHtml += `<div id="flowTopActions">
+                                <button id="editFlowContentBtn" class="button button-secondary"><i class="fas fa-edit"></i> Edit Flow Content</button>
+                             </div>`;
+        }
+        titleBar.innerHTML = titleBarHtml;
+        flowContainer.appendChild(titleBar);
+
+        const controlsBar = document.createElement('div');
+        controlsBar.className = 'flow-controls';
+        controlsBar.innerHTML = `
+            <button id="expandAllStepsBtn" class="button button-secondary"><i class="fas fa-expand-arrows-alt"></i> Expand All</button>
+            <button id="collapseAllStepsBtn" class="button button-secondary"><i class="fas fa-compress-arrows-alt"></i> Collapse All</button>
+            <button id="toggleAgentScriptModeBtn" class="button button-secondary">
+                <i class="fas fa-comment-dots"></i> <span id="agentScriptModeBtnText">${flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View'}</span>
+            </button>
+        `;
+        flowContainer.appendChild(controlsBar);
+        
+        const flowInPlaceEditorDiv = document.createElement('div');
+        flowInPlaceEditorDiv.id = 'flowInPlaceEditorContainer';
+        flowInPlaceEditorDiv.classList.add('hidden');
+        flowInPlaceEditorDiv.innerHTML = `
+            <h3 style="margin-top:0; margin-bottom:1rem; font-weight:600;">Editing Flow Content:</h3>
+            <div id="flowQuillEditor"></div>
+            <div class="flow-editor-actions">
+                <button id="saveFlowChangesBtn" class="button"><i class="fas fa-save"></i> Save Changes</button>
+                <button id="cancelFlowEditBtn" class="button-secondary"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        `;
+        flowContainer.appendChild(flowInPlaceEditorDiv);
+
+        const stepsArea = document.createElement('div');
+        stepsArea.className = 'flow-steps-area';
+        flowContainer.appendChild(stepsArea);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(itemData.content, 'text/html');
+        const mainOl = doc.querySelector('body > ol:first-of-type'); 
+        const steps = mainOl ? Array.from(mainOl.children).filter(el => el.tagName === 'LI') : [];
+        
+        const doneStepsKey = `infiniBase_doneSteps_${itemData.id}`;
+        let doneSteps = JSON.parse(localStorage.getItem(doneStepsKey) || '{}');
+        
+        const stepColors = ['blue', 'green', 'amber', 'red', 'purple'];
+
+        steps.forEach((stepLi, index) => {
+            let stepLiOriginalId = stepLi.id || `${itemData.id}_auto_step_${index}`;
+
+            const stepCard = document.createElement('div');
+            stepCard.className = 'step-card';
+            stepCard.id = stepLiOriginalId; 
+            stepCard.dataset.stepDataId = `step_${index}`;
+            stepCard.dataset.stepColor = stepColors[index % stepColors.length]; // Cycle through colors
+
+            if (flowState.expandedSteps.has(stepCard.id)) { 
+                stepCard.classList.add('expanded');
+            }
+
+            const strongTitle = stepLi.querySelector('strong:first-child');
+            const stepTitleText = strongTitle ? strongTitle.textContent.trim() : `Step ${index + 1}`;
+            
+            const stepHeader = document.createElement('div');
+            stepHeader.className = 'step-header';
+            stepHeader.innerHTML = `
+                <div class="step-header-main">
+                    <span class="step-number">Step ${index + 1}:</span>
+                    <span class="step-title">${escapeHTML(stepTitleText)}</span>
+                </div>
+                <div class="step-header-actions">
+                    <button class="mark-step-done-btn ${doneSteps[stepCard.dataset.stepDataId] ? 'done' : ''}" data-step-data-id="${stepCard.dataset.stepDataId}">
+                        <i class="fas ${doneSteps[stepCard.dataset.stepDataId] ? 'fa-check-circle' : 'fa-circle'}"></i> 
+                        <span class="mark-step-text">${doneSteps[stepCard.dataset.stepDataId] ? 'Done' : 'Mark Done'}</span>
+                    </button>
+                    <button class="toggle-step-details-btn"><i class="fas fa-chevron-down"></i></button>
+                </div>
+            `;
+
+            const stepBody = document.createElement('div');
+            stepBody.className = 'step-body';
+            stepBody.innerHTML = `<div class="kb-content">${stepLi.innerHTML}</div>`;
+            stepBody.querySelectorAll('blockquote').forEach(bq => {
+                 const copyBtn = document.createElement('button');
+                 copyBtn.className = 'copy-script-btn';
+                 copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                 bq.appendChild(copyBtn);
+            });
+
+
+            stepCard.appendChild(stepHeader);
+            stepCard.appendChild(stepBody);
+            stepsArea.appendChild(stepCard);
+
+            stepHeader.addEventListener('click', (e) => {
+                if (e.target.closest('.mark-step-done-btn') || e.target.closest('.copy-script-btn')) return;
+                stepCard.classList.toggle('expanded');
+                if (stepCard.classList.contains('expanded')) flowState.expandedSteps.add(stepCard.id);
+                else flowState.expandedSteps.delete(stepCard.id);
+            });
+            
+            stepHeader.querySelector('.mark-step-done-btn').addEventListener('click', function() {
+                const currentStepDataId = this.dataset.stepDataId;
+                doneSteps[currentStepDataId] = !doneSteps[currentStepDataId];
+                localStorage.setItem(doneStepsKey, JSON.stringify(doneSteps));
+                this.classList.toggle('done', doneSteps[currentStepDataId]);
+                this.querySelector('i').className = `fas ${doneSteps[currentStepDataId] ? 'fa-check-circle' : 'fa-circle'}`;
+                this.querySelector('.mark-step-text').textContent = doneSteps[currentStepDataId] ? 'Done' : 'Mark Done';
+            });
+        });
+        
+        const importantNotesP = Array.from(doc.body.querySelectorAll('p > strong')).find(strong => strong.textContent.trim().toLowerCase() === 'important notes:');
+        if (importantNotesP) {
+            const notesContainer = document.createElement('div');
+            notesContainer.className = 'important-notes-card';
+            let notesHTML = '<h3><i class="fas fa-exclamation-triangle"></i> Important Notes</h3>';
+            const notesUl = importantNotesP.parentElement.nextElementSibling;
+            if (notesUl && notesUl.tagName === 'UL') notesHTML += notesUl.outerHTML;
+            notesContainer.innerHTML = notesHTML;
+            if (flowState.isAgentScriptModeActive) notesContainer.classList.add('hidden'); 
+            flowContainer.appendChild(notesContainer);
+        }
+
+        container.appendChild(flowContainer);
+
+        document.getElementById('expandAllStepsBtn').addEventListener('click', () => {
+            stepsArea.querySelectorAll('.step-card:not(.expanded)').forEach(sc => sc.querySelector('.step-header').click());
+        });
+        document.getElementById('collapseAllStepsBtn').addEventListener('click', () => {
+            stepsArea.querySelectorAll('.step-card.expanded').forEach(sc => sc.querySelector('.step-header').click());
+        });
+        document.getElementById('toggleAgentScriptModeBtn').addEventListener('click', () => {
+            flowState.isAgentScriptModeActive = !flowState.isAgentScriptModeActive;
+            localStorage.setItem('infiniBase_agentScriptMode', flowState.isAgentScriptModeActive);
+            flowContainer.classList.toggle('agent-script-mode-active', flowState.isAgentScriptModeActive);
+            document.getElementById('agentScriptModeBtnText').textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
+            const notesCard = flowContainer.querySelector('.important-notes-card');
+            if(notesCard) notesCard.classList.toggle('hidden', flowState.isAgentScriptModeActive);
+        });
+        
+        const editFlowBtn = document.getElementById('editFlowContentBtn');
+        if (editFlowBtn) {
+            editFlowBtn.addEventListener('click', () => {
+                stepsArea.classList.add('hidden');
+                controlsBar.classList.add('hidden');
+                flowContainer.querySelector('.important-notes-card')?.classList.add('hidden');
+                titleBar.querySelector('#flowTopActions')?.classList.add('hidden');
+                flowInPlaceEditorDiv.classList.remove('hidden');
+                if (!flowInPlaceQuillEditor) {
+                    flowInPlaceQuillEditor = new Quill('#flowQuillEditor', { theme: 'snow', modules: { toolbar: [
+                        [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'blockquote'], ['clean']
+                    ]}});
+                }
+                const currentItemInSystem = kbSystemData.sections.find(s => s.id === sectionId)?.items?.find(i => i.id === itemData.id);
+                flowInPlaceQuillEditor.root.innerHTML = currentItemInSystem ? currentItemInSystem.content : originalFlowHtmlContent;
+            });
+        }
+
+        document.getElementById('saveFlowChangesBtn').addEventListener('click', () => {
+            const updatedHtml = flowInPlaceQuillEditor.root.innerHTML;
+            const currentItemRef = kbSystemData.sections.find(s => s.id === sectionId)?.items?.find(i => i.id === itemData.id);
+            if (currentItemRef) {
+                currentItemRef.content = updatedHtml;
+                saveKbData();
+                showToast('Flow content updated!', 'success');
+                handleNavigation(); // Rerender the page
+            }
+        });
+        document.getElementById('cancelFlowEditBtn').addEventListener('click', () => {
+            flowInPlaceEditorDiv.classList.add('hidden');
+            stepsArea.classList.remove('hidden');
+            controlsBar.classList.remove('hidden');
+            flowContainer.querySelector('.important-notes-card')?.classList.remove('hidden');
+            titleBar.querySelector('#flowTopActions')?.classList.remove('hidden');
+        });
     }
 
 
     async function downloadItemAsPDF(itemToDownload) {
-        // This function remains the same as previous version, no changes requested.
-        // It should still work as intended for the new article format.
         if (!itemToDownload || !itemToDownload.title) {
             showToast('Error preparing PDF: Item data is missing.', 'error'); return;
         }
@@ -1998,8 +2512,19 @@
         elementToPrint.style.width = "210mm";
         elementToPrint.style.backgroundColor = "white";
         
-        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn' ];
+        const selectorsToRemove = [ '.item-actions-bar', '.flow-controls', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.mark-step-done-btn', '.toggle-step-details-btn', '.card-actions-menu-btn', '.card-actions-menu', '#flowTopActions' ];
         selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
+        
+        if (itemToDownload.tags?.includes('interactive')) {
+             elementToPrint.querySelectorAll('.step-card:not(.expanded)').forEach(sc => {
+                sc.classList.add('expanded');
+                const body = sc.querySelector('.step-body');
+                if(body) body.style.display = 'block';
+            });
+             elementToPrint.querySelectorAll('.agent-script-mode-active .step-body > .kb-content > *:not(blockquote)').forEach(el => el.style.display = 'block');
+             const notesCard = elementToPrint.querySelector('.important-notes-card');
+             if (notesCard) notesCard.style.display = 'block';
+        }
         
         elementToPrint.style.position = 'absolute';
         elementToPrint.style.left = '-9999px';
@@ -2039,7 +2564,7 @@
             return;
         }
 
-        trackView(itemData); // Track the view for this item
+        trackView(itemData);
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2055,126 +2580,125 @@
         breadcrumbsContainer.innerHTML = bcHTML;
         currentSectionTitleEl.textContent = itemData.title;
 
+        // Route to the correct renderer based on tags
+        if (itemData.tags && itemData.tags.includes('interactive')) {
+            renderInteractiveFlowContent(itemData, sectionId, itemDetailViewPlaceholder);
+        } else {
+            renderStandardArticleContent(itemData, sectionId, itemDetailViewPlaceholder);
+        }
+        
+        // Add shared action bar
+        const actionsBar = document.createElement('div');
+        actionsBar.className = 'item-actions-bar';
+        actionsBar.style.marginTop = "1.5rem";
+        actionsBar.innerHTML = `
+            <button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>
+            <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
+            <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        `;
+        itemDetailViewPlaceholder.appendChild(actionsBar);
+        document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
+        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
+
+        // Add Feedback and Comments sections
+        addFeedbackAndCommentsSection(itemData, itemDetailViewPlaceholder);
+        renderComments(itemData, 'commentDisplayAreaForItem');
+    }
+
+    async function renderStandardArticleContent(itemData, sectionId, container) {
+        container.innerHTML = ''; // Clear container first
         let itemIconClass = 'fas fa-file-alt';
         if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
         else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
         else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
+        
+        let detailHTML = `<div class="card">
+            <div class="item-title-area">
+                <i class="${itemIconClass} fa-title-icon"></i>
+                <h2>${escapeHTML(itemData.title)}</h2>
+            </div>
+            <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+            ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <hr class="title-content-divider">
+            <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
+           </div>`;
 
-        let detailHTML = `<div class="item-actions-bar">
-            <button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>`;
-        if (currentUser && currentUser.role === 'admin') {
-             detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
-             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
-        }
-        detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
-                      <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
-                      </div>`;
-        
-        detailHTML += `<div class="card">
-                    <div class="item-title-area">
-                        <i class="${itemIconClass} fa-title-icon"></i>
-                        <h2>${escapeHTML(itemData.title)}</h2>
-                    </div>
-                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                    <hr class="title-content-divider">
-                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
-                   </div>`;
-        
-        const childItems = kbSystemData.sections.flatMap(s => s.items || [])
-                               .filter(child => child.parentId === itemData.id)
-                               .map(child => ({...child, sectionId: kbSystemData.sections.find(s => s.items && s.items.includes(child)).id }));
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parentId === itemData.id).map(child => ({...child, sectionId: kbSystemData.sections.find(s => s.items && s.items.includes(child)).id }));
         if (childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
                             <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
                             <ul class="child-items-list">${childItems.map(child => `<li><a href="#${child.sectionId}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`).join('')}</ul>
                            </div>`;
         }
-
-        detailHTML += `<div class="item-feedback-section">
-                        <h4 id="feedbackPrompt">Was this article helpful?</h4>
-                        <div id="feedbackInteractionContainer">
-                           <div class="rating-prompt">
-                                <div class="rating-buttons" id="ratingButtons">
-                                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
-                                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
-                                </div>
-                            </div>
-                            <form id="negativeFeedbackForm" class="hidden">
-                                <div class="form-group">
-                                    <label for="feedbackReason">Please tell us how we can improve:</label>
-                                    <textarea id="feedbackReason" rows="3"></textarea>
-                                </div>
-                                <button type="submit" class="button">Submit Feedback</button>
-                            </form>
-                        </div>
-                        <div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>
-                       </div>`;
         
-        detailHTML += `<div class="comments-section">
-                        <h4><i class="fas fa-comments"></i> Discussion</h4>
-                        <div class="comment-post-area">
-                            <img src="${currentUser.avatar_url}" alt="Your avatar">
-                            <div class="comment-input-wrapper">
-                                <textarea id="newCommentText" placeholder="Add to the discussion..."></textarea>
-                                <div class="comment-post-actions">
-                                    <button id="postCommentBtn" class="button">Post Comment</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
-                       </div>`;
-
-
-        itemDetailViewPlaceholder.innerHTML = detailHTML;
-        setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId);
+        container.innerHTML = detailHTML;
+        if (container.querySelector('pre.mermaid')) {
+            await renderMermaidDiagramsInElement(container);
+        }
     }
     
-    function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
-        renderComments(itemData, 'commentDisplayAreaForItem'); 
+    function addFeedbackAndCommentsSection(itemData, container) {
+        const feedbackHTML = `<div class="item-feedback-section">
+            <h4 id="feedbackPrompt">Was this article helpful?</h4>
+            <div id="feedbackInteractionContainer">
+                <div class="rating-prompt">
+                    <div class="rating-buttons" id="ratingButtons">
+                        <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                        <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                    </div>
+                </div>
+                <form id="negativeFeedbackForm" class="hidden">
+                    <div class="form-group">
+                        <label for="feedbackReason">Please tell us how we can improve:</label>
+                        <textarea id="feedbackReason" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="button">Submit Feedback</button>
+                </form>
+            </div>
+            <div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>
+            </div>`;
+
+        const commentsHTML = `<div class="comments-section">
+            <h4><i class="fas fa-comments"></i> Discussion</h4>
+            <div class="comment-post-area">
+                <img src="${currentUser.avatar_url}" alt="Your avatar">
+                <div class="comment-input-wrapper">
+                    <textarea id="newCommentText" placeholder="Add to the discussion..."></textarea>
+                    <div class="comment-post-actions">
+                        <button id="postCommentBtn" class="button">Post Comment</button>
+                    </div>
+                </div>
+            </div>
+            <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
+            </div>`;
         
-        if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
-            renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
-        }
+        const feedbackEl = document.createElement('div');
+        feedbackEl.innerHTML = feedbackHTML;
+        container.appendChild(feedbackEl);
+        
+        const commentsEl = document.createElement('div');
+        commentsEl.innerHTML = commentsHTML;
+        container.appendChild(commentsEl);
 
-        // Add copy buttons to script blocks
-        itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-script-btn';
-            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            copyBtn.title = 'Copy script';
-            bq.appendChild(copyBtn);
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const textToCopy = bq.innerText.replace('Copy', '').trim(); // Basic way to get text
-                navigator.clipboard.writeText(textToCopy)
-                    .then(() => showToast('Script copied!', 'success'))
-                    .catch(err => showToast('Failed to copy.', 'error'));
-            });
-        });
+        setupFeedbackAndCommentListeners(itemData);
+    }
 
-        document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
-        if (currentUser && currentUser.role === 'admin') {
-            document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
-            document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
-        }
-
-        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
-        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
-
-        // Feedback logic
+    function setupFeedbackAndCommentListeners(itemData) {
+        // Feedback
         const feedbackPrompt = document.getElementById('feedbackPrompt');
         const rateYesBtn = document.getElementById('rateYesBtn');
         const rateNoBtn = document.getElementById('rateNoBtn');
         const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
         
         rateYesBtn.addEventListener('click', () => {
+            if (!itemData.feedback) itemData.feedback = [];
             itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+            saveKbData();
             feedbackPrompt.textContent = 'Thank you for your feedback!';
-            document.getElementById('feedbackInteractionContainer').innerHTML = ''; // Remove buttons
+            document.getElementById('feedbackInteractionContainer').innerHTML = '';
             showToast('Feedback received!', 'success');
-            console.log(itemData.feedback);
         });
 
         rateNoBtn.addEventListener('click', () => {
@@ -2187,25 +2711,22 @@
             e.preventDefault();
             const reason = document.getElementById('feedbackReason').value.trim();
             if (reason) {
+                if (!itemData.feedback) itemData.feedback = [];
                 itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                saveKbData();
                 feedbackPrompt.textContent = 'Thank you for your feedback!';
                 document.getElementById('feedbackInteractionContainer').innerHTML = '';
                 showToast('Feedback received, we will review it.', 'info');
-                console.log(itemData.feedback);
             } else {
                 showToast('Please provide a reason.', 'error');
             }
         });
 
-
-        // Comments logic
+        // Comments
         document.getElementById('postCommentBtn').addEventListener('click', () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
-            if (!commentText) {
-                showToast('Please enter a comment.', 'error');
-                return;
-            }
+            if (!commentText) { showToast('Please enter a comment.', 'error'); return; }
             if (!itemData.comments) itemData.comments = [];
             itemData.comments.push({
                 id: `cmt_${Date.now()}`,
@@ -2214,6 +2735,7 @@
                 text: commentText, 
                 timestamp: new Date().toISOString()
             });
+            saveKbData();
             renderComments(itemData, 'commentDisplayAreaForItem'); 
             commentTextEl.value = ''; 
         });
@@ -2230,7 +2752,7 @@
 
         let commentsHTML = '';
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; 
 
         sortedComments.forEach(comment => {
             if(!userAvatars[comment.authorId]) {
@@ -2266,14 +2788,14 @@
             type: 'case', 
             titlePrefix: 'Case: Troubleshooting ',
             summary: 'A step-by-step guide to resolve [issue].',
-            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Symptoms</h3><ul><li>[Symptom 1]</li><li>[Symptom 2]</li></ul><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved.]</p>',
+            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol>',
             tags: ['troubleshooting', 'guide', 'case']
         },
         policy_document: {
             type: 'policy',
             titlePrefix: 'Policy: ',
             summary: 'Official policy regarding [subject matter].',
-            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p>',
+            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p>',
             tags: ['policy', 'official']
         },
          blank: {
@@ -2313,12 +2835,9 @@
                 theme: 'snow',
                 modules: { 
                     toolbar: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'],
                         [{ 'color': [] }, { 'background': [] }],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
-                        ['clean']
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'image', 'video', 'blockquote', 'code-block'], ['clean']
                     ]
                 },
                 placeholder: 'Enter detailed content here...'
@@ -2339,10 +2858,6 @@
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
-            if (itemToEdit.attachments) {
-                if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
-                if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
-            }
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
@@ -2416,14 +2931,14 @@
             if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
         }
 
+        saveKbData();
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        window.location.hash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
         handleNavigation();
     });
 
-    // --- Other Modals Logic (Delete, Feedback, etc) ---
+    // --- Other Modals Logic ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
         confirmDeleteItemBtn.dataset.sectionId = sectionId;
@@ -2437,9 +2952,9 @@
         if (section?.items) {
             const itemIndex = section.items.findIndex(item => item.id === itemId);
             if (itemIndex > -1) {
-                const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
-                showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
+                saveKbData();
+                showToast(`Item deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
                 window.location.hash = `#${sectionId}`;
             }
@@ -2449,7 +2964,7 @@
     closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     
-    // Global Search (no changes needed, should still work)
+    // Global Search
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
         if (query.length < 2) {
@@ -2500,6 +3015,7 @@
     }
 
     async function initializeApp() {
+        loadKbData(); 
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
 
@@ -2520,8 +3036,60 @@
         confirmLogoutBtn.addEventListener('click', Auth.logout);
         
         closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
-        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
+        cancelAddContentBtn.addEventListener('click', closeAddContentBtn);
         
+        // --- Global Event Listener for Context Menus ---
+        document.body.addEventListener('click', (e) => {
+            const menuBtn = e.target.closest('.card-actions-menu-btn');
+            const currentlyVisibleMenu = document.querySelector('.card-actions-menu.visible');
+
+            if (currentlyVisibleMenu && !menuBtn && !currentlyVisibleMenu.contains(e.target)) {
+                currentlyVisibleMenu.classList.remove('visible');
+            }
+            
+            if (menuBtn) {
+                e.preventDefault();
+                const menu = menuBtn.nextElementSibling;
+                if (menu && menu.classList.contains('card-actions-menu')) {
+                    if (menu.classList.contains('visible')) {
+                        menu.classList.remove('visible');
+                    } else {
+                        if (currentlyVisibleMenu) currentlyVisibleMenu.classList.remove('visible');
+                        menu.classList.add('visible');
+                    }
+                }
+                return;
+            }
+
+            const editBtn = e.target.closest('.menu-action-edit');
+            if (editBtn) {
+                const { sectionId, itemId } = editBtn.dataset;
+                const section = kbSystemData.sections.find(s => s.id === sectionId);
+                const itemToEdit = section?.items.find(i => i.id === itemId);
+                if(itemToEdit) openAddContentModal(sectionId, itemToEdit);
+                if (currentlyVisibleMenu) currentlyVisibleMenu.classList.remove('visible');
+                return;
+            }
+
+            const deleteBtn = e.target.closest('.menu-action-delete');
+            if (deleteBtn) {
+                const { sectionId, itemId, itemTitle } = deleteBtn.dataset;
+                openDeleteConfirmModal(sectionId, itemId, itemTitle);
+                if (currentlyVisibleMenu) currentlyVisibleMenu.classList.remove('visible');
+                return;
+            }
+
+            const copyBtn = e.target.closest('.copy-script-btn');
+            if(copyBtn) {
+                 e.stopPropagation();
+                 const scriptText = copyBtn.parentElement.innerText.replace('Copy', '').trim();
+                 navigator.clipboard.writeText(scriptText)
+                    .then(() => showToast('Script copied!', 'success'))
+                    .catch(err => showToast('Failed to copy.', 'error'));
+            }
+        });
+
+
         if (localStorage.getItem('justLoggedIn') === 'true') {
             showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
             localStorage.removeItem('justLoggedIn');
