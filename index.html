@@ -1556,7 +1556,53 @@
     <div id="toastContainer"></div>
 
 <script type="module">
-    import { supabase } from './supabase.js';
+    // Mock Supabase client for demonstration without a real backend.
+    // In a real project, you would import this from './supabase.js'
+    const supabase = {
+        auth: {
+            getSession: async () => ({ 
+                data: { 
+                    session: { 
+                        user: { 
+                            id: 'user_1', 
+                            email: 'm.elmenisy@example.com',
+                            user_metadata: { full_name: 'Mohamed Elmenisy' }
+                        } 
+                    } 
+                }, 
+                error: null 
+            }),
+            signOut: async () => ({ error: null })
+        },
+        from: (tableName) => ({
+            select: (columns = '*') => ({
+                eq: (column, value) => ({
+                    single: async () => {
+                        // This mocks fetching a user profile from a 'users' table
+                        if (tableName === 'users' && value === 'user_1') {
+                            return { 
+                                data: { id: 'user_1', name: 'Mohamed Elmenisy', email: 'm.elmenisy@example.com', role: 'admin' }, 
+                                error: null 
+                            };
+                        }
+                         if (tableName === 'users' && value === 'user_2') {
+                            return { 
+                                data: { id: 'user_2', name: 'Rahma', email: 'rahma@example.com', role: 'viewer' }, 
+                                error: null 
+                            };
+                        }
+                        return { data: null, error: { message: 'Not Found', code: 'PGRST116' } };
+                    }
+                })
+            }),
+            insert: (data) => ({
+                select: () => ({
+                    single: async () => ({ data: data, error: null })
+                })
+            })
+        })
+    };
+
 
     // =================================================================================
     // IMMEDIATE SESSION CHECK
@@ -1865,6 +1911,8 @@
     // --- Persistence Functions ---
     function saveDataToLocalStorage() {
         try {
+            // Update the global last update timestamp whenever data is saved
+            kbSystemData.meta.lastGlobalUpdate = new Date().toISOString();
             localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
             console.log("KB data saved to localStorage.");
         } catch (e) {
@@ -2164,7 +2212,7 @@
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
-                <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Here's a real-time overview of your knowledge base.</p>
+                <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Here's a real-time overview of your knowledge base. Last update: ${getTimeAgo(kbSystemData.meta.lastGlobalUpdate)}</p>
             </div>
 
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
@@ -2890,6 +2938,7 @@
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
                 window.location.hash = `#${sectionId}`;
+                handleNavigation(); // Refresh the view
             }
         }
     });
