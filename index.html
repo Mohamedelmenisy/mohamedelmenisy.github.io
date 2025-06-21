@@ -800,14 +800,13 @@
             align-items: center;
             gap: 0.75rem;
         }
-        .centered-image { /* MODIFIED: No longer in .kb-content */
+        .kb-content .centered-image {
             display: block;
-            max-width: 700px; /* Increased max-width */
+            max-width: 600px;
             width: 100%;
-            margin: 1rem auto 1.5rem auto;
+            margin: 0 auto 1.5rem auto;
             border-radius: var(--border-radius-lg);
             box-shadow: var(--card-shadow);
-            border: 1px solid var(--border-color);
         }
         .kb-content .compensation-grid {
             display: grid;
@@ -1406,12 +1405,12 @@
                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);">Attachments (Optional)</h3>
                 
                 <div class="form-group">
-                    <label for="imageFile">Upload Main Image (will be displayed prominently)</label>
-                    <input type="file" id="imageFile" accept="image/*">
-                </div>
-                <div class="form-group">
                     <label for="pdfFile">Upload PDF</label>
                     <input type="file" id="pdfFile" accept=".pdf">
+                </div>
+                <div class="form-group">
+                    <label for="imageFile">Upload Image</label>
+                    <input type="file" id="imageFile" accept="image/*">
                 </div>
                 <div class="form-group">
                     <label for="videoLink">Video Link (e.g., YouTube, Vimeo)</label>
@@ -1550,7 +1549,7 @@
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion">1.1.0</span></span>
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion">0.1.0</span></span>
             </footer>
         </div>
     </div>
@@ -1594,8 +1593,213 @@
         }
     });
     
-    /** @type {any} */
-    let kbSystemData = { meta: {}, sections: [] };
+    /**
+     * @typedef {object} UserProfile
+     * @property {string} id - User UUID from Supabase Auth
+     * @property {string} [name] - User's full name
+     * @property {string} email - User's email
+     * @property {string} role - User's role (e.g., 'viewer', 'admin')
+     * @property {string} avatar_url - URL for user's avatar
+     * @property {string} [lastLogin] - ISO string of last login time
+     */
+
+    // --- Supabase Auth & User Management ---
+    const Auth = {
+        /** @returns {Promise<UserProfile|null>} */
+        async getCurrentUserProfile() {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !session || !session.user) {
+                console.error("Error fetching Supabase session or session invalid:", sessionError);
+                window.location.href = 'login.html';
+                return null; 
+            }
+
+            const authUser = session.user;
+            const userId = authUser.id;
+
+            let { data: userDataFromDB, error: dbError } = await supabase
+                .from("users")
+                .select("id, name, email, role") 
+                .eq("id", userId)
+                .single();
+
+            if (dbError && dbError.code !== 'PGRST116') {
+                console.error("Unexpected DB error fetching user profile:", dbError);
+                await supabase.auth.signOut();
+                window.location.href = "login.html";
+                return null;
+            }
+
+            if (!userDataFromDB) {
+                console.warn(`Profile for user ${userId} not found. Creating a new profile in 'users' table.`);
+                const name = authUser.user_metadata?.full_name || authUser.email.split('@')[0];
+                const { data: newProfile, error: insertError } = await supabase
+                    .from('users')
+                    .insert({ id: userId, email: authUser.email, name: name, role: 'viewer' })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error("Fatal: Failed to create new user profile in DB after login:", insertError);
+                    await supabase.auth.signOut();
+                    window.location.href = "login.html";
+                    return null;
+                }
+                
+                console.log("Successfully created and fetched new user profile:", newProfile);
+                userDataFromDB = newProfile;
+            }
+            
+            const displayName = userDataFromDB.name || userDataFromDB.email || 'User';
+            /** @type {UserProfile} */
+            const comprehensiveUserProfile = {
+                ...userDataFromDB,
+                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
+                lastLogin: new Date().toISOString() 
+            };
+
+            localStorage.setItem("infiniBaseUser", JSON.stringify(comprehensiveUserProfile));
+            return comprehensiveUserProfile;
+        },
+        async logout() {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error("Error during sign out:", error);
+                showToast('Error signing out. Please try again.', 'error');
+            } else {
+                localStorage.clear(); // Clear all local storage on logout for a clean state
+                showToast('You have been logged out successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            }
+        }
+    };
+
+    // --- KB Data ---
+    // This is the initial, hardcoded data. The app will then try to load from localStorage.
+    const initialKbSystemData = {
+        meta: { version: '0.9.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+        sections: [
+            { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
+            {
+                id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
+                items: [
+                     { 
+                        id: 'sup_flow_compensation', type: 'article', 
+                        title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
+                        summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
+                        content: `
+                            <div class="content-section-box">
+                                <h2><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h2>
+                                <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                                <img src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80" alt="Support team working together in a modern office" class="centered-image">
+                            </div>
+
+                            <div class="content-section-box">
+                                <h2><i class="fas fa-headset"></i> Step 1: Initial Contact and Inquiry Identification</h2>
+                                <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
+                                </blockquote>
+                                <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h2><i class="fas fa-tasks"></i> Step 2: Assessing the Delay and Order Type</h2>
+                                <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                                <ul>
+                                    <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
+                                    <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
+                                </ul>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
+                                </blockquote>
+                            </div>
+                            
+                            <div class="content-section-box">
+                                <h2><i class="fas fa-calculator"></i> Step 3: Applying the Compensation Matrix</h2>
+                                <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                                <div class="compensation-grid">
+                                    <div class="compensation-box fast-order">
+                                        <h4><i class="fas fa-shipping-fast"></i> FAST Orders (&gt; 15 mins)</h4>
+                                        <ul>
+                                            <li><span class="duration">16–30 mins</span> <span class="action">Compensate delivery fees.</span></li>
+                                            <li><span class="duration">31–45 mins</span> <span class="action">Compensate delivery fees + 25% of food value.</span></li>
+                                            <li><span class="duration">46–60 mins</span> <span class="action">Compensate delivery fees + 50% of food value.</span></li>
+                                            <li><span class="duration">&gt; 60 mins</span> <span class="action">Compensate full order value (delivery + food).</span></li>
+                                        </ul>
+                                    </div>
+                                    <div class="compensation-box scheduled-order">
+                                        <h4><i class="far fa-calendar-alt"></i> SCHEDULED Orders (&gt; 30 mins)</h4>
+                                        <ul>
+                                            <li><span class="duration">31–60 mins</span> <span class="action">Compensate 50-100% of total order value (agent discretion).</span></li>
+                                            <li><span class="duration">&gt; 60 mins</span> <span class="action">Compensate full order value + 50 SAR goodwill credit.</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <blockquote style="margin-top: 1.5rem;">
+                                    <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
+                                </blockquote>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h2><i class="fas fa-file-signature"></i> Step 4: Internal Documentation and Conclusion</h2>
+                                <p>After informing the customer, it is mandatory to document the incident in the system. This includes:</p>
+                                <ol>
+                                    <li>The reason for the delay (e.g., Store, Driver, System).</li>
+                                    <li>The compensation amount and type provided.</li>
+                                </ol>
+                                <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
+                            </div>
+                        `,
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop'],
+                        createdAt: new Date('2023-10-10T10:00:00Z').toISOString(),
+                        lastModified: new Date('2024-05-20T14:30:00Z').toISOString(),
+                        views: 183,
+                        comments: [
+                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date('2024-05-21T09:00:00Z').toISOString() },
+                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Mohamed Elmenisy', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date('2024-05-22T11:00:00Z').toISOString() }
+                        ],
+                        feedback: [
+                            { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
+                        ]
+                    },
+                    {
+                        id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
+                        title: 'Child Article: Detailed Scenarios for Driver Responsibility',
+                        summary: 'Examples of when a driver is considered responsible for delays.',
+                        content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
+                        tags: ['driver', 'responsibility', 'delay'],
+                        createdAt: new Date('2023-11-05T12:00:00Z').toISOString(), 
+                        lastModified: new Date('2023-11-05T12:00:00Z').toISOString(),
+                        views: 78,
+                        comments: [],
+                        feedback: []
+                    }
+                ]
+            },
+            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
+                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date('2024-01-15T16:00:00Z').toISOString(), lastModified: new Date('2024-04-28T10:10:10Z').toISOString(), resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [], tags:['payment', 'dispute', 'partner'] }
+            ] }, 
+            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
+            { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
+            { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', iconColor: '#22d3ee', items: [] }, 
+            { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', iconColor: '#84cc16', items: [] }, 
+            { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', iconColor: '#facc15', items: [] }, 
+            { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', iconColor: '#f472b6', items: [] }, 
+            { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
+            { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
+            { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
+                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date('2023-08-01T09:00:00Z').toISOString(), lastModified: new Date('2024-02-10T18:00:00Z').toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [], tags:['policy', 'compensation'] }
+            ] }, 
+            { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
+            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
+        ]
+    };
+
+    let kbSystemData; // Will be populated by persistence logic
 
     // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
@@ -1634,6 +1838,17 @@
     const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
     const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
 
+    const reportFeedbackModalOverlay = document.getElementById('reportFeedbackModalOverlay');
+    const closeReportFeedbackModalBtn = document.getElementById('closeReportFeedbackModalBtn');
+    const reportFeedbackForm = document.getElementById('reportFeedbackForm');
+    const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+    const feedbackItemIdInput = document.getElementById('feedbackItemId');
+    const feedbackItemTitleInput = document.getElementById('feedbackItemTitle');
+    const feedbackItemTitleDisplay = document.getElementById('feedbackItemTitleDisplay');
+    const feedbackUserNameInput = document.getElementById('feedbackUserName');
+    const feedbackUserEmailInput = document.getElementById('feedbackUserEmail');
+    const feedbackCommentTextarea = document.getElementById('feedbackComment');
+
     const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
     const closeDeleteConfirmModalBtn = document.getElementById('closeDeleteConfirmModalBtn');
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
@@ -1642,50 +1857,47 @@
 
 
     let mainQuillEditor;
+    /** @type {UserProfile|null} */
     let currentUser = null; 
     let currentOpenItem = null;
-    let visitorsChartInstance; 
+    let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
-    // --- SUPABASE INTEGRATION ---
-
-    /**
-     * Fetches all sections and items from Supabase and structures them for the app.
-     */
-    async function fetchAndBuildKBData() {
-        showToast('Loading knowledge base...', 'info');
-        
-        // Fetch sections and items in parallel
-        const [sectionsResult, itemsResult] = await Promise.all([
-            supabase.from('sections').select('*').order('display_order'),
-            supabase.from('items').select('*').order('created_at', { ascending: false })
-        ]);
-
-        if (sectionsResult.error || itemsResult.error) {
-            console.error('Error fetching data:', sectionsResult.error || itemsResult.error);
-            showToast('Failed to load knowledge base.', 'error');
-            return;
+    // --- Persistence Functions ---
+    function saveDataToLocalStorage() {
+        try {
+            localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
+            console.log("KB data saved to localStorage.");
+        } catch (e) {
+            console.error("Failed to save data to localStorage:", e);
+            showToast('Could not save changes locally.', 'error');
         }
+    }
 
-        const sections = sectionsResult.data || [];
-        const items = itemsResult.data || [];
-
-        // Structure the data: nest items within their sections
-        const structuredSections = sections.map(section => {
-            return {
-                ...section,
-                items: items.filter(item => item.section_id === section.id)
-            };
-        });
-
-        kbSystemData = {
-            meta: { version: '1.1.0' }, // Can be dynamic later
-            sections: structuredSections
-        };
-        
-        showToast('Knowledge base loaded.', 'success', 1500);
+    function loadDataFromLocalStorage() {
+        try {
+            const storedData = localStorage.getItem('infiniBaseData');
+            if (storedData) {
+                console.log("Loading KB data from localStorage.");
+                return JSON.parse(storedData);
+            }
+        } catch (e) {
+            console.error("Failed to load or parse data from localStorage:", e);
+            localStorage.removeItem('infiniBaseData'); // Clear corrupted data
+        }
+        return null;
     }
     
-    
+    // --- Data Initialization with Persistence ---
+    const loadedData = loadDataFromLocalStorage();
+    // Load from storage if it exists and versions match, otherwise use fresh data and save it.
+    if (loadedData && loadedData.meta && loadedData.meta.version === initialKbSystemData.meta.version) {
+        kbSystemData = loadedData;
+    } else {
+        kbSystemData = initialKbSystemData;
+        saveDataToLocalStorage(); 
+    }
+
+
     // --- Utility Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -1709,7 +1921,6 @@
         return text.substring(0, len) + '...';
     }
     function stripHtml(html){
-       if(!html) return '';
        let tmp = document.createElement("DIV");
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
@@ -1752,31 +1963,63 @@
         }, duration);
     }
     
+    function applyPermanentDarkMode() { 
+        [visitorsChartInstance, casesChartInstance, articlesChartInstance].forEach(chart => {
+            if (chart) {
+                const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+                const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+                const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+                
+                chart.options.plugins.legend.labels.color = legendColor;
+                if (chart.options.scales && chart.options.scales.y) {
+                    chart.options.scales.y.ticks.color = ticksColor;
+                    chart.options.scales.y.grid.color = gridColor;
+                }
+                if (chart.options.scales && chart.options.scales.x) { 
+                    chart.options.scales.x.ticks.color = ticksColor;
+                    chart.options.scales.x.grid.color = gridColor;
+                }
+                chart.update();
+            }
+        });
+    }
+
     // --- Sidebar and Navigation ---
     function populateSidebar() {
         let menuHTML = '';
-        const mainSections = kbSystemData.sections.filter(s => s.id === 'home');
-        const otherSections = kbSystemData.sections.filter(s => s.id !== 'home');
+        const mainSections = ['home'];
+        const knowledgeAreas = [
+            'support', 'partner_care', 'logistics', 'customer_care', 
+            'distribution_followup', 'logistics_driver_complaints', 'logistics_3pl', 
+            'order_at_store_mac', 'logistics_admin', 'operating_systems'
+        ];
+        const resourcesPolicies = [
+            'compensation_policies', 'operational_instructions', 'forms_templates'
+        ];
 
-        if (mainSections.length > 0) {
-            menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
-            mainSections.forEach(section => {
-                const iconStyle = section.icon_color ? `style="color: ${section.icon_color};"` : '';
-                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                    <i class="${section.icon || 'fas fa-file-alt'}" ${iconStyle}></i>${escapeHTML(section.name)}
-                </a>`;
-            });
-        }
+        menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
+        kbSystemData.sections.filter(s => mainSections.includes(s.id)).forEach(section => {
+            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-file-alt'}" ${iconStyle}></i>${escapeHTML(section.name)}
+            </a>`;
+        });
         
-        if (otherSections.length > 0) {
-            menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
-            otherSections.forEach(section => {
-                const iconStyle = section.icon_color ? `style="color: ${section.icon_color};"` : '';
-                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                    <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
-                </a>`;
-            });
-        }
+        menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+        kbSystemData.sections.filter(s => knowledgeAreas.includes(s.id)).forEach(section => {
+            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
+            </a>`;
+        });
+
+        menuHTML += `<div class="sidebar-section-title">RESOURCES & POLICIES</div>`;
+        kbSystemData.sections.filter(s => resourcesPolicies.includes(s.id)).forEach(section => {
+            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon || 'fas fa-book'}" ${iconStyle}></i>${escapeHTML(section.name)}
+            </a>`;
+        });
 
         navigationMenu.innerHTML = menuHTML;
     }
@@ -1822,7 +2065,7 @@
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
 
-        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === item.id);
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parentId === item.id);
         let hoverDetailsHTML = '';
         if(childItems.length > 0) {
             hoverDetailsHTML = `
@@ -1834,8 +2077,7 @@
             </div>`;
         }
         
-        // --- REFACTORED: Use updated_at from Supabase ---
-        const lastUpdated = new Date(item.updated_at).toLocaleDateString('en-CA');
+        const lastUpdated = new Date(item.lastModified || item.createdAt).toLocaleDateString('en-CA');
 
         return `
         <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
@@ -1905,11 +2147,17 @@
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         const editsThisWeek = allItems.filter(item => 
-            item.updated_at && new Date(item.updated_at) > oneWeekAgo
+            item.lastModified && new Date(item.lastModified) > oneWeekAgo
         ).length;
+        kbSystemData.meta.editsThisWeek = editsThisWeek;
         
-        const latestItem = allItems.length > 0 ? [...allItems].sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] : null;
-        const lastAddedDisplay = latestItem ? { title: latestItem.title, date: new Date(latestItem.created_at).toLocaleDateString() } : { title: "N/A", date: "N/A" };
+        if (!kbSystemData.meta.lastArticleAdded && allItems.length > 0) {
+            const latestItem = [...allItems].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+            if (latestItem) {
+                 kbSystemData.meta.lastArticleAdded = { title: latestItem.title, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
+            }
+        }
+        if (!kbSystemData.meta.lastArticleAdded) kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
         
         const mostUsedArticles = [...allItems].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
 
@@ -1937,7 +2185,7 @@
                 </div>
                 <div class="dashboard-stat-card">
                     <i class="fas fa-edit"></i>
-                    <span class="stat-value">${editsThisWeek}</span>
+                    <span class="stat-value">${kbSystemData.meta.editsThisWeek}</span>
                     <span class="stat-label">Edits This Week</span>
                 </div>
             </div>
@@ -1956,8 +2204,10 @@
                 <div class="dashboard-quicklink-card">
                     <h3>💡 Quick Links & System Info</h3>
                      <ul>
+                        <li><a href="#support/sup_flow_compensation"><i class="fas fa-project-diagram fa-fw"></i> View Compensation Scenario</a></li>
+                        <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse All Templates</a></li>
                         <li><a href="#" id="dashboardAddContentBtn"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(lastAddedDisplay.title)} <span class="meta">(${escapeHTML(lastAddedDisplay.date)})</span></li>
+                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <span class="meta">(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</span></li>
                      </ul>
                 </div>
             </div>
@@ -1970,14 +2220,44 @@
         
         document.getElementById('dashboardAddContentBtn')?.addEventListener('click', e => {
             e.preventDefault();
-            const defaultSection = kbSystemData.sections.find(s => s.id !== 'home');
-            openAddContentModal(defaultSection?.id || kbSystemData.sections[0].id); 
+            // Open modal, defaulting to the 'support' section for new content from dashboard
+            openAddContentModal('support'); 
         });
 
-        // Chart.js rendering remains the same, with mock data for now.
+        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+
+        const chartOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: legendColor, font: { family: 'Inter, sans-serif' } }, position: 'top', },
+                tooltip: { bodyFont: { family: 'Inter, sans-serif' }, titleFont: { family: 'Inter, sans-serif' } }
+            },
+            scales: {
+                y: { ticks: { color: ticksColor, beginAtZero: true, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } },
+                x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } }
+            }
+        };
+
+        if (visitorsChartInstance) visitorsChartInstance.destroy();
+        const visitorsCtx = document.getElementById('visitorsChart')?.getContext('2d');
+        if (visitorsCtx) {
+            visitorsChartInstance = new Chart(visitorsCtx, {
+                type: 'bar',
+                data: { 
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 
+                    datasets: [
+                        { label: 'Views', data: [65, 59, 80, 81, 56, 55, 40], backgroundColor: 'rgba(99, 102, 241, 0.7)'},
+                        { label: 'Comments', data: [5, 2, 8, 3, 7, 4, 2], backgroundColor: 'rgba(34, 197, 94, 0.7)'}
+                    ]
+                },
+                options: chartOptions
+            });
+        }
+        applyPermanentDarkMode(); 
     }
     
-    async function displaySectionContent(sectionId) {
+    async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
@@ -2006,7 +2286,7 @@
                 </div>`;
         }
 
-        const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
+        const itemsToDisplay = (sectionData.items || []).filter(item => !item.parentId);
         
         if (itemsToDisplay.length > 0) {
             contentHTML += `<div class="cards-grid">`;
@@ -2028,36 +2308,83 @@
         }
     }
     
+    function findParentItem(parentId) {
+        for (const section of kbSystemData.sections) {
+            if (section.items) {
+                const parentItem = section.items.find(item => item.id === parentId);
+                if (parentItem) {
+                    return { ...parentItem, sectionId: section.id };
+                }
+            }
+        }
+        return null;
+    }
 
-    async function trackView(item) {
+    function trackView(item) {
         if (!currentUser) return;
-        
         const viewKey = `view_log_${currentUser.id}_${item.id}`;
         const twelveHours = 12 * 60 * 60 * 1000;
         const lastView = localStorage.getItem(viewKey);
         const now = Date.now();
 
         if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
-            const newViewCount = (item.views || 0) + 1;
-            const { error } = await supabase
-                .from('items')
-                .update({ views: newViewCount })
-                .eq('id', item.id);
-            
-            if (error) {
-                console.error(`Failed to update view count for item ${item.id}`, error);
-            } else {
-                item.views = newViewCount; // Update local state
-                localStorage.setItem(viewKey, now.toString());
-                const readStatsEl = document.getElementById('readStatsCount');
-                if (readStatsEl) readStatsEl.textContent = newViewCount;
-            }
+            item.views = (item.views || 0) + 1;
+            saveDataToLocalStorage();
+            localStorage.setItem(viewKey, now.toString());
+            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
+            // Update the view count on the page if it's visible
+            const readStatsEl = document.getElementById('readStatsCount');
+            if(readStatsEl) readStatsEl.textContent = item.views;
+        } else {
+            console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
         }
     }
 
 
     async function downloadItemAsPDF(itemToDownload) {
-        // This function remains the same as it operates on the rendered DOM
+        if (!itemToDownload || !itemToDownload.title) {
+            showToast('Error preparing PDF: Item data is missing.', 'error'); return;
+        }
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        showToast('Generating PDF, please wait...', 'info', 5000);
+
+        const element = document.getElementById('itemDetailViewPlaceholder');
+        if (!element) {
+            showToast('Error preparing PDF: Content area not found.', 'error'); return;
+        }
+        const elementToPrint = element.cloneNode(true);
+        elementToPrint.style.padding = "20px";
+        elementToPrint.style.width = "210mm";
+        elementToPrint.style.backgroundColor = "white";
+        
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.suggested-articles-section', '.copy-script-btn', '.update-banner' ];
+        selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
+        
+        elementToPrint.style.position = 'absolute';
+        elementToPrint.style.left = '-9999px';
+        document.body.appendChild(elementToPrint);
+
+        if (elementToPrint.querySelector('pre.mermaid')) {
+            await renderMermaidDiagramsInElement(elementToPrint);
+        }
+
+        const opt = {
+            margin: [10, 10, 10, 10], filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, logging: false, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        try {
+            await html2pdf().from(elementToPrint).set(opt).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showToast('Error generating PDF. Check console.', 'error');
+        } finally {
+             document.body.removeChild(elementToPrint);
+        }
     }
 
     async function displayItemDetail(sectionId, itemId) {
@@ -2071,7 +2398,7 @@
             return;
         }
 
-        trackView(itemData);
+        trackView(itemData); // Track the view for this item
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2103,27 +2430,68 @@
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
-        const imageHTML = itemData.image_url 
-            ? `<img src="${itemData.image_url}" alt="${escapeHTML(itemData.title)}" class="centered-image">`
-            : '';
-
         detailHTML += `<div class="card">
                     <div class="item-title-area">
                         <i class="${itemIconClass} fa-title-icon"></i>
                         <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
                     <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                    ${imageHTML}
                     <div id="update-banner" class="update-banner hidden"></div>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr class="title-content-divider">
-                    <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
+                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
                    </div>`;
         
-        // This part needs to be updated if child items are used
+        const childItems = kbSystemData.sections.flatMap(s => s.items || [])
+                               .filter(child => child.parentId === itemData.id)
+                               .map(child => ({...child, sectionId: kbSystemData.sections.find(s => s.items && s.items.some(i => i.id === child.id)).id }));
+
+        if (childItems.length > 0) {
+            detailHTML += `<div class="card" style="margin-top: 1.5rem;">
+                            <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
+                            <ul class="child-items-list">${childItems.map(child => `<li><a href="#${child.sectionId}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`).join('')}</ul>
+                           </div>`;
+        }
+
+        // Suggested Articles Placeholder
+        detailHTML += `<div id="suggestedArticlesPlaceholder"></div>`;
+
+        detailHTML += `<div class="item-feedback-section">
+                        <h4 id="feedbackPrompt">Was this article helpful?</h4>
+                        <div id="feedbackInteractionContainer">
+                           <div class="rating-prompt">
+                                <div class="rating-buttons" id="ratingButtons">
+                                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                                </div>
+                            </div>
+                            <form id="negativeFeedbackForm" class="hidden">
+                                <div class="form-group">
+                                    <label for="feedbackReason">Please tell us how we can improve:</label>
+                                    <textarea id="feedbackReason" rows="3"></textarea>
+                                </div>
+                                <button type="submit" class="button">Submit Feedback</button>
+                            </form>
+                        </div>
+                        <div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>
+                       </div>`;
         
-        // Feedback and Comments sections remain for now, but will need Supabase integration later.
-        detailHTML += `<div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>`;
+        detailHTML += `<div class="comments-section">
+                        <h4><i class="fas fa-comments"></i> Discussion</h4>
+                        <div class="comment-post-area">
+                            <img src="${currentUser.avatar_url}" alt="Your avatar">
+                            <div class="comment-input-wrapper">
+                                <textarea id="newCommentText" placeholder="Add to the discussion..."></textarea>
+                                <div class="comment-post-actions">
+                                    <div id="internalCommentWrapper" class="hidden">
+                                        <label><input type="checkbox" id="internalCommentCheckbox"> Internal note (admins only)</label>
+                                    </div>
+                                    <button id="postCommentBtn" class="button">Post Comment</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
+                       </div>`;
 
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
@@ -2131,18 +2499,39 @@
     }
     
     function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
+        // Update Banner
         const updateBanner = document.getElementById('update-banner');
-        if (itemData.updated_at) {
-            const timeSinceUpdate = new Date() - new Date(itemData.updated_at);
+        if (itemData.lastModified) {
+            const timeSinceUpdate = new Date() - new Date(itemData.lastModified);
+            // Only show if updated within the last 30 days
             if (timeSinceUpdate > (60 * 1000) && timeSinceUpdate < 30 * 24 * 60 * 60 * 1000) {
-                updateBanner.innerHTML = `<i class="fas fa-info-circle"></i> This page was updated ${getTimeAgo(itemData.updated_at)}.`;
+                updateBanner.innerHTML = `<i class="fas fa-info-circle"></i> This page was updated ${getTimeAgo(itemData.lastModified)}.`;
                 updateBanner.classList.remove('hidden');
             }
         }
         
+        renderComments(itemData, 'commentDisplayAreaForItem'); 
+        renderSuggestedArticles(itemData, 'suggestedArticlesPlaceholder');
+        
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
+
+        // Add copy buttons to script blocks
+        itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-script-btn';
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            copyBtn.title = 'Copy script';
+            bq.appendChild(copyBtn);
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const textToCopy = bq.innerText.replace('Copy', '').trim(); // Basic way to get text
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showToast('Script copied!', 'success'))
+                    .catch(err => showToast('Failed to copy.', 'error'));
+            });
+        });
 
         document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
         if (currentUser && currentUser.role === 'admin') {
@@ -2153,9 +2542,163 @@
         document.getElementById('printItemBtn').addEventListener('click', () => window.print());
         document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
+        // Feedback logic
+        const feedbackPrompt = document.getElementById('feedbackPrompt');
+        const rateYesBtn = document.getElementById('rateYesBtn');
+        const rateNoBtn = document.getElementById('rateNoBtn');
+        const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
+        
+        rateYesBtn.addEventListener('click', () => {
+            itemData.feedback = itemData.feedback || [];
+            itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+            saveDataToLocalStorage();
+            feedbackPrompt.textContent = 'Thank you for your feedback!';
+            document.getElementById('feedbackInteractionContainer').innerHTML = ''; // Remove buttons
+            showToast('Feedback received!', 'success');
+        });
+
+        rateNoBtn.addEventListener('click', () => {
+            document.getElementById('ratingButtons').classList.add('hidden');
+            negativeFeedbackForm.classList.remove('hidden');
+            negativeFeedbackForm.querySelector('textarea').focus();
+        });
+
+        negativeFeedbackForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const reason = document.getElementById('feedbackReason').value.trim();
+            if (reason) {
+                itemData.feedback = itemData.feedback || [];
+                itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                saveDataToLocalStorage();
+                feedbackPrompt.textContent = 'Thank you for your feedback!';
+                document.getElementById('feedbackInteractionContainer').innerHTML = '';
+                showToast('Feedback received, we will review it.', 'info');
+            } else {
+                showToast('Please provide a reason.', 'error');
+            }
+        });
+
+
+        // Comments logic
+        const internalCommentWrapper = document.getElementById('internalCommentWrapper');
+        if (currentUser.role === 'admin') {
+            internalCommentWrapper.classList.remove('hidden');
+        }
+
+        document.getElementById('postCommentBtn').addEventListener('click', () => {
+            const commentTextEl = document.getElementById('newCommentText');
+            const commentText = commentTextEl.value.trim();
+            if (!commentText) {
+                showToast('Please enter a comment.', 'error');
+                return;
+            }
+            if (!itemData.comments) itemData.comments = [];
+            const isInternal = document.getElementById('internalCommentCheckbox')?.checked || false;
+
+            itemData.comments.push({
+                id: `cmt_${Date.now()}`,
+                authorId: currentUser.id,
+                authorName: currentUser.name,
+                text: commentText, 
+                timestamp: new Date().toISOString(),
+                isInternal: isInternal
+            });
+            saveDataToLocalStorage();
+            renderComments(itemData, 'commentDisplayAreaForItem'); 
+            commentTextEl.value = ''; 
+        });
+    }
+
+    function renderSuggestedArticles(currentItem, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container || !currentItem.tags || currentItem.tags.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const allItems = kbSystemData.sections.flatMap(s => (s.items || []).map(i => ({...i, sectionId: s.id})));
+        const suggested = allItems
+            .filter(item => item.id !== currentItem.id) // Exclude current article
+            .map(item => {
+                const commonTags = item.tags ? item.tags.filter(tag => currentItem.tags.includes(tag)) : [];
+                return { ...item, score: commonTags.length };
+            })
+            .filter(item => item.score > 0) // Must have at least one common tag
+            .sort((a, b) => b.score - a.score) // Sort by most common tags
+            .slice(0, 3); // Take top 3
+
+        if (suggested.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let suggestedHTML = `
+            <div class="suggested-articles-section">
+                <h4><i class="fas fa-lightbulb"></i> You might also like...</h4>
+                <div class="suggested-articles-list">
+        `;
+        suggested.forEach(item => {
+            suggestedHTML += `
+                <div class="suggested-article-item">
+                    <a href="#${item.sectionId}/${item.id}">
+                        <span class="suggested-title">${escapeHTML(item.title)}</span>
+                        <p class="suggested-summary">${escapeHTML(truncateText(stripHtml(item.summary), 80))}</p>
+                    </a>
+                </div>`;
+        });
+        suggestedHTML += `</div></div>`;
+
+        container.innerHTML = suggestedHTML;
     }
     
-    // TEMPLATES remain the same
+    function renderComments(itemData, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (!itemData.comments || itemData.comments.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No discussion yet. Be the first to comment!</p>`;
+            return;
+        }
+
+        const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
+        
+        let commentsHTML = "";
+
+        sortedComments.forEach(comment => {
+            let commentClass = 'comment';
+            let internalIndicator = '';
+            
+            if (comment.isInternal) {
+                if (currentUser.role !== 'admin') return; // Skip rendering for non-admins
+                commentClass += ' internal-comment';
+                internalIndicator = '<span class="internal-comment-badge"><i class="fas fa-user-shield"></i> Internal</span>';
+            }
+
+            if(!userAvatars[comment.authorId]) {
+                 userAvatars[comment.authorId] = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
+            }
+
+            commentsHTML += `
+                <div class="${commentClass}" data-comment-id="${comment.id}">
+                    <img src="${userAvatars[comment.authorId]}" alt="${escapeHTML(comment.authorName)}'s avatar">
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <div>
+                                <span class="comment-author">${escapeHTML(comment.authorName)}</span>
+                                ${internalIndicator}
+                            </div>
+                            <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="comment-text">${escapeHTML(comment.text).replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = commentsHTML;
+    }
+
+
     const contentTemplates = {
         standard_article: {
             type: 'article',
@@ -2186,6 +2729,7 @@
             tags: []
         }
     };
+
     function applyTemplate(templateKey) {
         const template = contentTemplates[templateKey];
         if (!template) return;
@@ -2233,10 +2777,17 @@
             document.getElementById('contentTitle').value = itemToEdit.title;
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
+            if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             
-            mainQuillEditor.root.innerHTML = itemToEdit.content || '<p><br></p>';
+            let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
+            mainQuillEditor.root.innerHTML = contentToEdit;
+            
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
+            if (itemToEdit.attachments) {
+                if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
+                if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
+            }
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
@@ -2256,133 +2807,148 @@
 
     function closeAddContentModal() {
         addContentModalOverlay.classList.add('hidden');
+        templateSelectionContainer.classList.add('hidden'); 
+        addContentForm.classList.add('hidden'); 
+        editingItemIdInput.value = ""; 
     }
 
     contentTypeSelect.addEventListener('change', (e) => {
         const type = e.target.value;
-        const isLinkType = ['form_sheet', 'design'].includes(type);
-        contentUrlContainer.classList.toggle('hidden', !isLinkType);
-        contentDetailContainer.classList.toggle('hidden', isLinkType);
-        contentDetailLabel.textContent = (type === 'case') ? 'Case Details / Resolution Steps' : 'Content';
+        contentUrlContainer.classList.toggle('hidden', !['form_sheet', 'design'].includes(type));
+        contentDetailContainer.classList.toggle('hidden', ['form_sheet', 'design'].includes(type));
+        if (type === 'case') contentDetailLabel.textContent = 'Case Details / Resolution Steps';
+        else contentDetailLabel.textContent = 'Content';
     });
 
-    addContentForm.addEventListener('submit', async (e) => {
+    addContentForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const saveBtn = document.getElementById('saveContentBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-        const editingId = editingItemIdInput.value;
         const sectionId = addContentForm.dataset.sectionId;
-
-        const dataToSave = {
+        const section = kbSystemData.sections.find(s => s.id === sectionId);
+        if (!section) { showToast('Error: Target section not found!', 'error'); return; }
+        
+        const editingId = editingItemIdInput.value;
+        const commonData = {
+            type: contentTypeSelect.value,
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
-            type: contentTypeSelect.value,
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-            content: mainQuillEditor.root.innerHTML,
-            updated_at: new Date().toISOString()
         };
-
-        const imageFile = document.getElementById('imageFile').files[0];
-        if (imageFile) {
-            // In a real app, upload to Supabase Storage and get URL.
-            // For now, using Base64 for simplicity.
-            dataToSave.image_url = await new Promise(resolve => {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.readAsDataURL(imageFile);
-            });
+        if (!commonData.title || !commonData.summary) {
+            showToast('Title and Summary are required.', 'error'); return;
         }
 
-        let error;
-        if (editingId) {
-            // Update existing item
-            const { error: updateError } = await supabase.from('items').update(dataToSave).eq('id', editingId);
-            error = updateError;
-        } else {
-            // Create new item
-            dataToSave.section_id = sectionId;
-            dataToSave.created_by = currentUser.id;
-            const { error: insertError } = await supabase.from('items').insert(dataToSave);
-            error = insertError;
+        let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
+        if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
+
+        if (itemData) { // Editing existing item
+            Object.assign(itemData, commonData); 
+            itemData.lastModified = new Date().toISOString();
+        } else { // Creating new item
+            itemData = {
+                ...commonData, id: `${sectionId}_item_${Date.now()}`,
+                createdBy: currentUser.email, createdAt: new Date().toISOString(),
+                lastModified: new Date().toISOString(),
+                views: 0, comments: [], feedback: [] 
+            };
+            if (!section.items) section.items = [];
+            section.items.push(itemData);
+            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
         }
 
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Content';
-
-        if (error) {
-            console.error('Error saving content:', error);
-            showToast('Failed to save content.', 'error');
-            return;
+        if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
+            itemData.content = mainQuillEditor.root.innerHTML;
+        } else if (['form_sheet', 'design'].includes(itemData.type)) {
+            itemData.url = document.getElementById('contentUrl').value.trim();
+            if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
         }
-
-        showToast(`Content successfully ${editingId ? 'updated' : 'created'}!`, 'success');
+        
+        saveDataToLocalStorage();
+        showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
-        await fetchAndBuildKBData(); // Refresh data from DB
-        populateSidebar(); // Repopulate sidebar in case sections changed
-        handleNavigation(); // Re-render the current view
+        
+        window.location.hash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
+        handleNavigation();
     });
 
-
-    // --- Delete Modal Logic ---
+    // --- Other Modals Logic (Delete, Feedback, etc) ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
-        confirmDeleteItemBtn.dataset.itemId = itemId;
         confirmDeleteItemBtn.dataset.sectionId = sectionId;
+        confirmDeleteItemBtn.dataset.itemId = itemId;
         deleteConfirmModalOverlay.classList.remove('hidden');
     }
-
-    confirmDeleteItemBtn.addEventListener('click', async () => {
-        const itemId = confirmDeleteItemBtn.dataset.itemId;
+    confirmDeleteItemBtn.addEventListener('click', () => {
         const sectionId = confirmDeleteItemBtn.dataset.sectionId;
-        
-        confirmDeleteItemBtn.disabled = true;
-
-        const { error } = await supabase
-            .from('items')
-            .delete()
-            .eq('id', itemId);
-
-        confirmDeleteItemBtn.disabled = false;
-        deleteConfirmModalOverlay.classList.add('hidden');
-
-        if (error) {
-            console.error('Error deleting item:', error);
-            showToast('Failed to delete item.', 'error');
-            return;
-        }
-
-        showToast('Item deleted successfully.', 'success');
-        
-        // Remove item from local state to update UI immediately
+        const itemId = confirmDeleteItemBtn.dataset.itemId;
         const section = kbSystemData.sections.find(s => s.id === sectionId);
-        if (section) {
-            section.items = section.items.filter(i => i.id !== itemId);
+        if (section?.items) {
+            const itemIndex = section.items.findIndex(item => item.id === itemId);
+            if (itemIndex > -1) {
+                const deletedItemTitle = section.items[itemIndex].title;
+                section.items.splice(itemIndex, 1);
+                saveDataToLocalStorage();
+                showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
+                deleteConfirmModalOverlay.classList.add('hidden');
+                window.location.hash = `#${sectionId}`;
+            }
         }
-        
-        window.location.hash = `#${sectionId}`;
-        // The hashchange listener will call handleNavigation
     });
-
 
     closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     
-    // Global Search (remains the same, searches local data)
-    
+    // Global Search
+    globalSearchInput.addEventListener('input', () => {
+        const query = globalSearchInput.value.trim().toLowerCase();
+        if (query.length < 2) {
+            searchResultsContainer.classList.add('hidden'); return;
+        }
+        const results = [];
+        kbSystemData.sections.forEach(s => {
+            s.items?.forEach(i => {
+                if (i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query) || (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
+                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
+                }
+            });
+        });
+        searchResultsContainer.innerHTML = '';
+        if (results.length) {
+            results.slice(0, 7).forEach(r => {
+                const linkEl = document.createElement('a');
+                linkEl.href = `#${r.sectionId}/${r.id}`;
+                linkEl.addEventListener('click', () => { searchResultsContainer.classList.add('hidden'); globalSearchInput.value = ''; });
+                linkEl.innerHTML = `<div style="font-weight: bold;">${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.sectionName)})</span></div>
+                                    <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary), 70), query)}</p>`;
+                searchResultsContainer.appendChild(linkEl);
+            });
+            searchResultsContainer.classList.remove('hidden');
+        } else {
+            searchResultsContainer.innerHTML = `<div style="padding: 10px; color: var(--text-color-muted);">No results found.</div>`;
+            searchResultsContainer.classList.remove('hidden');
+        }
+    });
+    document.addEventListener('click', e => {
+        if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+    });
+
     // --- Event Delegation for Dynamic Content ---
     pageContentArea.addEventListener('click', e => {
+        // Handle card action menu toggle
         const toggle = e.target.closest('.card-actions-toggle');
         if (toggle) {
             e.preventDefault(); 
             const menu = toggle.nextElementSibling;
             const isShown = menu.classList.contains('show');
+            // Close all other menus first
             document.querySelectorAll('.card-actions-menu.show').forEach(m => m.classList.remove('show'));
-            if (!isShown) menu.classList.add('show');
+            // Toggle the current menu if it wasn't already shown
+            if (!isShown) {
+                menu.classList.add('show');
+            }
             return;
         }
 
+        // Handle card edit button click
         const editBtn = e.target.closest('.card-edit-btn');
         if (editBtn) {
             e.preventDefault();
@@ -2396,6 +2962,7 @@
             return;
         }
 
+        // Close menus if clicking anywhere else on the page content area
         if (!e.target.closest('.card-actions-container')) {
             document.querySelectorAll('.card-actions-menu.show').forEach(m => m.classList.remove('show'));
         }
@@ -2418,25 +2985,16 @@
     }
 
     async function initializeApp() {
-        // --- REFACTORED: User profile logic remains, but data loading is now from Supabase ---
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = 'login.html'; return; }
-        
-        const { data: userProfile } = await supabase.from('users').select('id, name, email, role').eq('id', session.user.id).single();
-        if (!userProfile) { window.location.href = 'login.html'; return; }
-        
-        currentUser = {
-            ...userProfile,
-            avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.name.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`
-        };
+        currentUser = await Auth.getCurrentUserProfile(); 
+        if (!currentUser) return;
 
         userNameDisplayHeader.textContent = currentUser.name;
         userAvatar.src = currentUser.avatar_url;
         footerKbVersion.textContent = kbSystemData.meta.version;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
-        await fetchAndBuildKBData();
         populateSidebar();
+        applyPermanentDarkMode(); 
         handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
@@ -2444,10 +3002,7 @@
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
         closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        confirmLogoutBtn.addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            window.location.href = 'login.html';
-        });
+        confirmLogoutBtn.addEventListener('click', Auth.logout);
         
         closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
         cancelAddContentBtn.addEventListener('click', closeAddContentModal);
@@ -2455,6 +3010,8 @@
         if (localStorage.getItem('justLoggedIn') === 'true') {
             showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
             localStorage.removeItem('justLoggedIn');
+        } else {
+            showToast(`InfiniBase v${kbSystemData.meta.version} ready.`, 'info', 2000);
         }
     }
 
