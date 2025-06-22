@@ -1349,12 +1349,12 @@
                                         <blockquote>
                                             <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
                                         </blockquote>
-                                        <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
+                                        <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., chef quality), navigate to the relevant knowledge article for that topic.</p>
                                     </div>
         
                                     <div class="content-section-box">
                                         <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
-                                        <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                                        <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
                                         <ul>
                                             <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
                                             <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
@@ -1392,17 +1392,18 @@
         
                                     <div class="content-section-box">
                                         <h3><i class="fas fa-clipboard-check"></i> Internal Documentation and Conclusion</h3>
-                                        <p>After informing the customer, it is mandatory to document the incident in the system. This includes:</p>
-                                        <ol>
-                                            <li>The reason for the delay (e.g., Store, Driver, System).</li>
-                                            <li>The compensation amount and type provided.</li>
-                                        </ol>
+                                        <p>The agent must finalize the action directly in the system by:</p>
+                                        <ul>
+                                            <li>Logging the note on the order</li>
+                                            <li>Recording the compensation amount and reason clearly</li>
+                                            <li>Selecting the responsible party (Store, Driver, Company)</li>
+                                        </ul>
                                         <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
                                     </div>
                                 `,
                                 tags: [],
-                                createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // ~30 days ago
-                                lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // ~2 days ago
+                                createdAt: '2024-05-20T10:00:00.000Z',
+                                lastModified: '2024-06-22T14:30:00.000Z',
                                 version: 1.1,
                                 views: 183,
                                 comments: [
@@ -2068,7 +2069,8 @@
         });
         
         if (currentUser && currentUser.role === 'admin') {
-            document.getElementById('editItemBtn')?.addEventListener('click', () => openEditModal(sectionId, itemData));
+            // ✅ FIX: "Edit Item" button now works from detail view
+            document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
         }
 
@@ -2382,10 +2384,24 @@
             if (itemIndex > -1) {
                 const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
-                saveDataToLocalStorage(); // Persist deletion
+                saveDataToLocalStorage();
+
+                // ✅ FIX: Immediately remove the card from the view without full refresh
+                const cardToRemove = document.querySelector(`.card[data-item-id="${itemId}"]`);
+                if (cardToRemove) {
+                    cardToRemove.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    cardToRemove.style.transform = 'scale(0.95)';
+                    cardToRemove.style.opacity = '0';
+                    setTimeout(() => cardToRemove.remove(), 300);
+                }
+
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
-                window.location.hash = `#${sectionId}`;
+                
+                // If we were on the item detail page, navigate back to the section
+                if (window.location.hash.includes('/')) {
+                    window.location.hash = `#${sectionId}`;
+                }
             }
         }
     });
