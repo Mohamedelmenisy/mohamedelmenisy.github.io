@@ -2001,6 +2001,21 @@
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
+        const createdAt = new Date(itemData.createdAt);
+        const lastModified = new Date(itemData.lastModified);
+        // Only show update banner if modified significantly after creation (e.g., > 1 minute)
+        if (lastModified.getTime() > createdAt.getTime() + 60000) {
+            const formattedDate = lastModified.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+            detailHTML += `
+                <div class="update-banner">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Last updated on ${formattedDate} (Version ${itemData.version || '1.1'})</span>
+                </div>
+            `;
+        }
+
         detailHTML += `<div class="card">
                     <div class="item-title-area">
                         <i class="${itemIconClass} fa-title-icon"></i>
@@ -2081,9 +2096,13 @@
         });
         
         if (currentUser && currentUser.role === 'admin') {
-            document.getElementById('editItemBtn')?.addEventListener('click', () => {
-                window.openEditModal(sectionId, itemData.id);
-            });
+            const editBtn = document.getElementById('editItemBtn');
+            if (editBtn) {
+                editBtn.addEventListener('click', () => {
+                    // Call the modal function directly with the full item object, which is more robust.
+                    openAddContentModal(sectionId, itemData);
+                });
+            }
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => {
                 window.openDeleteModal(sectionId, itemId, itemData.title);
             });
@@ -2364,7 +2383,9 @@
         closeAddContentModal();
         
         if (editingId) {
+            // Force a re-render of the detail page to show changes
             window.location.hash = `#${sectionId}/${editingId}`;
+            handleNavigation();
         } else {
             handleNavigation();
         }
