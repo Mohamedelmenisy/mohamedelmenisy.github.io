@@ -12,7 +12,6 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 
@@ -50,8 +49,6 @@
             --yes-color: #22c55e; /* Green for Yes */
             --no-color: #ef4444;   /* Red for No */
             --rating-color: #fbbf24; /* Amber 400 for ratings */
-            --step-done-color: #22c55e;
-            --step-pending-color: #f59e0b;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -303,8 +300,9 @@
         .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
         
+        /* NEW: Tag styles for cards */
         .card-tags {
-            margin-top: auto;
+            margin-top: 0rem;
             margin-bottom: 0.75rem;
             display: flex;
             flex-wrap: wrap;
@@ -322,31 +320,19 @@
             letter-spacing: 0.02em;
         }
 
-        .card .item-meta-info {
-            margin-top: auto; 
+        .card-actions {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 0.75rem;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            padding-top: 1rem;
             border-top: 1px solid var(--border-color);
+            margin-top: auto;
         }
-        .card .item-cta-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500; 
-            font-size: 0.875rem;
+        .card-actions .button {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
         }
-        .card .item-cta-link:hover { text-decoration: underline; color: var(--primary-color-hover); }
-        .item-type-badge {
-            font-size: 0.75rem; 
-            padding: 0.25rem 0.75rem; 
-            border-radius: 9999px; 
-            background-color: var(--bg-color-hover); 
-            color: var(--text-color-subtle); 
-            font-weight: 600; 
-            text-transform: uppercase;
-        }
-
+        
         .button, button {
             background-color: var(--primary-color);
             color: var(--text-color-inverted);
@@ -381,6 +367,12 @@
             outline: 2px solid transparent;
             outline-offset: 2px;
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); 
+        }
+        button:disabled {
+            background-color: var(--border-color);
+            color: var(--text-color-muted);
+            cursor: not-allowed;
+            border-color: transparent;
         }
 
         .modal-overlay {
@@ -616,15 +608,46 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             border: 1px solid var(--border-color);
-            color: var(--text-color);
+            color: var(--text-color); /* Ensure pre content is visible */
+            position: relative; /* For copy button */
         }
-         .kb-content code {
+        .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
             padding: 0.2em 0.4em;
             margin: 0;
             font-size: 85%;
             border-radius: 3px;
         }
+        .kb-content blockquote {
+            background-color: var(--bg-color-hover);
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            margin: 1em 0;
+            border-left: 4px solid var(--primary-color);
+            color: var(--text-color);
+            position: relative;
+        }
+        .kb-content blockquote i.fa-comment-dots {
+            margin-right: 0.5rem;
+            color: var(--primary-color);
+        }
+        .copy-script-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--bg-color);
+            color: var(--text-color-muted);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            z-index: 1;
+        }
+        .copy-script-btn:hover { opacity: 1; }
+
         mark {
             padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold;
             background-color: #78350f; color: #f3f4f6; 
@@ -654,65 +677,80 @@
             text-align: center;
             width: 100%;
         }
-        .mermaid-diagram-card {
-            background-color: var(--bg-color-alt);
+       
+        /* NEW: Styles for improved knowledge article view */
+        .update-banner {
+            background-color: var(--bg-color);
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .update-banner i {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        .content-section-box {
+            background-color: var(--bg-color);
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
-            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .content-section-box h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-color);
+        }
+        .compensation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
             margin-bottom: 1.5rem;
         }
-        .mermaid-diagram-card h3 {
+        .compensation-box {
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color-darker);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+        }
+        .compensation-box h4 {
             margin-top: 0;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             font-weight: 600;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .mermaid-diagram-container {
-            overflow-x: auto;
-            padding: 10px; 
-            background-color: var(--bg-color-alt);
-            border-radius: var(--border-radius);
+        .compensation-box.fast-order h4 { color: #f59e0b; }
+        .compensation-box.scheduled-order h4 { color: #38bdf8; }
+        .compensation-box ul { list-style: none; padding: 0; margin: 0; }
+        .compensation-box ul li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
         }
-        .mermaid-diagram-container svg { 
-            display: block;
-            margin: 0 auto; 
-            max-width: 100%; 
-            min-height: 350px;
-            height: auto;
-        }
-        .mermaid-diagram-container text { 
-            fill: var(--text-color) !important; 
-            font-family: 'Inter', sans-serif !important; 
-            font-size: 14px !important;
-        }
-        .mermaid-diagram-container .edgeLabel { 
-            color: var(--text-color) !important; 
-        } 
-         .mermaid-diagram-container .edgeLabel span { 
-            font-size: 14px !important;
-        }
-        .mermaid-diagram-container .label { color: var(--text-color) !important; }
-        .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
-        .mermaid-diagram-container .messageText { fill: var(--text-color) !important; }
-        .mermaid-diagram-container rect, 
-        .mermaid-diagram-container polygon, 
-        .mermaid-diagram-container ellipse,
-        .mermaid-diagram-container circle {
-            stroke: var(--primary-color) !important;
-            fill: var(--bg-color-alt) !important;
-        }
-        .mermaid-diagram-container .cluster rect {
-             fill: var(--bg-color) !important;
-             stroke: var(--border-color-darker) !important;
-        }
-        .mermaid-diagram-container .arrowheadPath {
-            fill: var(--primary-color) !important;
-        }
-        .mermaid-diagram-container .edgePaths path {
-            stroke: var(--primary-color) !important;
-        }
+        .compensation-box ul li:last-child { border-bottom: none; }
+        .compensation-box ul li span:first-child { font-weight: 500; color: var(--text-color-subtle); }
+        .compensation-box ul li .action { font-weight: 600; text-align: right; }
+
 
         /* Item Detail View Specific */
         #itemDetailViewPlaceholder .item-title-area {
@@ -732,6 +770,7 @@
         #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; }
         #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: underline; }
         .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        
         .item-feedback-section { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); background-color: var(--bg-color); }
         .item-feedback-section h4 { font-size: 1.125rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; }
         .rating-prompt { display:flex; align-items:center; gap:1rem; margin-bottom: 1rem; }
@@ -745,114 +784,214 @@
         .read-stats { font-size: 0.875rem; color: var(--text-color-muted); margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
         #negativeFeedbackForm { margin-top: 1rem; }
         
-        /* Comments Section Style */
+        /* New Comments Section Style */
         .comments-section { margin-top: 2rem; }
         .comments-section h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
-        .comment-post-area { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 1.5rem; }
+        .comment-post-area {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
         .comment-post-area img { width: 36px; height: 36px; border-radius: 50%; margin-top: 5px;}
         .comment-input-wrapper { flex-grow: 1; }
-        .comment-input-wrapper textarea { width: 100%; min-height: 60px; padding: 0.75rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); }
+        .comment-input-wrapper textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
         .comment-post-actions { text-align: right; margin-top: 0.5rem; }
+        
         .comment-display-area { margin-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem; }
         .comment { display: flex; gap: 0.75rem; align-items: flex-start; }
         .comment img { width: 32px; height: 32px; border-radius: 50%; }
-        .comment-content { flex-grow: 1; background-color: var(--bg-color-alt); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.75rem 1rem; }
+        .comment-content {
+            flex-grow: 1;
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1rem;
+        }
         .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
         .comment-author { font-weight: 600; color: var(--text-color); font-size: 0.9rem; }
         .comment-timestamp { color: var(--text-color-muted); font-size: 0.75rem; }
-        .comment-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-color-subtle); white-space: pre-wrap; }
+        .comment-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-color-subtle);
+            white-space: pre-wrap;
+        }
         .comment-actions { margin-top: 0.5rem; }
-        .comment-actions button { background: none; border: none; color: var(--text-color-muted); font-size: 0.8rem; font-weight: 500; padding: 0.25rem 0.5rem; cursor: pointer; }
+        .comment-actions button {
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+        }
         .comment-actions button:hover { color: var(--primary-color); }
 
+
         /* Dashboard specific styles */
-        .dashboard-stat-card { background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg); box-shadow: var(--card-shadow); text-align: center; }
-        .dashboard-stat-card i { font-size: 2rem; color: var(--primary-color); margin-bottom: 0.75rem; }
-        .dashboard-stat-card .stat-value { font-size: 1.75rem; font-weight: 700; display: block; margin-bottom: 0.25rem; }
-        .dashboard-stat-card .stat-label { font-size: 0.875rem; color: var(--text-color-muted); }
-        .dashboard-quicklink-card, .dashboard-info-card { background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg); box-shadow: var(--card-shadow); }
-        .dashboard-quicklink-card h3, .dashboard-info-card h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        .dashboard-quicklink-card ul, .dashboard-info-card ul { list-style: none; padding: 0; }
-        .dashboard-quicklink-card ul li a, .dashboard-info-card ul li a { display: block; padding: 0.5rem 0; color: var(--primary-color); text-decoration: none; font-weight: 500; }
-        .dashboard-quicklink-card ul li a:hover, .dashboard-info-card ul li a:hover { text-decoration: underline; }
-        .dashboard-info-card ul li { font-size: 0.9rem; color: var(--text-color-subtle); padding: 0.3rem 0; }
-        .dashboard-info-card ul li strong { color: var(--text-color); }
-        .dashboard-info-card ul li .meta { font-size: 0.75rem; display: block; color: var(--text-color-muted); }
-        .viewer-dashboard-message .card { text-align: center; padding: 40px 20px; min-height: auto; }
-        .viewer-dashboard-message .card i { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1rem; }
-        .viewer-dashboard-message .card h2 { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-color); }
-        .viewer-dashboard-message .card p { font-size: 1rem; color: var(--text-color-muted); margin-bottom: 0; }
-        .viewer-dashboard-message .card p.subtle-note { font-size: 0.9rem; margin-top: 1rem; }
-        
-        /* Interactive Flow Styles */
-        .interactive-flow-container { background-color: var(--bg-color); padding: 1.5rem; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); }
-        .flow-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color-darker); }
-        .flow-title-bar h2 { font-size: 1.6rem; margin: 0; color: var(--text-color); display: flex; align-items: center; }
-        .flow-title-bar h2 i { margin-right: 0.75rem; color: var(--primary-color); font-size: 1.8rem; }
-        .flow-title-bar #flowTopActions button { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
-        .flow-update-info { font-style: italic; color: var(--text-color-muted); font-size: 0.85rem; text-align: right; padding-bottom: 0.5rem; margin-top: -1rem; }
-        .flow-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-        .flow-controls .button i { margin-right: 0.5rem; }
-        .step-card { background: var(--bg-color-alt); border-left: 4px solid var(--primary-color); border-radius: var(--border-radius); padding: 0; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); overflow: hidden; }
-        .step-header { padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background-color: var(--bg-color-alt); border-bottom: 1px solid var(--border-color); }
-        .step-card.expanded > .step-header { border-bottom-color: var(--border-color-darker); }
-        .step-header-main { display: flex; align-items: center; flex-grow: 1; }
-        .step-number { color: var(--primary-color); font-weight: 700; margin-right: 0.75rem; font-size: 1.1em; }
-        .step-title { font-weight: 600; font-size: 1.1em; color: var(--text-color); margin-right: 1rem; }
-        .step-header-actions { display: flex; align-items: center; gap: 0.75rem; }
-        .mark-step-done-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--border-color-darker); background-color: transparent; border-radius: var(--border-radius); transition: all 0.2s; color: var(--text-color-subtle); }
-        .mark-step-done-btn.done { background-color: var(--step-done-color); border-color: var(--step-done-color); color: var(--text-color-inverted); }
-        .mark-step-done-btn:hover:not(.done) { border-color: var(--primary-color); color: var(--primary-color); }
-        .toggle-step-details-btn { background: none; border: none; color: var(--text-color-muted); font-size: 1.2rem; padding: 0.25rem; }
-        .toggle-step-details-btn i.fa-chevron-down { transition: transform 0.2s ease-in-out; }
-        .step-card.expanded .toggle-step-details-btn i.fa-chevron-down { transform: rotate(180deg); }
-        .step-body { padding: 0 1.5rem 1.5rem 1.5rem; display: none; background-color: var(--bg-color); }
-        .step-card.expanded > .step-body { display: block; border-top: 1px solid var(--border-color-darker); }
-        .step-body .kb-content { padding-top: 1rem; } 
-        .step-body p, .step-body ul, .step-body ol { margin-bottom: 0.75em; color: var(--text-color-subtle); }
-        .step-body strong { color: var(--text-color); }
-        .step-body ul, .step-body ol { padding-left: 25px; } 
-        .step-link { color: #60a5fa; font-weight: 500; text-decoration: none; border-bottom: 1px dotted #60a5fa; }
-        .step-link:hover { text-decoration: underline; border-bottom-style: solid; color: #7dd3fc; }
-        .important-notes-card { background: var(--bg-color-alt); border-left: 4px solid var(--rating-color); border-radius: var(--border-radius); padding: 1.5rem; margin-top: 1.5rem; box-shadow: var(--card-shadow); }
-        .important-notes-card h3 { font-size: 1.2em; font-weight: 600; color: var(--text-color); margin-top: 0; margin-bottom: 0.75rem; display: flex; align-items: center; }
-        .important-notes-card h3 i { margin-right: 0.75rem; color: var(--rating-color); }
-        .important-notes-card ul { padding-left: 20px; list-style: disc; color: var(--text-color-subtle); }
-        .agent-script-block { background-color: var(--bg-color-hover); padding: 0.75rem 1rem; border-radius: var(--border-radius); margin-bottom: 0.5rem; border-left: 3px solid var(--primary-color); color: var(--text-color); position: relative; }
-        .agent-script-block i.fa-comment-dots { margin-right: 0.5rem; color: var(--primary-color); }
-        .copy-script-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-color); color: var(--text-color-muted); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.25rem 0.5rem; font-size: 0.75rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; z-index: 1; }
-        .copy-script-btn:hover { opacity: 1; }
-        .agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block) { display: none; }
-        .agent-script-mode-active .step-body > .kb-content > .agent-script-block { display: block !important; margin-bottom: 1rem; }
-        #flowInPlaceEditorContainer { margin-top: 1rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius-lg); padding: 1rem; background-color: var(--bg-color-alt); }
-        #flowQuillEditor { min-height: 300px; }
-        .flow-editor-actions { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .dashboard-stat-card {
+            background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+        .dashboard-stat-card i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+        .dashboard-stat-card .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        .dashboard-stat-card .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-color-muted);
+        }
+        .dashboard-quicklink-card, .dashboard-info-card {
+             background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+        }
+         .dashboard-quicklink-card h3, .dashboard-info-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        .dashboard-quicklink-card ul, .dashboard-info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .dashboard-quicklink-card ul li a, .dashboard-info-card ul li a {
+            display: block;
+            padding: 0.5rem 0;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+         .dashboard-quicklink-card ul li a:hover, .dashboard-info-card ul li a:hover {
+            text-decoration: underline;
+        }
+         .dashboard-info-card ul li {
+            font-size: 0.9rem;
+            color: var(--text-color-subtle);
+            padding: 0.3rem 0;
+         }
+         .dashboard-info-card ul li strong {
+            color: var(--text-color);
+         }
+         .dashboard-info-card ul li .meta {
+            font-size: 0.75rem;
+            display: block;
+            color: var(--text-color-muted);
+         }
+         /* Viewer Dashboard Message */
+        .viewer-dashboard-message .card {
+            text-align: center;
+            padding: 40px 20px;
+            min-height: auto;
+        }
+        .viewer-dashboard-message .card i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        .viewer-dashboard-message .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+        .viewer-dashboard-message .card p {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+            margin-bottom: 0;
+        }
+        .viewer-dashboard-message .card p.subtle-note {
+             font-size: 0.9rem;
+             margin-top: 1rem;
+        }
 
         /* Print Styles */
         @media print {
-            body, .container-fluid { margin: 0; padding: 0; background-color: white !important; color: black !important; font-size: 12pt; }
-            .sidebar, .content-header, .sidebar-footer, footer, .mobile-sidebar-toggle, #toastContainer, .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn), .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"], .flow-controls, .flow-title-bar #flowTopActions, .item-feedback-section, .comments-section, .modal-overlay, .copy-script-btn, .dashboard-overview-container, .search-container, .user-profile, .mark-step-done-btn, .toggle-step-details-btn, #openAddContentBtnInSection { display: none !important; }
-            .content-wrapper { margin-left: 0 !important; padding: 1cm !important; overflow: visible !important; height: auto !important; width: 100% !important; }
+            body, .container-fluid {
+                margin: 0;
+                padding: 0;
+                background-color: white !important;
+                color: black !important;
+                font-size: 12pt;
+            }
+            .sidebar, .content-header, .sidebar-footer, footer,
+            .mobile-sidebar-toggle, #toastContainer,
+            .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn),
+            .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"],
+            .item-feedback-section, .comments-section,
+            .modal-overlay,
+            .copy-script-btn,
+            .dashboard-overview-container,
+            .search-container, .user-profile,
+            #openAddContentBtnInSection,
+            .card-hover-details,
+            .update-banner /* Hide new banner from print */
+            {
+                display: none !important;
+            }
+
+            .content-wrapper {
+                margin-left: 0 !important;
+                padding: 1cm !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: 100% !important;
+            }
             #pageContentArea { padding: 0 !important; }
-            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, .interactive-flow-container { display: block !important; }
-            .card, .interactive-flow-container, .mermaid-diagram-card, .step-card, .content-section-box, .compensation-box { box-shadow: none !important; border: 1px solid #ccc !important; margin-bottom: 0.5cm !important; background-color: white !important; page-break-inside: avoid; }
-            .card *, .interactive-flow-container *, .mermaid-diagram-card *, .step-card *, .content-section-box *, .compensation-box * { color: black !important; background-color: transparent !important; }
-            h1, h2, h3, h4, h5, h6 { color: black !important; }
-            .step-card.expanded > .step-body, .interactive-flow-container .step-card .step-body, .interactive-flow-container .step-card:not(.expanded) .step-body { display: block !important; }
-            .step-card .toggle-step-details-btn i.fa-chevron-down { transform: rotate(180deg); }
-            .important-notes-card, .agent-script-mode-active .step-body > .kb-content > *:not(.agent-script-block) { display: block !important; }
-            .kb-content a { color: #0066cc !important; text-decoration: underline !important; }
-            .kb-content a[href^="http"]::after, .kb-content a[href^="https"]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #555 !important; word-break: break-all; }
-            .kb-content a[href^="#"]::after, .step-link::after { content: ""; }
-            .mermaid-diagram-container { background-color: white !important; }
-            .mermaid-diagram-container svg { background-color: white !important; max-width: 100% !important; height: auto !important; }
-            .mermaid-diagram-container text, .mermaid-diagram-container .edgeLabel, .mermaid-diagram-container .label, .mermaid-diagram-container .messageText { fill: black !important; font-family: 'Arial', sans-serif !important; }
-            .mermaid-diagram-container .actor { stroke: #333 !important; fill: white !important; }
-            .mermaid-diagram-container rect, .mermaid-diagram-container polygon, .mermaid-diagram-container ellipse, .mermaid-diagram-container circle { stroke: #333 !important; fill: #f0f0f0 !important; }
-            .mermaid-diagram-container .cluster rect { fill: #e8e8e8 !important; stroke: #aaa !important; }
-            .mermaid-diagram-container .arrowheadPath { fill: #333 !important; }
-            .mermaid-diagram-container .edgePaths path { stroke: #333 !important; }
-            pre.mermaid { background-color: #f8f8f8 !important; border: 1px solid #ddd !important; padding: 8px !important; }
+            
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
+                display: block !important;
+            }
+            .card, .content-section-box, .compensation-box {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                margin-bottom: 0.5cm !important;
+                background-color: white !important;
+                page-break-inside: avoid;
+            }
+            
+            .card *, .content-section-box *, .compensation-box * {
+                color: black !important;
+                background-color: transparent !important;
+            }
+             h1, h2, h3, h4, h5, h6 { color: black !important; }
+
+            .kb-content a {
+                color: #0066cc !important;
+                text-decoration: underline !important;
+            }
+            .kb-content a[href^="http"]::after, 
+            .kb-content a[href^="https"]::after {
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #555 !important;
+                word-break: break-all;
+            }
+            .kb-content a[href^="#"]::after {
+                content: "";
+            }
         }
 
     </style>
@@ -1072,8 +1211,8 @@
                 <div id="standardSectionContentPlaceholder">
                     <!-- Section content will be injected here -->
                 </div>
-                <div id="itemDetailViewPlaceholder" class="hidden" data-mermaid-rendered="false">
-                    <!-- Item detail view OR Interactive Flow View -->
+                <div id="itemDetailViewPlaceholder" class="hidden">
+                    <!-- Item detail view -->
                 </div>
             </main>
 
@@ -1100,27 +1239,6 @@
         window.location.href = 'login.html';
     }
     // =================================================================================
-
-
-    // --- Initialize Mermaid ---
-    mermaid.initialize({ 
-        startOnLoad: false,
-        theme: 'dark', 
-        fontFamily: 'Inter, sans-serif',
-        flowchart: { 
-            htmlLabels: true,
-            useMaxWidth: true,
-        },
-        themeVariables: {
-            fontSize: '14px', 
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), 
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-        }
-    });
     
     /**
      * @typedef {object} UserProfile
@@ -1209,6 +1327,7 @@
     // --- KB Data ---
     let kbSystemData;
 
+    // --- FIX: Data Persistence ---
     function saveDataToLocalStorage() {
         try {
             localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
@@ -1226,8 +1345,9 @@
             kbSystemData = JSON.parse(savedData);
         } else {
             console.log("No saved data found. Using initial hardcoded data.");
+            // Initial Data Structure
             kbSystemData = {
-                meta: { version: '1.1.0-flow', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+                meta: { version: '1.0.0-beta', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
                 sections: [
                     { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
                     {
@@ -1236,76 +1356,99 @@
                              { 
                                 id: 'sup_flow_compensation', type: 'article', 
                                 title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                                summary: 'Interactive flowchart for handling customer compensation due to order delays based on The Chefz policies.',
+                                summary: 'A comprehensive guide for handling customer compensation due to order delays, based on The Chefz policies.',
                                 content: `
-                                    <ol>
-                                        <li id="sup_flow_step_1">
-                                            <strong>Identify Inquiry Type</strong>
-                                            <p>Ask the customer for their order number and confirm the nature of the inquiry.</p>
-                                            <blockquote>"Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about your order. Could you please provide me with your order number so I can look into it?"</blockquote>
-                                            <p>If the issue is a delay, <a href="#sup_flow_step_2" class="step-link">proceed to Step 2</a>. If it's another issue (e.g., quality), navigate to the relevant article.</p>
-                                        </li>
-                                        <li id="sup_flow_step_2">
-                                            <strong>Assess Delivery Time Exceeded</strong>
-                                            <p>Check the system to see if the official delivery time has been exceeded.</p>
-                                            <ul>
-                                                <li><strong>0-15 minutes delay:</strong> Apologize, provide a new ETA. <a href="#sup_flow_step_4" class="step-link">Go to Step 4</a>.
-                                                    <blockquote>"I sincerely apologize for the slight delay. The new estimated time of arrival is [New ETA]."</blockquote>
-                                                </li>
-                                                <li><strong>More than 15 minutes delay:</strong> Apologize for the significant delay. <a href="#sup_flow_step_3" class="step-link">Go to Step 3</a>.
-                                                    <blockquote>"I'm very sorry for this significant delay. This is not the standard we aim for. Let me check the details to see how we can resolve this."</blockquote>
-                                                </li>
-                                            </ul>
-                                        </li>
-                                        <li id="sup_flow_step_3">
-                                            <strong>Check Order Type & Apply Compensation</strong>
-                                            <p>For delays over 15 minutes, identify if the order is <strong>Fast</strong> or <strong>Scheduled</strong> and apply the correct compensation from the matrix.</p>
-                                            <p><strong>Fast Orders:</strong></p>
-                                            <ul>
-                                                <li>16–30 mins: Delivery Fees</li>
-                                                <li>31–45 mins: Fees + 25% Chef Total</li>
-                                                <li>46–60 mins: Fees + 50% Chef Total</li>
-                                                <li>&gt; 60 mins: Total Order</li>
-                                            </ul>
-                                            <p><strong>Scheduled Orders (>30 mins delay):</strong></p>
-                                            <ul>
-                                                <li>31–60 mins: 50-100% of Total Order</li>
-                                                <li>&gt; 60 mins: Total Order + 50 SAR</li>
-                                            </ul>
-                                            <blockquote>"Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]."</blockquote>
-                                            <p>After determining compensation, <a href="#sup_flow_step_4" class="step-link">proceed to Step 4</a>.</p>
-                                        </li>
-                                        <li id="sup_flow_step_4">
-                                            <strong>Finalize Case & Document</strong>
-                                            <p>This is an internal step. After resolving the customer's issue and confirming any compensation, you must:</p>
-                                            <ul>
-                                                <li>Log a detailed note on the order in the system.</li>
-                                                <li>Record the exact compensation amount and the reason.</li>
-                                                <li>Select the responsible party (Store, Driver, Company) for internal tracking.</li>
-                                            </ul>
-                                            <p>Once documented, <a href="#sup_flow_step_5" class="step-link">proceed to Step 5</a>.</p>
-                                        </li>
-                                        <li id="sup_flow_step_5">
-                                            <strong>Conclude the Call</strong>
-                                            <p>Offer final assistance and thank the customer for their patience.</p>
-                                            <blockquote>"Is there anything else I can help you with today? ... Thank you for your patience and for contacting The Chefz. Have a great day!"</blockquote>
-                                            <p>Ensure all notes and actions are saved before ending the interaction.</p>
-                                        </li>
-                                    </ol>
+                                    <div class="content-section-box">
+                                        <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
+                                        <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                                    </div>
+                                    
+                                    <div class="content-section-box">
+                                        <h3><i class="fas fa-headset"></i> Initial Contact and Inquiry Identification</h3>
+                                        <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                                        <blockquote>
+                                            <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
+                                        </blockquote>
+                                        <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., chef quality), navigate to the relevant knowledge article for that topic.</p>
+                                    </div>
+        
+                                    <div class="content-section-box">
+                                        <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
+                                        <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                                        <ul>
+                                            <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
+                                            <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
+                                        </ul>
+                                        <blockquote>
+                                            <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
+                                        </blockquote>
+                                    </div>
+        
+                                    <div class="content-section-box">
+                                        <h3><i class="fas fa-calculator"></i> Applying the Compensation Matrix</h3>
+                                        <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                                        <div class="compensation-grid">
+                                            <div class="compensation-box fast-order">
+                                                <h4><i class="fas fa-shipping-fast"></i> Fast Orders (&gt; 15 mins)</h4>
+                                                <ul>
+                                                    <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
+                                                    <li><span>31–45 mins</span> <span class="action">Fees + 25% Chef Total</span></li>
+                                                    <li><span>46–60 mins</span> <span class="action">Fees + 50% Chef Total</span></li>
+                                                    <li><span>&gt; 60 mins</span> <span class="action">Total Order</span></li>
+                                                </ul>
+                                            </div>
+                                            <div class="compensation-box scheduled-order">
+                                                <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (&gt; 30 mins)</h4>
+                                                <ul>
+                                                    <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
+                                                    <li><span>&gt; 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <blockquote>
+                                            <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
+                                        </blockquote>
+                                    </div>
+        
+                                    <div class="content-section-box">
+                                        <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
+                                        <p>The agent must finalize the action directly in the company system by:</p>
+                                        <ul>
+                                            <li>Logging the note on the order</li>
+                                            <li>Recording the compensation amount and reason clearly</li>
+                                            <li>Selecting the responsible party (Store, Driver, Company)</li>
+                                        </ul>
+                                    </div>
                                 `,
-                                tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop', 'interactive'],
+                                tags: ['compensation', 'customer service', 'chefz policy', 'sop'],
                                 createdAt: '2024-05-20T10:00:00.000Z',
-                                lastModified: '2024-06-23T11:00:00.000Z',
-                                version: 1.2,
-                                views: 254,
+                                lastModified: '2024-06-22T14:30:00.000Z',
+                                version: 1.1,
+                                views: 183,
+                                comments: [
+                                    { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                                    { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+                                ],
+                                feedback: [
+                                    { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
+                                ]
+                            },
+                            {
+                                id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
+                                title: 'Child Article: Detailed Scenarios for Driver Responsibility',
+                                summary: 'Examples of when a driver is considered responsible for delays.',
+                                content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
+                                tags: ['driver', 'responsibility', 'delay'],
+                                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // ~5 days ago
+                                lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                                views: 78,
                                 comments: [],
                                 feedback: []
-                            },
-                            { id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation', title: 'Child Article: Detailed Scenarios for Driver Responsibility', summary: 'Examples of when a driver is considered responsible for delays.', content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>', tags: ['driver', 'responsibility', 'delay'], createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), views: 78, comments: [], feedback: [] }
+                            }
                         ]
                     },
                     { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                         { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
+                         { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
                     ] }, 
                     { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
                     { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
@@ -1316,7 +1459,7 @@
                     { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
                     { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
                     { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                        { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA[Start] --> B{Is it late?};\nB -->|Yes| C[Apply Compensation];\nB -->|No| D[End];\nC --> D;\n</pre>', views: 312, comments: [], feedback: [] }
+                        { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p>', views: 312, comments: [], feedback: [] }
                     ] }, 
                     { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
                     { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
@@ -1325,7 +1468,9 @@
         }
     }
     
+    // Load data at the very start of the script
     loadDataFromLocalStorage();
+
 
     // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
@@ -1381,17 +1526,12 @@
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
 
+
     let mainQuillEditor;
-    let flowInPlaceQuillEditor;
     /** @type {UserProfile|null} */
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
-
-    let flowState = {
-        isAgentScriptModeActive: localStorage.getItem('infiniBase_agentScriptMode') === 'true',
-        expandedSteps: new Set(),
-    };
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1514,65 +1654,49 @@
         const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
         if (activeLink) activeLink.classList.add('active');
     }
-    
-    async function renderMermaidDiagramsInElement(element) {
-        const mermaidElements = element.querySelectorAll('pre.mermaid');
-        if (mermaidElements.length === 0) return;
-        
-        try {
-            await mermaid.run({ nodes: mermaidElements, suppressErrors: true });
-            element.dataset.mermaidRendered = 'true';
-        } catch (error) {
-            console.error("Mermaid rendering error:", error);
-            mermaidElements.forEach(pre => {
-                const errorDiv = document.createElement('div');
-                errorDiv.style.color = 'red';
-                errorDiv.textContent = 'Error rendering diagram. Check console.';
-                pre.parentNode.insertBefore(errorDiv, pre.nextSibling);
-            });
-        }
-    }
-
 
     // --- Content Display ---
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
-        let ctaText = 'View Details';
-        let ctaLink = `#${sectionData.id}/${item.id}`;
-        let target = '';
-        let itemTypeDisplay = item.type.replace('_', ' ');
+        
+        if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; }
+        else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; }
+        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; }
+        else if (item.type === 'design') { itemIconClass = 'fas fa-palette'; }
+        else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
+        else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
-        if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; itemTypeDisplay = item.tags.includes('interactive') ? 'Interactive Flow' : 'Article';}
-        else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; itemTypeDisplay = 'Case';}
-        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; ctaText = 'Open Link'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Form/Sheet';}
-        else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; ctaText = 'View Design'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Design';}
-        else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
-        else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
+        const isAdmin = currentUser && currentUser.role === 'admin';
+        const viewButton = `<a href="#${sectionData.id}/${item.id}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
+        const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
+        const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
+        
+        const tagsHTML = item.tags && item.tags.length > 0
+            ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
+            : '';
 
         return `
-        <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
-            <div class="card-header-icon">
-                <div class="card-icon-container">
-                    <i class="${itemIconClass}"></i>
+            <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
+                <div class="card-header-icon">
+                    <div class="card-icon-container">
+                        <i class="${itemIconClass}"></i>
+                    </div>
+                    <h3>${escapeHTML(item.title)}</h3>
                 </div>
-                <h3>${escapeHTML(item.title)}</h3>
-            </div>
-            <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
-            <div class="item-meta-info">
-                <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
-                <a href="${escapeHTML(ctaLink)}" ${target ? `target="${target}" rel="noopener noreferrer"` : ''} class="item-cta-link"
-                   data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}">
-                   ${ctaText} <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-        </div>`;
+                ${tagsHTML}
+                <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
+                <div class="card-actions">
+                    ${viewButton}
+                    ${editButton}
+                    ${deleteButton}
+                </div>
+            </div>`;
     }
 
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
@@ -1703,7 +1827,6 @@
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
@@ -1761,6 +1884,69 @@
         return null;
     }
 
+    function trackView(item) {
+        if (!currentUser) return;
+        const viewKey = `view_log_${currentUser.id}_${item.id}`;
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const lastView = localStorage.getItem(viewKey);
+        const now = Date.now();
+
+        if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
+            item.views = (item.views || 0) + 1;
+            saveDataToLocalStorage(); // Persist view count change
+            localStorage.setItem(viewKey, now.toString());
+            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
+            // Update the view count on the page if it's visible
+            const readStatsEl = document.getElementById('readStatsCount');
+            if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
+        } else {
+            console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
+        }
+    }
+
+
+    async function downloadItemAsPDF(itemToDownload) {
+        if (!itemToDownload || !itemToDownload.title) {
+            showToast('Error preparing PDF: Item data is missing.', 'error'); return;
+        }
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        showToast('Generating PDF, please wait...', 'info', 5000);
+
+        const element = document.getElementById('itemDetailViewPlaceholder');
+        if (!element) {
+            showToast('Error preparing PDF: Content area not found.', 'error'); return;
+        }
+        const elementToPrint = element.cloneNode(true);
+        elementToPrint.style.padding = "20px";
+        elementToPrint.style.width = "210mm";
+        elementToPrint.style.backgroundColor = "white";
+        
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.update-banner' ];
+        selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
+        
+        elementToPrint.style.position = 'absolute';
+        elementToPrint.style.left = '-9999px';
+        document.body.appendChild(elementToPrint);
+
+        const opt = {
+            margin: [10, 10, 10, 10], filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, logging: false, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        try {
+            await html2pdf().from(elementToPrint).set(opt).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showToast('Error generating PDF. Check console.', 'error');
+        } finally {
+             document.body.removeChild(elementToPrint);
+        }
+    }
+
     async function displayItemDetail(sectionId, itemId) {
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         const itemData = sectionData?.items?.find(i => i.id === itemId);
@@ -1772,13 +1958,13 @@
             return;
         }
 
+        trackView(itemData); // Track the view for this item
+
         currentOpenItem = { sectionId, itemId, title: itemData.title };
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false';
 
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
-        itemDetailViewPlaceholder.innerHTML = ''; // Clear previous content
 
         let bcHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
@@ -1787,12 +1973,6 @@
         breadcrumbsContainer.innerHTML = bcHTML;
         currentSectionTitleEl.textContent = itemData.title;
 
-        if (itemData.tags && itemData.tags.includes('interactive')) {
-            renderInteractiveFlowContent(itemData, sectionId, itemDetailViewPlaceholder);
-            return; 
-        }
-
-        // --- Standard Article/Case/Policy Rendering ---
         let itemIconClass = 'fas fa-file-alt';
         if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
         else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
@@ -1820,6 +2000,21 @@
         detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
+        
+        const createdAt = new Date(itemData.createdAt);
+        const lastModified = new Date(itemData.lastModified);
+        // Only show update banner if modified significantly after creation (e.g., > 1 minute)
+        if (lastModified.getTime() > createdAt.getTime() + 60000) {
+            const formattedDate = lastModified.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+            detailHTML += `
+                <div class="update-banner">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Last updated on ${formattedDate} (Version ${itemData.version || '1.1'})</span>
+                </div>
+            `;
+        }
 
         detailHTML += `<div class="card">
                     <div class="item-title-area">
@@ -1827,6 +2022,7 @@
                         <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
                     <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr class="title-content-divider">
                     <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
                    </div>`;
@@ -1841,14 +2037,34 @@
                            </div>`;
         }
 
+        detailHTML += `<div class="item-feedback-section">
+                        <h4 id="feedbackPrompt">Was this article helpful?</h4>
+                        <div id="feedbackInteractionContainer">
+                           <div class="rating-prompt">
+                                <div class="rating-buttons" id="ratingButtons">
+                                    <button id="rateYesBtn" data-item-id="${itemId}"><i class="fas fa-thumbs-up"></i> Yes</button>
+                                    <button id="rateNoBtn" data-item-id="${itemId}"><i class="fas fa-thumbs-down"></i> No</button>
+                                </div>
+                            </div>
+                            <form id="negativeFeedbackForm" class="hidden">
+                                <div class="form-group">
+                                    <textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea>
+                                </div>
+                                <button type="submit" class="button">Submit Feedback</button>
+                                <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
+                            </form>
+                        </div>
+                        <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
+                       </div>`;
+        
         detailHTML += `<div class="comments-section">
-                        <h4><i class="fas fa-comments"></i> Comments</h4>
+                        <h4><i class="fas fa-comments"></i> Management Notes</h4>
                         <div class="comment-post-area">
                             <img src="${currentUser.avatar_url}" alt="Your avatar">
                             <div class="comment-input-wrapper">
-                                <textarea id="newCommentText" placeholder="Add a comment..."></textarea>
+                                <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
                                 <div class="comment-post-actions">
-                                    <button id="postCommentBtn" class="button">Post Comment</button>
+                                    <button id="postCommentBtn" class="button">Post Note</button>
                                 </div>
                             </div>
                         </div>
@@ -1857,36 +2073,107 @@
 
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        
-        if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
-             await renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
-        }
-        
         setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId);
     }
     
     function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
         renderComments(itemData, 'commentDisplayAreaForItem'); 
         
+        // Add copy buttons to pre blocks (code)
+        itemDetailViewPlaceholder.querySelectorAll('.kb-content pre').forEach(pre => {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-script-btn';
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            copyBtn.title = 'Copy content';
+            pre.appendChild(copyBtn);
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const textToCopy = pre.querySelector('code')?.innerText || pre.innerText.replace('Copy', '').trim();
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showToast('Content copied!', 'success'))
+                    .catch(err => showToast('Failed to copy.', 'error'));
+            });
+        });
+        
         if (currentUser && currentUser.role === 'admin') {
             const editBtn = document.getElementById('editItemBtn');
             if (editBtn) {
-                editBtn.addEventListener('click', () => openAddContentModal(sectionId, itemData));
+                editBtn.addEventListener('click', () => {
+                    // Call the modal function directly with the full item object, which is more robust.
+                    openAddContentModal(sectionId, itemData);
+                });
             }
-            const deleteBtn = document.getElementById('deleteItemBtn');
-            if(deleteBtn) deleteBtn.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
+            document.getElementById('deleteItemBtn')?.addEventListener('click', () => {
+                window.openDeleteModal(sectionId, itemId, itemData.title);
+            });
         }
 
-        document.getElementById('printItemBtn')?.addEventListener('click', () => window.print());
-        document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => downloadItemAsPDF(itemData));
-        
-        document.getElementById('postCommentBtn')?.addEventListener('click', () => {
+        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
+
+        // Feedback logic
+        const feedbackPrompt = document.getElementById('feedbackPrompt');
+        const rateYesBtn = document.getElementById('rateYesBtn');
+        const rateNoBtn = document.getElementById('rateNoBtn');
+        const ratingButtons = document.getElementById('ratingButtons');
+        const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
+
+        const existingFeedback = itemData.feedback?.find(f => f.userId === currentUser.id);
+        if (existingFeedback) {
+            ratingButtons.innerHTML = 'Thank you for your feedback!';
+        } else {
+            rateYesBtn.addEventListener('click', () => {
+                itemData.feedback = itemData.feedback || [];
+                itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+                saveDataToLocalStorage();
+                ratingButtons.innerHTML = 'Thank you for your feedback!';
+                showToast('Feedback received!', 'success');
+            });
+
+            rateNoBtn.addEventListener('click', () => {
+                ratingButtons.classList.add('hidden');
+                negativeFeedbackForm.classList.remove('hidden');
+                negativeFeedbackForm.querySelector('textarea').focus();
+                feedbackPrompt.textContent = 'Please tell us how we can improve:';
+            });
+            
+            document.getElementById('cancelNegativeFeedbackBtn').addEventListener('click', () => {
+                negativeFeedbackForm.classList.add('hidden');
+                ratingButtons.classList.remove('hidden');
+                feedbackPrompt.textContent = 'Was this article helpful?';
+            });
+
+            negativeFeedbackForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const reason = document.getElementById('feedbackReason').value.trim();
+                if (reason) {
+                    itemData.feedback = itemData.feedback || [];
+                    itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                    saveDataToLocalStorage();
+                    document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
+                    showToast('Feedback received, we will review it.', 'info');
+                } else {
+                    showToast('Please provide a reason.', 'error');
+                }
+            });
+        }
+
+
+        // Comments logic
+        document.getElementById('postCommentBtn').addEventListener('click', () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
-            if (!commentText) { showToast('Please enter a comment.', 'error'); return; }
+            if (!commentText) {
+                showToast('Please enter a note.', 'error');
+                return;
+            }
             if (!itemData.comments) itemData.comments = [];
             itemData.comments.push({
-                id: `cmt_${Date.now()}`, authorId: currentUser.id, authorName: currentUser.name, text: commentText, timestamp: new Date().toISOString()
+                id: `cmt_${Date.now()}`,
+                authorId: currentUser.id,
+                authorName: currentUser.name,
+                text: commentText, 
+                timestamp: new Date().toISOString()
             });
             saveDataToLocalStorage();
             renderComments(itemData, 'commentDisplayAreaForItem'); 
@@ -1899,13 +2186,13 @@
         if (!container) return;
 
         if (!itemData.comments || itemData.comments.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No comments yet.</p>`;
+            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No notes yet. Be the first to add one!</p>`;
             return;
         }
 
         let commentsHTML = '';
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; 
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
 
         sortedComments.forEach(comment => {
             if(!userAvatars[comment.authorId]) {
@@ -1929,214 +2216,77 @@
     }
 
 
-    function renderInteractiveFlowContent(itemData, sectionId, container) {
-        container.innerHTML = '';
-        const flowContainer = document.createElement('div');
-        flowContainer.className = 'interactive-flow-container';
-        if (flowState.isAgentScriptModeActive) {
-            flowContainer.classList.add('agent-script-mode-active');
+    const contentTemplates = {
+        standard_article: {
+            type: 'article',
+            titlePrefix: 'New Article: ',
+            summary: 'A general article about [topic].',
+            content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here. You can use lists, paragraphs, etc.]</p><ul><li>Point 1</li><li>Point 2</li></ul><h2>Conclusion</h2><p>[Summarize the key takeaways.]</p>',
+            tags: ['article']
+        },
+        troubleshooting_guide: {
+            type: 'case', 
+            titlePrefix: 'Case: Troubleshooting ',
+            summary: 'A step-by-step guide to resolve [issue].',
+            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Symptoms</h3><ul><li>[Symptom 1]</li><li>[Symptom 2]</li></ul><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved.]</p>',
+            tags: ['troubleshooting', 'guide', 'case']
+        },
+        policy_document: {
+            type: 'policy',
+            titlePrefix: 'Policy: ',
+            summary: 'Official policy regarding [subject matter].',
+            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p>',
+            tags: ['policy', 'official']
+        },
+         blank: {
+            type: 'article', 
+            titlePrefix: '',
+            summary: '',
+            content: '<p><br></p>', 
+            tags: []
         }
+    };
+
+    function applyTemplate(templateKey) {
+        const template = contentTemplates[templateKey];
+        if (!template) return;
+
+        contentTypeSelect.value = template.type;
+        document.getElementById('contentTitle').value = template.titlePrefix;
+        document.getElementById('contentSummary').value = template.summary;
+        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
+        contentTagsInput.value = template.tags.join(', ');
         
-        const titleBar = document.createElement('div');
-        titleBar.className = 'flow-title-bar';
-        let titleBarHtml = `<h2><i class="fas fa-project-diagram"></i> ${escapeHTML(itemData.title)}</h2>`;
-        if (currentUser && currentUser.role === 'admin') {
-             titleBarHtml += `<div id="flowTopActions">
-                                <button id="editFlowContentBtn" class="button button-secondary"><i class="fas fa-edit"></i> Edit Flow Content</button>
-                             </div>`;
-        }
-        titleBar.innerHTML = titleBarHtml;
-        flowContainer.appendChild(titleBar);
-        
-        // NEW: Add "Last Updated" text
-        const createdAt = new Date(itemData.createdAt);
-        const lastModified = new Date(itemData.lastModified);
-        if (lastModified.getTime() > createdAt.getTime() + 60000) { // Only show if modified > 1 min after creation
-            const updateInfo = document.createElement('div');
-            updateInfo.className = 'flow-update-info';
-            updateInfo.innerHTML = `Last Updated: ${lastModified.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
-            flowContainer.appendChild(updateInfo);
-        }
-
-        const controlsBar = document.createElement('div');
-        controlsBar.className = 'flow-controls';
-        controlsBar.innerHTML = `
-            <button id="expandAllStepsBtn" class="button button-secondary"><i class="fas fa-expand-arrows-alt"></i> Expand All</button>
-            <button id="collapseAllStepsBtn" class="button button-secondary"><i class="fas fa-compress-arrows-alt"></i> Collapse All</button>
-            <button id="toggleAgentScriptModeBtn" class="button button-secondary">
-                <i class="fas fa-comment-dots"></i> <span id="agentScriptModeBtnText">${flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View'}</span>
-            </button>
-            <button id="reportFlowFeedbackBtn" class="button button-secondary" data-item-id="${itemData.id}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-flag"></i> Report Feedback</button>
-        `;
-        flowContainer.appendChild(controlsBar);
-        
-        const flowInPlaceEditorDiv = document.createElement('div');
-        flowInPlaceEditorDiv.id = 'flowInPlaceEditorContainer';
-        flowInPlaceEditorDiv.classList.add('hidden');
-        flowInPlaceEditorDiv.innerHTML = `
-            <h3 style="margin-top:0; margin-bottom:1rem; font-weight:600;">Editing Flow Content:</h3>
-            <div id="flowQuillEditor"></div>
-            <div class="flow-editor-actions">
-                <button id="saveFlowChangesBtn" class="button"><i class="fas fa-save"></i> Save Flow Changes</button>
-                <button id="cancelFlowEditBtn" class="button-secondary"><i class="fas fa-times"></i> Cancel Edit</button>
-            </div>
-        `;
-        flowContainer.appendChild(flowInPlaceEditorDiv);
-
-        const stepsArea = document.createElement('div');
-        stepsArea.className = 'flow-steps-area';
-        flowContainer.appendChild(stepsArea);
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(itemData.content, 'text/html');
-        const steps = Array.from(doc.querySelectorAll('body > ol > li'));
-        
-        const doneStepsKey = `infiniBase_doneSteps_${itemData.id}`;
-        let doneSteps = JSON.parse(localStorage.getItem(doneStepsKey) || '{}');
-
-        steps.forEach((stepLi, index) => {
-            const stepCard = document.createElement('div');
-            stepCard.className = 'step-card';
-            stepCard.id = stepLi.id || `${itemData.id}_auto_step_${index}`;
-            const stepDataId = `step_${index}`;
-            stepCard.dataset.stepDataId = stepDataId;
-
-            if (flowState.expandedSteps.has(stepCard.id)) {
-                stepCard.classList.add('expanded');
-            }
-
-            const stepTitleText = stepLi.querySelector('strong')?.textContent.trim() || `Step ${index + 1}`;
-
-            const stepHeader = document.createElement('div');
-            stepHeader.className = 'step-header';
-            stepHeader.innerHTML = `
-                <div class="step-header-main">
-                    <span class="step-number">Step ${index + 1}:</span>
-                    <span class="step-title">${escapeHTML(stepTitleText)}</span>
-                </div>
-                <div class="step-header-actions">
-                    <button class="mark-step-done-btn ${doneSteps[stepDataId] ? 'done' : ''}" data-step-data-id="${stepDataId}">
-                        <i class="fas ${doneSteps[stepDataId] ? 'fa-check-circle' : 'fa-circle'}"></i> 
-                        <span class="mark-step-text">${doneSteps[stepDataId] ? 'Done' : 'Mark Done'}</span>
-                    </button>
-                    <button class="toggle-step-details-btn"><i class="fas fa-chevron-down"></i></button>
-                </div>
-            `;
-
-            const stepBody = document.createElement('div');
-            stepBody.className = 'step-body';
-            const cleanStepContent = stepLi.cloneNode(true);
-            cleanStepContent.querySelectorAll('blockquote').forEach(bq => {
-                bq.classList.add('agent-script-block');
-                bq.innerHTML = `<i class="fas fa-comment-dots"></i> ${bq.innerHTML}`;
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'copy-script-btn';
-                copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-                copyBtn.onclick = e => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(bq.textContent.trim()).then(() => showToast('Script copied!', 'success'));
-                };
-                bq.appendChild(copyBtn);
-            });
-            stepBody.innerHTML = `<div class="kb-content">${cleanStepContent.innerHTML}</div>`;
-
-            stepCard.append(stepHeader, stepBody);
-            stepsArea.appendChild(stepCard);
-
-            stepHeader.addEventListener('click', e => {
-                if (e.target.closest('.mark-step-done-btn, .copy-script-btn')) return;
-                stepCard.classList.toggle('expanded');
-                stepCard.classList.contains('expanded') ? flowState.expandedSteps.add(stepCard.id) : flowState.expandedSteps.delete(stepCard.id);
-            });
-            
-            markDoneBtn = stepHeader.querySelector('.mark-step-done-btn');
-            markDoneBtn.addEventListener('click', function() {
-                doneSteps[this.dataset.stepDataId] = !doneSteps[this.dataset.stepDataId];
-                localStorage.setItem(doneStepsKey, JSON.stringify(doneSteps));
-                this.classList.toggle('done', doneSteps[this.dataset.stepDataId]);
-                this.querySelector('i').className = `fas ${doneSteps[this.dataset.stepDataId] ? 'fa-check-circle' : 'fa-circle'}`;
-                this.querySelector('.mark-step-text').textContent = doneSteps[this.dataset.stepDataId] ? 'Done' : 'Mark Done';
-            });
-
-            stepBody.querySelectorAll('a.step-link').forEach(link => {
-                link.addEventListener('click', e => {
-                    e.preventDefault();
-                    const targetEl = document.getElementById(link.getAttribute('href').substring(1));
-                    if (targetEl) {
-                        if (!targetEl.classList.contains('expanded')) targetEl.querySelector('.step-header').click();
-                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        targetEl.style.outline = '3px solid var(--primary-color)';
-                        setTimeout(() => targetEl.style.outline = 'none', 1500);
-                    }
-                });
-            });
-        });
-
-        container.appendChild(flowContainer);
-
-        // Event listeners for controls
-        document.getElementById('expandAllStepsBtn').addEventListener('click', () => stepsArea.querySelectorAll('.step-card:not(.expanded) .step-header').forEach(h => h.click()));
-        document.getElementById('collapseAllStepsBtn').addEventListener('click', () => stepsArea.querySelectorAll('.step-card.expanded .step-header').forEach(h => h.click()));
-        document.getElementById('toggleAgentScriptModeBtn').addEventListener('click', () => {
-            flowState.isAgentScriptModeActive = !flowState.isAgentScriptModeActive;
-            localStorage.setItem('infiniBase_agentScriptMode', flowState.isAgentScriptModeActive);
-            flowContainer.classList.toggle('agent-script-mode-active', flowState.isAgentScriptModeActive);
-            document.getElementById('agentScriptModeBtnText').textContent = flowState.isAgentScriptModeActive ? 'Show Full Detail' : 'Agent Script View';
-        });
-        document.getElementById('reportFlowFeedbackBtn').addEventListener('click', e => openReportFeedbackModal(e.currentTarget.dataset.itemId, e.currentTarget.dataset.itemTitle));
-        
-        // Admin edit controls
-        const editFlowBtn = document.getElementById('editFlowContentBtn');
-        if (editFlowBtn) {
-            editFlowBtn.addEventListener('click', () => {
-                stepsArea.classList.add('hidden');
-                controlsBar.classList.add('hidden');
-                flowInPlaceEditorDiv.classList.remove('hidden');
-                if (!flowInPlaceQuillEditor) {
-                    flowInPlaceQuillEditor = new Quill('#flowQuillEditor', { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'blockquote']] } });
-                }
-                flowInPlaceQuillEditor.root.innerHTML = itemData.content;
-            });
-        }
-
-        document.getElementById('saveFlowChangesBtn').addEventListener('click', () => {
-            const updatedHtml = flowInPlaceQuillEditor.root.innerHTML;
-            itemData.content = updatedHtml;
-            itemData.lastModified = new Date().toISOString(); // Update modification date!
-            saveDataToLocalStorage();
-            showToast('Flow content updated!', 'success');
-            renderInteractiveFlowContent(itemData, sectionId, container);
-        });
-
-        document.getElementById('cancelFlowEditBtn').addEventListener('click', () => {
-            flowInPlaceEditorDiv.classList.add('hidden');
-            stepsArea.classList.remove('hidden');
-            controlsBar.classList.remove('hidden');
-        });
+        addContentForm.classList.remove('hidden');
+        templateSelectionContainer.classList.add('hidden');
+        contentTypeSelect.dispatchEvent(new Event('change')); 
+        document.getElementById('contentTitle').focus();
     }
+
 
     // --- Add/Edit Content Modal Logic ---
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
-        addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: [
-                        [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
                         [{ 'color': [] }, { 'background': [] }],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'image', 'video', 'blockquote', 'code-block'], ['clean']
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
+                        ['clean']
                     ]
                 },
                 placeholder: 'Enter detailed content here...'
             });
         }
-        mainQuillEditor.root.innerHTML = '<p><br></p>'; 
-
+        
         if (itemToEdit) {
+            // Editing an item: pre-fill the form.
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
@@ -2144,7 +2294,7 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             
-            const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
+            let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
             mainQuillEditor.root.innerHTML = contentToEdit;
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
@@ -2152,6 +2302,10 @@
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
+            // For a new item, reset everything and show templates.
+            addContentForm.reset();
+            editingItemIdInput.value = ""; 
+            mainQuillEditor.root.innerHTML = '<p><br></p>'; 
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
@@ -2165,6 +2319,7 @@
         button.addEventListener('click', () => applyTemplate(button.dataset.template));
     });
 
+
     function closeAddContentModal() {
         addContentModalOverlay.classList.add('hidden');
         templateSelectionContainer.classList.add('hidden'); 
@@ -2176,7 +2331,8 @@
         const type = e.target.value;
         contentUrlContainer.classList.toggle('hidden', !['form_sheet', 'design'].includes(type));
         contentDetailContainer.classList.toggle('hidden', ['form_sheet', 'design'].includes(type));
-        contentDetailLabel.textContent = (type === 'case') ? 'Case Details / Resolution Steps' : 'Content';
+        if (type === 'case') contentDetailLabel.textContent = 'Case Details / Resolution Steps';
+        else contentDetailLabel.textContent = 'Content';
     });
 
     addContentForm.addEventListener('submit', (e) => {
@@ -2199,10 +2355,11 @@
         let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
         if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
 
-        if (itemData) {
+        if (itemData) { // Editing existing item
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
-        } else {
+            itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
+        } else { // Creating new item
             const now = new Date().toISOString();
             itemData = {
                 ...commonData, id: `${sectionId}_item_${Date.now()}`,
@@ -2211,6 +2368,7 @@
             };
             if (!section.items) section.items = [];
             section.items.push(itemData);
+            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
         }
 
         if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
@@ -2225,37 +2383,32 @@
         closeAddContentModal();
         
         if (editingId) {
+            // Force a re-render of the detail page to show changes
             window.location.hash = `#${sectionId}/${editingId}`;
             handleNavigation();
         } else {
             handleNavigation();
         }
     });
+    
+    // --- Global Modal Triggers ---
+    window.openEditModal = (sectionId, itemId) => {
+        const section = kbSystemData.sections.find(s => s.id === sectionId);
+        const item = section?.items.find(i => i.id === itemId);
+        if (item) openAddContentModal(sectionId, item);
+    };
+    window.openDeleteModal = (sectionId, itemId, itemTitle) => {
+        openDeleteConfirmModal(sectionId, itemId, itemTitle);
+    };
+
 
     // --- Other Modals Logic (Delete, Feedback, etc) ---
-    function openReportFeedbackModal(itemId, itemTitle) {
-        if (!currentUser) { showToast('Please login to report feedback.', 'error'); return; }
-        reportFeedbackForm.reset();
-        feedbackItemIdInput.value = itemId;
-        feedbackItemTitleDisplay.textContent = itemTitle; 
-        feedbackUserNameInput.value = currentUser.name || '';
-        feedbackUserEmailInput.value = currentUser.email || '';
-        reportFeedbackModalOverlay.classList.remove('hidden');
-    }
-
-    reportFeedbackForm.addEventListener('submit', e => {
-        e.preventDefault();
-        showToast('Feedback submitted. Thank you!', 'success');
-        reportFeedbackModalOverlay.classList.add('hidden');
-    });
-
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
         confirmDeleteItemBtn.dataset.sectionId = sectionId;
         confirmDeleteItemBtn.dataset.itemId = itemId;
         deleteConfirmModalOverlay.classList.remove('hidden');
     }
-
     confirmDeleteItemBtn.addEventListener('click', () => {
         const sectionId = confirmDeleteItemBtn.dataset.sectionId;
         const itemId = confirmDeleteItemBtn.dataset.itemId;
@@ -2263,19 +2416,37 @@
         if (section?.items) {
             const itemIndex = section.items.findIndex(item => item.id === itemId);
             if (itemIndex > -1) {
+                const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
                 saveDataToLocalStorage();
-                showToast(`Item deleted.`, 'success');
+
+                const cardToRemove = document.querySelector(`.card[data-item-id="${itemId}"]`);
+                if (cardToRemove) {
+                    cardToRemove.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    cardToRemove.style.transform = 'scale(0.95)';
+                    cardToRemove.style.opacity = '0';
+                    setTimeout(() => cardToRemove.remove(), 300);
+                }
+
+                showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
-                window.location.hash = `#${sectionId}`;
+                
+                if (window.location.hash.includes('/')) {
+                    window.location.hash = `#${sectionId}`;
+                }
             }
         }
     });
+
+    closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
+    cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     
-    // --- Global Search ---
+    // Global Search
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
-        if (query.length < 2) { searchResultsContainer.classList.add('hidden'); return; }
+        if (query.length < 2) {
+            searchResultsContainer.classList.add('hidden'); return;
+        }
         const results = [];
         kbSystemData.sections.forEach(s => {
             s.items?.forEach(i => {
@@ -2284,15 +2455,25 @@
                 }
             });
         });
-        searchResultsContainer.innerHTML = results.length ? results.slice(0, 7).map(r => `
-            <a href="#${r.sectionId}/${r.id}" onclick="document.getElementById('searchResultsContainer').classList.add('hidden'); document.getElementById('globalSearchInput').value = '';">
-                <div style="font-weight: bold;">${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.sectionName)})</span></div>
-                <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary), 70), query)}</p>
-            </a>
-        `).join('') : `<div style="padding: 10px; color: var(--text-color-muted);">No results found.</div>`;
-        searchResultsContainer.classList.remove('hidden');
+        searchResultsContainer.innerHTML = '';
+        if (results.length) {
+            results.slice(0, 7).forEach(r => {
+                const linkEl = document.createElement('a');
+                linkEl.href = `#${r.sectionId}/${r.id}`;
+                linkEl.addEventListener('click', () => { searchResultsContainer.classList.add('hidden'); globalSearchInput.value = ''; });
+                linkEl.innerHTML = `<div style="font-weight: bold;">${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.sectionName)})</span></div>
+                                    <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary), 70), query)}</p>`;
+                searchResultsContainer.appendChild(linkEl);
+            });
+            searchResultsContainer.classList.remove('hidden');
+        } else {
+            searchResultsContainer.innerHTML = `<div style="padding: 10px; color: var(--text-color-muted);">No results found.</div>`;
+            searchResultsContainer.classList.remove('hidden');
+        }
     });
-    document.addEventListener('click', e => { if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden'); });
+    document.addEventListener('click', e => {
+        if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+    });
     
     // --- Routing and Initialization ---
     function handleNavigation() {
@@ -2301,23 +2482,23 @@
         const [sectionId, itemId] = hash.split('/');
         
         highlightSidebarLink(sectionId);
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false';
 
         if (sectionId === 'home') displayDashboard();
         else if (itemId) displayItemDetail(sectionId, itemId);
-        else displaySectionContent(sectionId);
-        
+        else if (sectionId) displaySectionContent(sectionId);
+        else displayDashboard(); 
+
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
 
     async function initializeApp() {
         currentUser = await Auth.getCurrentUserProfile(); 
-        if (!currentUser) { console.error("Initialization aborted: User profile is null."); return; }
+        if (!currentUser) return;
 
-        if (userNameDisplayHeader) userNameDisplayHeader.textContent = currentUser.name;
-        if (userAvatar) userAvatar.src = currentUser.avatar_url;
-        if (footerKbVersion) footerKbVersion.textContent = kbSystemData.meta.version;
-        if (currentUserRoleSpan) currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        userNameDisplayHeader.textContent = currentUser.name;
+        userAvatar.src = currentUser.avatar_url;
+        footerKbVersion.textContent = kbSystemData.meta.version;
+        currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
         applyPermanentDarkMode(); 
@@ -2325,14 +2506,13 @@
 
         window.addEventListener('hashchange', handleNavigation);
         
-        // Modal Event Listeners
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
-        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
+        closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         confirmLogoutBtn.addEventListener('click', Auth.logout);
         
-        [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
-        [closeReportFeedbackModalBtn, cancelFeedbackBtn].forEach(btn => btn.addEventListener('click', () => reportFeedbackModalOverlay.classList.add('hidden')));
-        [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
+        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
         
         if (localStorage.getItem('justLoggedIn') === 'true') {
             showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
