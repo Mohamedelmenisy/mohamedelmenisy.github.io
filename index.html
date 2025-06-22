@@ -278,7 +278,8 @@
             display: flex;
             flex-direction: column; 
             min-height: 150px; 
-            position: relative;
+            position: relative; /* For hover tooltip positioning */
+            overflow: visible; /* Allow tooltip to show */
         }
         .card:hover {
             transform: translateY(-4px);
@@ -309,13 +310,13 @@
             padding-top: 0.75rem;
             border-top: 1px solid var(--border-color);
         }
-        
-        .card-actions { display: flex; gap: 0.5rem; }
-        .button.button-small { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-        .button.button-small i { margin-right: 0.4rem; }
-        .button.button-small.icon-only { padding: 0.4rem; }
-        .button.button-small.icon-only i { margin-right: 0; }
-
+        .card .item-cta-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500; 
+            font-size: 0.875rem;
+        }
+        .card .item-cta-link:hover { text-decoration: underline; color: var(--primary-color-hover); }
         .item-type-badge {
             font-size: 0.75rem; 
             padding: 0.25rem 0.75rem; 
@@ -333,6 +334,52 @@
             color: var(--text-color-subtle);
             display: inline-block;
             margin: 0 5px 5px 0; /* LTR */
+        }
+
+        /* Card Hover Tooltip/Menu - New Style */
+        .card-hover-details {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color-darker);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+            padding: 0.75rem;
+            z-index: 10;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card:hover .card-hover-details {
+            display: block;
+        }
+        .card-hover-details h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-color-muted);
+            letter-spacing: 0.05em;
+        }
+        .card-hover-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .card-hover-details ul li {
+            font-size: 0.875rem;
+            padding: 0.25rem 0;
+            color: var(--text-color);
+        }
+        .card-hover-details ul li i {
+            margin-right: 0.5rem;
+            color: var(--primary-color);
         }
 
         .button, button {
@@ -602,16 +649,6 @@
         .kb-content strong { font-weight: bold; }
         .kb-content em { font-style: italic; }
         .kb-content a { color: var(--primary-color); text-decoration: underline; }
-        /* Image styling fix */
-        .kb-content img {
-            max-width: 100%;
-            height: auto;
-            max-height: 350px; /* Control max height */
-            object-fit: cover; /* Prevent stretching */
-            border-radius: var(--border-radius);
-            margin-top: 1rem;
-            margin-bottom: 1rem;
-        }
         .kb-content pre {
             background-color: var(--bg-color);
             padding: 10px;
@@ -621,6 +658,7 @@
             word-wrap: break-word;
             border: 1px solid var(--border-color);
             color: var(--text-color); /* Ensure pre content is visible */
+            position: relative; /* For copy button */
         }
         .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
@@ -658,60 +696,6 @@
             z-index: 1;
         }
         .copy-script-btn:hover { opacity: 1; }
-        
-        /* New: Compensation Matrix Styling */
-        .compensation-matrix-container {
-            display: flex;
-            gap: 1.5rem;
-            margin: 1.5rem 0;
-            flex-wrap: wrap; /* For responsiveness */
-        }
-        .compensation-box {
-            flex: 1;
-            min-width: 280px;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color-darker);
-            border-radius: var(--border-radius-lg);
-            padding: 1.5rem;
-        }
-        .compensation-box h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-            display: flex;
-            align-items: center;
-        }
-        .compensation-box h3 i {
-            margin-right: 0.75rem;
-            font-size: 1.5rem;
-        }
-        .compensation-box.fast-order h3 i { color: #3b82f6; } /* Blue */
-        .compensation-box.scheduled-order h3 i { color: #16a34a; } /* Green */
-
-        .compensation-box .delay-condition {
-            font-size: 0.8rem;
-            color: var(--text-color-muted);
-            margin-bottom: 1rem;
-            font-style: italic;
-        }
-        .compensation-box ul {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-        .compensation-box ul li {
-            font-size: 0.9rem;
-            padding: 0.4rem 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .compensation-box ul li:last-child {
-            border-bottom: none;
-        }
-        .compensation-box ul li strong {
-            color: var(--primary-color);
-        }
 
         mark {
             padding: 0.1em 0.2em; border-radius: 0.2em; font-weight: bold;
@@ -800,6 +784,79 @@
             stroke: var(--primary-color) !important;
         }
 
+        /* NEW: Styles for improved knowledge article view */
+        .update-banner {
+            background-color: var(--bg-color);
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .update-banner i {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        .content-section-box {
+            background-color: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .content-section-box h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-color);
+        }
+        .compensation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .compensation-box {
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color-darker);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+        }
+        .compensation-box h4 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .compensation-box.fast-order h4 { color: #f59e0b; }
+        .compensation-box.scheduled-order h4 { color: #38bdf8; }
+        .compensation-box ul { list-style: none; padding: 0; margin: 0; }
+        .compensation-box ul li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .compensation-box ul li:last-child { border-bottom: none; }
+        .compensation-box ul li span:first-child { font-weight: 500; color: var(--text-color-subtle); }
+        .compensation-box ul li .action { font-weight: 600; text-align: right; }
+
 
         /* Item Detail View Specific */
         #itemDetailViewPlaceholder .item-title-area {
@@ -816,8 +873,8 @@
         #itemDetailViewPlaceholder .kb-content ul { list-style-type: disc; }
         #itemDetailViewPlaceholder .child-items-list { list-style-type: none; padding-left: 0; }
         #itemDetailViewPlaceholder .child-items-list li { margin-bottom: 0.5rem; }
-        #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; display: inline-block; padding: 0.25rem 0.5rem; border-radius: var(--border-radius); transition: background-color 0.2s, text-decoration 0.2s;}
-        #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: none; background-color: var(--bg-color-hover); }
+        #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; }
+        #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: underline; }
         .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
         
         .item-feedback-section { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); background-color: var(--bg-color); }
@@ -826,12 +883,12 @@
         .rating-prompt > span { font-weight: 500; }
         .rating-buttons button { background: none; border: 1px solid var(--border-color); color: var(--text-color-muted); padding: 0.5rem 0.75rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s; }
         .rating-buttons button:hover { border-color: var(--rating-color); color: var(--rating-color); background-color: rgba(251, 191, 36, 0.1); }
-        .rating-buttons button.active.yes { border-color: var(--yes-color); color: var(--yes-color); background-color: rgba(34, 197, 94, 0.1); }
-        .rating-buttons button.active.no { border-color: var(--no-color); color: var(--no-color); background-color: rgba(239, 68, 68, 0.1); }
+        .rating-buttons button.active, .rating-buttons button:disabled { cursor: not-allowed; opacity: 0.7; }
+        .rating-buttons button.yes { border-color: var(--yes-color); color: var(--yes-color); background-color: rgba(34, 197, 94, 0.1); }
+        .rating-buttons button.no { border-color: var(--no-color); color: var(--no-color); background-color: rgba(239, 68, 68, 0.1); }
         .rating-buttons button i { margin-right: 0.5rem; }
         .read-stats { font-size: 0.875rem; color: var(--text-color-muted); margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
         #negativeFeedbackForm { margin-top: 1rem; }
-        #negativeFeedbackForm .form-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
         
         /* New Comments Section Style */
         .comments-section { margin-top: 2rem; }
@@ -995,7 +1052,8 @@
             .dashboard-overview-container,
             .search-container, .user-profile,
             #openAddContentBtnInSection,
-            .card-hover-details
+            .card-hover-details,
+            .update-banner /* Hide new banner from print */
             {
                 display: none !important;
             }
@@ -1012,7 +1070,7 @@
             #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
                 display: block !important;
             }
-            .card, .mermaid-diagram-card {
+            .card, .mermaid-diagram-card, .content-section-box, .compensation-box {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
                 margin-bottom: 0.5cm !important;
@@ -1020,7 +1078,7 @@
                 page-break-inside: avoid;
             }
             
-            .card *, .mermaid-diagram-card * {
+            .card *, .mermaid-diagram-card *, .content-section-box *, .compensation-box * {
                 color: black !important;
                 background-color: transparent !important;
             }
@@ -1435,8 +1493,8 @@
     };
 
     // --- KB Data ---
-    const defaultKbSystemData = {
-        meta: { version: '1.0.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null, editsThisWeek: 0 }, 
+    let kbSystemData = {
+        meta: { version: '1.0.0-beta', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1447,63 +1505,116 @@
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
                         content: `
-                            <h2>Understanding the Compensation Policy</h2>
-                            <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
-                            
-                            <h2>Initial Contact and Inquiry Identification</h2>
-                            <p>When a customer contacts support regarding a late order, the primary action is to acknowledge their concern and verify the order details.</p>
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
-                            </blockquote>
-                            <p>Once the order is located, confirm the nature of the inquiry. If it pertains to a delay, proceed to the following sections. For other issues (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
-
-                            <h2>Assessing the Delay and Order Type</h2>
-                            <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It is crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
-                            <ul>
-                                <li><strong>Delay of 0-15 minutes:</strong> The order is considered slightly delayed. An apology and a new, realistic ETA should be provided. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
-                                <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach to compensation is required.</li>
-                            </ul>
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
-                            </blockquote>
-
-                            <h2>Applying the Compensation Matrix</h2>
-                            <p>Based on the delay duration and order type, the official compensation policy is to be applied. Agent discretion may be used within the defined limits.</p>
-                            <div class="compensation-matrix-container">
-                                <div class="compensation-box fast-order">
-                                    <h3><i class="fas fa-shipping-fast"></i> FAST Orders</h3>
-                                    <p class="delay-condition">(delay > 15 mins)</p>
-                                    <ul>
-                                        <li><strong>16–30 mins:</strong> Compensate delivery fees.</li>
-                                        <li><strong>31–45 mins:</strong> Compensate delivery fees + 25% of food value.</li>
-                                        <li><strong>46–60 mins:</strong> Compensate delivery fees + 50% of food value.</li>
-                                        <li><strong>&gt; 60 mins:</strong> Compensate full order value (delivery + food).</li>
-                                    </ul>
-                                </div>
-                                <div class="compensation-box scheduled-order">
-                                    <h3><i class="fas fa-calendar-alt"></i> SCHEDULED Orders</h3>
-                                    <p class="delay-condition">(delay > 30 mins)</p>
-                                    <ul>
-                                        <li><strong>31–60 mins:</strong> Compensate 50-100% of total order value (agent discretion).</li>
-                                        <li><strong>&gt; 60 mins:</strong> Compensate full order value + 50 SAR goodwill credit.</li>
-                                    </ul>
-                                </div>
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
+                                <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                                <img src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80" alt="Customer service agent at work" style="width:100%; border-radius: var(--border-radius); margin-bottom: 1rem; margin-top: 1rem;">
                             </div>
                             
-                            <blockquote>
-                                <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
-                            </blockquote>
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-headset"></i> Step 1: Initial Contact and Inquiry Identification</h3>
+                                <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
+                                </blockquote>
+                                <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
+                            </div>
 
-                            <h2>Internal Documentation and Conclusion</h2>
-                            <p>After informing the customer, it is mandatory to document the incident in the system. This includes the reason for the delay (e.g., Store, Driver, System) and the compensation amount provided. Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-clock"></i> Step 2: Assessing the Delay and Order Type</h3>
+                                <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                                <ul>
+                                    <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
+                                    <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
+                                </ul>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
+                                </blockquote>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-calculator"></i> Step 3: Applying the Compensation Matrix</h3>
+                                <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                                <div class="compensation-grid">
+                                    <div class="compensation-box fast-order">
+                                        <h4><i class="fas fa-shipping-fast"></i> Fast Orders (> 15 mins)</h4>
+                                        <ul>
+                                            <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
+                                            <li><span>31–45 mins</span> <span class="action">Fees + 25% Food</span></li>
+                                            <li><span>46–60 mins</span> <span class="action">Fees + 50% Food</span></li>
+                                            <li><span>&gt; 60 mins</span> <span class="action">Full Order Value</span></li>
+                                        </ul>
+                                    </div>
+                                    <div class="compensation-box scheduled-order">
+                                        <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (> 30 mins)</h4>
+                                        <ul>
+                                            <li><span>31–60 mins</span> <span class="action">50-100% of Value</span></li>
+                                            <li><span>&gt; 60 mins</span> <span class="action">Full Value + 50 SAR</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
+                                </blockquote>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-clipboard-check"></i> Step 4: Internal Documentation and Conclusion</h3>
+                                <p>After informing the customer, it is mandatory to document the incident in the system. This includes:</p>
+                                <ol>
+                                    <li>The reason for the delay (e.g., Store, Driver, System).</li>
+                                    <li>The compensation amount and type provided.</li>
+                                    <li>A brief summary of the customer interaction.</li>
+                                </ol>
+                                <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
+                            </div>
+                            
+                            <div class="mermaid-diagram-card">
+                                <h3><i class="fas fa-project-diagram"></i> Process Flow Summary</h3>
+                                <div class="mermaid-diagram-container">
+                                    <pre class="mermaid">
+                                        graph TD
+                                            A[Customer reports delay] --> B{Identify Order Type};
+                                            B --> C[Fast Order];
+                                            B --> D[Scheduled Order];
+
+                                            subgraph Fast Order Compensation
+                                                C --> E{Delay > 15 mins?};
+                                                E -- No --> F[Apologize & Reassure];
+                                                E -- Yes --> G[Check Delay Tier];
+                                                G --> H[16-30m: Delivery Fees];
+                                                G --> I[31-45m: Fees + 25% Food];
+                                                G --> J[46-60m: Fees + 50% Food];
+                                                G --> K[>60m: Full Refund];
+                                            end
+
+                                            subgraph Scheduled Order Compensation
+                                                D --> L{Delay > 30 mins?};
+                                                L -- No --> F;
+                                                L -- Yes --> M[Check Delay Tier];
+                                                M --> N[31-60m: 50-100% Refund];
+                                                M --> O[>60m: Full Refund + 50 SAR];
+                                            end
+
+                                            H --> P[Document & Close];
+                                            I --> P;
+                                            J --> P;
+                                            K --> P;
+                                            N --> P;
+                                            O --> P;
+                                            F --> P;
+                                    </pre>
+                                </div>
+                            </div>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'policy'],
-                        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), 
-                        lastModified: new Date('2025-06-22T10:00:00Z').toISOString(),
+                        tags: ['compensation', 'customer service', 'delay', 'flowchart', 'chefz policy', 'sop'],
+                        createdAt: "2023-10-10T10:00:00.000Z",
+                        lastModified: "2024-06-22T14:30:00.000Z",
+                        version: 1.1,
                         views: 183,
                         comments: [
-                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Fatima', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Admin User', text: 'Glad you find it helpful, Fatima! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
                         ],
                         feedback: [
                             { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
@@ -1515,7 +1626,7 @@
                         summary: 'Examples of when a driver is considered responsible for delays.',
                         content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
                         tags: ['driver', 'responsibility', 'delay'],
-                        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
+                        createdAt: "2024-02-15T12:00:00.000Z", 
                         views: 78,
                         comments: [],
                         feedback: []
@@ -1523,7 +1634,7 @@
                 ]
             },
             { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), content: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
+                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
             ] }, 
             { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
             { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
@@ -1534,14 +1645,12 @@
             { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
             { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
             { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [] }
+                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [] }
             ] }, 
             { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
         ]
     };
-    let kbSystemData;
-
 
     // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
@@ -1603,33 +1712,6 @@
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
-
-    // --- Data Persistence ---
-    function saveKbDataToLocalStorage() {
-        try {
-            localStorage.setItem('infiniBaseKbData', JSON.stringify(kbSystemData));
-        } catch (e) {
-            console.error("Failed to save KB data to localStorage:", e);
-            showToast('Error: Could not save changes.', 'error');
-        }
-    }
-
-    function loadKbDataFromLocalStorage() {
-        const storedData = localStorage.getItem('infiniBaseKbData');
-        if (storedData) {
-            try {
-                kbSystemData = JSON.parse(storedData);
-                console.log("KB data loaded from localStorage.");
-            } catch (e) {
-                console.error("Failed to parse KB data from localStorage, using default:", e);
-                kbSystemData = JSON.parse(JSON.stringify(defaultKbSystemData)); // Deep copy
-            }
-        } else {
-            kbSystemData = JSON.parse(JSON.stringify(defaultKbSystemData)); // Deep copy
-            saveKbDataToLocalStorage();
-        }
-    }
-
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1758,11 +1840,15 @@
         if (mermaidElements.length === 0) return;
         
         try {
+            // A small delay can help ensure the DOM is ready for mermaid
             await new Promise(resolve => setTimeout(resolve, 50)); 
             await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
             element.dataset.mermaidRendered = 'true';
         } catch (error) {
             console.error("Mermaid rendering error:", error);
+            mermaidElements.forEach(el => {
+                el.parentElement.innerHTML = `<div style="color:var(--no-color); font-weight:bold;">Error rendering diagram.</div>`;
+            });
         }
     }
 
@@ -1770,22 +1856,34 @@
     // --- Content Display ---
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
+        let ctaText = 'View Details';
+        let ctaLink = `#${sectionData.id}/${item.id}`;
+        let target = '';
         let itemTypeDisplay = item.type.replace('_', ' ');
 
         if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; itemTypeDisplay = 'Article';}
         else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; itemTypeDisplay = 'Case';}
-        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; itemTypeDisplay = 'Form/Sheet';}
-        else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; itemTypeDisplay = 'Design';}
+        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; ctaText = 'Open Link'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Form/Sheet';}
+        else if (item.type === 'design') {itemIconClass = 'fas fa-palette'; ctaText = 'View Design'; ctaLink = item.url || '#'; target = '_blank'; itemTypeDisplay = 'Design';}
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; itemTypeDisplay = 'Guide';}
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; itemTypeDisplay = 'Policy';}
 
-        const adminButtons = currentUser && currentUser.role === 'admin' ? `
-            <button class="button-secondary button-small icon-only edit-item-card-btn" title="Edit Item"><i class="fas fa-edit"></i></button>
-            <button class="button-danger button-small icon-only delete-item-card-btn" title="Delete Item"><i class="fas fa-trash-alt"></i></button>
-        ` : '';
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parentId === item.id);
+        let hoverDetailsHTML = '';
+        if(childItems.length > 0) {
+            hoverDetailsHTML = `
+            <div class="card-hover-details">
+                <h4>Related Topics</h4>
+                <ul>
+                    ${childItems.map(child => `<li><i class="fas fa-link fa-xs"></i> ${escapeHTML(truncateText(child.title, 35))}</li>`).join('')}
+                </ul>
+            </div>`;
+        }
+
 
         return `
-            <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}" data-item-type="${item.type}" data-item-title="${escapeHTML(item.title)}">
+        <a href="${escapeHTML(ctaLink)}" class="card-link-wrapper" style="text-decoration:none; color:inherit;">
+            <div class="card" data-item-id="${item.id}" data-item-type="${item.type}">
                 <div class="card-header-icon">
                     <div class="card-icon-container">
                         <i class="${itemIconClass}"></i>
@@ -1796,12 +1894,13 @@
                 ${item.tags && item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                 <div class="item-meta-info">
                     <span class="item-type-badge">${escapeHTML(itemTypeDisplay)}</span>
-                    <div class="card-actions">
-                        <button class="button button-small view-item-btn"><i class="fas fa-folder-open"></i> View</button>
-                        ${adminButtons}
-                    </div>
+                    <span class="item-cta-link">
+                       ${ctaText} <i class="fas fa-arrow-right"></i>
+                    </span>
                 </div>
-            </div>`;
+                ${hoverDetailsHTML}
+            </div>
+        </a>`;
     }
 
     async function displayDashboard() {
@@ -1830,26 +1929,19 @@
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
+        const totalViews = allItems.reduce((sum, item) => sum + (item.views || 0), 0);
         
-        // Dynamic stats
-        const editsThisWeek = allItems.filter(item => {
-            const lastMod = item.lastModified || item.createdAt;
-            if (!lastMod) return false;
-            const itemDate = new Date(lastMod);
-            const aWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-            return itemDate > aWeekAgo;
-        }).length;
-        kbSystemData.meta.editsThisWeek = editsThisWeek;
-        
-        if (allItems.length > 0) {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const editsThisWeek = allItems.filter(i => i.lastModified && new Date(i.lastModified) > sevenDaysAgo).length;
+
+        if (!kbSystemData.meta.lastArticleAdded && allItems.length > 0) {
             const latestItem = [...allItems].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
             if (latestItem) {
                  kbSystemData.meta.lastArticleAdded = { title: latestItem.title, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
             }
         }
         if (!kbSystemData.meta.lastArticleAdded) kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
-        saveKbDataToLocalStorage();
-
+        
         const mostUsedArticles = [...allItems].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
 
         dashboardOverviewContainer.innerHTML = `
@@ -1860,9 +1952,9 @@
 
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
                 <div class="dashboard-stat-card">
-                    <i class="fas fa-folder-open"></i>
-                    <span class="stat-value">${kbSystemData.sections.length -1}</span>
-                    <span class="stat-label">Total Sections</span>
+                    <i class="fas fa-eye"></i>
+                    <span class="stat-value">${totalViews.toLocaleString()}</span>
+                    <span class="stat-label">Total Views</span>
                 </div>
                 <div class="dashboard-stat-card">
                     <i class="fas fa-newspaper"></i>
@@ -1876,7 +1968,7 @@
                 </div>
                 <div class="dashboard-stat-card">
                     <i class="fas fa-edit"></i>
-                    <span class="stat-value">${kbSystemData.meta.editsThisWeek}</span>
+                    <span class="stat-value">${editsThisWeek}</span>
                     <span class="stat-label">Edits This Week</span>
                 </div>
             </div>
@@ -1885,7 +1977,7 @@
                 <div class="dashboard-info-card">
                     <h3>🔥 Most Used Articles</h3>
                     <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => {
-                        const section = kbSystemData.sections.find(s => s.items && s.items.find(i => i.id === item.id));
+                        const section = kbSystemData.sections.find(s => s.items && s.items.includes(item));
                         return `<li>
                             <a href="#${section.id}/${item.id}">${escapeHTML(item.title)}</a> 
                             <span class="meta"><i class="fas fa-eye"></i> ${item.views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.comments?.length || 0} comments</span>
@@ -1897,7 +1989,7 @@
                      <ul>
                         <li><a href="#support/sup_flow_compensation"><i class="fas fa-project-diagram fa-fw"></i> View Compensation Scenario</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
-                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(truncateText(kbSystemData.meta.lastArticleAdded.title, 30))} <span class="meta">(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</span></li>
+                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <span class="meta">(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</span></li>
                      </ul>
                 </div>
             </div>
@@ -1926,16 +2018,13 @@
         if (visitorsChartInstance) visitorsChartInstance.destroy();
         const visitorsCtx = document.getElementById('visitorsChart')?.getContext('2d');
         if (visitorsCtx) {
-            const allViews = allItems.reduce((acc, item) => acc + (item.views || 0), 0);
-            const allComments = allItems.reduce((acc, item) => acc + (item.comments?.length || 0), 0);
-
             visitorsChartInstance = new Chart(visitorsCtx, {
                 type: 'bar',
                 data: { 
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Total'], 
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 
                     datasets: [
-                        { label: 'Views', data: [65, 59, 80, 81, 56, 55, 40, allViews], backgroundColor: 'rgba(99, 102, 241, 0.7)'},
-                        { label: 'Comments', data: [5, 2, 8, 3, 7, 4, 2, allComments], backgroundColor: 'rgba(34, 197, 94, 0.7)'}
+                        { label: 'Views', data: [65, 59, 80, 81, 56, 55, 40], backgroundColor: 'rgba(99, 102, 241, 0.7)'},
+                        { label: 'Comments', data: [5, 2, 8, 3, 7, 4, 2], backgroundColor: 'rgba(34, 197, 94, 0.7)'}
                     ]
                 },
                 options: chartOptions
@@ -1946,7 +2035,6 @@
     
     async function displaySectionContent(sectionId, subCategoryFilter = null) {
         currentOpenItem = null;
-        sessionStorage.removeItem('previousItemHash');
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
@@ -1995,6 +2083,18 @@
             });
         }
     }
+    
+    function findParentItem(parentId) {
+        for (const section of kbSystemData.sections) {
+            if (section.items) {
+                const parentItem = section.items.find(item => item.id === parentId);
+                if (parentItem) {
+                    return { ...parentItem, sectionId: section.id };
+                }
+            }
+        }
+        return null;
+    }
 
     function trackView(item) {
         if (!currentUser) return;
@@ -2006,11 +2106,10 @@
         if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
             item.views = (item.views || 0) + 1;
             localStorage.setItem(viewKey, now.toString());
-            saveKbDataToLocalStorage();
             console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
             // Update the view count on the page if it's visible
             const readStatsEl = document.getElementById('readStatsCount');
-            if(readStatsEl) readStatsEl.textContent = item.views;
+            if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
         } else {
             console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
         }
@@ -2033,7 +2132,7 @@
         elementToPrint.style.width = "210mm";
         elementToPrint.style.backgroundColor = "white";
         
-        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn' ];
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.update-banner' ];
         selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
         
         elementToPrint.style.position = 'absolute';
@@ -2074,10 +2173,7 @@
             return;
         }
 
-        trackView(itemData);
-
-        const previousItemHash = sessionStorage.getItem('previousItemHash');
-        const currentHash = `#${sectionId}/${itemId}`;
+        trackView(itemData); // Track the view for this item
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2099,37 +2195,31 @@
         else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        let backButtonHTML = `<button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>`;
-        if (previousItemHash && previousItemHash !== currentHash) {
-            backButtonHTML = `<button id="backToPreviousItemBtn" class="button button-secondary" data-href="${escapeHTML(previousItemHash)}"><i class="fas fa-arrow-left"></i> Back to Previous Article</button>`;
-        }
-
-        let adminButtons = '';
-        if (currentUser && currentUser.role === 'admin') {
-             adminButtons += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
-             adminButtons += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
-        }
-
-        let updatedOnHTML = '';
-        if (itemData.lastModified && itemData.createdAt && new Date(itemData.lastModified).getTime() !== new Date(itemData.createdAt).getTime()) {
-            const updatedDate = new Date(itemData.lastModified).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-            updatedOnHTML = `<div style="color: var(--yes-color); font-weight: 500; margin-bottom: 1rem; font-size: 0.9rem;">✅ Updated: ${updatedDate}</div>`;
-        }
-
-        
         let detailHTML = `<div class="item-actions-bar">
-            ${backButtonHTML}
-            ${adminButtons}
-            <button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
-            <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
-            </div>`;
+            <button id="backToSectionBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to ${escapeHTML(sectionData.name)}</button>`;
+        if (currentUser && currentUser.role === 'admin') {
+             detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
+        }
+        detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
+                      <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                      </div>`;
         
+        if (itemData.lastModified) {
+            const lastModDate = new Date(itemData.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            const versionInfo = itemData.version ? ` (v${itemData.version.toFixed(1)})` : '';
+            detailHTML += `
+                <div class="update-banner">
+                    <i class="fas fa-info-circle"></i>
+                    <span>This article was last updated on <strong>${lastModDate}</strong>${versionInfo}.</span>
+                </div>`;
+        }
+
         detailHTML += `<div class="card">
                     <div class="item-title-area">
                         <i class="${itemIconClass} fa-title-icon"></i>
                         <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
-                    ${updatedOnHTML}
                     <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr class="title-content-divider">
@@ -2151,22 +2241,19 @@
                         <div id="feedbackInteractionContainer">
                            <div class="rating-prompt">
                                 <div class="rating-buttons" id="ratingButtons">
-                                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
-                                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                                    <button id="rateYesBtn" data-item-id="${itemId}"><i class="fas fa-thumbs-up"></i> Yes</button>
+                                    <button id="rateNoBtn" data-item-id="${itemId}"><i class="fas fa-thumbs-down"></i> No</button>
                                 </div>
                             </div>
                             <form id="negativeFeedbackForm" class="hidden">
                                 <div class="form-group">
                                     <label for="feedbackReason">Please tell us how we can improve:</label>
-                                    <textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable..."></textarea>
+                                    <textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea>
                                 </div>
-                                <div class="form-actions">
-                                    <button type="submit" class="button">Submit Feedback</button>
-                                    <button type="button" id="cancelFeedbackReasonBtn" class="button-secondary">Cancel</button>
-                                </div>
+                                <button type="submit" class="button">Submit Feedback</button>
                             </form>
                         </div>
-                        <div class="read-stats">Total Views: <span id="readStatsCount">${itemData.views || 0}</span></div>
+                        <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
                        </div>`;
         
         detailHTML += `<div class="comments-section">
@@ -2186,7 +2273,6 @@
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId);
-        sessionStorage.setItem('previousItemHash', currentHash);
     }
     
     function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
@@ -2196,31 +2282,23 @@
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
+        // Add copy buttons to pre blocks (code and mermaid)
+        itemDetailViewPlaceholder.querySelectorAll('.kb-content pre').forEach(pre => {
             const copyBtn = document.createElement('button');
             copyBtn.className = 'copy-script-btn';
             copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            copyBtn.title = 'Copy script';
-            bq.style.position = 'relative'; // Ensure parent is positioned
-            bq.appendChild(copyBtn);
+            copyBtn.title = 'Copy content';
+            pre.appendChild(copyBtn);
             copyBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const textToCopy = bq.innerText.replace('Copy', '').trim(); // Basic way to get text
+                const textToCopy = pre.querySelector('code')?.innerText || pre.innerText.replace('Copy', '').trim();
                 navigator.clipboard.writeText(textToCopy)
-                    .then(() => showToast('Script copied!', 'success'))
+                    .then(() => showToast('Content copied!', 'success'))
                     .catch(err => showToast('Failed to copy.', 'error'));
             });
         });
 
-        const backToSectionBtn = document.getElementById('backToSectionBtn');
-        if (backToSectionBtn) {
-            backToSectionBtn.addEventListener('click', () => window.location.hash = `#${sectionId}`);
-        }
-        const backToPreviousBtn = document.getElementById('backToPreviousItemBtn');
-        if (backToPreviousBtn) {
-            backToPreviousBtn.addEventListener('click', () => window.location.hash = backToPreviousBtn.dataset.href);
-        }
-
+        document.getElementById('backToSectionBtn').addEventListener('click', () => window.location.hash = `#${sectionId}`);
         if (currentUser && currentUser.role === 'admin') {
             document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
@@ -2231,45 +2309,41 @@
 
         // Feedback logic
         const feedbackPrompt = document.getElementById('feedbackPrompt');
-        const ratingButtons = document.getElementById('ratingButtons');
         const rateYesBtn = document.getElementById('rateYesBtn');
         const rateNoBtn = document.getElementById('rateNoBtn');
+        const ratingButtons = document.getElementById('ratingButtons');
         const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
-        
-        rateYesBtn.addEventListener('click', () => {
-            if (!itemData.feedback) itemData.feedback = [];
-            itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
-            saveKbDataToLocalStorage();
-            feedbackPrompt.textContent = 'Thank you for your feedback!';
-            document.getElementById('feedbackInteractionContainer').innerHTML = '';
-            showToast('Feedback received!', 'success');
-        });
 
-        rateNoBtn.addEventListener('click', () => {
-            ratingButtons.classList.add('hidden');
-            negativeFeedbackForm.classList.remove('hidden');
-            negativeFeedbackForm.querySelector('textarea').focus();
-        });
+        const existingFeedback = itemData.feedback?.find(f => f.userId === currentUser.id);
+        if (existingFeedback) {
+            ratingButtons.innerHTML = 'Thank you for your feedback!';
+        } else {
+            rateYesBtn.addEventListener('click', () => {
+                itemData.feedback = itemData.feedback || [];
+                itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+                ratingButtons.innerHTML = 'Thank you for your feedback!';
+                showToast('Feedback received!', 'success');
+            });
 
-        document.getElementById('cancelFeedbackReasonBtn')?.addEventListener('click', () => {
-            negativeFeedbackForm.classList.add('hidden');
-            ratingButtons.classList.remove('hidden');
-        });
+            rateNoBtn.addEventListener('click', () => {
+                ratingButtons.classList.add('hidden');
+                negativeFeedbackForm.classList.remove('hidden');
+                negativeFeedbackForm.querySelector('textarea').focus();
+            });
 
-        negativeFeedbackForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const reason = document.getElementById('feedbackReason').value.trim();
-            if (reason) {
-                if (!itemData.feedback) itemData.feedback = [];
-                itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
-                saveKbDataToLocalStorage();
-                feedbackPrompt.textContent = 'Thank you for your feedback!';
-                document.getElementById('feedbackInteractionContainer').innerHTML = '';
-                showToast('Feedback received, we will review it.', 'info');
-            } else {
-                showToast('Please provide a reason.', 'error');
-            }
-        });
+            negativeFeedbackForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const reason = document.getElementById('feedbackReason').value.trim();
+                if (reason) {
+                    itemData.feedback = itemData.feedback || [];
+                    itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                    document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
+                    showToast('Feedback received, we will review it.', 'info');
+                } else {
+                    showToast('Please provide a reason.', 'error');
+                }
+            });
+        }
 
 
         // Comments logic
@@ -2288,7 +2362,6 @@
                 text: commentText, 
                 timestamp: new Date().toISOString()
             });
-            saveKbDataToLocalStorage();
             renderComments(itemData, 'commentDisplayAreaForItem'); 
             commentTextEl.value = ''; 
         });
@@ -2409,7 +2482,7 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             
-            let contentToEdit = itemToEdit.content || '<p><br></p>';
+            let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
             mainQuillEditor.root.innerHTML = contentToEdit;
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
@@ -2473,12 +2546,12 @@
         if (itemData) { // Editing existing item
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
+            itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
         } else { // Creating new item
             itemData = {
                 ...commonData, id: `${sectionId}_item_${Date.now()}`,
                 createdBy: currentUser.email, createdAt: new Date().toISOString(),
-                lastModified: new Date().toISOString(),
-                views: 0, comments: [], feedback: [] 
+                version: 1.0, views: 0, comments: [], feedback: [] 
             };
             if (!section.items) section.items = [];
             section.items.push(itemData);
@@ -2492,12 +2565,11 @@
             if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
         }
 
-        saveKbDataToLocalStorage();
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
         window.location.hash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
-        // handleNavigation() will be triggered by the hash change
+        // handleNavigation will be triggered by the hash change
     });
 
     // --- Other Modals Logic (Delete, Feedback, etc) ---
@@ -2516,7 +2588,6 @@
             if (itemIndex > -1) {
                 const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
-                saveKbDataToLocalStorage();
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
                 window.location.hash = `#${sectionId}`;
@@ -2581,8 +2652,6 @@
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
 
-        loadKbDataFromLocalStorage();
-
         userNameDisplayHeader.textContent = currentUser.name;
         userAvatar.src = currentUser.avatar_url;
         footerKbVersion.textContent = kbSystemData.meta.version;
@@ -2594,39 +2663,6 @@
 
         window.addEventListener('hashchange', handleNavigation);
         
-        // --- Global Event Listeners ---
-        pageContentArea.addEventListener('click', (e) => {
-            const card = e.target.closest('.card[data-item-id]');
-            if (!card) return;
-
-            const sectionId = card.dataset.sectionId;
-            const itemId = card.dataset.itemId;
-            const itemTitle = card.dataset.itemTitle;
-
-            // View button on a card
-            if (e.target.closest('.view-item-btn')) {
-                window.location.hash = `#${sectionId}/${itemId}`;
-            }
-            // Edit button on a card
-            if (e.target.closest('.edit-item-card-btn')) {
-                const item = kbSystemData.sections.find(s => s.id === sectionId)?.items.find(i => i.id === itemId);
-                if (item) openAddContentModal(sectionId, item);
-            }
-            // Delete button on a card
-            if (e.target.closest('.delete-item-card-btn')) {
-                openDeleteConfirmModal(sectionId, itemId, itemTitle);
-            }
-        });
-
-        pageContentArea.addEventListener('dblclick', (e) => {
-            const card = e.target.closest('.card[data-item-id]');
-            if(card) {
-                const sectionId = card.dataset.sectionId;
-                const itemId = card.dataset.itemId;
-                window.location.hash = `#${sectionId}/${itemId}`;
-            }
-        });
-
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
         closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
