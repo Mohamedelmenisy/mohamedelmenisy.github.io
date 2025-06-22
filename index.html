@@ -1430,7 +1430,6 @@
                         `,
                         tags: ['compensation', 'customer service', 'chefz policy', 'sop', 'delay'],
                         createdAt: '2024-05-20T10:00:00.000Z',
-                        // MODIFIED: Updated lastModified date to 2025 as requested to fix the display issue.
                         lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.1,
                         views: 183,
@@ -2131,8 +2130,6 @@
             const editBtn = document.getElementById('editItemBtn');
             if (editBtn) {
                 editBtn.addEventListener('click', () => {
-                    // This correctly passes the full itemData object to the modal function.
-                    // This ensures the form is pre-filled with all available data.
                     openAddContentModal(sectionId, itemData);
                 });
             }
@@ -2280,6 +2277,22 @@
         }
     };
 
+    /**
+     * ✅ NEW: Safely retrieves the editable HTML content from a knowledge base item.
+     * It checks for common content properties in a specific order to handle various item types.
+     * @param {object} item - The knowledge base item.
+     * @returns {string} The HTML content string or an empty paragraph for the editor.
+     */
+    function getEditableContent(item) {
+        if (!item) return '<p><br></p>';
+        // The order of checks is important. 'content' is the primary property.
+        if (typeof item.content === 'string') return item.content;
+        if (typeof item.resolution_steps === 'string') return item.resolution_steps;
+        if (typeof item.body === 'string') return item.body;
+        // Default empty content for Quill, ensures the editor is never null.
+        return '<p><br></p>';
+    }
+
     function applyTemplate(templateKey) {
         const template = contentTemplates[templateKey];
         if (!template) return;
@@ -2329,10 +2342,8 @@
             contentTypeSelect.value = itemToEdit.type || 'article';
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
-            // Content for Quill editor
-            // FIX: Per user feedback, this now checks multiple potential properties (content, resolution_steps, body)
-            // to correctly load main content from different item types like Articles, Cases, or Scenarios.
-            let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || itemToEdit.body || '<p><br></p>';
+            // ✅ MODIFIED: Use the new robust function to get content for the editor.
+            const contentToEdit = getEditableContent(itemToEdit);
             mainQuillEditor.root.innerHTML = contentToEdit;
             
             // Link fields with fallbacks
@@ -2400,44 +2411,64 @@
             showToast('Title and Summary are required.', 'error'); return;
         }
 
-        let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
-        if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
-
-        if (itemData) { // Editing existing item
-            Object.assign(itemData, commonData); 
+        let itemData;
+        if (editingId) {
+            itemData = section.items.find(i => i.id === editingId);
+            if (!itemData) {
+                showToast('Error: Item to edit not found!', 'error');
+                return;
+            }
+            // Update existing item
+            Object.assign(itemData, commonData);
             itemData.lastModified = new Date().toISOString();
             itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
-        } else { // Creating new item
+        } else {
+            // Create new item
             const now = new Date().toISOString();
             itemData = {
-                ...commonData, id: `${sectionId}_item_${Date.now()}`,
-                createdBy: currentUser.email, createdAt: now, lastModified: now,
-                version: 1.0, views: 0, comments: [], feedback: [] 
+                ...commonData,
+                id: `${sectionId}_item_${Date.now()}`,
+                createdBy: currentUser.email,
+                createdAt: now,
+                lastModified: now,
+                version: 1.0,
+                views: 0,
+                comments: [],
+                feedback: []
             };
-            if (!section.items) section.items = [];
-            section.items.push(itemData);
-            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
         }
 
+        // ✅ MODIFIED: Handle content based on type for both new and edited items,
+        // and consolidate properties to `content` for data consistency.
         if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
             itemData.content = mainQuillEditor.root.innerHTML;
+            // Clean up old, alternative properties if they exist
+            if (itemData.hasOwnProperty('resolution_steps')) delete itemData.resolution_steps;
+            if (itemData.hasOwnProperty('body')) delete itemData.body;
         } else if (['form_sheet', 'design'].includes(itemData.type)) {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
+            // Remove content property if it exists on a link-type item
+            if (itemData.hasOwnProperty('content')) delete itemData.content;
+        }
+
+        // Add to section if it's a new item
+        if (!editingId) {
+            if (!section.items) section.items = [];
+            section.items.push(itemData);
+            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
         }
 
         saveDataToLocalStorage();
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        if (editingId) {
-            // Force a re-render of the detail page to show changes
-            window.location.hash = `#${sectionId}/${editingId}`;
-            // Calling handleNavigation directly ensures the page re-renders with fresh data
-            handleNavigation(); 
+        // Refresh the view to show changes
+        const newHash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
+        if (window.location.hash === newHash) {
+            handleNavigation(); // Force re-render if hash doesn't change
         } else {
-            // Re-render the section view to show the new card
-            handleNavigation();
+            window.location.hash = newHash;
         }
     });
     
