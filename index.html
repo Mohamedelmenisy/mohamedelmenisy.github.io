@@ -1412,13 +1412,12 @@
         
                                     <div class="content-section-box">
                                         <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
-                                        <p>After applying the compensation, the agent must complete the following actions in the system to close the case:</p>
+                                        <p>The agent must finalize the action directly in the company system by:</p>
                                         <ul>
-                                            <li>Log a comprehensive note on the order detailing the issue and resolution.</li>
-                                            <li>Record the exact compensation amount and the reason for it.</li>
-                                            <li>Assign the responsibility for the delay (e.g., Chef, Driver, Company).</li>
+                                            <li>Logging the note on the order</li>
+                                            <li>Recording the compensation amount and reason clearly</li>
+                                            <li>Selecting the responsible party (Store, Driver, Company)</li>
                                         </ul>
-                                        <p>Conclude the interaction by confirming the customer understands the resolution and timeline. Ensure the case is correctly tagged and closed in the system.</p>
                                     </div>
                                 `,
                                 tags: ['compensation', 'customer service', 'chefz policy', 'sop'],
@@ -1995,16 +1994,13 @@
         detailHTML += `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
         if (currentUser && currentUser.role === 'admin') {
-             detailHTML += `<button id="editItemBtn" class="button" data-section-id="${sectionId}" data-item-id="${itemId}"><i class="fas fa-edit"></i> Edit Item</button>`;
-             detailHTML += `<button id="deleteItemBtn" class="button button-danger" data-section-id="${sectionId}" data-item-id="${itemId}" data-item-title="${escapeHTML(itemData.title)}"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
+             detailHTML += `<button id="editItemBtn" class="button" onclick="window.openEditModal('${sectionId}', '${itemId}')"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger" onclick="window.openDeleteModal('${sectionId}', '${itemId}', '${escapeHTML(itemData.title)}')"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
-        // REMOVED: The update banner is no longer displayed as per user feedback.
-        // The lastModified and version properties are still updated on edit for internal tracking.
-
         detailHTML += `<div class="card">
                     <div class="item-title-area">
                         <i class="${itemIconClass} fa-title-icon"></i>
@@ -2084,12 +2080,6 @@
             });
         });
         
-        if (currentUser && currentUser.role === 'admin') {
-            // FIXED: Event listener for "Edit Item" button in detail view now works correctly.
-            document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
-            document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
-        }
-
         document.getElementById('printItemBtn').addEventListener('click', () => window.print());
         document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
@@ -2268,8 +2258,6 @@
         }
         
         if (itemToEdit) {
-            // FIXED: Editing an item now correctly populates the form.
-            // The form is not reset, and all fields are filled with the item's data.
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
@@ -2368,7 +2356,6 @@
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        // FIXED: Force a re-render to ensure view is always up-to-date.
         // If editing, navigate to the item detail page to see the changes.
         // If adding, refresh the current section view to show the new card.
         if (editingId) {
