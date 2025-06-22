@@ -297,9 +297,27 @@
             font-size: 1.25rem;
             color: var(--text-color-inverted);  
         }
+        .card-title-group {
+            flex-grow: 1;
+        }
         .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
         
+        /* NEW: Updated Badge Style */
+        .updated-badge {
+            display: inline-block;
+            background-color: rgba(34, 197, 94, 0.15); /* Green with transparency */
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-top: 0.4rem;
+        }
+
         /* NEW: Tag styles for cards */
         .card-tags {
             margin-top: 0rem;
@@ -764,6 +782,13 @@
         #itemDetailViewPlaceholder hr.title-content-divider {
              margin: 1.5rem 0; border-color: var(--border-color); 
         }
+        /* MODIFIED: last-updated-info style */
+        .last-updated-info {
+            color: var(--yes-color); 
+            font-size: 0.85rem; 
+            margin-bottom: 1rem; 
+            font-weight: 500;
+        }
         #itemDetailViewPlaceholder .kb-content ul { list-style-type: disc; }
         #itemDetailViewPlaceholder .child-items-list { list-style-type: none; padding-left: 0; }
         #itemDetailViewPlaceholder .child-items-list li { margin-bottom: 0.5rem; }
@@ -948,7 +973,8 @@
             #openAddContentBtnInSection,
             .card-hover-details,
             .update-banner, /* Hide new banner from print */
-            .last-updated-info /* Hide last updated text from print */
+            .last-updated-info /* Hide last updated text from print */,
+            .updated-badge /* Hide updated badge from print */
             {
                 display: none !important;
             }
@@ -1218,7 +1244,8 @@
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion"></span></span>
+                <!-- MODIFIED: Removed version number span -->
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy.</span>
             </footer>
         </div>
     </div>
@@ -1403,7 +1430,8 @@
                         `,
                         tags: ['compensation', 'customer service', 'chefz policy', 'sop', 'delay'],
                         createdAt: '2024-05-20T10:00:00.000Z',
-                        lastModified: '2024-06-22T14:30:00.000Z',
+                        // MODIFIED: Updated lastModified date to 2025 as requested
+                        lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.1,
                         views: 183,
                         comments: [
@@ -1500,7 +1528,6 @@
     const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
     const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
     const userAvatar = document.getElementById('userAvatar');
-    const footerKbVersion = document.getElementById('footerKbVersion');
     const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
 
 
@@ -1690,6 +1717,15 @@
         const tagsHTML = item.tags && item.tags.length > 0
             ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
             : '';
+        
+        // MODIFIED: Logic for the "Updated" badge
+        let updatedBadgeHTML = '';
+        const createdAt = new Date(item.createdAt);
+        const lastModified = new Date(item.lastModified);
+        // Show "Updated" badge if modification happened at least 1 minute after creation
+        if (lastModified.getTime() > createdAt.getTime() + 60000) {
+            updatedBadgeHTML = `<div class="updated-badge">Updated</div>`;
+        }
 
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
@@ -1697,7 +1733,10 @@
                     <div class="card-icon-container">
                         <i class="${itemIconClass}"></i>
                     </div>
-                    <h3>${escapeHTML(item.title)}</h3>
+                    <div class="card-title-group">
+                        <h3>${escapeHTML(item.title)}</h3>
+                        ${updatedBadgeHTML}
+                    </div>
                 </div>
                 ${tagsHTML}
                 <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
@@ -2017,7 +2056,7 @@
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
-        // **MODIFICATION**: Replaced the old update banner with the new "Last updated on" text.
+        // MODIFIED: Replaced the old update banner with the new "Last updated on" text.
         let lastUpdatedHTML = '';
         const createdAt = new Date(itemData.createdAt);
         const lastModified = new Date(itemData.lastModified);
@@ -2026,7 +2065,7 @@
             const formattedDate = lastModified.toLocaleDateString('en-US', {
                 year: 'numeric', month: 'long', day: 'numeric'
             });
-            lastUpdatedHTML = `<div class="last-updated-info" style="color: #28a745; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;">
+            lastUpdatedHTML = `<div class="last-updated-info">
                                 + Last updated on ${formattedDate}
                                </div>`;
         }
@@ -2114,9 +2153,8 @@
         if (currentUser && currentUser.role === 'admin') {
             const editBtn = document.getElementById('editItemBtn');
             if (editBtn) {
-                // **FIX**: The logic here is already correct. It passes the full, current itemData object.
-                // The "empty form" issue was likely due to stale data from localStorage,
-                // which is now fixed by the versioning system.
+                // MODIFIED: This listener now correctly passes the full, current itemData object
+                // to the modal function, which will pre-fill the form.
                 editBtn.addEventListener('click', () => {
                     openAddContentModal(sectionId, itemData);
                 });
@@ -2303,24 +2341,39 @@
             });
         }
         
+        // MODIFIED: Strengthened the pre-filling logic for the edit form
         if (itemToEdit) {
             // Editing an item: pre-fill the form.
-            document.getElementById('addContentModalTitle').textContent = 'Edit Content';
-            editingItemIdInput.value = itemToEdit.id; 
-            document.getElementById('contentTitle').value = itemToEdit.title;
-            document.getElementById('contentSummary').value = itemToEdit.summary;
-            contentTypeSelect.value = itemToEdit.type;
-            if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
+            console.log("Editing item, pre-filling form with:", itemToEdit); // For debugging
             
+            document.getElementById('addContentModalTitle').textContent = 'Edit Content';
+            editingItemIdInput.value = itemToEdit.id;
+            
+            // Core fields
+            document.getElementById('contentTitle').value = itemToEdit.title || '';
+            document.getElementById('contentSummary').value = itemToEdit.summary || '';
+            contentTypeSelect.value = itemToEdit.type || 'article';
+            contentTagsInput.value = (itemToEdit.tags || []).join(', ');
+            
+            // Content for Quill editor
             let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
             mainQuillEditor.root.innerHTML = contentToEdit;
             
-            contentTagsInput.value = (itemToEdit.tags || []).join(', ');
+            // Link fields
+            document.getElementById('contentUrl').value = itemToEdit.url || '';
+            document.getElementById('videoLink').value = itemToEdit.videoLink || '';
+            document.getElementById('driveLink').value = itemToEdit.driveLink || '';
+            
+            // Note: File inputs cannot be programmatically set for security reasons.
+            // The user must re-select files if they want to change them.
+            document.getElementById('pdfFile').value = '';
+            document.getElementById('imageFile').value = '';
             
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
+
         } else {
-            // For a new item, reset everything and show templates.
+            // New item: reset everything and show templates.
             addContentForm.reset();
             editingItemIdInput.value = ""; 
             mainQuillEditor.root.innerHTML = '<p><br></p>'; 
@@ -2365,6 +2418,9 @@
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
+            // MODIFIED: Capture attachment link values
+            videoLink: document.getElementById('videoLink').value.trim(),
+            driveLink: document.getElementById('driveLink').value.trim(),
         };
         if (!commonData.title || !commonData.summary) {
             showToast('Title and Summary are required.', 'error'); return;
@@ -2403,8 +2459,10 @@
         if (editingId) {
             // Force a re-render of the detail page to show changes
             window.location.hash = `#${sectionId}/${editingId}`;
-            handleNavigation();
+            // Calling handleNavigation directly ensures the page re-renders with fresh data
+            handleNavigation(); 
         } else {
+            // Re-render the section view to show the new card
             handleNavigation();
         }
     });
@@ -2519,7 +2577,6 @@
 
         userNameDisplayHeader.textContent = currentUser.name;
         userAvatar.src = currentUser.avatar_url;
-        footerKbVersion.textContent = kbSystemData.meta.version;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
