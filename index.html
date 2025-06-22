@@ -1224,7 +1224,7 @@
     <div id="toastContainer"></div>
 
 <script type="module">
-    import { supabase } from './supabase.js?v=2';
+    import { supabase } from './supabase.js';
 
     // =================================================================================
     // IMMEDIATE SESSION CHECK
@@ -2493,12 +2493,24 @@
 
     async function initializeApp() {
         currentUser = await Auth.getCurrentUserProfile(); 
-        if (!currentUser) return;
+        if (!currentUser) {
+            console.error("Initialization failed: Could not get user profile.");
+            return; // Stop execution if user profile is not available
+        }
 
-        userNameDisplayHeader.textContent = currentUser.name;
-        userAvatar.src = currentUser.avatar_url;
-        footerKbVersion.textContent = kbSystemData.meta.version;
-        currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        // --- BUG FIX: Check for element existence before modifying ---
+        if (userNameDisplayHeader) {
+            userNameDisplayHeader.textContent = currentUser.name;
+        }
+        if (userAvatar) {
+            userAvatar.src = currentUser.avatar_url;
+        }
+        if (footerKbVersion) {
+            footerKbVersion.textContent = kbSystemData.meta.version;
+        }
+        if (currentUserRoleSpan) {
+            currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        }
         
         populateSidebar();
         applyPermanentDarkMode(); 
