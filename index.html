@@ -1426,7 +1426,7 @@
                                 version: 1.1,
                                 views: 183,
                                 comments: [
-                                    { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                                    { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
                                     { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
                                 ],
                                 feedback: [
@@ -1994,8 +1994,8 @@
         detailHTML += `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
         if (currentUser && currentUser.role === 'admin') {
-             detailHTML += `<button id="editItemBtn" class="button" onclick="window.openEditModal('${sectionId}', '${itemId}')"><i class="fas fa-edit"></i> Edit Item</button>`;
-             detailHTML += `<button id="deleteItemBtn" class="button button-danger" onclick="window.openDeleteModal('${sectionId}', '${itemId}', '${escapeHTML(itemData.title)}')"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
+             detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> Print</button>
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
@@ -2080,6 +2080,15 @@
             });
         });
         
+        if (currentUser && currentUser.role === 'admin') {
+            document.getElementById('editItemBtn')?.addEventListener('click', () => {
+                window.openEditModal(sectionId, itemData.id);
+            });
+            document.getElementById('deleteItemBtn')?.addEventListener('click', () => {
+                window.openDeleteModal(sectionId, itemId, itemData.title);
+            });
+        }
+
         document.getElementById('printItemBtn').addEventListener('click', () => window.print());
         document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
@@ -2258,6 +2267,7 @@
         }
         
         if (itemToEdit) {
+            // Editing an item: pre-fill the form.
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
@@ -2270,9 +2280,6 @@
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
-            // Note: Attachment fields are not pre-filled for simplicity, as they are write-only.
-            // This can be enhanced later if needed.
-
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
@@ -2356,12 +2363,10 @@
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        // If editing, navigate to the item detail page to see the changes.
-        // If adding, refresh the current section view to show the new card.
         if (editingId) {
             window.location.hash = `#${sectionId}/${editingId}`;
         } else {
-            handleNavigation(); // Refresh the current view
+            handleNavigation();
         }
     });
     
@@ -2394,7 +2399,6 @@
                 section.items.splice(itemIndex, 1);
                 saveDataToLocalStorage();
 
-                // Immediately remove the card from the view without full refresh
                 const cardToRemove = document.querySelector(`.card[data-item-id="${itemId}"]`);
                 if (cardToRemove) {
                     cardToRemove.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
@@ -2406,7 +2410,6 @@
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
                 
-                // If we were on the item detail page, navigate back to the section
                 if (window.location.hash.includes('/')) {
                     window.location.hash = `#${sectionId}`;
                 }
@@ -2417,7 +2420,7 @@
     closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     
-    // Global Search (no changes needed, should still work)
+    // Global Search
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
         if (query.length < 2) {
