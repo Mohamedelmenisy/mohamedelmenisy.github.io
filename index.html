@@ -947,7 +947,8 @@
             .search-container, .user-profile,
             #openAddContentBtnInSection,
             .card-hover-details,
-            .update-banner /* Hide new banner from print */
+            .update-banner, /* Hide new banner from print */
+            .last-updated-info /* Hide last updated text from print */
             {
                 display: none !important;
             }
@@ -1217,7 +1218,7 @@
             </main>
 
             <footer class="mt-auto p-6 text-center text-sm">
-                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion">0.1.0</span></span>
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy. Version <span id="footerKbVersion"></span></span>
             </footer>
         </div>
     </div>
@@ -1325,13 +1326,132 @@
     };
 
     // --- KB Data ---
-    let kbSystemData;
+    // This is the single source of truth for the *current* version of the data.
+    let kbSystemData = {
+        meta: { version: '1.3.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+        sections: [
+            { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
+            {
+                id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
+                items: [
+                     { 
+                        id: 'sup_flow_compensation', type: 'article', 
+                        title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
+                        summary: 'A comprehensive guide for handling customer compensation due to order delays, based on The Chefz policies.',
+                        content: `
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
+                                <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                            </div>
+                            
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-headset"></i> Initial Contact and Inquiry Identification</h3>
+                                <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
+                                </blockquote>
+                                <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., chef quality), navigate to the relevant knowledge article for that topic.</p>
+                            </div>
 
-    // --- FIX: Data Persistence ---
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
+                                <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+                                <ul>
+                                    <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
+                                    <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
+                                </ul>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
+                                </blockquote>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-calculator"></i> Applying the Compensation Matrix</h3>
+                                <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                                <div class="compensation-grid">
+                                    <div class="compensation-box fast-order">
+                                        <h4><i class="fas fa-shipping-fast"></i> Fast Orders (&gt; 15 mins)</h4>
+                                        <ul>
+                                            <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
+                                            <li><span>31–45 mins</span> <span class="action">Fees + 25% Chef Total</span></li>
+                                            <li><span>46–60 mins</span> <span class="action">Fees + 50% Chef Total</span></li>
+                                            <li><span>&gt; 60 mins</span> <span class="action">Total Order</span></li>
+                                        </ul>
+                                    </div>
+                                    <div class="compensation-box scheduled-order">
+                                        <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (&gt; 30 mins)</h4>
+                                        <ul>
+                                            <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
+                                            <li><span>&gt; 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <blockquote>
+                                    <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
+                                </blockquote>
+                            </div>
+
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
+                                <p>The agent must finalize the action directly in the company system by:</p>
+                                <ul>
+                                    <li>Logging the note on the order</li>
+                                    <li>Recording the compensation amount and reason clearly</li>
+                                    <li>Selecting the responsible party (Store, Driver, Company)</li>
+                                </ul>
+                            </div>
+                        `,
+                        tags: ['compensation', 'customer service', 'chefz policy', 'sop', 'delay'],
+                        createdAt: '2024-05-20T10:00:00.000Z',
+                        lastModified: '2024-06-22T14:30:00.000Z',
+                        version: 1.1,
+                        views: 183,
+                        comments: [
+                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+                        ],
+                        feedback: [
+                            { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
+                        ]
+                    },
+                    {
+                        id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
+                        title: 'Child Article: Detailed Scenarios for Driver Responsibility',
+                        summary: 'Examples of when a driver is considered responsible for delays.',
+                        content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
+                        tags: ['driver', 'responsibility', 'delay'],
+                        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // ~5 days ago
+                        lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                        views: 78,
+                        comments: [],
+                        feedback: []
+                    }
+                ]
+            },
+            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
+                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
+            ] }, 
+            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
+            { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
+            { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', iconColor: '#22d3ee', items: [] }, 
+            { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', iconColor: '#84cc16', items: [] }, 
+            { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', iconColor: '#facc15', items: [] }, 
+            { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', iconColor: '#f472b6', items: [] }, 
+            { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
+            { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
+            { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
+                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p>', views: 312, comments: [], feedback: [] }
+            ] }, 
+            { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
+            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
+        ]
+    };
+
+    // --- Data Persistence with Version Control ---
     function saveDataToLocalStorage() {
         try {
             localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
-            console.log("KB data saved to localStorage.");
+            console.log(`KB data (v${kbSystemData.meta.version}) saved to localStorage.`);
         } catch (e) {
             console.error("Failed to save data to localStorage", e);
             showToast("Could not save changes. Your browser's storage might be full.", "error");
@@ -1339,136 +1459,32 @@
     }
 
     function loadDataFromLocalStorage() {
-        const savedData = localStorage.getItem('infiniBaseData');
-        if (savedData) {
-            console.log("Loading KB data from localStorage.");
-            kbSystemData = JSON.parse(savedData);
-        } else {
-            console.log("No saved data found. Using initial hardcoded data.");
-            // Initial Data Structure
-            kbSystemData = {
-                meta: { version: '1.0.0-beta', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
-                sections: [
-                    { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
-                    {
-                        id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
-                        items: [
-                             { 
-                                id: 'sup_flow_compensation', type: 'article', 
-                                title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                                summary: 'A comprehensive guide for handling customer compensation due to order delays, based on The Chefz policies.',
-                                content: `
-                                    <div class="content-section-box">
-                                        <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
-                                        <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
-                                    </div>
-                                    
-                                    <div class="content-section-box">
-                                        <h3><i class="fas fa-headset"></i> Initial Contact and Inquiry Identification</h3>
-                                        <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
-                                        <blockquote>
-                                            <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
-                                        </blockquote>
-                                        <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., chef quality), navigate to the relevant knowledge article for that topic.</p>
-                                    </div>
+        const savedDataJSON = localStorage.getItem('infiniBaseData');
         
-                                    <div class="content-section-box">
-                                        <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
-                                        <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
-                                        <ul>
-                                            <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
-                                            <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
-                                        </ul>
-                                        <blockquote>
-                                            <i class="fas fa-comment-dots"></i> "I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you."
-                                        </blockquote>
-                                    </div>
-        
-                                    <div class="content-section-box">
-                                        <h3><i class="fas fa-calculator"></i> Applying the Compensation Matrix</h3>
-                                        <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
-                                        <div class="compensation-grid">
-                                            <div class="compensation-box fast-order">
-                                                <h4><i class="fas fa-shipping-fast"></i> Fast Orders (&gt; 15 mins)</h4>
-                                                <ul>
-                                                    <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
-                                                    <li><span>31–45 mins</span> <span class="action">Fees + 25% Chef Total</span></li>
-                                                    <li><span>46–60 mins</span> <span class="action">Fees + 50% Chef Total</span></li>
-                                                    <li><span>&gt; 60 mins</span> <span class="action">Total Order</span></li>
-                                                </ul>
-                                            </div>
-                                            <div class="compensation-box scheduled-order">
-                                                <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (&gt; 30 mins)</h4>
-                                                <ul>
-                                                    <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
-                                                    <li><span>&gt; 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        <blockquote>
-                                            <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
-                                        </blockquote>
-                                    </div>
-        
-                                    <div class="content-section-box">
-                                        <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
-                                        <p>The agent must finalize the action directly in the company system by:</p>
-                                        <ul>
-                                            <li>Logging the note on the order</li>
-                                            <li>Recording the compensation amount and reason clearly</li>
-                                            <li>Selecting the responsible party (Store, Driver, Company)</li>
-                                        </ul>
-                                    </div>
-                                `,
-                                tags: ['compensation', 'customer service', 'chefz policy', 'sop'],
-                                createdAt: '2024-05-20T10:00:00.000Z',
-                                lastModified: '2024-06-22T14:30:00.000Z',
-                                version: 1.1,
-                                views: 183,
-                                comments: [
-                                    { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-                                    { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
-                                ],
-                                feedback: [
-                                    { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
-                                ]
-                            },
-                            {
-                                id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
-                                title: 'Child Article: Detailed Scenarios for Driver Responsibility',
-                                summary: 'Examples of when a driver is considered responsible for delays.',
-                                content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
-                                tags: ['driver', 'responsibility', 'delay'],
-                                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // ~5 days ago
-                                lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-                                views: 78,
-                                comments: [],
-                                feedback: []
-                            }
-                        ]
-                    },
-                    { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                         { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
-                    ] }, 
-                    { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
-                    { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
-                    { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', iconColor: '#22d3ee', items: [] }, 
-                    { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', iconColor: '#84cc16', items: [] }, 
-                    { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', iconColor: '#facc15', items: [] }, 
-                    { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', iconColor: '#f472b6', items: [] }, 
-                    { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
-                    { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
-                    { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                        { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p>', views: 312, comments: [], feedback: [] }
-                    ] }, 
-                    { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
-                    { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
-                ]
-            };
+        if (savedDataJSON) {
+            try {
+                const savedData = JSON.parse(savedDataJSON);
+                // Compare the version in localStorage with the version in the current script
+                if (savedData.meta && savedData.meta.version === kbSystemData.meta.version) {
+                    console.log(`Loading KB data from localStorage. Version ${savedData.meta.version} matches.`);
+                    kbSystemData = savedData; // Use the stored data
+                    return; // Exit, we are done.
+                } else {
+                    console.warn(`Version mismatch. Local: ${savedData.meta?.version}, Code: ${kbSystemData.meta.version}. Overwriting local data.`);
+                }
+            } catch (e) {
+                console.error("Error parsing localStorage data. Will overwrite with fresh data.", e);
+            }
         }
+        
+        // If there's no saved data, or if there was a version mismatch/error,
+        // the `kbSystemData` from the script is used by default.
+        // We now save this fresh version to localStorage.
+        console.log(`Using fresh data from script (v${kbSystemData.meta.version}) and saving to localStorage.`);
+        saveDataToLocalStorage();
     }
     
-    // Load data at the very start of the script
+    // Load data at the very start of the script, with version control
     loadDataFromLocalStorage();
 
 
@@ -1921,7 +1937,7 @@
         elementToPrint.style.width = "210mm";
         elementToPrint.style.backgroundColor = "white";
         
-        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.update-banner' ];
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.update-banner', '.last-updated-info' ];
         selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
         
         elementToPrint.style.position = 'absolute';
@@ -2001,19 +2017,18 @@
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
+        // **MODIFICATION**: Replaced the old update banner with the new "Last updated on" text.
+        let lastUpdatedHTML = '';
         const createdAt = new Date(itemData.createdAt);
         const lastModified = new Date(itemData.lastModified);
-        // Only show update banner if modified significantly after creation (e.g., > 1 minute)
+        // Show update text if modified significantly after creation (e.g., > 1 minute)
         if (lastModified.getTime() > createdAt.getTime() + 60000) {
             const formattedDate = lastModified.toLocaleDateString('en-US', {
                 year: 'numeric', month: 'long', day: 'numeric'
             });
-            detailHTML += `
-                <div class="update-banner">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Last updated on ${formattedDate} (Version ${itemData.version || '1.1'})</span>
-                </div>
-            `;
+            lastUpdatedHTML = `<div class="last-updated-info" style="color: #28a745; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;">
+                                + Last updated on ${formattedDate}
+                               </div>`;
         }
 
         detailHTML += `<div class="card">
@@ -2024,6 +2039,7 @@
                     <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
                     ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr class="title-content-divider">
+                    ${lastUpdatedHTML}
                     <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
                    </div>`;
         
@@ -2098,8 +2114,10 @@
         if (currentUser && currentUser.role === 'admin') {
             const editBtn = document.getElementById('editItemBtn');
             if (editBtn) {
+                // **FIX**: The logic here is already correct. It passes the full, current itemData object.
+                // The "empty form" issue was likely due to stale data from localStorage,
+                // which is now fixed by the versioning system.
                 editBtn.addEventListener('click', () => {
-                    // Call the modal function directly with the full item object, which is more robust.
                     openAddContentModal(sectionId, itemData);
                 });
             }
@@ -2395,7 +2413,11 @@
     window.openEditModal = (sectionId, itemId) => {
         const section = kbSystemData.sections.find(s => s.id === sectionId);
         const item = section?.items.find(i => i.id === itemId);
-        if (item) openAddContentModal(sectionId, item);
+        if (item) {
+            openAddContentModal(sectionId, item);
+        } else {
+            showToast('Error: Could not find item to edit.', 'error');
+        }
     };
     window.openDeleteModal = (sectionId, itemId, itemTitle) => {
         openDeleteConfirmModal(sectionId, itemId, itemTitle);
