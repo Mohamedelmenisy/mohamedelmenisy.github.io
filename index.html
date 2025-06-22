@@ -1475,45 +1475,24 @@
         ]
     };
 
-    // --- Data Persistence with Version Control ---
+    // --- Data Loading Strategy ---
+    // The application is configured to always load data directly from the
+    // 'kbSystemData' object defined in this script. The use of localStorage
+    // for persisting this data has been removed to ensure that any content
+    // updates in the source code are immediately reflected for all users on
+    // page load, without requiring a cache clear.
+    
     function saveDataToLocalStorage() {
-        try {
-            localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
-            console.log(`KB data (v${kbSystemData.meta.version}) saved to localStorage.`);
-        } catch (e) {
-            console.error("Failed to save data to localStorage", e);
-            showToast("Could not save changes. Your browser's storage might be full.", "error");
-        }
-    }
-
-    function loadDataFromLocalStorage() {
-        const savedDataJSON = localStorage.getItem('infiniBaseData');
-        
-        if (savedDataJSON) {
-            try {
-                const savedData = JSON.parse(savedDataJSON);
-                // Compare the version in localStorage with the version in the current script
-                if (savedData.meta && savedData.meta.version === kbSystemData.meta.version) {
-                    console.log(`Loading KB data from localStorage. Version ${savedData.meta.version} matches.`);
-                    kbSystemData = savedData; // Use the stored data
-                    return; // Exit, we are done.
-                } else {
-                    console.warn(`Version mismatch. Local: ${savedData.meta?.version}, Code: ${kbSystemData.meta.version}. Overwriting local data.`);
-                }
-            } catch (e) {
-                console.error("Error parsing localStorage data. Will overwrite with fresh data.", e);
-            }
-        }
-        
-        // If there's no saved data, or if there was a version mismatch/error,
-        // the `kbSystemData` from the script is used by default.
-        // We now save this fresh version to localStorage.
-        console.log(`Using fresh data from script (v${kbSystemData.meta.version}) and saving to localStorage.`);
-        saveDataToLocalStorage();
+        // This function is intentionally left empty. Any in-memory data
+        // modifications (like adding comments or tracking views) will only
+        // persist for the duration of the current user session and will be
+        // reset on the next page load. This fulfills the requirement of
+        // loading fresh content every time.
+        return;
     }
     
-    // Load data at the very start of the script, with version control
-    loadDataFromLocalStorage();
+    // The loadDataFromLocalStorage() function and its initial call have been
+    // removed to enforce loading from the hardcoded 'kbSystemData' object.
 
 
     // --- DOM Elements ---
@@ -2443,7 +2422,7 @@
             itemData.content = mainQuillEditor.root.innerHTML;
         } else if (['form_sheet', 'design'].includes(itemData.type)) {
             itemData.url = document.getElementById('contentUrl').value.trim();
-            if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
+            if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
         }
 
         saveDataToLocalStorage();
@@ -2591,7 +2570,7 @@
             showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
             localStorage.removeItem('justLoggedIn');
         } else {
-            showToast(`InfiniBase v${kbSystemData.meta.version} ready.`, 'info', 2000);
+            showToast(`InfiniBase is ready.`, 'info', 2000);
         }
     }
 
