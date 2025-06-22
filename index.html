@@ -300,6 +300,26 @@
         .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
         
+        /* NEW: Tag styles for cards */
+        .card-tags {
+            margin-top: 0rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .card-tags .tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color-muted);
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
         .card-actions {
             display: flex;
             gap: 0.5rem;
@@ -1336,7 +1356,7 @@
                              { 
                                 id: 'sup_flow_compensation', type: 'article', 
                                 title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                                summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
+                                summary: 'A comprehensive guide for handling customer compensation due to order delays, based on The Chefz policies.',
                                 content: `
                                     <div class="content-section-box">
                                         <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
@@ -1391,17 +1411,17 @@
                                     </div>
         
                                     <div class="content-section-box">
-                                        <h3><i class="fas fa-clipboard-check"></i> Internal Documentation and Conclusion</h3>
-                                        <p>The agent must finalize the action directly in the system by:</p>
+                                        <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
+                                        <p>After applying the compensation, the agent must complete the following actions in the system to close the case:</p>
                                         <ul>
-                                            <li>Logging the note on the order</li>
-                                            <li>Recording the compensation amount and reason clearly</li>
-                                            <li>Selecting the responsible party (Store, Driver, Company)</li>
+                                            <li>Log a comprehensive note on the order detailing the issue and resolution.</li>
+                                            <li>Record the exact compensation amount and the reason for it.</li>
+                                            <li>Assign the responsibility for the delay (e.g., Chef, Driver, Company).</li>
                                         </ul>
-                                        <p>Conclude the call by ensuring the customer is satisfied with the resolution and offer any further assistance.</p>
+                                        <p>Conclude the interaction by confirming the customer understands the resolution and timeline. Ensure the case is correctly tagged and closed in the system.</p>
                                     </div>
                                 `,
-                                tags: [],
+                                tags: ['compensation', 'customer service', 'chefz policy', 'sop'],
                                 createdAt: '2024-05-20T10:00:00.000Z',
                                 lastModified: '2024-06-22T14:30:00.000Z',
                                 version: 1.1,
@@ -1651,6 +1671,10 @@
         const viewButton = `<a href="#${sectionData.id}/${item.id}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
+        
+        const tagsHTML = item.tags && item.tags.length > 0
+            ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
+            : '';
 
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
@@ -1660,6 +1684,7 @@
                     </div>
                     <h3>${escapeHTML(item.title)}</h3>
                 </div>
+                ${tagsHTML}
                 <p>${escapeHTML(truncateText(stripHtml(item.summary), 120))}</p>
                 <div class="card-actions">
                     ${viewButton}
@@ -1957,7 +1982,6 @@
 
         let detailHTML = '';
         
-        // --- FIX: Consolidated Back Button Logic ---
         const parentItemInfo = itemData.parentId ? findParentItem(itemData.parentId) : null;
         let backLinkHref, backLinkText;
         if (parentItemInfo) {
@@ -1978,15 +2002,8 @@
                       <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> Download PDF</button>
                       </div>`;
         
-        if (itemData.lastModified && itemData.createdAt !== itemData.lastModified) {
-            const lastModDate = new Date(itemData.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            const versionInfo = itemData.version ? ` (v${itemData.version.toFixed(1)})` : '';
-            detailHTML += `
-                <div class="update-banner" style="background-color: rgba(34, 197, 94, 0.1); border-color: var(--yes-color); color: var(--yes-color);">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Updated on <strong>${lastModDate}</strong>${versionInfo}.</span>
-                </div>`;
-        }
+        // REMOVED: The update banner is no longer displayed as per user feedback.
+        // The lastModified and version properties are still updated on edit for internal tracking.
 
         detailHTML += `<div class="card">
                     <div class="item-title-area">
@@ -1994,7 +2011,7 @@
                         <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
                     <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span>${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
                     <hr class="title-content-divider">
                     <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
                    </div>`;
@@ -2029,7 +2046,6 @@
                         <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
                        </div>`;
         
-        // --- FIX: Rename "Discussion" to "Management Notes" ---
         detailHTML += `<div class="comments-section">
                         <h4><i class="fas fa-comments"></i> Management Notes</h4>
                         <div class="comment-post-area">
@@ -2069,7 +2085,7 @@
         });
         
         if (currentUser && currentUser.role === 'admin') {
-            // ✅ FIX: "Edit Item" button now works from detail view
+            // FIXED: Event listener for "Edit Item" button in detail view now works correctly.
             document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
         }
@@ -2232,9 +2248,7 @@
 
     // --- Add/Edit Content Modal Logic ---
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
-        addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
             mainQuillEditor = new Quill('#quillEditor', { 
@@ -2254,7 +2268,8 @@
         }
         
         if (itemToEdit) {
-            // --- FIX: Correctly load data for editing ---
+            // FIXED: Editing an item now correctly populates the form.
+            // The form is not reset, and all fields are filled with the item's data.
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
@@ -2267,14 +2282,15 @@
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
-            if (itemToEdit.attachments) {
-                if(itemToEdit.attachments.video) document.getElementById('videoLink').value = itemToEdit.attachments.video;
-                if(itemToEdit.attachments.drive) document.getElementById('driveLink').value = itemToEdit.attachments.drive;
-            }
+            // Note: Attachment fields are not pre-filled for simplicity, as they are write-only.
+            // This can be enhanced later if needed.
+
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
-            // --- FIX: Only clear editor for new content ---
+            // For a new item, reset everything and show templates.
+            addContentForm.reset();
+            editingItemIdInput.value = ""; 
             mainQuillEditor.root.innerHTML = '<p><br></p>'; 
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
             templateSelectionContainer.classList.remove('hidden');
@@ -2348,13 +2364,18 @@
             if (!itemData.url) { showToast('A URL is required.', 'error'); return; }
         }
 
-        saveDataToLocalStorage(); // --- FIX: Persist data on save
+        saveDataToLocalStorage();
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        // --- FIX: Force re-render after save ---
-        window.location.hash = editingId ? `#${sectionId}/${editingId}` : `#${sectionId}`;
-        handleNavigation(); // Explicitly call navigation to ensure view updates
+        // FIXED: Force a re-render to ensure view is always up-to-date.
+        // If editing, navigate to the item detail page to see the changes.
+        // If adding, refresh the current section view to show the new card.
+        if (editingId) {
+            window.location.hash = `#${sectionId}/${editingId}`;
+        } else {
+            handleNavigation(); // Refresh the current view
+        }
     });
     
     // --- Global Modal Triggers ---
@@ -2386,7 +2407,7 @@
                 section.items.splice(itemIndex, 1);
                 saveDataToLocalStorage();
 
-                // ✅ FIX: Immediately remove the card from the view without full refresh
+                // Immediately remove the card from the view without full refresh
                 const cardToRemove = document.querySelector(`.card[data-item-id="${itemId}"]`);
                 if (cardToRemove) {
                     cardToRemove.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
