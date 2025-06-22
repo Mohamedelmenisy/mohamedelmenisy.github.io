@@ -309,6 +309,7 @@
             color: var(--text-color); 
             line-height: 1.3; 
             user-select: text; /* Allow title selection */
+            cursor: text;
         }
         .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
         .card .item-meta-info {
@@ -799,18 +800,24 @@
         .copy-script-btn:hover { opacity: 1; }
 
         /* New Compensation Box Style */
+        .compensation-matrix-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
         .compensation-box {
             border-radius: var(--border-radius-lg);
             padding: 1.5rem;
-            margin: 1.5rem 0;
-            color: var(--text-color-inverted);
+            border: 1px solid var(--border-color);
         }
         .compensation-box h4 {
             margin-top: 0;
             margin-bottom: 1rem;
             font-size: 1.2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            border-bottom: 1px solid var(--border-color-darker);
             padding-bottom: 0.5rem;
+            color: var(--text-color);
         }
         .compensation-box ul {
             list-style-type: none;
@@ -819,12 +826,13 @@
         .compensation-box ul li {
             padding: 0.25rem 0;
             font-weight: 500;
+            color: var(--text-color-subtle);
         }
         .compensation-box.fast {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            background: rgba(99, 102, 241, 0.1);
         }
         .compensation-box.scheduled {
-            background: linear-gradient(135deg, #0d9488, #059669);
+            background: rgba(16, 185, 129, 0.1);
         }
 
         mark {
@@ -929,8 +937,8 @@
         }
         #itemDetailViewPlaceholder .kb-content ul { list-style-type: disc; }
         #itemDetailViewPlaceholder .child-items-list { list-style-type: none; padding-left: 0; }
-        #itemDetailViewPlaceholder .child-items-list li { margin-bottom: 0.5rem; }
-        #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; }
+        #itemDetailViewPlaceholder .child-items-list li { margin-bottom: 0.5rem; padding: 0.25rem 0; }
+        #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; font-weight: 500; }
         #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: underline; }
         .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
         
@@ -1599,9 +1607,9 @@
                         compensationMatrix: {
                           fast: [
                             '<strong>16–30 mins:</strong> Compensate delivery fees.',
-                            '<strong>31–45 mins:</strong> Compensate delivery fees + 25% of food value.',
-                            '<strong>46–60 mins:</strong> Compensate delivery fees + 50% of food value.',
-                            '<strong>&gt; 60 mins:</strong> Compensate full order value (delivery + food).'
+                            '<strong>31–45 mins:</strong> Compensate delivery fees + 25% of chef total.',
+                            '<strong>46–60 mins:</strong> Compensate delivery fees + 50% of chef total.',
+                            '<strong>&gt; 60 mins:</strong> Compensate full order value (delivery + chef total).'
                           ],
                           scheduled: [
                             '<strong>31–60 mins:</strong> Compensate 50-100% of total order value (agent discretion).',
@@ -1652,6 +1660,7 @@
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
         ]
     };
+    const KB_DATA_KEY = 'infiniBaseKbData';
 
     // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
@@ -1712,6 +1721,39 @@
     let currentUser = null; 
     let currentOpenItem = null;
     let activityChartInstance;
+
+    // --- Data Persistence ---
+    function loadDataFromStorage() {
+        try {
+            const storedData = localStorage.getItem(KB_DATA_KEY);
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                // Basic validation
+                if (parsedData.meta && parsedData.sections) {
+                    kbSystemData = parsedData;
+                    console.log("Knowledge base data loaded from localStorage.");
+                }
+            } else {
+                // First time load, save the default data to storage
+                saveDataToStorage();
+            }
+        } catch (e) {
+            console.error("Failed to load or parse data from localStorage.", e);
+            // Optionally, clear the bad data
+            localStorage.removeItem(KB_DATA_KEY);
+        }
+    }
+
+    function saveDataToStorage() {
+        try {
+            localStorage.setItem(KB_DATA_KEY, JSON.stringify(kbSystemData));
+            console.log("Knowledge base data saved to localStorage.");
+        } catch (e) {
+            console.error("Failed to save data to localStorage.", e);
+            showToast("Could not save changes. Storage might be full.", "error");
+        }
+    }
+
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1785,6 +1827,9 @@
             if (activityChartInstance.options.scales && activityChartInstance.options.scales.y) {
                 activityChartInstance.options.scales.y.ticks.color = ticksColor;
                 activityChartInstance.options.scales.y.grid.color = gridColor;
+            }
+             if (activityChartInstance.options.scales && activityChartInstance.options.scales.yViews) { // Secondary axis
+                activityChartInstance.options.scales.yViews.ticks.color = ticksColor;
             }
             if (activityChartInstance.options.scales && activityChartInstance.options.scales.x) { 
                 activityChartInstance.options.scales.x.ticks.color = ticksColor;
@@ -1906,7 +1951,7 @@
         const updatedBadgeText = isRecentlyUpdated ? 'Updated' : 'Last updated';
 
         return `
-            <div class="card" data-item-id="${item.id}" data-item-type="${item.type}" data-href="${escapeHTML(ctaLink)}">
+            <div class="card" data-item-id="${item.id}" data-item-type="${item.type}" data-href="${escapeHTML(ctaLink)}" title="&#128211; Click to view">
                 <div class="card-actions-menu-container">
                     <button class="card-actions-menu-toggle" aria-label="Actions">⋮</button>
                     <ul class="card-actions-menu">${actionsMenuHTML}</ul>
@@ -1939,7 +1984,7 @@
             d.setDate(d.getDate() - i);
             const key = d.toISOString().split('T')[0];
             labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
-            activity[key] = { created: 0, modified: 0 };
+            activity[key] = { created: 0, modified: 0, views: 0 };
         }
 
         allItems.forEach(item => {
@@ -1953,14 +1998,17 @@
                 const modifiedDate = new Date(item.lastModified).toISOString().split('T')[0];
                 if (activity[modifiedDate]) {
                     activity[modifiedDate].modified++;
+                    // Proxy for daily views: add item's total views to the day it was last modified
+                    activity[modifiedDate].views += (item.views || 0);
                 }
             }
         });
 
         const createdData = Object.values(activity).map(d => d.created);
         const modifiedData = Object.values(activity).map(d => d.modified);
+        const viewsData = Object.values(activity).map(d => d.views);
 
-        return { labels, createdData, modifiedData };
+        return { labels, createdData, modifiedData, viewsData };
     }
 
     async function displayDashboard() {
@@ -1985,7 +2033,7 @@
             return;
         }
 
-        const welcomeUser = currentUser.name || 'Admin'; 
+        const welcomeUser = currentUser.name || 'Developer (Mohamed Elmenisy)'; 
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
@@ -2069,7 +2117,8 @@
                 tooltip: { bodyFont: { family: 'Inter, sans-serif' }, titleFont: { family: 'Inter, sans-serif' } }
             },
             scales: {
-                y: { ticks: { color: ticksColor, beginAtZero: true, font: { family: 'Inter, sans-serif' }, stepSize: 1 }, grid: { color: gridColor } },
+                y: { type: 'linear', display: true, position: 'left', ticks: { color: ticksColor, beginAtZero: true, font: { family: 'Inter, sans-serif' }, stepSize: 1 }, grid: { color: gridColor }, title: { display: true, text: 'Count', color: ticksColor } },
+                yViews: { type: 'linear', display: true, position: 'right', ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Views', color: ticksColor } },
                 x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: gridColor } }
             }
         };
@@ -2077,14 +2126,15 @@
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx) {
-            const { labels, createdData, modifiedData } = generateChartData();
+            const { labels, createdData, modifiedData, viewsData } = generateChartData();
             activityChartInstance = new Chart(activityCtx, {
                 type: 'bar',
                 data: { 
                     labels: labels, 
                     datasets: [
-                        { label: 'Content Created', data: createdData, backgroundColor: 'rgba(99, 102, 241, 0.7)'},
-                        { label: 'Content Modified', data: modifiedData, backgroundColor: 'rgba(34, 197, 94, 0.7)'}
+                        { type: 'line', label: 'Daily Views', data: viewsData, borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.2)', yAxisID: 'yViews', tension: 0.3, fill: true },
+                        { label: 'Content Added', data: createdData, backgroundColor: 'rgba(99, 102, 241, 0.7)', yAxisID: 'y' },
+                        { label: 'Content Edited', data: modifiedData, backgroundColor: 'rgba(34, 197, 94, 0.7)', yAxisID: 'y' }
                     ]
                 },
                 options: chartOptions
@@ -2150,19 +2200,15 @@
 
     function trackView(item) {
         if (!currentUser) return;
-        const viewKey = `view_log_${currentUser.id}_${item.id}`;
-        const lastView = localStorage.getItem(viewKey);
+        // Simplified view tracking for the demo. In a real app, this would be more robust.
+        item.views = (item.views || 0) + 1;
+        console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
+        // The view count is saved when any data mutation occurs. We can force a save here
+        // for persistence even if the user only views things.
+        saveDataToStorage();
 
-        if (!lastView) { // Only count the view if it has never been logged before for this user/item
-            item.views = (item.views || 0) + 1;
-            localStorage.setItem(viewKey, 'viewed'); // Set a permanent flag
-            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
-            // Update the view count on the page if it's visible
-            const readStatsEl = document.getElementById('readStatsCount');
-            if(readStatsEl) readStatsEl.textContent = item.views;
-        } else {
-            console.log(`View for item ${item.id} already tracked previously.`);
-        }
+        const readStatsEl = document.getElementById('readStatsCount');
+        if(readStatsEl) readStatsEl.textContent = item.views;
     }
 
 
@@ -2256,7 +2302,7 @@
             if (itemData.compensationMatrix.scheduled) {
                  matrixHTML += `<div class="compensation-box scheduled"><h4><i class="far fa-calendar-alt"></i> For SCHEDULED Orders</h4><ul>${itemData.compensationMatrix.scheduled.map(li => `<li>${li}</li>`).join('')}</ul></div>`;
             }
-            content = content.replace('<!--COMPENSATION_MATRIX-->', matrixHTML);
+            content = content.replace('<!--COMPENSATION_MATRIX-->', `<div class="compensation-matrix-container">${matrixHTML}</div>`);
         }
 
         let detailHTML = `<div class="item-actions-bar">
@@ -2318,6 +2364,7 @@
     function renderFeedbackUI(itemData) {
         const container = document.getElementById('feedbackInteractionContainer');
         if (!container) return;
+        if (!itemData.feedback) itemData.feedback = [];
 
         const userVote = itemData.feedback.find(f => f.userId === currentUser.id);
 
@@ -2329,32 +2376,63 @@
                 </div>
             </div>`;
             document.getElementById('undoFeedbackBtn').addEventListener('click', () => {
-                const voteIndex = itemData.feedback.findIndex(f => f.userId === currentUser.id);
-                if (voteIndex > -1) {
-                    itemData.feedback.splice(voteIndex, 1);
-                    showToast('Your feedback has been removed.', 'info');
-                    renderFeedbackUI(itemData); // Re-render the feedback section
-                }
+                performDataUpdate(() => {
+                    const voteIndex = itemData.feedback.findIndex(f => f.userId === currentUser.id);
+                    if (voteIndex > -1) {
+                        itemData.feedback.splice(voteIndex, 1);
+                    }
+                }, 'Your feedback has been removed.');
+                renderFeedbackUI(itemData);
             });
         } else {
-            container.innerHTML = `<div class="feedback-prompt">
-                <div class="feedback-buttons" id="ratingButtons">
-                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
-                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+            container.innerHTML = `
+                <div id="feedbackPromptContainer">
+                    <div class="feedback-prompt">
+                        <div class="feedback-buttons" id="ratingButtons">
+                            <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                            <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                        </div>
+                    </div>
                 </div>
-            </div>`;
-
-            const handleVote = (voteType) => {
-                if (itemData.feedback.some(f => f.userId === currentUser.id)) {
-                    showToast('You have already provided feedback for this article.', 'error');
-                    return;
-                }
-                itemData.feedback.push({ type: voteType, userId: currentUser.id, timestamp: new Date().toISOString() });
-                renderFeedbackUI(itemData); // Re-render the section to show "Thank you"
+                <div id="negativeFeedbackForm" class="hidden" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label for="feedbackReasonText" style="font-weight: 600;">Please tell us what we can improve:</label>
+                        <textarea id="feedbackReasonText" rows="3" placeholder="Your feedback is valuable to us..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
+                        <button id="submitNegativeFeedbackBtn" class="button">Submit Feedback</button>
+                    </div>
+                </div>`;
+            
+            const handleVote = (voteType, comment = null) => {
+                 performDataUpdate(() => {
+                    if (itemData.feedback.some(f => f.userId === currentUser.id)) return; // Should not happen but safe
+                    itemData.feedback.push({ type: voteType, userId: currentUser.id, comment, timestamp: new Date().toISOString() });
+                }, 'Thank you for your feedback!');
+                renderFeedbackUI(itemData);
             };
 
             document.getElementById('rateYesBtn').addEventListener('click', () => handleVote('positive'));
-            document.getElementById('rateNoBtn').addEventListener('click', () => handleVote('negative'));
+            
+            document.getElementById('rateNoBtn').addEventListener('click', () => {
+                document.getElementById('feedbackPromptContainer').classList.add('hidden');
+                document.getElementById('negativeFeedbackForm').classList.remove('hidden');
+            });
+
+            document.getElementById('cancelNegativeFeedbackBtn').addEventListener('click', () => {
+                document.getElementById('negativeFeedbackForm').classList.add('hidden');
+                document.getElementById('feedbackPromptContainer').classList.remove('hidden');
+            });
+
+            document.getElementById('submitNegativeFeedbackBtn').addEventListener('click', () => {
+                const comment = document.getElementById('feedbackReasonText').value.trim();
+                if (!comment) {
+                    showToast('Please enter your feedback before submitting.', 'error');
+                    return;
+                }
+                handleVote('negative', comment);
+            });
         }
     }
     
@@ -2401,14 +2479,17 @@
                 showToast('Please enter a comment.', 'error');
                 return;
             }
-            if (!itemData.comments) itemData.comments = [];
-            itemData.comments.push({
-                id: `cmt_${Date.now()}`,
-                authorId: currentUser.id,
-                authorName: currentUser.name,
-                text: commentText, 
-                timestamp: new Date().toISOString()
-            });
+            performDataUpdate(() => {
+                 if (!itemData.comments) itemData.comments = [];
+                itemData.comments.push({
+                    id: `cmt_${Date.now()}`,
+                    authorId: currentUser.id,
+                    authorName: currentUser.name || 'User',
+                    text: commentText, 
+                    timestamp: new Date().toISOString()
+                });
+            }, 'Comment posted!');
+           
             renderComments(itemData, 'commentDisplayAreaForItem'); 
             commentTextEl.value = ''; 
         });
@@ -2576,8 +2657,8 @@
     function performDataUpdate(mutationFn, successMessage = 'Knowledge base updated.') {
         try {
             mutationFn(); // Execute the data change
-            // The handleNavigation function will be called which re-renders the current view
-            handleNavigation(); 
+            saveDataToStorage(); // Persist changes
+            handleNavigation(); // Re-render the current view
             showToast(successMessage, 'success');
         } catch (error) {
             console.error("Data update failed:", error);
@@ -2746,6 +2827,7 @@
     }
 
     async function initializeApp() {
+        loadDataFromStorage();
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
 
@@ -2784,10 +2866,14 @@
             const deleteAction = e.target.closest('.delete-item-from-card');
             const duplicateAction = e.target.closest('.duplicate-item-from-card');
 
-            // Card click for navigation, preventing navigation when clicking on interactive elements
-            if (card && !e.target.closest('h3, .card-actions-menu-container, a, button')) {
+            // Card click for navigation, allowing clicks on H3 but preventing on actions menu
+            if (card && !e.target.closest('.card-actions-menu-container, a, button')) {
                 e.preventDefault();
-                window.location.hash = card.dataset.href;
+                // Check if user is trying to select text in the title
+                const selection = window.getSelection();
+                if (selection.toString().length === 0) {
+                     window.location.hash = card.dataset.href;
+                }
             }
 
             // "Add Content" button in section
