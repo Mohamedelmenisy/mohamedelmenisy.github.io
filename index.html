@@ -1080,10 +1080,10 @@
             }
             #pageContentArea { padding: 0 !important; }
             
-            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, #pdfPrintArea {
                 display: block !important;
             }
-            .card, .mermaid-diagram-card, .compensation-box, .content-section-box, .copyable-script-box {
+            .card, .mermaid-diagram-card, .compensation-box, .content-section-box, .copyable-script-box, #pdfPrintArea > .card {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
                 margin-bottom: 0.5cm !important;
@@ -1091,7 +1091,7 @@
                 page-break-inside: avoid;
             }
             
-            .card *, .mermaid-diagram-card *, .compensation-box *, .content-section-box *, .copyable-script-box * {
+            #pdfPrintArea * {
                 color: black !important;
                 background-color: transparent !important;
             }
@@ -1507,7 +1507,8 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        meta: { version: '1.4.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+        // MODIFICATION: Bumped version from 1.4.0 to 1.4.1 to invalidate old localStorage cache.
+        meta: { version: '1.4.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1518,9 +1519,13 @@
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
                         content: `
-                            <div style="text-align: center; margin-bottom: 1.5rem;">
-                                <img src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1287&q=80" alt="Customer service representative assisting a client" style="max-width: 100%; height: auto; border-radius: 0.75rem; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                            <div style="text-align: center; margin-bottom: 2rem;">
+                                <!-- MODIFICATION: Replaced Unsplash image with the requested Undraw SVG illustration -->
+                                <img src="https://undraw.co/api/illustrations/8eaf3276-071d-474f-927e-1f59a9f604cb" 
+                                     alt="Compensation Policy Illustration" 
+                                     style="max-width: 450px; width: 100%; height: auto; margin: 0 auto; display: block;">
                             </div>
+                            <!-- MODIFICATION: This div now has id="pdfPrintArea" but it is added dynamically in the displayItemDetail function. This is a reference for the content structure. -->
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
@@ -1655,6 +1660,7 @@
                 } else {
                     const storedVersion = parsedData.meta ? parsedData.meta.version : 'unknown';
                     console.warn(`LocalStorage data (v${storedVersion}) is outdated or mismatched. Using fresh data from file (v${fileVersion}).`);
+                    // The function will naturally proceed to use the kbSystemData from the file, effectively "refreshing" it.
                 }
             } catch (e) {
                 console.error("Failed to parse data from localStorage, using default.", e);
@@ -2154,21 +2160,24 @@
         if (!itemToDownload || !itemToDownload.title) {
             showToast('Error preparing PDF: Item data is missing.', 'error'); return;
         }
-        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        
+        // MODIFICATION: Use a more specific, descriptive filename.
+        const filename = `infinibase_${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
         showToast('Generating PDF, please wait...', 'info', 5000);
 
-        const element = document.getElementById('itemDetailViewPlaceholder');
+        // MODIFICATION: Target the specific #pdfPrintArea element for better accuracy.
+        const element = document.getElementById('pdfPrintArea');
         if (!element) {
-            showToast('Error preparing PDF: Content area not found.', 'error'); return;
+            showToast('Error preparing PDF: Printable content area not found.', 'error'); 
+            console.error("PDF generation failed: #pdfPrintArea element is missing from the DOM.");
+            return;
         }
+        
         const elementToPrint = element.cloneNode(true);
+        // Add some padding to the cloned element for better print margins within the PDF.
         elementToPrint.style.padding = "20px";
-        elementToPrint.style.width = "210mm";
-        elementToPrint.style.backgroundColor = "white";
         
-        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.last-updated-info' ];
-        selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
-        
+        // Hide the clone from the viewport while it renders
         elementToPrint.style.position = 'absolute';
         elementToPrint.style.left = '-9999px';
         document.body.appendChild(elementToPrint);
@@ -2177,10 +2186,12 @@
             await renderMermaidDiagramsInElement(elementToPrint);
         }
 
+        // MODIFICATION: Using the robust options suggested by the user.
         const opt = {
-            margin: [10, 10, 10, 10], filename: filename,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 2, logging: false, useCORS: true },
+            margin: 10,
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
@@ -2190,8 +2201,9 @@
             showToast('PDF downloaded successfully!', 'success');
         } catch (error) {
             console.error("Error generating PDF:", error);
-            showToast('Error generating PDF. Check console.', 'error');
+            showToast('An error occurred while generating the PDF. See console for details.', 'error');
         } finally {
+             // Clean up the cloned element from the DOM
              document.body.removeChild(elementToPrint);
         }
     }
@@ -2294,18 +2306,21 @@
                 </a>`;
             }
         }
-
-        detailHTML += `<div class="card">
-                    <div class="item-title-area">
-                        <i class="${itemIconClass} fa-title-icon"></i>
-                        <h2>${escapeHTML(itemData.title)}</h2>
+        
+        // MODIFICATION: Added the <div id="pdfPrintArea"> wrapper around the main content card.
+        detailHTML += `<div id="pdfPrintArea">
+                    <div class="card">
+                        <div class="item-title-area">
+                            <i class="${itemIconClass} fa-title-icon"></i>
+                            <h2>${escapeHTML(itemData.title)}</h2>
+                        </div>
+                        <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+                        ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                        <hr class="title-content-divider">
+                        ${lastUpdatedHTML}
+                        <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
+                        ${attachmentsHTML}
                     </div>
-                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                    <hr class="title-content-divider">
-                    ${lastUpdatedHTML}
-                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
-                    ${attachmentsHTML}
                    </div>`;
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || [])
