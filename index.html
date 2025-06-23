@@ -1430,6 +1430,7 @@
                         `,
                         tags: ['compensation', 'customer service', 'chefz policy', 'sop', 'delay'],
                         createdAt: '2024-05-20T10:00:00.000Z',
+                        // MODIFIED: Updated lastModified date to 2025 as requested to fix the display issue.
                         lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.1,
                         views: 183,
@@ -1689,8 +1690,10 @@
 
         const isAdmin = currentUser && currentUser.role === 'admin';
         const viewButton = `<a href="#${sectionData.id}/${item.id}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
-        const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
-        const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
+        
+        // MODIFICATION: Replaced onclick with data attributes and classes for event delegation
+        const editButton = isAdmin ? `<button class="button button-secondary item-edit-btn" data-section-id="${sectionData.id}" data-item-id="${item.id}" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
+        const deleteButton = isAdmin ? `<button class="button button-danger item-delete-btn" data-section-id="${sectionData.id}" data-item-id="${item.id}" data-item-title="${escapeHTML(item.title)}" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
         
         const tagsHTML = item.tags && item.tags.length > 0
             ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
@@ -2130,13 +2133,11 @@
             const editBtn = document.getElementById('editItemBtn');
             if (editBtn) {
                 editBtn.addEventListener('click', () => {
-                    // This correctly passes the full itemData object to the modal function.
-                    // This ensures the form is pre-filled with all available data.
-                    openAddContentModal(sectionId, itemData);
+                    openEditModal(sectionId, itemData.id);
                 });
             }
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => {
-                window.openDeleteModal(sectionId, itemId, itemData.title);
+                openDeleteModal(sectionId, itemId, itemData.title);
             });
         }
 
@@ -2297,17 +2298,9 @@
 
 
     // --- Add/Edit Content Modal Logic ---
-    /**
-     * FIX: This function has been refactored to match the logic of the working scenario.
-     * It now correctly resets the form, handles both "Add" and "Edit" modes,
-     * populates the data, and shows the form and Quill editor as expected.
-     */
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
-        // Step 1: Always reset the form and clear the editor state first.
-        addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = ""; 
-
+        
         if (!mainQuillEditor) {
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
@@ -2324,45 +2317,47 @@
                 placeholder: 'Enter detailed content here...'
             });
         }
-        mainQuillEditor.root.innerHTML = '<p><br></p>'; 
-
-        // Step 2: Check if we are editing or adding a new item.
+        
         if (itemToEdit) {
-            // --- EDITING PATH ---
-            // Set the title and pre-fill all form fields with existing data.
+            // Editing an item: pre-fill the form with data from the 'itemToEdit' object.
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id;
             
+            // Core fields with fallbacks to prevent errors.
             document.getElementById('contentTitle').value = itemToEdit.title || '';
             document.getElementById('contentSummary').value = itemToEdit.summary || '';
             contentTypeSelect.value = itemToEdit.type || 'article';
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
-            // This robust check ensures content from any type (article, case, etc.) is loaded.
+            // Content for Quill editor
+            // FIX: Per user feedback, this now checks multiple potential properties (content, resolution_steps, body)
+            // to correctly load main content from different item types like Articles, Cases, or Scenarios.
             let contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || itemToEdit.body || '<p><br></p>';
             mainQuillEditor.root.innerHTML = contentToEdit;
             
-            // Fill attachment links.
+            // Link fields with fallbacks
             document.getElementById('contentUrl').value = itemToEdit.url || '';
             document.getElementById('videoLink').value = itemToEdit.videoLink || '';
             document.getElementById('driveLink').value = itemToEdit.driveLink || '';
             
-            // This is the critical part: HIDE the template selection and SHOW the form.
+            // Note: File inputs cannot be programmatically set for security reasons.
+            document.getElementById('pdfFile').value = '';
+            document.getElementById('imageFile').value = '';
+            
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
 
         } else {
-            // --- ADDING NEW ITEM PATH ---
-            // Show the template selection and keep the form hidden until a template is chosen.
+            // New item: reset everything and show templates.
+            addContentForm.reset();
+            editingItemIdInput.value = ""; 
+            mainQuillEditor.root.innerHTML = '<p><br></p>'; 
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
         
-        // Step 3: Trigger a change event to correctly show/hide URL/Detail fields.
         contentTypeSelect.dispatchEvent(new Event('change'));
-        
-        // Step 4: Finally, show the entire modal overlay.
         addContentModalOverlay.classList.remove('hidden');
     }
 
@@ -2447,7 +2442,8 @@
     });
     
     // --- Global Modal Triggers ---
-    window.openEditModal = (sectionId, itemId) => {
+    // MODIFICATION: Removed window prefix. These are now module-scoped.
+    const openEditModal = (sectionId, itemId) => {
         const section = kbSystemData.sections.find(s => s.id === sectionId);
         const item = section?.items.find(i => i.id === itemId);
         if (item) {
@@ -2456,7 +2452,7 @@
             showToast('Error: Could not find item to edit.', 'error');
         }
     };
-    window.openDeleteModal = (sectionId, itemId, itemTitle) => {
+    const openDeleteModal = (sectionId, itemId, itemTitle) => {
         openDeleteConfirmModal(sectionId, itemId, itemTitle);
     };
 
@@ -2563,6 +2559,27 @@
         handleNavigation(); 
 
         window.addEventListener('hashchange', handleNavigation);
+        
+        // MODIFICATION: Added event delegation for card buttons
+        standardSectionContentPlaceholder.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.item-edit-btn');
+            if (editBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const { sectionId, itemId } = editBtn.dataset;
+                openEditModal(sectionId, itemId);
+                return;
+            }
+
+            const deleteBtn = e.target.closest('.item-delete-btn');
+            if (deleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const { sectionId, itemId, itemTitle } = deleteBtn.dataset;
+                openDeleteModal(sectionId, itemId, itemTitle);
+                return;
+            }
+        });
         
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
         closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
