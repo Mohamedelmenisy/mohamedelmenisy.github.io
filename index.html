@@ -3,80 +3,397 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfiniBase - Editable Scenario</title>
-    <!-- Favicon -->
+    <title>InfiniBase - Knowledge Base</title>
+    <!-- Updated Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='%236366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>">
     
     <!-- CDNs -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 
     <style>
         :root {
-            /* --- تصميم Dark Theme من ملف baaase.txt --- */
-            --primary-color: #6366f1;
+            /* Permanent Dark Theme Variables */
+            --primary-color: #6366f1; /* Brighter Indigo for dark */
             --primary-color-hover: #4f46e5;
+            --secondary-color: #9ca3af;
+
             --text-color: #d1d5db;
             --text-color-muted: #9ca3af;
-            --text-color-inverted: #ffffff;
+            --text-color-inverted: #ffffff; 
             --text-color-subtle: #9ca3af;
-            --bg-color: #111827;
-            --bg-color-alt: #1f2937;
+
+            --bg-color: #111827; /* Dark gray */
+            --bg-color-alt: #1f2937; /* Slightly lighter dark gray for cards/modals */
+            --bg-color-sidebar: #1f2937;
+            --bg-color-header: rgba(31, 41, 55, 0.9);
+            --bg-color-modal: #1f2937;
             --bg-color-hover: #374151;
+            --bg-color-active: var(--primary-color);
+
             --border-color: #374151;
             --border-color-darker: #4b5563;
+
             --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-            --border-radius: 0.5rem;
+            --card-hover-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            
+            --border-radius: 0.5rem; 
             --border-radius-lg: 0.75rem;
             --header-height: 70px;
+            --sidebar-width: 260px;
+
+            --yes-color: #22c55e; /* Green for Yes */
+            --no-color: #ef4444;   /* Red for No */
+            --rating-color: #fbbf24; /* Amber 400 for ratings */
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
+            margin: 0;
             line-height: 1.6;
+            font-size: 16px;
         }
 
-        .content-wrapper {
-            max-width: 900px;
-            margin: 0 auto;
+        a { text-decoration-skip-ink: none; }
+
+        .container-fluid {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-color-sidebar);
             padding: 1.5rem;
+            border-right: 1px solid var(--border-color); /* LTR */
+            position: fixed;
+            top: 0;
+            left: 0; /* LTR */
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar.closed {
+            transform: translateX(-100%); /* LTR */
+        }
+        @media (min-width: 768px) {
+            .sidebar.closed { transform: translateX(0); }
+        }
+
+        .sidebar-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            color: var(--text-color); 
+        }
+        .sidebar-header i { 
+            margin-right: 0.75rem; /* LTR */
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+        .sidebar-logo-text {
+             color: var(--text-color);
+        }
+
+        .sidebar-nav { flex-grow: 1; }
+
+        .sidebar-section-title {
+            padding-left: 0.75rem; /* LTR */
+            font-size: 0.75rem;
+            font-weight: 700; /* Increased font-weight for better visibility */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color-muted);
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-weight: 500;
+            color: var(--text-color-subtle);
+            text-decoration: none;
+            margin-bottom: 0.25rem;
+        }
+        .sidebar-link i {
+            margin-right: 0.75rem; /* LTR */
+            width: 1.5rem; /* Adjusted for font-size */
+            font-size: 1.5rem; /* Increased icon size */
+            text-align: center;
+            transition: color 0.2s ease;
+        }
+        .sidebar-link:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-color);
+        }
+        .sidebar-link.active {
+            background-color: var(--bg-color-active); /* Primary color */
+            color: var(--text-color-inverted) !important; /* White text */
+            font-weight: 600;
+        }
+        .sidebar-link.active i {
+            color: var(--text-color-inverted) !important; /* White icon on primary background */
+        }
+
+        .sidebar-footer {
+            margin-top: auto; 
+            padding-top: 1rem;
+        }
+        .sidebar-footer button {
+            width: 100%;
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-footer button i { margin-right: 0.5rem; }
+
+
+        .content-wrapper {
+            flex-grow: 1;
+            padding-right: 1.5rem; /* LTR */
+            padding-left: 1.5rem;
+            transition: margin-left 0.3s ease-in-out; /* LTR */
+            height: 100vh;
+            overflow-y: auto;
+        }
+        @media (min-width: 768px) {
+             .content-wrapper { margin-left: var(--sidebar-width); /* LTR */ }
+             .sidebar.closed + .content-wrapper { margin-left: 0; /* LTR */ }
         }
 
         .content-header {
-            padding: 1.25rem 0;
+            background-color: var(--bg-color-header);
+            padding: 1.25rem 2rem; 
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky; 
+            top: 0;
+            left: var(--sidebar-width); /* LTR, adjusted for fixed sidebar */
+            right: 0;
+            height: var(--header-height);
+            z-index: 50;
+            backdrop-filter: blur(8px); 
         }
-        
+         @media (max-width: 767px) { /* Mobile: header spans full width */
+            .content-header {
+                left: 0;
+            }
+        }
+        .header-left-content { display: flex; align-items: center; } 
         #currentSectionTitle {
-            font-size: 1.8rem;
+            font-size: 1.5rem; 
             font-weight: bold;
             margin: 0;
         }
-
         #breadcrumbs {
-            font-size: 0.875rem;
+            font-size: 0.875rem; 
             color: var(--text-color-muted);
             margin-top: 0.25rem;
         }
         #breadcrumbs a { color: var(--primary-color); text-decoration: none; }
         #breadcrumbs a:hover { text-decoration: underline; }
 
+        .header-right-content { display: flex; align-items: center; gap: 1rem; }
+        .search-container { position: relative; }
+        .search-container input[type="search"] {
+            padding: 0.625rem 1rem 0.625rem 2.5rem; /* py-2.5 pl-10 pr-4 for LTR */
+            border: 1px solid var(--border-color-darker);
+            border-radius: 9999px; 
+            min-width: 250px; 
+            background-color: var(--bg-color-alt); 
+            color: var(--text-color);
+        }
+        .search-container input[type="search"]::placeholder {
+            color: var(--text-color-muted);
+            opacity: 0.8;
+        }
+        .search-container .search-icon {
+            position: absolute;
+            inset-inline-start: 0.75rem; 
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color-muted);
+        }
+        #searchResultsContainer {
+            position: absolute;
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            width: 100%; 
+            max-height: 300px; 
+            overflow-y: auto;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+            z-index: 60; 
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+        }
+        #searchResultsContainer a {
+            display: block;
+            padding: 0.75rem; 
+            text-decoration: none;
+            color: var(--text-color);
+        }
+        #searchResultsContainer a:hover { background-color: var(--bg-color-hover); }
+        #searchResultsContainer mark { background-color: #78350f; color: #f3f4f6; }
+
+
+        .user-profile { display: flex; align-items: center; gap: 0.5rem; }
+        .user-profile img { width: 36px; height: 36px; border-radius: 50%; }
+        #userNameDisplayHeader { font-weight: 500; }
+        @media (max-width: 640px) { 
+            #userNameDisplayHeader { display: none; }
+        }
+
+        main { padding: 1.5rem 0; }
+
         .card {
             background-color: var(--bg-color-alt);
             border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-lg);
+            border-radius: var(--border-radius-lg); 
             padding: 1.5rem;
+            margin-bottom: 1.5rem; 
             box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            flex-direction: column; 
+            min-height: 150px; 
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        .card-header-icon {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .card-icon-container {
+            padding: 0.75rem;
+            border-radius: 50%;
+            margin-right: 1rem; /* LTR */
+            background-color: var(--primary-color-hover); 
+        }
+        .card-icon-container i {
+            font-size: 1.25rem;
+            color: var(--text-color-inverted);  
+        }
+        .card-title-group {
+            flex-grow: 1;
+        }
+        .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
+        .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
+        
+        /* NEW: Updated Badge Style */
+        .updated-badge {
+            display: inline-block;
+            background-color: rgba(34, 197, 94, 0.15); /* Green with transparency */
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-top: 0.4rem;
         }
 
-        /* --- Styles for Quill Editor and Content --- */
+        /* NEW: Tag styles for cards */
+        .card-tags {
+            margin-top: 0rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .card-tags .tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color-muted);
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+        .card-actions .button {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .button, button {
+            background-color: var(--primary-color);
+            color: var(--text-color-inverted);
+            border: 1px solid transparent;
+            padding: 0.625rem 1rem; 
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.875rem; 
+            font-weight: 500; 
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .button:hover, button:hover {
+            background-color: var(--primary-color-hover);
+        }
+        .button-secondary {
+            background-color: transparent;
+            color: var(--text-color-subtle);
+            border-color: var(--border-color-darker);
+        }
+        .button-secondary:hover { background-color: var(--bg-color-hover); color: var(--text-color); }
+        .button-danger {
+            background-color: #dc2626; 
+            color: var(--text-color-inverted);
+        }
+        .button-danger:hover { background-color: #b91c1c; }
+        input:focus, button:focus, select:focus, textarea:focus, a:focus { 
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); 
+        }
+        button:disabled {
+            background-color: var(--border-color);
+            color: var(--text-color-muted);
+            cursor: not-allowed;
+            border-color: transparent;
+        }
+
+        /* --- STYLES FOR INLINE EDITOR --- */
         .ql-toolbar {
             background: var(--bg-color);
             border-color: var(--border-color-darker) !important;
@@ -86,20 +403,85 @@
         .ql-toolbar .ql-stroke { stroke: var(--text-color-muted); }
         .ql-toolbar .ql-fill { fill: var(--text-color-muted); }
         .ql-toolbar .ql-picker-label { color: var(--text-color-muted); }
-        
+        .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
+        .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
+
         .ql-container {
+            background: var(--bg-color-alt);
             border-color: var(--border-color-darker) !important;
             color: var(--text-color);
-            font-size: 1rem;
+            min-height: 250px; 
             border-bottom-left-radius: var(--border-radius);
             border-bottom-right-radius: var(--border-radius);
-            background-color: var(--bg-color-alt);
+            font-size: 1rem;
         }
-        
-        /* --- Styles for Content Elements inside Quill --- */
-        .ql-editor h3 {
-            margin-top: 1.5em;
-            margin-bottom: 0.75em;
+        /* --- END STYLES FOR INLINE EDITOR --- */
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-color-muted);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto; 
+        }
+
+        .mobile-sidebar-toggle {
+            display: block;
+            position: fixed;
+            top: calc((var(--header-height) - 40px) / 2); 
+            left: 1.5rem; /* LTR */
+            z-index: 101; 
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 0.75rem; 
+            border-radius: var(--border-radius);
+            font-size: 1.25rem; 
+            line-height: 1;
+        }
+        @media (min-width: 768px) {
+            .mobile-sidebar-toggle { display: none; }
+        }
+        @media (max-width: 767px) {
+            .header-left-content #currentSectionTitle { margin-left: 0.5rem; }
+            .content-header { padding: 1rem; }
+            .header-right-content .search-container { display:none; } 
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px; /* LTR */
+            padding: 12px 18px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2000; 
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-color-alt); 
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .toast-notification.show { opacity: 1; transform: translateY(0); }
+        .toast-icon { margin-right: 10px; /* LTR */ font-size: 1.2em; }
+        .toast-success { background-color: #10b981; color: white; border-color: #059669; } 
+        .toast-error { background-color: #ef4444; color: white; border-color: #dc2626; } 
+        .toast-info { background-color: #3b82f6; color: white; border-color: #2563eb; } 
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 1.5rem; 
+        }
+
+        /* These styles will apply to content inside the editor AND static content */
+        .kb-content h3, .ql-editor h3 { 
+            margin-top: 1.5em; 
+            margin-bottom: 0.75rem; 
             font-size: 1.25rem;
             display: flex;
             align-items: center;
@@ -108,25 +490,29 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.5rem;
         }
-        .ql-editor p { margin-bottom: 1em; }
-        .ql-editor ul, .ql-editor ol { margin-bottom: 1em; padding-left: 20px; }
-        .ql-editor li { margin-bottom: 0.5em; }
-        .ql-editor blockquote {
+        .kb-content p, .ql-editor p { margin-bottom: 1em; }
+        .kb-content ul, .ql-editor ul, .kb-content ol, .ql-editor ol { margin-bottom: 1em; padding-left: 20px; /* LTR */ }
+        .kb-content li, .ql-editor li { margin-bottom: 0.5em; }
+        .kb-content blockquote, .ql-editor blockquote {
             background-color: var(--bg-color);
             padding: 0.75rem 1rem;
             border-radius: var(--border-radius);
             margin: 1em 0;
             border-left: 4px solid var(--primary-color);
             color: var(--text-color);
+            position: relative;
         }
+
+        /* Styles for the compensation grid, usable inside editor and static content */
         .compensation-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
-            margin: 1.5rem 0;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
         }
         .compensation-box {
-            background-color: var(--bg-color);
+            background-color: var(--bg-color); /* Darker than card for contrast */
             border: 1px solid var(--border-color-darker);
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
@@ -157,136 +543,434 @@
         .compensation-box ul li span:first-child { font-weight: 500; color: var(--text-color-subtle); }
         .compensation-box ul li .action { font-weight: 600; text-align: right; }
 
-        footer {
-            text-align: center;
-            padding: 1.5rem;
+        .hidden { display: none !important; }
+
+        /* Item Detail View Specific */
+        #itemDetailViewPlaceholder .item-title-area {
+            display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+        }
+        #itemDetailViewPlaceholder .item-title-area i.fa-title-icon {
+            font-size: 2rem; color: var(--primary-color); 
+        }
+        #itemDetailViewPlaceholder .item-title-area h2 { font-size: 1.8rem; margin:0; }
+        #itemDetailViewPlaceholder .item-summary { color: var(--text-color-subtle); margin-bottom: 1rem; font-style: italic; }
+        #itemDetailViewPlaceholder hr.title-content-divider {
+             margin: 1.5rem 0; border-color: var(--border-color); 
+        }
+        .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        
+        /* Last updated date style */
+        #lastUpdatedInfo {
+            text-align: right;
+            margin-top: 1rem;
+            padding-top: 1rem;
             font-size: 0.875rem;
             color: var(--text-color-muted);
             border-top: 1px solid var(--border-color);
-            margin-top: 2rem;
         }
     </style>
 </head>
 <body>
 
-    <div class="content-wrapper">
-        <header class="content-header">
-            <div>
-                <h1 id="currentSectionTitle">Customer Compensation Flow</h1>
-                <div id="breadcrumbs">
-                    <a href="#">Home</a> › <a href="#">Support</a> › Editable Scenario
-                </div>
+    <div class="container-fluid">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-database"></i> <span class="sidebar-logo-text">InfiniBase</span>
             </div>
-        </header>
-
-        <main>
-            <div class="card">
-                <!-- Quill Editor Container -->
-                <div id="editor"></div>
-
-                <!-- Last Updated Date Display -->
-                <div id="lastUpdated" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.875rem; color: var(--text-color-muted); text-align: right;">
-                  Last updated on: Never
-                </div>
+            <nav id="navigationMenu" class="sidebar-nav">
+                <!-- Links will be dynamically generated by JS -->
+            </nav>
+            <div class="sidebar-footer">
+                <div id="userRoleDisplaySidebar" style="font-size: 0.8rem; color: var(--text-color-muted); text-align: center; margin-top: 0.5rem;">Role: <span id="currentUserRoleSpan">Admin</span></div>
             </div>
-        </main>
+        </aside>
 
-        <footer>
-            <span>© 2024 InfiniBase.Elmenisy.</span>
-        </footer>
+        <div class="content-wrapper" id="contentWrapper">
+            <header class="content-header">
+                <div class="header-left-content">
+                    <button id="mobileSidebarToggle" class="mobile-sidebar-toggle"><i class="fas fa-bars"></i></button>
+                    <div>
+                        <h1 id="currentSectionTitle">Welcome</h1>
+                        <div id="breadcrumbs">Home</div>
+                    </div>
+                </div>
+                <div class="header-right-content">
+                    <div class="search-container">
+                        <span class="search-icon"><i class="fas fa-search"></i></span>
+                        <input type="search" id="globalSearchInput" placeholder="Search the knowledge base...">
+                        <div id="searchResultsContainer" class="hidden"></div>
+                    </div>
+                    <div id="userProfileContainer" class="user-profile">
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=U&size=36&background=6366f1&color=fff&rounded=true" alt="User">
+                        <span id="userNameDisplayHeader" style="font-weight: 500;">User</span>
+                    </div>
+                </div>
+            </header>
+
+            <main id="pageContentArea" class="p-6 md:p-8">
+                <div id="dashboardOverviewContainer" class="hidden">
+                    <!-- Dashboard content will be injected here -->
+                </div>
+                <div id="standardSectionContentPlaceholder">
+                    <!-- Section content will be injected here -->
+                </div>
+                <div id="itemDetailViewPlaceholder" class="hidden">
+                    <!-- Item detail view will be injected here -->
+                </div>
+            </main>
+
+            <footer class="mt-auto p-6 text-center text-sm">
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy.</span>
+            </footer>
+        </div>
     </div>
+    <div id="toastContainer"></div>
 
 <script>
-    // 1. تعريف محتوى السيناريو (مأخوذ من ملف baaase.txt)
-    const scenarioContent = `
-        <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
-        <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+    // --- MOCK DATA AND USER PROFILE (Simplified for this example) ---
+    const currentUser = {
+        id: 'user_1',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        avatar_url: `https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff&rounded=true&font-size=0.5`
+    };
+
+    let kbSystemData = {
+        sections: [
+            { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.'},
+            {
+                id: 'support', name: 'Support', icon: 'fas fa-headset',
+                items: [
+                     { 
+                        id: 'sup_flow_compensation', type: 'article', 
+                        title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
+                        summary: 'A comprehensive guide for handling customer compensation due to order delays, based on The Chefz policies.',
+                        content: `
+                            <h3><i class="fas fa-book-open"></i> Introduction: Understanding the Compensation Policy</h3>
+                            <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
+                            
+                            <h3><i class="fas fa-headset"></i> Initial Contact and Inquiry Identification</h3>
+                            <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
+                            <blockquote>"Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"</blockquote>
+                            
+                            <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
+                            <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
+
+                            <h3><i class="fas fa-calculator"></i> Applying the Compensation Matrix</h3>
+                            <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
+                            <div class="compensation-grid">
+                                <div class="compensation-box fast-order">
+                                    <h4><i class="fas fa-shipping-fast"></i> Fast Orders (> 15 mins)</h4>
+                                    <ul>
+                                        <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
+                                        <li><span>31–45 mins</span> <span class="action">Fees + 25% Chef Total</span></li>
+                                        <li><span>46–60 mins</span> <span class="action">Fees + 50% Chef Total</span></li>
+                                        <li><span>> 60 mins</span> <span class="action">Total Order</span></li>
+                                    </ul>
+                                </div>
+                                <div class="compensation-box scheduled-order">
+                                    <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (> 30 mins)</h4>
+                                    <ul>
+                                        <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
+                                        <li><span>> 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <blockquote>"Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."</blockquote>
+
+                            <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
+                            <p>The agent must finalize the action directly in the company system by logging the note on the order, recording the compensation amount, and selecting the responsible party (Store, Driver, Company).</p>
+                        `,
+                        tags: ['compensation', 'customer service', 'chefz policy', 'sop', 'delay'],
+                        lastModified: '2025-06-22T14:30:00.000Z',
+                    },
+                    {
+                        id: 'sup_another_article', type: 'article',
+                        title: 'How to Handle a Different Issue',
+                        summary: 'This is a standard, non-editable article for demonstration.',
+                        content: '<h3>Static Content</h3><p>This article is not editable. Only the compensation flow article has the inline editor enabled.</p>',
+                        tags: ['example', 'static'],
+                        lastModified: new Date().toISOString(),
+                    }
+                ]
+            },
+            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', items: [] }, 
+        ]
+    };
+    // --- END MOCK DATA ---
+
+
+    // --- DOM Elements ---
+    const sidebar = document.getElementById('sidebar');
+    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+    const navigationMenu = document.getElementById('navigationMenu');
+    const currentSectionTitleEl = document.getElementById('currentSectionTitle');
+    const breadcrumbsContainer = document.getElementById('breadcrumbs');
+    const dashboardOverviewContainer = document.getElementById('dashboardOverviewContainer');
+    const standardSectionContentPlaceholder = document.getElementById('standardSectionContentPlaceholder');
+    const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
+    const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
+    const userAvatar = document.getElementById('userAvatar');
+    const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
+
+    // --- State Variables ---
+    let activeQuillEditor = null;
+
+    // --- Utility Functions ---
+    const escapeHTML = (str) => {
+        if (typeof str !== 'string') return '';
+        const el = document.createElement('div');
+        el.textContent = str;
+        return el.innerHTML;
+    };
+
+    const showToast = (message, type = 'info', duration = 3000) => {
+        const toastContainer = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
         
-        <h3><i class="fas fa-headset"></i> Initial Contact and Inquiry Identification</h3>
-        <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
-        <blockquote>
-            <i class="fas fa-comment-dots"></i> "Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?"
-        </blockquote>
-        
-        <h3><i class="fas fa-clock"></i> Assessing the Delay and Order Type</h3>
-        <p>Using the company system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
-        
-        <h3><i class="fas fa-calculator"></i> Applying the Compensation Matrix</h3>
-        <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
-        <div class="compensation-grid">
-            <div class="compensation-box fast-order">
-                <h4><i class="fas fa-shipping-fast"></i> Fast Orders (> 15 mins)</h4>
-                <ul>
-                    <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
-                    <li><span>31–45 mins</span> <span class="action">Fees + 25% Chef Total</span></li>
-                    <li><span>46–60 mins</span> <span class="action">Fees + 50% Chef Total</span></li>
-                    <li><span>> 60 mins</span> <span class="action">Total Order</span></li>
-                </ul>
-            </div>
-            <div class="compensation-box scheduled-order">
-                <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (> 30 mins)</h4>
-                <ul>
-                    <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
-                    <li><span>> 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
-                </ul>
-            </div>
-        </div>
-        <blockquote>
-            <i class="fas fa-comment-dots"></i> "Based on the [duration] delay with your [Fast/Scheduled] order, we will be processing a compensation of [state specific compensation]. This will be reflected in your account within 24-48 hours. We are very sorry for the inconvenience this has caused."
-        </blockquote>
+        let iconClass = 'fas fa-info-circle';
+        if (type === 'success') iconClass = 'fas fa-check-circle';
+        else if (type === 'error') iconClass = 'fas fa-times-circle';
 
-        <h3><i class="fas fa-clipboard-check"></i> Finalizing the Case & Documentation</h3>
-        <p>The agent must finalize the action directly in the company system by logging the note on the order, recording the compensation amount, and selecting the responsible party (Store, Driver, Company).</p>
-    `;
+        toast.innerHTML = `<i class="toast-icon ${iconClass}"></i> <span>${escapeHTML(message)}</span>`;
+        toastContainer.appendChild(toast);
 
-    // 2. إعداد محرر Quill
-    const quill = new Quill('#editor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{'list': 'ordered'}, {'list': 'bullet'}],
-                ['link', 'image', 'blockquote'],
-                ['clean']
-            ]
-        },
-        placeholder: 'Start editing the scenario here...'
-    });
+        setTimeout(() => toast.classList.add('show'), 10);
 
-    // 3. تحميل المحتوى داخل المحرر
-    quill.root.innerHTML = scenarioContent;
-
-    // 4. إعداد وظيفة تحديث التاريخ
-    const lastUpdatedElement = document.getElementById('lastUpdated');
-
-    function updateLastUpdatedDate() {
-        const now = new Date();
-        const formattedDate = now.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    };
+    
+    // --- Cleanup Function ---
+    function destroyActiveEditor() {
+        if (activeQuillEditor) {
+            activeQuillEditor = null;
+        }
+    }
+    
+    // --- Sidebar and Navigation ---
+    function populateSidebar() {
+        let menuHTML = `<div class="sidebar-section-title">MAIN</div>`;
+        kbSystemData.sections.filter(s => ['home'].includes(s.id)).forEach(section => {
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon}"></i>${escapeHTML(section.name)}
+            </a>`;
         });
-        lastUpdatedElement.textContent = 'Last updated on: ' + formattedDate;
+        
+        menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+        kbSystemData.sections.filter(s => !['home'].includes(s.id)).forEach(section => {
+            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
+                <i class="${section.icon}"></i>${escapeHTML(section.name)}
+            </a>`;
+        });
+
+        navigationMenu.innerHTML = menuHTML;
     }
 
-    // 5. ربط وظيفة التحديث بحدث التعديل في المحرر
-    quill.on('text-change', function(delta, oldDelta, source) {
-        // يتم التحديث فقط إذا كان التغيير من المستخدم
-        if (source === 'user') {
-            updateLastUpdatedDate();
+    function highlightSidebarLink(sectionId) {
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+        if (activeLink) activeLink.classList.add('active');
+    }
+
+    // --- Content Display ---
+    function renderItemCard(item, sectionData) {
+        return `
+            <a href="#${sectionData.id}/${item.id}" style="text-decoration:none; color:inherit;">
+                <div class="card">
+                    <div class="card-header-icon">
+                        <div class="card-icon-container"><i class="fas fa-newspaper"></i></div>
+                        <div class="card-title-group"><h3>${escapeHTML(item.title)}</h3></div>
+                    </div>
+                    <p>${escapeHTML(item.summary)}</p>
+                    <div class="card-actions">
+                        <span class="button button-secondary"><i class="fas fa-eye"></i> View</span>
+                    </div>
+                </div>
+            </a>`;
+    }
+
+    function displayDashboard() {
+        destroyActiveEditor();
+        dashboardOverviewContainer.classList.remove('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+        currentSectionTitleEl.textContent = 'Dashboard';
+        breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
+        dashboardOverviewContainer.innerHTML = `<div class="card"><p>Welcome to the dashboard. Use the sidebar to navigate.</p></div>`;
+    }
+
+    function displaySectionContent(sectionId) {
+        destroyActiveEditor();
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.remove('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+
+        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+        if (!sectionData) {
+            standardSectionContentPlaceholder.innerHTML = `<p>Section not found</p>`;
+            return;
         }
-    });
 
-    // 6. عرض التاريخ الأولي عند تحميل الصفحة
-    // سنستخدم التاريخ من البيانات الأصلية كقيمة ابتدائية
-    const initialDate = new Date('2025-06-22T14:30:00.000Z');
-    lastUpdatedElement.textContent = 'Last updated on: ' + initialDate.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+        currentSectionTitleEl.textContent = sectionData.name;
+        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> › <span>${escapeHTML(sectionData.name)}</span>`;
+        
+        let contentHTML = `<div class="cards-grid">`;
+        if (sectionData.items && sectionData.items.length > 0) {
+            sectionData.items.forEach(item => contentHTML += renderItemCard(item, sectionData));
+        } else {
+            contentHTML += `<p>No content in this section yet.</p>`;
+        }
+        contentHTML += `</div>`;
+        standardSectionContentPlaceholder.innerHTML = contentHTML;
+    }
 
+    function displayItemDetail(sectionId, itemId) {
+        destroyActiveEditor();
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.remove('hidden');
+
+        const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
+        const itemData = sectionData?.items?.find(i => i.id === itemId);
+
+        if (!itemData) {
+            itemDetailViewPlaceholder.innerHTML = `<p>Item not found.</p>`;
+            return;
+        }
+        
+        currentSectionTitleEl.textContent = itemData.title;
+        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> › <a href="#${sectionId}">${escapeHTML(sectionData.name)}</a> › <span>${escapeHTML(itemData.title)}</span>`;
+
+        // Determine if this is the editable scenario
+        const isEditable = itemId === 'sup_flow_compensation';
+        
+        let detailHTML = `
+            <div class="item-actions-bar">
+                <a href="#${sectionId}" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Section</a>
+                ${isEditable ? '<button id="saveChangesBtn" class="button"><i class="fas fa-save"></i> Save Changes</button>' : ''}
+            </div>
+            <div class="card">
+                <div class="item-title-area">
+                    <i class="fas fa-newspaper fa-title-icon"></i>
+                    <h2>${escapeHTML(itemData.title)}</h2>
+                </div>
+                <p class="item-summary">${escapeHTML(itemData.summary)}</p>
+                <hr class="title-content-divider">
+
+                <!-- Content Area: Editor or Static HTML -->
+                ${isEditable ? `
+                    <div id="quillEditorContainer"></div>
+                    <div id="lastUpdatedInfo"></div>
+                ` : `
+                    <div class="kb-content">${itemData.content}</div>
+                `}
+            </div>
+        `;
+        
+        itemDetailViewPlaceholder.innerHTML = detailHTML;
+
+        // If it's the editable item, initialize Quill
+        if (isEditable) {
+            const lastUpdatedEl = document.getElementById('lastUpdatedInfo');
+            
+            // Function to update the date display
+            const updateDateDisplay = (dateString) => {
+                const date = new Date(dateString);
+                lastUpdatedEl.textContent = 'Last updated on: ' + date.toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+            };
+
+            // Initialize Quill
+            activeQuillEditor = new Quill('#quillEditorContainer', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'clean']
+                    ]
+                }
+            });
+            
+            // Load content and set initial date
+            activeQuillEditor.root.innerHTML = itemData.content;
+            updateDateDisplay(itemData.lastModified);
+            
+            // Add listener for text changes
+            activeQuillEditor.on('text-change', (delta, oldDelta, source) => {
+                if (source === 'user') {
+                    // Update display with current date when user types
+                    updateDateDisplay(new Date().toISOString());
+                }
+            });
+            
+            // Add listener for the save button
+            document.getElementById('saveChangesBtn').addEventListener('click', () => {
+                const newContent = activeQuillEditor.root.innerHTML;
+                const newTimestamp = new Date().toISOString();
+
+                // Update the data in our mock database
+                itemData.content = newContent;
+                itemData.lastModified = newTimestamp;
+
+                // In a real app, you would save this to a server/localStorage
+                console.log("Saving data:", itemData);
+                showToast('Scenario updated successfully!', 'success');
+                
+                // Update the display with the saved date
+                updateDateDisplay(newTimestamp);
+            });
+        }
+    }
+
+    // --- Routing and Initialization ---
+    function handleNavigation() {
+        const hash = window.location.hash.substring(1) || 'home';
+        const [sectionId, itemId] = hash.split('/');
+        
+        highlightSidebarLink(sectionId);
+
+        if (sectionId === 'home') {
+            displayDashboard();
+        } else if (itemId) {
+            displayItemDetail(sectionId, itemId);
+        } else if (sectionId) {
+            displaySectionContent(sectionId);
+        } else {
+            displayDashboard();
+        }
+        document.getElementById('contentWrapper')?.scrollTo(0,0);
+    }
+
+    function initializeApp() {
+        // Set up user info
+        userNameDisplayHeader.textContent = currentUser.name;
+        userAvatar.src = currentUser.avatar_url;
+        currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        
+        // Populate UI
+        populateSidebar();
+        handleNavigation(); 
+        
+        // Add event listeners
+        window.addEventListener('hashchange', handleNavigation);
+        mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
+                sidebar.classList.add('closed');
+            }
+        });
+    }
+
+    // Start the application
+    initializeApp();
 </script>
 </body>
 </html>
