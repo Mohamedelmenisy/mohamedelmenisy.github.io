@@ -628,13 +628,6 @@
             color: var(--text-color); /* Ensure pre content is visible */
             position: relative;
         }
-        .kb-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: var(--border-radius);
-            box-shadow: var(--card-shadow);
-            margin: 1rem 0;
-        }
         .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
             padding: 0.2em 0.4em;
@@ -1080,10 +1073,10 @@
             }
             #pageContentArea { padding: 0 !important; }
             
-            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder, #pdfPrintArea {
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
                 display: block !important;
             }
-            .card, .mermaid-diagram-card, .compensation-box, .content-section-box, .copyable-script-box, #pdfPrintArea > .card {
+            .card, .mermaid-diagram-card, .compensation-box, .content-section-box, .copyable-script-box {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
                 margin-bottom: 0.5cm !important;
@@ -1091,7 +1084,7 @@
                 page-break-inside: avoid;
             }
             
-            #pdfPrintArea * {
+            .card *, .mermaid-diagram-card *, .compensation-box *, .content-section-box *, .copyable-script-box * {
                 color: black !important;
                 background-color: transparent !important;
             }
@@ -1233,11 +1226,11 @@
                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);">Attachments (Optional)</h3>
                 
                 <div class="form-group">
-                    <label for="pdfFile">Upload PDF (Future Feature)</label>
-                    <input type="file" id="pdfFile" accept=".pdf" disabled>
+                    <label for="pdfFile">Upload PDF</label>
+                    <input type="file" id="pdfFile" accept=".pdf">
                 </div>
                 <div class="form-group">
-                    <label for="imageFile">Upload Image (Embeds in Content)</label>
+                    <label for="imageFile">Upload Image</label>
                     <input type="file" id="imageFile" accept="image/*">
                 </div>
                 <div class="form-group">
@@ -1507,8 +1500,7 @@
 
     // --- KB Data ---
     let kbSystemData = {
-        // MODIFICATION: Bumped version from 1.4.0 to 1.4.1 to invalidate old localStorage cache.
-        meta: { version: '1.4.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+        meta: { version: '1.3.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1519,15 +1511,11 @@
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
                         content: `
-                            <div style="text-align: center; margin-bottom: 2rem;">
-                                <!-- MODIFICATION: Replaced Unsplash image with the requested Undraw SVG illustration -->
-                                <img src="https://undraw.co/api/illustrations/8eaf3276-071d-474f-927e-1f59a9f604cb" 
-                                     alt="Compensation Policy Illustration" 
-                                     style="max-width: 450px; width: 100%; height: auto; margin: 0 auto; display: block;">
-                            </div>
-                            <!-- MODIFICATION: This div now has id="pdfPrintArea" but it is added dynamically in the displayItemDetail function. This is a reference for the content structure. -->
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
+    <div style="text-align:center; margin: 1rem 0;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1046/1046792.png" alt="Compensation Illustration" style="max-width: 600px; width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+    </div>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
                             </div>
                             
@@ -1660,7 +1648,6 @@
                 } else {
                     const storedVersion = parsedData.meta ? parsedData.meta.version : 'unknown';
                     console.warn(`LocalStorage data (v${storedVersion}) is outdated or mismatched. Using fresh data from file (v${fileVersion}).`);
-                    // The function will naturally proceed to use the kbSystemData from the file, effectively "refreshing" it.
                 }
             } catch (e) {
                 console.error("Failed to parse data from localStorage, using default.", e);
@@ -2120,7 +2107,7 @@
         return null;
     }
 
-    async function trackView(item) {
+    function trackView(item) {
         if (!currentUser) return;
         const viewKey = `view_log_${currentUser.id}_${item.id}`;
         const twelveHours = 12 * 60 * 60 * 1000;
@@ -2129,25 +2116,10 @@
 
         if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
             item.views = (item.views || 0) + 1;
-            
-            // Log to Supabase views_log table (fire-and-forget)
-            const { error: logError } = await supabase.from('views_log').insert({
-                user_id: currentUser.id,
-                user_email: currentUser.email,
-                scenario_id: item.id, // Assuming item.id is the scenario_id
-                viewed_at: new Date().toISOString(),
-                device_info: navigator.userAgent,
-                session_id: initialSession.access_token.slice(-12) // Example session identifier
-            });
-
-            if (logError) {
-                console.warn("Could not log view to Supabase DB:", logError.message);
-            }
-
             saveDataToLocalStorage();
             localStorage.setItem(viewKey, now.toString());
             console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
-
+            // Update the view count on the page if it's visible
             const readStatsEl = document.getElementById('readStatsCount');
             if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
         } else {
@@ -2160,24 +2132,21 @@
         if (!itemToDownload || !itemToDownload.title) {
             showToast('Error preparing PDF: Item data is missing.', 'error'); return;
         }
-        
-        // MODIFICATION: Use a more specific, descriptive filename.
-        const filename = `infinibase_${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
         showToast('Generating PDF, please wait...', 'info', 5000);
 
-        // MODIFICATION: Target the specific #pdfPrintArea element for better accuracy.
-        const element = document.getElementById('pdfPrintArea');
+        const element = document.getElementById('itemDetailViewPlaceholder');
         if (!element) {
-            showToast('Error preparing PDF: Printable content area not found.', 'error'); 
-            console.error("PDF generation failed: #pdfPrintArea element is missing from the DOM.");
-            return;
+            showToast('Error preparing PDF: Content area not found.', 'error'); return;
         }
-        
         const elementToPrint = element.cloneNode(true);
-        // Add some padding to the cloned element for better print margins within the PDF.
         elementToPrint.style.padding = "20px";
+        elementToPrint.style.width = "210mm";
+        elementToPrint.style.backgroundColor = "white";
         
-        // Hide the clone from the viewport while it renders
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.last-updated-info' ];
+        selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
+        
         elementToPrint.style.position = 'absolute';
         elementToPrint.style.left = '-9999px';
         document.body.appendChild(elementToPrint);
@@ -2186,12 +2155,10 @@
             await renderMermaidDiagramsInElement(elementToPrint);
         }
 
-        // MODIFICATION: Using the robust options suggested by the user.
         const opt = {
-            margin: 10,
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            margin: [10, 10, 10, 10], filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, logging: false, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
@@ -2201,9 +2168,8 @@
             showToast('PDF downloaded successfully!', 'success');
         } catch (error) {
             console.error("Error generating PDF:", error);
-            showToast('An error occurred while generating the PDF. See console for details.', 'error');
+            showToast('Error generating PDF. Check console.', 'error');
         } finally {
-             // Clean up the cloned element from the DOM
              document.body.removeChild(elementToPrint);
         }
     }
@@ -2274,53 +2240,17 @@
                                 Updated on: ${formattedDate}
                                </div>`;
         }
-        
-        // --- Attachment Rendering Logic ---
-        let attachmentsHTML = '';
-        if (itemData.videoLink || itemData.driveLink) {
-            attachmentsHTML += `<hr class="title-content-divider" style="margin-top: 1.5rem;">
-                                <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem;">Attachments</h3>`;
-            
-            if (itemData.videoLink) {
-                let embedUrl = '';
-                if (itemData.videoLink.includes('youtube.com/watch?v=')) {
-                    const videoId = new URL(itemData.videoLink).searchParams.get('v');
-                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
-                } else if (itemData.videoLink.includes('youtu.be/')) {
-                    const videoId = new URL(itemData.videoLink).pathname.substring(1);
-                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
-                } else if (itemData.videoLink.includes('vimeo.com/')) {
-                    const videoId = new URL(itemData.videoLink).pathname.substring(1);
-                    embedUrl = `https://player.vimeo.com/video/${videoId}`;
-                }
-                if(embedUrl) {
-                    attachmentsHTML += `<div class="video-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 1rem 0; border-radius: var(--border-radius-lg);">
-                                          <iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
-                                       </div>`;
-                }
-            }
 
-            if (itemData.driveLink) {
-                 attachmentsHTML += `<a href="${escapeHTML(itemData.driveLink)}" target="_blank" rel="noopener noreferrer" class="button button-secondary" style="margin-top: 0.5rem; background-color: var(--bg-color); border-color: var(--border-color-darker);">
-                    <i class="fab fa-google-drive" style="color:#f59e0b;"></i> &nbsp; View on Google Drive
-                </a>`;
-            }
-        }
-        
-        // MODIFICATION: Added the <div id="pdfPrintArea"> wrapper around the main content card.
-        detailHTML += `<div id="pdfPrintArea">
-                    <div class="card">
-                        <div class="item-title-area">
-                            <i class="${itemIconClass} fa-title-icon"></i>
-                            <h2>${escapeHTML(itemData.title)}</h2>
-                        </div>
-                        <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                        ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                        <hr class="title-content-divider">
-                        ${lastUpdatedHTML}
-                        <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
-                        ${attachmentsHTML}
+        detailHTML += `<div class="card">
+                    <div class="item-title-area">
+                        <i class="${itemIconClass} fa-title-icon"></i>
+                        <h2>${escapeHTML(itemData.title)}</h2>
                     </div>
+                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                    <hr class="title-content-divider">
+                    ${lastUpdatedHTML}
+                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
                    </div>`;
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || [])
@@ -2637,7 +2567,7 @@
         else contentDetailLabel.textContent = 'Content';
     });
 
-    addContentForm.addEventListener('submit', async (e) => {
+    addContentForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const sectionId = addContentForm.dataset.sectionId;
         const section = kbSystemData.sections.find(s => s.id === sectionId);
@@ -2649,8 +2579,8 @@
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-            videoLink: document.getElementById('videoLink').value.trim() || null,
-            driveLink: document.getElementById('driveLink').value.trim() || null,
+            videoLink: document.getElementById('videoLink').value.trim(),
+            driveLink: document.getElementById('driveLink').value.trim(),
         };
         if (!commonData.title || !commonData.summary) {
             showToast('Title and Summary are required.', 'error'); return;
@@ -2659,38 +2589,7 @@
         let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
         if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
 
-        // --- VERSIONING & IMAGE EMBEDDING LOGIC ---
-        let finalContent = mainQuillEditor.root.innerHTML;
-        const imageFile = document.getElementById('imageFile').files[0];
-
-        if (imageFile) {
-            try {
-                const base64String = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(imageFile);
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = error => reject(error);
-                });
-                const imageHTML = `<p><img src="${base64String}" alt="User uploaded image"></p>`;
-                finalContent = imageHTML + finalContent; // Prepend image
-            } catch (error) {
-                console.error("Error reading image file:", error);
-                showToast('Could not process the image file.', 'error');
-            }
-        }
-        
         if (itemData) { // Editing existing item
-            // Create a version history backup before applying changes
-            if (!itemData.version_history) itemData.version_history = [];
-            itemData.version_history.push({
-                version: itemData.version || 1.0,
-                content: itemData.content || itemData.resolution_steps || '',
-                summary: itemData.summary,
-                modifiedAt: itemData.lastModified || itemData.createdAt,
-                modifiedBy: currentUser.email,
-            });
-            if (itemData.version_history.length > 5) itemData.version_history.shift(); // Keep last 5 versions
-
             Object.assign(itemData, commonData); 
             itemData.lastModified = new Date().toISOString();
             itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
@@ -2699,7 +2598,7 @@
             itemData = {
                 ...commonData, id: `${sectionId}_item_${Date.now()}`,
                 createdBy: currentUser.email, createdAt: now, lastModified: now,
-                version: 1.0, views: 0, comments: [], feedback: [], version_history: [] 
+                version: 1.0, views: 0, comments: [], feedback: [] 
             };
             if (!section.items) section.items = [];
             section.items.push(itemData);
@@ -2707,7 +2606,7 @@
         }
 
         if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
-            itemData.content = finalContent;
+            itemData.content = mainQuillEditor.root.innerHTML;
         } else if (['form_sheet', 'design'].includes(itemData.type)) {
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
