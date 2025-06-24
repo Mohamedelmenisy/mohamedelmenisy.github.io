@@ -10,6 +10,8 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"/>
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<!-- ✅ CHANGE: Added Quill Image Resize Module -->
+<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -1121,6 +1123,7 @@
         .dashboard-table-card .action-badge.view { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         .dashboard-table-card .action-badge.comment { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .dashboard-table-card .action-badge.create { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .dashboard-table-card .action-badge.edit { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
         .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
 
 
@@ -1317,7 +1320,7 @@
 <input accept=".pdf" id="pdfFile" type="file"/>
 </div>
 <div class="form-group">
-<label for="imageFile">Upload Image</label>
+<label for="imageFile">Upload Image (Inserts into content)</label>
 <input accept="image/*" id="imageFile" type="file"/>
 </div>
 <div class="form-group">
@@ -2403,10 +2406,27 @@
     function trackView(item) {
         if (!currentUser) return;
         item.views = (item.views || 0) + 1;
-        // === CHANGE START: Persist view count change ===
         saveDataToLocalStorage();
-        // === CHANGE END ===
         console.log(`View tracked for item ${item.id}. New count: ${item.views}.`);
+
+        // ✅ CHANGE: Request #4 - Update the mockArticleViews log
+        const existingViewLog = mockArticleViews.find(v => v.user_name === currentUser.name && v.article_id === item.id);
+        const now = new Date().toISOString();
+
+        if (existingViewLog) {
+            existingViewLog.views += 1;
+            existingViewLog.last_view = now;
+        } else {
+            mockArticleViews.unshift({
+                user_name: currentUser.name,
+                email: currentUser.email,
+                article_id: item.id,
+                views: 1,
+                first_view: now,
+                last_view: now
+            });
+        }
+        
         const readStatsEl = document.getElementById('readStatsCount');
         if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
     }
@@ -2462,6 +2482,8 @@
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
+        // ✅ CHANGE: Request #5 - Add PDF export button
+        detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button>`;
         detailHTML += `</div>`;
         
         let lastUpdatedHTML = '';
@@ -2565,6 +2587,29 @@
             document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
         }
+        
+        // ✅ CHANGE: Request #5 - Add PDF export functionality
+        document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => {
+            const elementToPrint = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
+            
+            // Remove interactive elements from the clone before printing for a cleaner PDF
+            elementToPrint.querySelector('.item-actions-bar')?.remove();
+            elementToPrint.querySelector('.item-feedback-section')?.remove();
+            elementToPrint.querySelector('.comments-section')?.remove();
+            
+            showToast('Generating PDF... Please wait.', 'info', 4000);
+
+            const options = {
+              margin:       [0.5, 0.5, 0.5, 0.5], // margins in inches [top, left, bottom, right]
+              filename:     `${itemData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
+              image:        { type: 'jpeg', quality: 0.98 },
+              html2canvas:  { scale: 2, useCORS: true, logging: false },
+              jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(options).from(elementToPrint).save();
+        });
+
 
         // Feedback logic
         const feedbackPrompt = document.getElementById('feedbackPrompt');
@@ -2703,13 +2748,7 @@
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
         if (mainQuillEditor) {
-            try {
-                const delta = mainQuillEditor.clipboard.convert(template.content);
-                mainQuillEditor.setContents(delta, 'silent');
-            } catch(e) {
-                console.error("Quill Error: Could not apply template. Falling back to innerHTML.", e);
-                mainQuillEditor.root.innerHTML = template.content;
-            }
+            mainQuillEditor.root.innerHTML = template.content;
         }
         contentTagsInput.value = template.tags.join(', ');
         
@@ -2727,20 +2766,53 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
+            // ✅ CHANGE: Request #6 & #2 - Register custom modules and enhance toolbar
+            const Font = Quill.import('formats/font');
+            Font.whitelist = ['sans-serif', 'serif', 'monospace', 'roboto', 'arial']; // Add desired fonts
+            Quill.register(Font, true);
+            
+            // Register the image resize module if it's available on the window
+            if (window.ImageResize) {
+                Quill.register('modules/imageResize', window.ImageResize);
+            }
+
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
+                        [{ 'font': Font.whitelist }, { 'size': ['small', false, 'large', 'huge'] }], // Added font and size
                         ['bold', 'italic', 'underline', 'strike'],
                         ['blockquote', 'code-block'],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                         [{ 'align': [] }],
                         ['link', 'image', 'video'],
                         ['clean']
-                    ]
+                    ],
+                    imageResize: { // Added image resize config
+                      modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]
+                    }
                 },
                 placeholder: 'Enter detailed content here...'
+            });
+
+            // ✅ CHANGE: Request #1 & #7 - Auto-insert uploaded image into Quill at cursor position
+            document.getElementById('imageFile').addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        if (mainQuillEditor) {
+                            const range = mainQuillEditor.getSelection(true); // Get cursor position
+                            // Insert the image
+                            mainQuillEditor.insertEmbed(range.index, 'image', e.target.result);
+                            // Move cursor after the inserted image
+                            mainQuillEditor.setSelection(range.index + 1);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                    event.target.value = ''; // Reset input to allow re-uploading the same file
+                }
             });
         }
 
@@ -2772,13 +2844,8 @@
             
             const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
             
-            try {
-                const delta = mainQuillEditor.clipboard.convert(contentToEdit);
-                mainQuillEditor.setContents(delta, 'silent');
-            } catch (e) {
-                console.error("Quill Error: Could not set content for editing. Falling back to innerHTML.", e);
-                mainQuillEditor.root.innerHTML = contentToEdit;
-            }
+            // ✅ CHANGE: Request #3 - Directly set innerHTML to better preserve complex formatting like tables.
+            mainQuillEditor.root.innerHTML = contentToEdit;
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
@@ -2872,14 +2939,21 @@
             itemData.url = document.getElementById('contentUrl').value.trim();
             if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
         }
+
+        // ✅ CHANGE: Request #4 - Log the activity
+        const actionType = editingId ? 'edit' : 'create';
+        mockActivityLog.unshift({ // use unshift to add to the top of the log
+            user_name: currentUser.name,
+            email: currentUser.email,
+            item_id: itemData.id,
+            item_type: itemData.type,
+            action: actionType,
+            timestamp: new Date().toISOString()
+        });
         
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
-        
-        // === CHANGE START: Persist the changes ===
         saveDataToLocalStorage();
-        // === CHANGE END ===
-        
         handleNavigation();
     });
 
@@ -2913,9 +2987,7 @@
                 const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
                 
-                // === CHANGE START: Persist the deletion ===
                 saveDataToLocalStorage();
-                // === CHANGE END ===
 
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
@@ -2983,25 +3055,20 @@
     }
 
     async function initializeApp() {
-        // === CHANGE START: Load data from localStorage first ===
         loadDataFromLocalStorage();
-        // === CHANGE END ===
 
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) {
-            // Attempt to get user from local storage as a fallback
             const storedUser = localStorage.getItem("infiniBaseUser");
             if (storedUser) {
                 currentUser = JSON.parse(storedUser);
             } else {
-                // If still no user, we can't proceed
                  document.body.innerHTML = '<div style="color: white; padding: 2rem; text-align: center;"><h1>Authentication Error</h1><p>Could not verify user. Please <a href="login.html" style="color: #6366f1;">log in</a> again.</p></div>';
                  return;
             }
         }
 
         userNameDisplayHeader.textContent = currentUser.name;
-        // === CHANGE START: Set text-based avatar ===
         const initials = (currentUser.name || 'U')
             .split(' ')
             .map(n => n[0])
@@ -3009,7 +3076,6 @@
             .substring(0, 2)
             .toUpperCase();
         userAvatar.textContent = initials;
-        // === CHANGE END ===
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
