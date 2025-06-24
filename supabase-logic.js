@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase.js';
 
 /** ✅ جلب كل المقالات من جدول 'cases' */
