@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" data-hash="2025-06-24T14:55" dir="ltr" lang="en">
+<html class="dark" data-hash="2025-06-24T13:55" dir="ltr" lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -1221,22 +1221,7 @@
         }
 
     </style>
-<style>
-/* MODIFIED: Added styles for minimizable images and collapsible sections */
-.minimizable { cursor: pointer; transition: max-height 0.3s ease, opacity 0.3s ease; }
-.minimized { max-height: 120px !important; opacity: 0.7; }
-details { background: var(--bg-color); border: 1px solid var(--border-color); padding: 1em; border-radius: var(--border-radius); margin-bottom: 1em; }
-summary { cursor: pointer; font-weight: 600; color: var(--text-color); display: flex; align-items: center; gap: 0.5rem; }
-summary:hover { color: var(--primary-color); }
-summary::before {
-    content: '▶';
-    font-size: 0.8em;
-    transition: transform 0.2s ease-in-out;
-}
-details[open] > summary::before {
-    transform: rotate(90deg);
-}
-</style></head>
+</head>
 <body>
 <div class="modal-overlay hidden" id="addContentModalOverlay">
 <div class="modal-content">
@@ -1305,11 +1290,6 @@ details[open] > summary::before {
 </div>
 <div class="form-group" id="parentItemContainer">
 <label for="parentItem">Parent Item (Optional)</label>
-<!-- CHANGE START: Added helper text for parent item selection -->
-<p style="font-size: 0.8rem; color: var(--text-color-muted); margin-top: -0.25rem; margin-bottom: 0.5rem;">
-    Link this content as a child to another item in this section. It will appear as a "Related Topic" on the parent's page.
-</p>
-<!-- CHANGE END -->
 <select id="parentItem">
 <option value="">-- None (Top-Level Item) --</option>
 </select>
@@ -1434,7 +1414,7 @@ details[open] > summary::before {
 <div class="hidden" id="searchResultsContainer"></div>
 </div>
 <div class="user-profile" id="userProfileContainer">
-<img alt="User" class="minimizable" id="userAvatar" onerror="this.onerror=null; this.src='images/fallback_compensation.png';" src="images/fallback_compensation.png" style="max-width:100%; height:auto; display:block; margin:0 auto; cursor:pointer;"/>
+<img alt="User" id="userAvatar" src="https://ui-avatars.com/api/?name=U&amp;size=36&amp;background=6366f1&amp;color=fff&amp;rounded=true"/>
 <span id="userNameDisplayHeader" style="font-weight: 500;">User</span>
 </div>
 </div>
@@ -1520,7 +1500,7 @@ details[open] > summary::before {
      * @property {string} [name] - User's full name
      * @property {string} email - User's email
      * @property {string} role - User's role (e.g., 'viewer', 'admin')
-     * @property {string} [avatar_url] - URL for user's avatar (DEPRECATED)
+     * @property {string} avatar_url - URL for user's avatar
      * @property {string} [lastLogin] - ISO string of last login time
      */
 
@@ -1583,12 +1563,11 @@ details[open] > summary::before {
                 userDataFromDB = newProfile;
             }
             
+            const displayName = userDataFromDB.name || userDataFromDB.email || 'User';
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
                 ...userDataFromDB,
-                // MODIFIED: Removed ui-avatars.com generation per request.
-                // The main user avatar will now rely on its static `src` and `onerror` fallback.
-                // Avatars in comments are removed entirely in favor of text.
+                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
                 lastLogin: new Date().toISOString() 
             };
 
@@ -1602,7 +1581,6 @@ details[open] > summary::before {
                 showToast('Error signing out. Please try again.', 'error');
             } else {
                 localStorage.clear(); // Clear all local storage on logout for a clean state
-                sessionStorage.clear(); // Also clear session storage for filters
                 showToast('You have been logged out successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'login.html';
@@ -1613,9 +1591,9 @@ details[open] > summary::before {
 
     // --- KB Data ---
     // NOTE: This object acts as the live "database" for the application's lifecycle.
-    // It's initialized here but can be overwritten by data from localStorage.
+    // On page reload, it resets to this initial state, simulating fetching fresh data.
     let kbSystemData = {
-        meta: { version: '1.4.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+        meta: { version: '1.4.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1625,12 +1603,11 @@ details[open] > summary::before {
                         id: 'sup_flow_compensation', type: 'article', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
-                        // MODIFIED: Content updated to use local image, make it minimizable, and integrate new scenarios.
                         content: `
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
                                 <div style="text-align:center; margin: 1.5rem 0;">
-                                    <img src="images/compensation_illustration.jpg" alt="Illustration of a person receiving a cash refund, representing the compensation policy." class="minimizable" style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                                    <img src="https://img.freepik.com/free-vector/flat-design-time-management-concept_23-2148820638.jpg" alt="Compensation Policy Illustration" style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                                 </div>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
                             </div>
@@ -1694,20 +1671,8 @@ details[open] > summary::before {
                                     <li style="display: flex; align-items: center; gap: 0.75rem;"><i class="fas fa-edit fa-fw" style="color: var(--primary-color);"></i> Log a clear note on the order including the issue, compensation amount, and the reason for compensation.</li>
                                 </ul>
                             </div>
-                            
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-list-ul"></i> Other Common Scenarios</h3>
-                                <details>
-                                    <summary>📦 Missing Items</summary>
-                                    <p>If items are missing from the order, apologize and confirm with the customer which items are missing. Cross-reference with the order details in the system. Offer the customer the choice of a refund for the missing items or having the items re-delivered if feasible. Document the resolution in the case notes.</p>
-                                </details>
-                                <details>
-                                    <summary>🔄 Wrong Order</summary>
-                                    <p>If the customer received a completely wrong order, apologize sincerely. Offer a full refund for the incorrect order and, if they wish, place a new order for them with high priority. Ensure the case is documented for quality control to investigate the mix-up.</p>
-                                </details>
-                            </div>
                         `,
-                        tags: ['compensation', 'customer service', 'delay', 'chefz policy', 'sop', 'missing items', 'wrong order'],
+                        tags: ['compensation', 'customer service', 'delay', 'chefz policy', 'sop'],
                         createdAt: '2024-05-20T10:00:00.000Z',
                         lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.2,
@@ -1868,18 +1833,6 @@ details[open] > summary::before {
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
     }
-
-    // CHANGE START: Added function to persist data to localStorage
-    function persistKbSystemData() {
-        try {
-            localStorage.setItem('kbSystemData', JSON.stringify(kbSystemData));
-            console.log("KB data persisted to localStorage.");
-        } catch (e) {
-            console.error("Failed to save KB data to localStorage:", e);
-            showToast("Could not save changes locally.", "error");
-        }
-    }
-    // CHANGE END
 
     function showToast(message, type = 'info', duration = 3000) {
         const toastContainer = document.getElementById('toastContainer');
@@ -2087,9 +2040,6 @@ details[open] > summary::before {
                     <td>${formatReadableDate(row.last_view)}</td>
                 </tr>
             `).join('');
-            if(filteredArticleViews.length === 0) {
-                 articleViewsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No matching data found.</td></tr>';
-            }
         }
 
         // Render Activity Log Table
@@ -2109,9 +2059,6 @@ details[open] > summary::before {
                     <td>${formatReadableDate(row.timestamp)}</td>
                 </tr>
             `).join('');
-             if(filteredActivityLog.length === 0) {
-                 activityLogTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 1rem;">No matching data found.</td></tr>';
-            }
         }
     }
 
@@ -2215,11 +2162,10 @@ details[open] > summary::before {
             <!-- Dashboard Filters -->
             <div class="card" style="margin-top: 1.5rem; padding: 1.5rem; margin-bottom: 1.5rem;">
                 <h3 style="margin-top:0; margin-bottom: 1rem;">Filter Activity</h3>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-                    <div style="flex: 1 1 160px;"><label for="dashboardFilterName" style="font-size: 0.8rem; font-weight: 500;">Name</label><input type="text" id="dashboardFilterName" placeholder="Filter by Name..." style="width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);"></div>
-                    <div style="flex: 1 1 160px;"><label for="dashboardFilterEmail" style="font-size: 0.8rem; font-weight: 500;">Email</label><input type="email" id="dashboardFilterEmail" placeholder="Filter by Email..." style="width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);"></div>
-                    <div style="flex: 1 1 150px;"><label for="dashboardFilterDate" style="font-size: 0.8rem; font-weight: 500;">Date</label><input type="date" id="dashboardFilterDate" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); color-scheme: dark;"></div>
-                    <button id="dashboardApplyFilters" class="button" style="padding: 0.625rem 1rem;">Apply Filters</button>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <input type="text" id="dashboardFilterName" placeholder="Filter by Name..." style="flex: 2 1 180px; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);">
+                    <input type="email" id="dashboardFilterEmail" placeholder="Filter by Email..." style="flex: 2 1 180px; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);">
+                    <input type="date" id="dashboardFilterDate" style="flex: 1 1 150px; padding: 0.5rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); color-scheme: dark;">
                     <button id="dashboardClearFilters" class="button-secondary" style="padding: 0.625rem 1rem;">Clear</button>
                 </div>
             </div>
@@ -2262,53 +2208,28 @@ details[open] > summary::before {
             </div>
         `;
 
-        // CHANGE START: Logic for dashboard filter persistence
-        const applyFiltersBtn = document.getElementById('dashboardApplyFilters');
-        const clearFiltersBtn = document.getElementById('dashboardClearFilters');
-        const nameInput = document.getElementById('dashboardFilterName');
-        const emailInput = document.getElementById('dashboardFilterEmail');
-        const dateInput = document.getElementById('dashboardFilterDate');
+        // Initial table render
+        renderDashboardTables();
 
-        // Function to apply filters and save to sessionStorage
-        const applyAndSaveFilters = () => {
-            const filters = {
-                name: nameInput.value,
-                email: emailInput.value,
-                date: dateInput.value
-            };
-            sessionStorage.setItem('dashboardFilters', JSON.stringify(filters));
-            renderDashboardTables(filters);
-        };
-
-        // Function to load filters from sessionStorage
-        const loadAndApplyFilters = () => {
-            const savedFilters = sessionStorage.getItem('dashboardFilters');
-            if (savedFilters) {
-                const filters = JSON.parse(savedFilters);
-                nameInput.value = filters.name || '';
-                emailInput.value = filters.email || '';
-                dateInput.value = filters.date || '';
+        // Add event listeners for filters
+        const filterInputs = ['dashboardFilterName', 'dashboardFilterEmail', 'dashboardFilterDate'];
+        filterInputs.forEach(id => {
+            document.getElementById(id)?.addEventListener('input', () => {
+                const filters = {
+                    name: document.getElementById('dashboardFilterName').value,
+                    email: document.getElementById('dashboardFilterEmail').value,
+                    date: document.getElementById('dashboardFilterDate').value
+                };
                 renderDashboardTables(filters);
-            } else {
-                // Initial render with no filters
-                renderDashboardTables();
-            }
-        };
-
-        applyFiltersBtn.addEventListener('click', applyAndSaveFilters);
-        
-        clearFiltersBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('dashboardFilters');
-            nameInput.value = '';
-            emailInput.value = '';
-            dateInput.value = '';
-            renderDashboardTables(); // Re-render with empty filters
+            });
+        });
+        document.getElementById('dashboardClearFilters')?.addEventListener('click', () => {
+            document.getElementById('dashboardFilterName').value = '';
+            document.getElementById('dashboardFilterEmail').value = '';
+            document.getElementById('dashboardFilterDate').value = '';
+            renderDashboardTables();
         });
         
-        // Load filters on dashboard display
-        loadAndApplyFilters();
-        // CHANGE END
-
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
@@ -2408,8 +2329,9 @@ details[open] > summary::before {
     function trackView(item) {
         if (!currentUser) return;
         item.views = (item.views || 0) + 1;
-        persistKbSystemData(); // Persist view count change
-        console.log(`View tracked for item ${item.id}. New count: ${item.views}.`);
+        // NOTE: View count changes are not persisted due to removal of saveDataToLocalStorage()
+        // This is intentional to simulate a stateless "fetch from DB" on every load.
+        console.log(`View tracked for item ${item.id}. New count: ${item.views}. (Will reset on reload)`);
         const readStatsEl = document.getElementById('readStatsCount');
         if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
     }
@@ -2521,10 +2443,10 @@ details[open] > summary::before {
                         <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
                        </div>`;
         
-        // MODIFIED: Removed the avatar image from the comment post area
         detailHTML += `<div class="comments-section">
                         <h4><i class="fas fa-comments"></i> Management Notes</h4>
                         <div class="comment-post-area">
+                            <img src="${currentUser.avatar_url}" alt="Your avatar">
                             <div class="comment-input-wrapper">
                                 <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
                                 <div class="comment-post-actions">
@@ -2580,7 +2502,6 @@ details[open] > summary::before {
             itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
             ratingButtons.innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
-            persistKbSystemData(); // Persist feedback change
         });
 
         rateNoBtn.addEventListener('click', () => {
@@ -2602,7 +2523,6 @@ details[open] > summary::before {
                 itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
                 document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                 showToast('Feedback received, we will review it.', 'info');
-                persistKbSystemData(); // Persist feedback change
             } else {
                 showToast('Please provide a reason.', 'error');
             }
@@ -2626,12 +2546,10 @@ details[open] > summary::before {
                 timestamp: new Date().toISOString()
             });
             renderComments(itemData, 'commentDisplayAreaForItem'); 
-            commentTextEl.value = '';
-            persistKbSystemData(); // Persist new comment
+            commentTextEl.value = ''; 
         });
     }
     
-    // MODIFIED: Removed avatar logic from comment rendering
     function renderComments(itemData, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -2643,10 +2561,16 @@ details[open] > summary::before {
 
         let commentsHTML = '';
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
+
         sortedComments.forEach(comment => {
+            if(!userAvatars[comment.authorId]) {
+                 userAvatars[comment.authorId] = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
+            }
+
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
+                    <img src="${userAvatars[comment.authorId]}" alt="${escapeHTML(comment.authorName)}'s avatar">
                     <div class="comment-content">
                         <div class="comment-header">
                             <span class="comment-author">${escapeHTML(comment.authorName)}</span>
@@ -2768,18 +2692,11 @@ details[open] > summary::before {
             if (itemToEdit.parentId) parentItemSelect.value = itemToEdit.parentId;
             
             const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
-            
-            // IMPORTANT: Quill is a rich text editor, not an HTML layout builder.
-            // Loading complex HTML with custom classes and styles (like the compensation boxes)
-            // may cause Quill to reinterpret and simplify the structure.
-            // This is a known limitation. The primary goal is to preserve the text and basic formatting.
             try {
-                // The 'convert' method is the best way to import HTML into Quill.
                 const delta = mainQuillEditor.clipboard.convert(contentToEdit);
                 mainQuillEditor.setContents(delta, 'silent');
             } catch (e) {
-                console.error("Quill Error: Could not set content for editing. Falling back to innerHTML. Some formatting may be lost.", e);
-                // Fallback for very complex or problematic HTML.
+                console.error("Quill Error: Could not set content for editing. Falling back to innerHTML.", e);
                 mainQuillEditor.root.innerHTML = contentToEdit;
             }
             
@@ -2870,8 +2787,6 @@ details[open] > summary::before {
         }
 
         if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
-            // Getting the full HTML from Quill is the most reliable way to capture user's edits
-            // within the editor's capabilities.
             itemData.content = mainQuillEditor.root.innerHTML;
         } else if (['form_sheet', 'design'].includes(itemData.type)) {
             itemData.url = document.getElementById('contentUrl').value.trim();
@@ -2880,7 +2795,6 @@ details[open] > summary::before {
         
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
-        persistKbSystemData(); // Persist changes
         
         // Refresh the view to show the changes
         handleNavigation();
@@ -2917,7 +2831,6 @@ details[open] > summary::before {
                 section.items.splice(itemIndex, 1);
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
-                persistKbSystemData(); // Persist deletion
                 
                 if (window.location.hash.includes(itemId)) {
                     window.location.hash = `#${sectionId}`;
@@ -2982,27 +2895,11 @@ details[open] > summary::before {
     }
 
     async function initializeApp() {
-        // CHANGE START: Load data from localStorage if available
-        const savedKbData = localStorage.getItem('kbSystemData');
-        if (savedKbData) {
-            try {
-                const parsedData = JSON.parse(savedKbData);
-                // Basic validation
-                if (parsedData && parsedData.meta && parsedData.sections) {
-                    kbSystemData = parsedData;
-                    console.log("KB data loaded from localStorage.");
-                }
-            } catch (e) {
-                console.error("Failed to load/parse KB data from localStorage. Using default data.", e);
-            }
-        }
-        // CHANGE END
-        
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
 
         userNameDisplayHeader.textContent = currentUser.name;
-        if(currentUser.avatar_url) userAvatar.src = currentUser.avatar_url;
+        userAvatar.src = currentUser.avatar_url;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
@@ -3028,16 +2925,7 @@ details[open] > summary::before {
     }
 
     initializeApp();
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  document.body.addEventListener('click', function(event) {
-    if (event.target.matches('img.minimizable')) {
-        event.target.classList.toggle('minimized');
-    }
-  });
-});
-</script>
-<!-- MODIFIED: This section has been integrated into the main knowledge base content and is now removed from here. -->
+
+}</script>
 </body>
 </html>
