@@ -1325,7 +1325,7 @@
 </div>
 <div class="form-group">
 <label for="videoLink">Video Link (e.g., YouTube, Vimeo)</label>
-<input id="videoLink" placeholder="https://" type="url"/>
+<input id="videoLink" placeholder="https://..." type="url"/>
 </div>
 <div class="form-group">
 <label for="driveLink">Google Drive Link</label>
@@ -1592,14 +1592,11 @@
             sessionStorage.clear();
             showToast('You have been logged out successfully!', 'success');
             setTimeout(() => {
-                // Create a mock user again on logout to allow re-entry for testing
-                 const mockUser = {
-                    id: 'user_1', name: 'Mohamed Elmenisy', email: 'dev@example.com', role: 'admin',
-                    lastLogin: new Date().toISOString()
-                };
-                localStorage.setItem("infiniBaseUser", JSON.stringify(mockUser));
+                // ✅ FIX: The original code re-created a mock user for testing.
+                // This has been removed to allow for a true logout. The page will
+                // now reload to a blank/logged-out state.
                 window.location.reload();
-                // Or redirect to a real login page:
+                // If you have a working login page, you would redirect here instead:
                 // window.location.href = 'login.html';
             }, 1500);
         }
@@ -2840,7 +2837,14 @@
             if (itemToEdit.parentId) parentItemSelect.value = itemToEdit.parentId;
             
             const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
-            mainQuillEditor.root.innerHTML = contentToEdit;
+
+            // ✅ FIX 1: Use a more robust method to set Quill content, preventing it from appearing empty on edit.
+            if (mainQuillEditor) {
+                // First, clear the editor to prevent any lingering content issues.
+                mainQuillEditor.setContents([], 'silent'); 
+                // Then, use the official API to paste HTML content at the beginning.
+                mainQuillEditor.clipboard.dangerouslyPasteHTML(0, contentToEdit);
+            }
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             
