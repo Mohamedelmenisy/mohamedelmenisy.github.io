@@ -1940,7 +1940,7 @@
                 <h3>Article Insights</h3>
                 <div class="dashboard-table-wrapper">
                     <table>
-                        <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th></tr></thead>
+                        <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th><th>Last Viewed By</th></tr></thead>
                         <tbody id="articleViewsTbody"></tbody>
                     </table>
                 </div>
@@ -2005,6 +2005,14 @@
         const activityLogTbody = document.getElementById('activityLogTbody');
 
         if (articleViewsTbody) {
+             articleViewsTbody.parentElement.querySelector('thead tr').innerHTML = `
+                <th>Article Title</th>
+                <th>Views</th>
+                <th>Comments</th>
+                <th>Positive Feedback</th>
+                <th>Last Viewed</th>
+                <th>Last Viewed By</th>`;
+                
             articleViewsTbody.innerHTML = articleViews.map(row => `
                 <tr>
                     <td><a href="#${row.sub_category_id}/${row.article_id}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
@@ -2012,8 +2020,9 @@
                     <td>${row.total_comments || 0}</td>
                     <td>${row.positive_feedback_count || 0}</td>
                     <td>${formatReadableDate(row.last_viewed)}</td>
+                    <td>${escapeHTML(row.last_viewed_by || 'N/A')}</td>
                 </tr>
-            `).join('') || '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No insight data found.</td></tr>';
+            `).join('') || '<tr><td colspan="6" style="text-align:center; padding: 1rem;">No insight data found.</td></tr>';
         }
 
         if (activityLogTbody) {
@@ -2091,7 +2100,7 @@
             return;
         }
         
-        // ✅ DEBUGGING STEP: Log the IDs before sending them to the RPC function.
+        // ✅ FINAL DEBUGGING STEP: Log the IDs before sending them to the RPC function.
         console.log("Calling RPC with:", { p_article_id: itemData.id, p_user_id: currentUser.id });
 
         const { error: rpcError } = await supabase.rpc('record_unique_view', {
