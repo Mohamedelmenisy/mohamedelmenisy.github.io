@@ -1494,10 +1494,10 @@
     
     /** 📂 Fetches all categories from 'sub_categories'. */
     async function fetchSubCategories() {
-    const { data, error } = await supabase.from('sub_categories').select('*').order('position');
+        // ✅ CORRECTED: Order by 'position' to get the correct manual sort order.
+        const { data, error } = await supabase.from('sub_categories').select('*').order('position');
         if (error) {
             console.error('Error fetching sub-categories:', error);
-            // ✅ CHANGE: Added user-facing feedback for failed fetch.
             showToast('Failed to load knowledge areas.', 'error');
             return [];
         }
@@ -1506,10 +1506,6 @@
 
     /** 📰 Fetches all articles from 'cases'. */
     async function fetchArticles() {
-        // ✅ CHANGE 1: Simplified Supabase query to prevent a 400 error if FK relationships
-        // are not defined in the database. This fetches the core article data.
-        // More detailed data like comment counts are handled by the dashboard's `v_kb_insights`
-        // view or fetched on-demand in the article's detail view.
         const { data, error } = await supabase
             .from('cases')
             .select(`*`)
@@ -1520,9 +1516,6 @@
             showToast('Failed to load articles from the database.', 'error');
             return [];
         }
-
-        // We map the data to ensure that properties expected by other parts of the app,
-        // like 'comments' and 'feedback' arrays, exist to prevent errors.
         return data.map(article => ({
             ...article,
             comments: article.comments || [],
@@ -1533,14 +1526,7 @@
     /** 👀 Records a view for an article by incrementing its view count. */
     async function recordArticleView(articleId) {
         if (!articleId) return;
-        // Use an RPC function for atomic increment, which is safer against race conditions.
-        // You need to create this function in your Supabase SQL Editor:
-        // CREATE OR REPLACE FUNCTION increment_views(article_id_to_inc uuid)
-        // RETURNS void AS $$
-        //   UPDATE cases
-        //   SET views = views + 1
-        //   WHERE id = article_id_to_inc;
-        // $$ LANGUAGE sql VOLATILE;
+        // Use an RPC function for atomic increment.
         const { error } = await supabase.rpc('increment_views', { article_id_to_inc: articleId });
         if (error) console.error('Error recording view:', error);
     }
@@ -1587,7 +1573,7 @@
         }
         const { error } = await supabase.from('activity_log').insert([{
             user_id: user.id,
-            user_name: user.name, // Denormalize for easier display
+            user_name: user.name,
             item_id: itemId,
             item_type: itemType,
             action: action,
@@ -1610,7 +1596,7 @@
     async function fetchDashboardTableData() {
         const [activity, insights] = await Promise.all([
             supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
-            fetchInsights() // v_kb_insights view
+            fetchInsights()
         ]);
         return {
             activityLog: activity.data || [],
@@ -1639,7 +1625,7 @@
     });
     
     // --- Global State & DOM Elements ---
-    let kbSystemData = { sections: [] }; // Holds all structured data from Supabase
+    let kbSystemData = { sections: [] };
     let mainQuillEditor;
     let currentUser = null; 
     let currentOpenItem = null;
@@ -1806,25 +1792,58 @@
     // --- Sidebar and Navigation ---
     function populateSidebar() {
         let menuHTML = '';
-        const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', iconColor: 'var(--primary-color)' };
+        const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', color: 'var(--primary-color)' };
 
+        // --- Main Home Link (Always present) ---
         menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
         menuHTML += `<a href="#${homeSection.id}" class="sidebar-link" data-section-id="${homeSection.id}">
-            <i class="${homeSection.icon}" style="color: ${homeSection.iconColor};"></i>${escapeHTML(homeSection.name)}
+            <i class="${homeSection.icon}" style="color: ${homeSection.color};"></i>${escapeHTML(homeSection.name)}
         </a>`;
+
+        // --- Dynamic Sections from Database ---
+        const sectionsFromDB = kbSystemData.sections;
         
-        menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+        // Group items by their section_id from the database
+        const groupedSections = sectionsFromDB.reduce((acc, section) => {
+            const sectionId = section.section_id || 'knowledge_areas'; // Default group if section_id is null
+            if (!acc[sectionId]) {
+                acc[sectionId] = [];
+            }
+            acc[sectionId].push(section);
+            return acc;
+        }, {});
+
+        // Define friendly names for section titles. You can add more here if needed.
+        const sectionTitles = {
+            'knowledge_areas': 'KNOWLEDGE AREAS',
+            'resources_policies': 'RESOURCES & POLICIES'
+        };
         
-        // ✅ CHANGE 3: Added a check for empty sections to provide user feedback.
-        if (kbSystemData.sections.length === 0) {
+        // An array to control the order of the sections
+        const sectionOrder = ['knowledge_areas', 'resources_policies'];
+
+        // Build HTML for each group based on the defined order
+        sectionOrder.forEach(sectionId => {
+            if (groupedSections[sectionId]) {
+                const title = sectionTitles[sectionId] || sectionId.replace(/_/g, ' ').toUpperCase();
+                menuHTML += `<div class="sidebar-section-title">${escapeHTML(title)}</div>`;
+                
+                const items = groupedSections[sectionId];
+                // Sort items within the group by the 'position' column
+                items.sort((a, b) => (a.position || 0) - (b.position || 0)); 
+
+                items.forEach(section => {
+                    const iconStyle = section.color ? `style="color: ${section.color};"` : '';
+                    menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section-id="${section.id}">
+                        <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
+                    </a>`;
+                });
+            }
+        });
+        
+        if (sectionsFromDB.length === 0) {
+            menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
             menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
-        } else {
-            kbSystemData.sections.forEach(section => {
-                const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
-                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section-id="${section.id}">
-                    <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
-                </a>`;
-            });
         }
         
         navigationMenu.innerHTML = menuHTML;
@@ -2100,7 +2119,6 @@
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
-        // ✅ CHANGE 2: Used optional chaining `?.` to prevent error if button doesn't exist.
         document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
             openAddContentModal(e.currentTarget.dataset.sectionId);
         });
@@ -2125,7 +2143,7 @@
 
         await recordArticleView(itemData.id);
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
-        itemData.views = (itemData.views || 0) + 1; // Locally increment for immediate UI update
+        itemData.views = (itemData.views || 0) + 1;
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         dashboardOverviewContainer.classList.add('hidden');
@@ -2161,7 +2179,7 @@
 
         detailHTML += `<div class="card">
             <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title)}</h2></div>
-            <p class="item-summary">${escapeHTML(stripHtml(item.description))}</p>
+            <p class="item-summary">${escapeHTML(stripHtml(itemData.description))}</p>
             ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
             <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
@@ -2214,8 +2232,6 @@
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        // ✅ CHANGE 2: Added optional chaining `?.` to all event listeners for robustness.
-        // This prevents "Cannot read properties of null" errors if an element isn't rendered.
         document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(itemData.sub_category_id, itemData));
         document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title));
         
@@ -2364,7 +2380,8 @@
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
-            document.getElementById('contentSummary').value = itemToEdit.summary;
+            // ✅ CORRECTED: Read from `description` when editing
+            document.getElementById('contentSummary').value = itemToEdit.description; 
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
@@ -2403,9 +2420,10 @@
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
 
+        // ✅ CORRECTED: Changed 'summary' to 'description' and 'created_by' to 'author_id' to match the database schema.
         const itemData = {
             title: document.getElementById('contentTitle').value.trim(),
-            summary: document.getElementById('contentSummary').value.trim(),
+            description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
             content: mainQuillEditor.root.innerHTML,
@@ -2413,13 +2431,14 @@
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
             last_modified: new Date().toISOString(),
-            created_by: currentUser.id, // Track creator
-            version: 1.0 // This should be handled more robustly
+            author_id: currentUser.id,
+            version: 1.0
         };
         if (editingId) itemData.id = editingId;
 
-        if (!itemData.title || !itemData.summary) {
-            showToast('Title and Summary are required.', 'error'); return;
+        if (!itemData.title || !itemData.description) {
+            showToast('Title and Summary/Description are required.', 'error');
+            return;
         }
 
         const { data: savedItem, error } = await supabase.from('cases').upsert(itemData).select().single();
@@ -2475,7 +2494,7 @@
 
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
-        searchResultsContainer.innerHTML = ''; // Clear previous results
+        searchResultsContainer.innerHTML = ''; 
 
         if (query.length < 2) { 
             searchResultsContainer.classList.add('hidden'); 
@@ -2483,7 +2502,7 @@
         }
         
         const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name})));
-        const results = allItems.filter(i => i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query));
+        const results = allItems.filter(i => i.title.toLowerCase().includes(query) || stripHtml(i.description).toLowerCase().includes(query));
         
         if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
@@ -2493,7 +2512,6 @@
                 searchResultsContainer.appendChild(linkEl);
             });
         } else {
-            // ✅ CHANGE 4: Added a user-facing message for when no search results are found.
             searchResultsContainer.innerHTML = `<div style="padding: 0.75rem; color: var(--text-color-muted); text-align: center;">No results found.</div>`;
         }
         searchResultsContainer.classList.remove('hidden');
@@ -2518,7 +2536,7 @@
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
         if (!currentUser) {
-            window.location.href = "login.html"; // Redirect if not logged in
+            window.location.href = "login.html";
             return;
         }
 
