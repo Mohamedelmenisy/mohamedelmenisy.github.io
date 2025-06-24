@@ -2766,14 +2766,14 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
-            // ✅ CHANGE: Request #6 & #2 - Register custom modules and enhance toolbar
             const Font = Quill.import('formats/font');
-            Font.whitelist = ['sans-serif', 'serif', 'monospace', 'roboto', 'arial']; // Add desired fonts
+            Font.whitelist = ['sans-serif', 'serif', 'monospace', 'roboto', 'arial'];
             Quill.register(Font, true);
             
             // Register the image resize module if it's available on the window
             if (window.ImageResize) {
-                Quill.register('modules/imageResize', window.ImageResize);
+                // ✅ FIX: Correctly register the module using .default as the module exports it this way.
+                Quill.register('modules/imageResize', window.ImageResize.default);
             }
 
             mainQuillEditor = new Quill('#quillEditor', { 
@@ -2781,7 +2781,7 @@
                 modules: { 
                     toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
-                        [{ 'font': Font.whitelist }, { 'size': ['small', false, 'large', 'huge'] }], // Added font and size
+                        [{ 'font': Font.whitelist }, { 'size': ['small', false, 'large', 'huge'] }],
                         ['bold', 'italic', 'underline', 'strike'],
                         ['blockquote', 'code-block'],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
@@ -2789,29 +2789,26 @@
                         ['link', 'image', 'video'],
                         ['clean']
                     ],
-                    imageResize: { // Added image resize config
+                    imageResize: { 
                       modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]
                     }
                 },
                 placeholder: 'Enter detailed content here...'
             });
 
-            // ✅ CHANGE: Request #1 & #7 - Auto-insert uploaded image into Quill at cursor position
             document.getElementById('imageFile').addEventListener('change', function(event) {
                 const file = event.target.files[0];
                 if (file && file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         if (mainQuillEditor) {
-                            const range = mainQuillEditor.getSelection(true); // Get cursor position
-                            // Insert the image
+                            const range = mainQuillEditor.getSelection(true);
                             mainQuillEditor.insertEmbed(range.index, 'image', e.target.result);
-                            // Move cursor after the inserted image
                             mainQuillEditor.setSelection(range.index + 1);
                         }
                     };
                     reader.readAsDataURL(file);
-                    event.target.value = ''; // Reset input to allow re-uploading the same file
+                    event.target.value = ''; 
                 }
             });
         }
@@ -2843,8 +2840,6 @@
             if (itemToEdit.parentId) parentItemSelect.value = itemToEdit.parentId;
             
             const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
-            
-            // ✅ CHANGE: Request #3 - Directly set innerHTML to better preserve complex formatting like tables.
             mainQuillEditor.root.innerHTML = contentToEdit;
             
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
