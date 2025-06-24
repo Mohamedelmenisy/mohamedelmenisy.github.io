@@ -1484,9 +1484,7 @@
                 avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
                 lastLogin: new Date().toISOString() 
             };
-
-            // CHANGED: Use the currentUser object instead of localStorage directly for consistency.
-            // localStorage.setItem("infiniBaseUser", JSON.stringify(comprehensiveUserProfile));
+            
             return comprehensiveUserProfile;
         },
         async logout() {
@@ -1504,7 +1502,7 @@
         }
     };
     
-    // ADDED: New function to log user activity to Supabase
+    // CHANGED: Unified activity logger with correct table name and removed localStorage dependency.
     async function logActivity(articleId, action = 'view') {
         if (!currentUser || !currentUser.id || !articleId) {
             console.warn("Cannot log activity: Missing user, user ID, or article ID.");
@@ -1512,7 +1510,7 @@
         }
 
         const { data: recentLogs, error: logError } = await supabase
-            .from('activity_logs')
+            .from('activity_log') // CORRECTED: Table name is 'activity_log' (singular)
             .select('timestamp')
             .eq('user_id', currentUser.id)
             .eq('article_id', articleId)
@@ -1521,38 +1519,26 @@
             .limit(1);
 
         if (logError) {
-            console.error("Error checking recent activity logs:", logError);
-            // Decide not to block the main action even if logging fails
+            console.error("Error checking recent activity logs:", logError.message);
         }
         
-        // Only log a 'view' action if it hasn't been logged in the last hour to prevent spamming
-        const alreadyViewedRecently =
+        const alreadyLoggedRecently =
             action === 'view' &&
             recentLogs &&
             recentLogs.length > 0 &&
             (Date.now() - new Date(recentLogs[0].timestamp).getTime() < 60 * 60 * 1000);
 
-        if (!alreadyViewedRecently) {
-            const { error: insertError } = await supabase.from('activity_logs').insert({
+        if (!alreadyLoggedRecently) {
+            const { error: insertError } = await supabase.from('activity_log').insert({ // CORRECTED: Table name
                 user_id: currentUser.id,
                 article_id: articleId,
                 action: action,
             });
 
             if (insertError) {
-                console.error(`Failed to insert '${action}' log:`, insertError);
+                console.error(`Failed to insert '${action}' log:`, insertError.message);
             } else {
                 console.log(`Successfully logged action: '${action}' for article '${articleId}'`);
-            }
-
-            // If it's a view, also increment the public view counter
-            if (action === 'view') {
-                const { error: rpcError } = await supabase.rpc('increment_view_count', { aid: articleId });
-                if (rpcError) {
-                    console.error("Failed to increment view count via RPC:", rpcError);
-                } else {
-                     console.log(`View count incremented for article '${articleId}'`);
-                }
             }
         } else {
             console.log(`Action '${action}' for article '${articleId}' was already logged recently. Skipping.`);
@@ -1645,9 +1631,8 @@
                         createdAt: '2024-05-20T10:00:00.000Z',
                         lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.2,
-                        views: 183, // This will now be a fallback, real data comes from Supabase
+                        views: 0, // Fallback, will be replaced by synced data
                         comments: [
-                            // CHANGED: "Fatima" to "Rahma"
                             { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
                             { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
                         ],
@@ -1663,14 +1648,14 @@
                         tags: ['driver', 'responsibility', 'delay'],
                         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
                         lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-                        views: 78,
+                        views: 0,
                         comments: [],
                         feedback: []
                     }
                 ]
             },
             { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
+                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 0, comments: [], feedback: [] }
             ] }, 
             { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
             { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
@@ -1681,7 +1666,7 @@
             { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
             { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
             { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [] }
+                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 0, comments: [], feedback: [] }
             ] }, 
             { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
             { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
@@ -1692,7 +1677,17 @@
 
     function saveDataToLocalStorage() {
         try {
-            localStorage.setItem(KB_DATA_KEY, JSON.stringify(kbSystemData));
+            // Create a copy of the data without the live stats to avoid saving them permanently
+            const dataToSave = JSON.parse(JSON.stringify(kbSystemData));
+            dataToSave.sections.forEach(section => {
+                if (section.items) {
+                    section.items.forEach(item => {
+                        delete item.liveViews;
+                        delete item.liveComments;
+                    });
+                }
+            });
+            localStorage.setItem(KB_DATA_KEY, JSON.stringify(dataToSave));
         } catch (e) {
             console.error("Failed to save data to localStorage", e);
         }
@@ -1704,13 +1699,12 @@
         if (storedData) {
             try {
                 const parsedData = JSON.parse(storedData);
-                // Version check: if stored version matches the file version, use it. Otherwise, use the fresh data from the file.
                 if (parsedData.meta && parsedData.meta.version && parsedData.meta.version === fileVersion) {
                     kbSystemData = parsedData;
                     console.log(`Loaded up-to-date data (v${fileVersion}) from localStorage.`);
                 } else {
                     const storedVersion = parsedData.meta ? parsedData.meta.version : 'unknown';
-                    console.warn(`LocalStorage data (v${storedVersion}) is outdated or mismatched. Using fresh data from file (v${fileVersion}).`);
+                    console.warn(`LocalStorage data (v${storedVersion}) is outdated. Using fresh data from file (v${fileVersion}).`);
                 }
             } catch (e) {
                 console.error("Failed to parse data from localStorage, using default.", e);
@@ -1778,7 +1772,7 @@
     /** @type {UserProfile|null} */
     let currentUser = null; 
     let currentOpenItem = null;
-    let activityChartInstance; // CHANGED: Renamed for clarity
+    let activityChartInstance;
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1854,7 +1848,10 @@
             }
             if (activityChartInstance.options.scales && activityChartInstance.options.scales.x) { 
                 activityChartInstance.options.scales.x.ticks.color = ticksColor;
-                activityChartInstance.options.scales.x.grid.color = gridColor;
+                activityChartInstance.options.scales.x.grid.color = 'transparent';
+            }
+            if (activityChartInstance.options.scales && activityChartInstance.options.scales.y1) {
+                activityChartInstance.options.scales.y1.ticks.color = ticksColor;
             }
             activityChartInstance.update();
         }
@@ -1976,72 +1973,63 @@
             </div>`;
     }
 
-    // ADDED: Function to fetch real chart data from Supabase
+    // ADDED: Centralized function to fetch chart data.
     async function fetchChartData() {
-        // 1. Get top 7 most viewed articles
-        const { data: viewsData, error: viewsError } = await supabase
-            .from('article_views')
-            .select('article_id, total_views')
-            .order('total_views', { ascending: false })
-            .limit(7);
+        // Query to get view counts for all articles grouped by article_id
+        const { data: viewCounts, error: viewsError } = await supabase
+            .from('activity_log')
+            .select('article_id, id')
+            .eq('action', 'view');
 
         if (viewsError) {
-            console.error("Error fetching article views:", viewsError);
+            console.error("Error fetching view data:", viewsError.message);
             return null;
         }
-        if (!viewsData || viewsData.length === 0) {
-            return { labels: [], views: [], comments: [] };
-        }
 
-        const articleIds = viewsData.map(v => v.article_id);
-        const allItems = kbSystemData.sections.flatMap(s => s.items || []);
-        
-        // 2. Get comment counts for these specific articles
-        const { data: commentsData, error: commentsError } = await supabase
-            .from('activity_logs')
-            .select('article_id', { count: 'exact' })
-            .in('article_id', articleIds)
+        // Query to get comment counts for all articles grouped by article_id
+        const { data: commentCounts, error: commentsError } = await supabase
+            .from('activity_log')
+            .select('article_id, id')
             .eq('action', 'comment');
-            
+
         if (commentsError) {
-            console.error("Error fetching comment counts:", commentsError);
-            // Continue with views data even if comments fail
+            console.error("Error fetching comment data:", commentsError.message);
+            // We can still proceed with view data
         }
 
-        const commentCounts = {};
-        if (commentsData) {
-            // This is a workaround since Supabase JS SDK doesn't directly support GROUP BY + COUNT
-            // We fetch all comment logs and count them in JS. For larger scale, an RPC function would be better.
-            const { data: allCommentLogs, error: logError } = await supabase
-                .from('activity_logs')
-                .select('article_id')
-                .in('article_id', articleIds)
-                .eq('action', 'comment');
+        const viewMap = new Map();
+        viewCounts.forEach(v => {
+            viewMap.set(v.article_id, (viewMap.get(v.article_id) || 0) + 1);
+        });
 
-            if (!logError) {
-                allCommentLogs.forEach(log => {
-                    commentCounts[log.article_id] = (commentCounts[log.article_id] || 0) + 1;
-                });
-            }
+        const commentMap = new Map();
+        if(commentCounts) {
+            commentCounts.forEach(c => {
+                commentMap.set(c.article_id, (commentMap.get(c.article_id) || 0) + 1);
+            });
         }
         
+        // Sort by views to get the top articles
+        const sortedViews = Array.from(viewMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 7);
+        const allItems = kbSystemData.sections.flatMap(s => s.items || []);
+
         const labels = [];
         const finalViews = [];
         const finalComments = [];
 
-        viewsData.forEach(view => {
-            const item = allItems.find(i => i.id === view.article_id);
+        for (const [articleId, viewCount] of sortedViews) {
+            const item = allItems.find(i => i.id === articleId);
             if (item) {
                 labels.push(truncateText(item.title, 25));
-                finalViews.push(view.total_views);
-                finalComments.push(commentCounts[view.article_id] || 0);
+                finalViews.push(viewCount);
+                finalComments.push(commentMap.get(articleId) || 0);
             }
-        });
-
+        }
+        
         return { labels, views: finalViews, comments: finalComments };
     }
 
-    // CHANGED: Heavily modified to show real stats from Supabase
+
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2072,7 +2060,7 @@
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const editsThisWeek = allItems.filter(i => i.lastModified && new Date(i.lastModified) > sevenDaysAgo).length;
         
-        const mostUsedArticles = [...allItems].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
+        const mostUsedArticles = [...allItems].sort((a,b) => (b.liveViews || 0) - (a.liveViews || 0)).slice(0,3);
 
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
@@ -2105,14 +2093,14 @@
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="dashboard-info-card">
-                    <h3>🔥 Most Used Articles (Local Data)</h3>
+                    <h3>🔥 Most Used Articles (Live Data)</h3>
                     <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => {
                         const section = kbSystemData.sections.find(s => s.items && s.items.includes(item));
                         return `<li>
                             <a href="#${section.id}/${item.id}">${escapeHTML(item.title)}</a> 
-                            <span class="meta"><i class="fas fa-eye"></i> ${item.views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.comments?.length || 0} comments</span>
+                            <span class="meta"><i class="fas fa-eye"></i> ${item.liveViews || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.liveComments || 0} comments</span>
                         </li>`
-                    }).join('') : '<li>No data yet.</li>'}</ul>
+                    }).join('') : '<li>No articles have been viewed yet.</li>'}</ul>
                 </div>
                  <div class="chart-container">
                     <h3>Content Activity (Live Data)</h3>
@@ -2133,10 +2121,6 @@
 
         chartPlaceholder.classList.add('hidden');
         
-        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
-        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
-        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
-
         if (activityChartInstance) activityChartInstance.destroy();
         const ctx = activityChartCanvas.getContext('2d');
         
@@ -2168,27 +2152,22 @@
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { 
-                    legend: { labels: { color: legendColor, font: { family: 'Inter, sans-serif' } }, position: 'top', },
-                    tooltip: { 
-                        bodyFont: { family: 'Inter, sans-serif' }, 
-                        titleFont: { family: 'Inter, sans-serif' },
-                        mode: 'index',
-                        intersect: false
-                    }
+                    legend: { labels: { color: 'var(--text-color)', font: { family: 'Inter, sans-serif' } }, position: 'top', },
+                    tooltip: { mode: 'index', intersect: false }
                 },
                 scales: {
-                    x: { ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' } }, grid: { color: 'transparent' } },
+                    x: { ticks: { color: 'var(--text-color-muted)', font: { family: 'Inter, sans-serif' } }, grid: { color: 'transparent' } },
                     y: { 
                         type: 'linear', display: true, position: 'left',
-                        ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' }, stepSize: 10 }, 
-                        grid: { color: gridColor },
-                        title: { display: true, text: 'Total Views', color: legendColor }
+                        ticks: { color: 'var(--text-color-muted)', font: { family: 'Inter, sans-serif' }, beginAtZero: true }, 
+                        grid: { color: 'var(--border-color)' },
+                        title: { display: true, text: 'Total Views', color: 'var(--text-color)' }
                     },
                     y1: {
                         type: 'linear', display: true, position: 'right',
-                        ticks: { color: ticksColor, font: { family: 'Inter, sans-serif' }, stepSize: 1 },
-                        grid: { drawOnChartArea: false }, // only draw grid for the first Y axis
-                        title: { display: true, text: 'Total Comments', color: legendColor }
+                        ticks: { color: 'var(--text-color-muted)', font: { family: 'Inter, sans-serif' }, beginAtZero: true },
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Total Comments', color: 'var(--text-color)' }
                     }
                 }
             }
@@ -2260,16 +2239,11 @@
         return null;
     }
 
-    // REMOVED: The old localStorage-based trackView function is replaced by logActivity.
-    // function trackView(item) { ... }
-
-
     async function downloadItemAsPDF(itemToDownload) {
         if (!itemToDownload || !itemToDownload.title) {
             showToast('Error preparing PDF: Item data is missing.', 'error'); return;
         }
         
-        // ADDED: Log the download action
         logActivity(itemToDownload.id, 'download');
 
         const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
@@ -2287,7 +2261,6 @@
         const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.last-updated-info' ];
         selectorsToRemove.forEach(selector => elementToPrint.querySelectorAll(selector).forEach(el => el.remove()));
         
-        // ADDED: Remove all elements with the .hidden class to ensure only visible content is exported.
         elementToPrint.querySelectorAll('.hidden').forEach(el => el.remove());
         
         elementToPrint.style.position = 'absolute';
@@ -2328,20 +2301,9 @@
             return;
         }
 
-        // CHANGED: Use the new Supabase-based activity logger.
         logActivity(itemData.id, 'view'); 
 
-        // Get live view count from Supabase
-        const { data: viewCountData, error: viewCountError } = await supabase
-            .from('article_views')
-            .select('total_views')
-            .eq('article_id', itemData.id)
-            .single();
-
-        let liveViews = itemData.views || 0;
-        if (!viewCountError && viewCountData) {
-            liveViews = viewCountData.total_views;
-        }
+        const liveViews = itemData.liveViews || 0; // Use synced data
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2465,7 +2427,6 @@
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        // Add copy buttons to blockquotes
         itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
             const copyBtn = document.createElement('button');
             copyBtn.className = 'copy-script-btn';
@@ -2489,8 +2450,6 @@
         document.getElementById('printItemBtn').addEventListener('click', () => window.print());
         document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
 
-        // Feedback logic
-        const feedbackPrompt = document.getElementById('feedbackPrompt');
         const rateYesBtn = document.getElementById('rateYesBtn');
         const rateNoBtn = document.getElementById('rateNoBtn');
         const ratingButtons = document.getElementById('ratingButtons');
@@ -2529,29 +2488,22 @@
             }
         });
 
-
-        // Comments logic
         document.getElementById('postCommentBtn').addEventListener('click', () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
             if (!commentText) {
-                showToast('Please enter a note.', 'error');
-                return;
+                showToast('Please enter a note.', 'error'); return;
             }
             if (!itemData.comments) itemData.comments = [];
             itemData.comments.push({
                 id: `cmt_${Date.now()}`,
-                authorId: currentUser.id,
-                authorName: currentUser.name,
-                text: commentText, 
-                timestamp: new Date().toISOString()
+                authorId: currentUser.id, authorName: currentUser.name,
+                text: commentText, timestamp: new Date().toISOString()
             });
             saveDataToLocalStorage();
+            logActivity(itemData.id, 'comment');
             renderComments(itemData, 'commentDisplayAreaForItem'); 
             commentTextEl.value = ''; 
-            
-            // ADDED: Log comment action
-            logActivity(itemData.id, 'comment');
         });
     }
     
@@ -2566,7 +2518,7 @@
 
         let commentsHTML = '';
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
+        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; 
 
         sortedComments.forEach(comment => {
             if(!userAvatars[comment.authorId]) {
@@ -2630,7 +2582,6 @@
         document.getElementById('contentSummary').value = template.summary;
         if (mainQuillEditor) {
             try {
-                // NOTE: Quill's standard toolbar for links, images, etc., inserts content at the current cursor position by default. This is already working as requested.
                 const delta = mainQuillEditor.clipboard.convert(template.content);
                 mainQuillEditor.setContents(delta, 'silent');
             } catch(e) {
@@ -2797,7 +2748,6 @@
         openDeleteConfirmModal(sectionId, itemId, itemTitle);
     };
 
-    // --- Other Modals Logic (Delete, Feedback, etc) ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
         confirmDeleteItemBtn.dataset.sectionId = sectionId;
@@ -2829,7 +2779,6 @@
     closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
     
-    // Global Search
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
         if (query.length < 2) {
@@ -2878,10 +2827,43 @@
 
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
+    
+    // ADDED: Central function to sync data from Supabase to the local kbSystemData object.
+    async function syncDataFromSupabase() {
+        const { data, error } = await supabase.from('activity_log').select('article_id, action');
+        if (error) {
+            console.error("Could not sync data from Supabase:", error.message);
+            return;
+        }
+
+        const viewMap = new Map();
+        const commentMap = new Map();
+
+        data.forEach(log => {
+            if (log.action === 'view') {
+                viewMap.set(log.article_id, (viewMap.get(log.article_id) || 0) + 1);
+            } else if (log.action === 'comment') {
+                commentMap.set(log.article_id, (commentMap.get(log.article_id) || 0) + 1);
+            }
+        });
+
+        kbSystemData.sections.forEach(section => {
+            if (section.items) {
+                section.items.forEach(item => {
+                    item.liveViews = viewMap.get(item.id) || 0;
+                    item.liveComments = commentMap.get(item.id) || 0;
+                });
+            }
+        });
+        console.log("Live data synced successfully from Supabase.");
+    }
+
 
     async function initializeApp() {
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
+
+        await syncDataFromSupabase(); // Sync data on startup
 
         userNameDisplayHeader.textContent = currentUser.name;
         userAvatar.src = currentUser.avatar_url;
