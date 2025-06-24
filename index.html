@@ -1569,12 +1569,15 @@
             }
             
             const displayName = userDataFromDB.name || userDataFromDB.email || 'User';
+            // CHANGE START: Avatar generation updated to use initials as requested.
+            const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
                 ...userDataFromDB,
-                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.split(' ').join('+'))}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
+                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
                 lastLogin: new Date().toISOString() 
             };
+            // CHANGE END
 
             localStorage.setItem("infiniBaseUser", JSON.stringify(comprehensiveUserProfile));
             return comprehensiveUserProfile;
@@ -1597,7 +1600,7 @@
 
     // --- KB Data ---
     // NOTE: This object acts as the live "database" for the application's lifecycle.
-    // On page reload, it resets to this initial state, simulating fetching fresh data.
+    // It's initialized here but can be overwritten by data from localStorage.
     let kbSystemData = {
         meta: { version: '1.4.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
@@ -1609,12 +1612,12 @@
                         id: 'sup_flow_compensation', type: 'article', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
-                        // CHANGE START: Replaced image with a more relevant one and updated alt text.
+                        // CHANGE START: Replaced image with a more relevant one representing compensation/refund.
                         content: `
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
                                 <div style="text-align:center; margin: 1.5rem 0;">
-                                    <img src="https://img.freepik.com/free-vector/deadline-concept-illustration_114360-1312.jpg" alt="Illustration of a person stressed about a deadline clock." style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                                    <img src="https://img.freepik.com/free-vector/refund-concept-illustration_114360-2646.jpg" alt="Illustration of a person receiving a cash refund, representing the compensation policy." style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                                 </div>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
                             </div>
@@ -1841,6 +1844,18 @@
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
     }
+
+    // CHANGE START: Added function to persist data to localStorage
+    function persistKbSystemData() {
+        try {
+            localStorage.setItem('kbSystemData', JSON.stringify(kbSystemData));
+            console.log("KB data persisted to localStorage.");
+        } catch (e) {
+            console.error("Failed to save KB data to localStorage:", e);
+            showToast("Could not save changes locally.", "error");
+        }
+    }
+    // CHANGE END
 
     function showToast(message, type = 'info', duration = 3000) {
         const toastContainer = document.getElementById('toastContainer');
@@ -2369,9 +2384,8 @@
     function trackView(item) {
         if (!currentUser) return;
         item.views = (item.views || 0) + 1;
-        // NOTE: View count changes are not persisted due to removal of saveDataToLocalStorage()
-        // This is intentional to simulate a stateless "fetch from DB" on every load.
-        console.log(`View tracked for item ${item.id}. New count: ${item.views}. (Will reset on reload)`);
+        persistKbSystemData(); // Persist view count change
+        console.log(`View tracked for item ${item.id}. New count: ${item.views}.`);
         const readStatsEl = document.getElementById('readStatsCount');
         if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
     }
@@ -2542,6 +2556,7 @@
             itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
             ratingButtons.innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
+            persistKbSystemData(); // Persist feedback change
         });
 
         rateNoBtn.addEventListener('click', () => {
@@ -2563,6 +2578,7 @@
                 itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
                 document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                 showToast('Feedback received, we will review it.', 'info');
+                persistKbSystemData(); // Persist feedback change
             } else {
                 showToast('Please provide a reason.', 'error');
             }
@@ -2586,7 +2602,8 @@
                 timestamp: new Date().toISOString()
             });
             renderComments(itemData, 'commentDisplayAreaForItem'); 
-            commentTextEl.value = ''; 
+            commentTextEl.value = '';
+            persistKbSystemData(); // Persist new comment
         });
     }
     
@@ -2844,6 +2861,7 @@
         
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
+        persistKbSystemData(); // Persist changes
         
         // Refresh the view to show the changes
         handleNavigation();
@@ -2880,6 +2898,7 @@
                 section.items.splice(itemIndex, 1);
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
+                persistKbSystemData(); // Persist deletion
                 
                 if (window.location.hash.includes(itemId)) {
                     window.location.hash = `#${sectionId}`;
@@ -2944,6 +2963,22 @@
     }
 
     async function initializeApp() {
+        // CHANGE START: Load data from localStorage if available
+        const savedKbData = localStorage.getItem('kbSystemData');
+        if (savedKbData) {
+            try {
+                const parsedData = JSON.parse(savedKbData);
+                // Basic validation
+                if (parsedData && parsedData.meta && parsedData.sections) {
+                    kbSystemData = parsedData;
+                    console.log("KB data loaded from localStorage.");
+                }
+            } catch (e) {
+                console.error("Failed to load/parse KB data from localStorage. Using default data.", e);
+            }
+        }
+        // CHANGE END
+        
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) return;
 
