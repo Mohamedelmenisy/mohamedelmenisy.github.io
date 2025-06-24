@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-
-<html class="dark" dir="ltr" lang="en">
+<html class="dark" data-hash="2025-06-24T13:55" dir="ltr" lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -1036,6 +1035,73 @@
              margin-top: 1rem;
         }
 
+        /* New Dashboard Table Styles */
+        .dashboard-table-card {
+            background-color: var(--bg-color-alt);
+            padding: 0;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            grid-column: 1 / -1;
+            overflow: hidden;
+        }
+        .dashboard-table-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .dashboard-table-wrapper {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .dashboard-table-card table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .dashboard-table-card th, .dashboard-table-card td {
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        .dashboard-table-card th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-color-muted);
+            background-color: var(--bg-color);
+        }
+        .dashboard-table-card tr:last-child td {
+            border-bottom: none;
+        }
+        .dashboard-table-card td {
+            font-size: 0.9rem;
+            color: var(--text-color-subtle);
+        }
+        .dashboard-table-card td .user-name-cell {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        .dashboard-table-card td .email-cell {
+            font-size: 0.85rem;
+        }
+        .dashboard-table-card .action-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        .dashboard-table-card .action-badge.view { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .dashboard-table-card .action-badge.comment { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .dashboard-table-card .action-badge.create { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+
+
         /* Print Styles */
         @media print {
             body, .container-fluid {
@@ -1359,6 +1425,26 @@
     import { supabase } from './supabase.js';
 
     // =================================================================================
+    // AUTOMATIC CACHE CLEARING
+    // =================================================================================
+    window.addEventListener("load", () => {
+        const html = document.querySelector("html");
+        if (!html) return;
+        const htmlHash = html.getAttribute("data-hash");
+        const savedHash = localStorage.getItem("html_hash");
+
+        if (htmlHash && savedHash && savedHash !== htmlHash) {
+            console.log(`New version detected (hash: ${htmlHash}). Clearing storage and reloading.`);
+            localStorage.clear();
+            sessionStorage.clear();
+            localStorage.setItem("html_hash", htmlHash); // Avoid reload loops
+            location.reload(); 
+        } else if (htmlHash) {
+             localStorage.setItem("html_hash", htmlHash);
+        }
+    });
+
+    // =================================================================================
     // IMMEDIATE SESSION CHECK
     // =================================================================================
     const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession();
@@ -1604,6 +1690,21 @@
         ]
     };
 
+    // --- MOCK DATA FOR DASHBOARD TABLES ---
+    const mockActivityLog = [
+        { user_name: 'Fatima', email: 'fatima@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'view', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'comment', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Ahmed', email: 'ahmed@example.com', item_id: 'pc_case_01', item_type: 'case', action: 'view', timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'new_guide_456', item_type: 'guide', action: 'create', timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Fatima', email: 'fatima@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'positive_feedback', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() }
+    ];
+    const mockArticleViews = [
+        { user_name: 'Fatima', email: 'fatima@example.com', article_id: 'sup_flow_compensation', views: 15, first_view: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Ahmed', email: 'ahmed@example.com', article_id: 'sup_flow_compensation', views: 5, first_view: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Nora', email: 'nora@example.com', article_id: 'cp_policy_01', views: 22, first_view: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', article_id: 'sup_child_example', views: 8, first_view: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
+    ];
+
     const KB_DATA_KEY = 'infiniBaseData';
 
     function saveDataToLocalStorage() {
@@ -1702,6 +1803,14 @@
         const el = document.createElement('div');
         el.textContent = str;
         return el.innerHTML;
+    }
+
+    function formatReadableDate(isoString) {
+        if (!isoString) return 'N/A';
+        return new Date(isoString).toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
     }
 
     function highlightText(text, query) {
@@ -1987,6 +2096,71 @@
              <div class="card chart-container" style="height: 350px;">
                 <h3>Content Activity (Mock Data)</h3>
                 <canvas id="visitorsChart"></canvas>
+            </div>
+            
+            <!-- NEW TABLE 1: ARTICLE VIEWS -->
+            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
+                <h3>Article Views Per User</h3>
+                <div class="dashboard-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Article ID</th>
+                                <th>Views</th>
+                                <th>First View</th>
+                                <th>Last View</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${mockArticleViews.map(row => `
+                                <tr>
+                                    <td>
+                                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
+                                        <div class="email-cell">${escapeHTML(row.email)}</div>
+                                    </td>
+                                    <td>${escapeHTML(row.article_id)}</td>
+                                    <td>${row.views}</td>
+                                    <td>${formatReadableDate(row.first_view)}</td>
+                                    <td>${formatReadableDate(row.last_view)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NEW TABLE 2: ACTIVITY LOG -->
+            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
+                <h3>Recent Activity Log</h3>
+                <div class="dashboard-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Item</th>
+                                <th>Action</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${mockActivityLog.map(row => `
+                                <tr>
+                                    <td>
+                                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
+                                        <div class="email-cell">${escapeHTML(row.email)}</div>
+                                    </td>
+                                    <td>
+                                        <div>${escapeHTML(row.item_id)}</div>
+                                        <div style="font-size: 0.8rem; text-transform: capitalize; color: var(--text-color-muted);">${escapeHTML(row.item_type)}</div>
+                                    </td>
+                                    <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
+                                    <td>${formatReadableDate(row.timestamp)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
         
