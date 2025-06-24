@@ -1499,12 +1499,8 @@
         }));
     }
 
-    /** 👀 Records a view for an article by incrementing its view count. */
-    async function recordArticleView(articleId) {
-        if (!articleId) return;
-        const { error } = await supabase.rpc('increment_views', { article_id_to_inc: articleId });
-        if (error) console.error('Error recording view:', error);
-    }
+    // This function is now replaced by the RPC 'increment_and_log_view'
+    // async function recordArticleView(articleId) { ... }
     
     /** 📝 Adds a new comment to the 'kb_comments' table. */
     async function addComment(articleId, commentText, user) {
@@ -1514,8 +1510,13 @@
             author_name: user.name,
             body: commentText,
         }]).select().single();
-        if (error) console.error('Error posting comment:', error);
-        return { data, error };
+        if (error) {
+            console.error('Error posting comment:', error);
+            return {data: null, error};
+        }
+        // Log this activity
+        await logActivity(currentUser, articleId, 'comment', 'commented');
+        return { data, error: null };
     }
 
     /** ⭐ Submits feedback to the 'kb_feedback' table. */
@@ -1526,18 +1527,27 @@
             rating,
             reason,
         }]);
-        if (error) console.error('Error submitting feedback:', error);
+        if (error) {
+            console.error('Error submitting feedback:', error);
+        } else {
+             await logActivity(user, articleId, 'feedback', rating === 1 ? 'positive_feedback' : 'negative_feedback', { reason });
+        }
     }
     
     /** 🕓 Saves a version of the article to 'version_history'. */
     async function saveVersion(article, user) {
-        const { error } = await supabase.from('version_history').insert([{
-            item_id: article.id,
-            title: article.title,
-            content: article.content,
-            author_id: user.id,
-        }]);
-        if (error) console.error('Error saving version history:', error);
+        // This table might not exist in your schema, handle it gracefully
+        try {
+            const { error } = await supabase.from('version_history').insert([{
+                item_id: article.id,
+                title: article.title,
+                content: article.content,
+                author_id: user.id,
+            }]);
+            if (error) throw error;
+        } catch(e) {
+            console.warn("Could not save to version_history. Ensure the table exists and RLS is configured.", e.message);
+        }
     }
 
     /** 📋 Logs a user activity to the 'activity_log' table. */
@@ -1575,7 +1585,7 @@
         ]);
         return {
             activityLog: activity.data || [],
-            articleViews: insights.data || [] // Corrected from `insights` to `insights.data`
+            articleViews: insights || []
         };
     }
 
@@ -1660,11 +1670,6 @@
             day: '2-digit', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: true
         });
-    }
-    
-    function formatDateOnly(isoString) {
-        if (!isoString) return 'N/A';
-        return new Date(isoString).toLocaleDateString('en-CA');
     }
 
     function highlightText(text, query) {
@@ -2090,12 +2095,24 @@
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
             return;
         }
+        
+        // ✅ MODIFIED: Call the new smart RPC function for unique views and logging.
+        const { error: rpcError } = await supabase.rpc('increment_and_log_view', { 
+            article_id: itemData.id,
+            user_id_in: currentUser.id
+        });
+        if(rpcError) console.error("Error recording unique view and log:", rpcError);
 
-        await recordArticleView(itemData.id);
-        await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
-        itemData.views = (itemData.views || 0) + 1;
+        // Refetch all data to get the latest view count and other info
+        await loadAndStructureData(); 
+        const updatedItemData = findItem(itemId);
 
-        currentOpenItem = { sectionId, itemId, title: itemData.title };
+        if (!updatedItemData) { // Check if the item still exists after refetch
+             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
+            return;
+        }
+
+        currentOpenItem = { sectionId, itemId, title: updatedItemData.title };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
@@ -2103,16 +2120,16 @@
         breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
             <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">›</span>
-            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
-        currentSectionTitleEl.textContent = itemData.title;
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(updatedItemData.title)}</span>`;
+        currentSectionTitleEl.textContent = updatedItemData.title;
 
         let itemIconClass = 'fas fa-file-alt';
-        if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
-        else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
-        else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
-        else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
+        if (updatedItemData.type === 'case') itemIconClass = 'fas fa-briefcase';
+        else if (updatedItemData.type === 'article') itemIconClass = 'fas fa-newspaper';
+        else if (updatedItemData.type === 'guide') itemIconClass = 'fas fa-book-open';
+        else if (updatedItemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        const parentItemInfo = itemData.parent_id ? findItem(itemData.parent_id) : null;
+        const parentItemInfo = updatedItemData.parent_id ? findItem(updatedItemData.parent_id) : null;
         const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionId}/${parentItemInfo.id}` : `#${sectionId}`;
         const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title, 25))}` : 'Back to Section';
         
@@ -2124,18 +2141,18 @@
         }
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
-        const lastModified = new Date(itemData.last_modified || itemData.created_at);
+        const lastModified = new Date(updatedItemData.last_modified || updatedItemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
 
         detailHTML += `<div class="card">
-            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title)}</h2></div>
-            <p class="item-summary">${escapeHTML(stripHtml(itemData.description))}</p>
-            ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(updatedItemData.title)}</h2></div>
+            <p class="item-summary">${escapeHTML(stripHtml(updatedItemData.description))}</p>
+            ${updatedItemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${updatedItemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
-            <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
+            <div class="kb-content">${updatedItemData.content || '<p>No detailed content available.</p>'}</div>
         </div>`;
         
-        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === updatedItemData.id);
         if (childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
                 <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
@@ -2157,7 +2174,7 @@
                     <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
                 </form>
             </div>
-            <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
+            <div class="read-stats">Total Views: <span id="readStatsCount">${(updatedItemData.views || 0).toLocaleString()}</span></div>
         </div>`;
         detailHTML += `<div class="comments-section">
             <h4><i class="fas fa-comments"></i> Management Notes</h4>
@@ -2185,7 +2202,7 @@
             </div>`;
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        setupItemDetailEventListeners(itemData);
+        setupItemDetailEventListeners(updatedItemData);
     }
     
     async function setupItemDetailEventListeners(itemData) {
@@ -2211,7 +2228,6 @@
 
         document.getElementById('rateYesBtn')?.addEventListener('click', async () => {
             await submitFeedback(itemData.id, 1, null, currentUser);
-            await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
             document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
         });
@@ -2231,7 +2247,6 @@
             const reason = document.getElementById('feedbackReason').value.trim();
             if (reason) {
                 await submitFeedback(itemData.id, 0, reason, currentUser);
-                await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
                 document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                 showToast('Feedback received, we will review it.', 'info');
             } else {
@@ -2244,10 +2259,9 @@
             const commentText = commentTextEl.value.trim();
             if (!commentText) { showToast('Please enter a note.', 'error'); return; }
 
-            const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+            const { error } = await addComment(itemData.id, commentText, currentUser);
             if (error) { showToast('Failed to post note.', 'error'); return; }
 
-            await logActivity(currentUser, itemData.id, itemData.type, 'commented');
             renderComments(itemData.id); 
             commentTextEl.value = ''; 
         });
@@ -2442,7 +2456,9 @@
         }
 
         await saveVersion(savedItem, currentUser);
-        await logActivity(currentUser, savedItem.id, savedItem.type, editingId ? 'updated' : 'created');
+        if(!editingId) {
+            await logActivity(currentUser, savedItem.id, savedItem.type, 'created');
+        }
         
         showToast(`Content '${savedItem.title}' saved successfully!`, 'success');
         closeAddContentModal();
