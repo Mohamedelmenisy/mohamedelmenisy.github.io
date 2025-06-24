@@ -1116,6 +1116,16 @@
         .dashboard-table-card .action-badge.edit,
         .dashboard-table-card .action-badge.updated { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
         .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        
+        /* ✅ NEW: Improve visibility of links in dashboard tables */
+        .dashboard-table-card td a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .dashboard-table-card td a:hover {
+            text-decoration: underline;
+        }
 
         @media print {
             body, .container-fluid {
@@ -1448,7 +1458,6 @@
 
     // --- Supabase Logic Layer (Functions to interact with the database) ---
     
-    /** 👤 Fetches the currently authenticated user's profile from the 'users' table. */
     async function getCurrentUserProfile() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
@@ -1463,13 +1472,11 @@
         return profile;
     }
 
-    /** 🚪 Logs the user out. */
     async function logout() {
         await supabase.auth.signOut();
         window.location.href = 'login.html';
     }
     
-    /** 📂 Fetches all categories from 'sub_categories'. */
     async function fetchSubCategories() {
         const { data, error } = await supabase.from('sub_categories').select('*').order('position');
         if (error) {
@@ -1480,7 +1487,6 @@
         return data;
     }
 
-    /** 📰 Fetches all articles from 'cases'. */
     async function fetchArticles() {
         const { data, error } = await supabase
             .from('cases')
@@ -1499,7 +1505,6 @@
         }));
     }
     
-    /** 📝 Adds a new comment to the 'kb_comments' table. */
     async function addComment(articleId, commentText, user) {
         const { data, error } = await supabase.from('kb_comments').insert([{
             item_id: articleId,
@@ -1515,7 +1520,6 @@
         return { data, error: null };
     }
 
-    /** ⭐ Submits feedback to the 'kb_feedback' table. */
     async function submitFeedback(articleId, rating, reason, user) {
         const { error } = await supabase.from('kb_feedback').insert([{
             item_id: articleId,
@@ -1530,7 +1534,6 @@
         }
     }
     
-    /** 🕓 Saves a version of the article to 'version_history'. */
     async function saveVersion(article, user) {
         try {
             const { error } = await supabase.from('version_history').insert([{
@@ -1545,7 +1548,6 @@
         }
     }
 
-    /** 📋 Logs a user activity to the 'activity_log' table. */
     async function logActivity(user, itemId, itemType, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
@@ -1562,7 +1564,6 @@
         if (error) console.error('Error logging activity:', error);
     }
 
-    /** 📊 Fetches aggregated insights from the 'v_kb_insights' view. */
     async function fetchInsights() {
       const { data, error } = await supabase.from('v_kb_insights').select('*');
       if (error) {
@@ -1572,7 +1573,6 @@
       return data;
     }
 
-    /** 📈 Fetches raw data for dashboard tables. */
     async function fetchDashboardTableData() {
         const [activity, insights] = await Promise.all([
             supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
@@ -1584,7 +1584,6 @@
         };
     }
 
-    // --- Initialize Mermaid ---
     mermaid.initialize({ 
         startOnLoad: false,
         theme: 'dark', 
@@ -1604,7 +1603,6 @@
         }
     });
     
-    // --- Global State & DOM Elements ---
     let kbSystemData = { sections: [] };
     let mainQuillEditor;
     let currentUser = null; 
@@ -1623,7 +1621,6 @@
     const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
     const userAvatar = document.getElementById('userAvatar');
     const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
-
     const addContentModalOverlay = document.getElementById('addContentModalOverlay');
     const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
     const addContentForm = document.getElementById('addContentForm');
@@ -1635,23 +1632,19 @@
     const contentDetailLabel = document.getElementById('contentDetailLabel');
     const contentTagsInput = document.getElementById('contentTags');
     const editingItemIdInput = document.getElementById('editingItemId');
-    
     const globalSearchInput = document.getElementById('globalSearchInput');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
-
     const logoutButton = document.getElementById('logoutButton');
     const logoutConfirmModalOverlay = document.getElementById('logoutConfirmModalOverlay');
     const closeLogoutConfirmModalBtn = document.getElementById('closeLogoutConfirmModalBtn');
     const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
     const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-    
     const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
     const closeDeleteConfirmModalBtn = document.getElementById('closeDeleteConfirmModalBtn');
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
 
-    // --- Utility Functions ---
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         const el = document.createElement('div');
@@ -1718,7 +1711,6 @@
     }
     window.copyScriptToClipboard = copyScriptToClipboard;
 
-    // --- Data Loading & Structuring ---
     async function loadAndStructureData() {
         console.log("Loading data from Supabase...");
         const [categories, articles] = await Promise.all([
@@ -1744,7 +1736,6 @@
         console.log("Data loaded and structured:", kbSystemData);
     }
 
-    // --- Sidebar and Navigation ---
     function populateSidebar() {
         let menuHTML = '';
         const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', color: 'var(--primary-color)' };
@@ -1822,7 +1813,6 @@
         }
     }
 
-    // --- Content Display ---
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
         if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; }
@@ -2005,14 +1995,6 @@
         const activityLogTbody = document.getElementById('activityLogTbody');
 
         if (articleViewsTbody) {
-             articleViewsTbody.parentElement.querySelector('thead tr').innerHTML = `
-                <th>Article Title</th>
-                <th>Views</th>
-                <th>Comments</th>
-                <th>Positive Feedback</th>
-                <th>Last Viewed</th>
-                <th>Last Viewed By</th>`;
-                
             articleViewsTbody.innerHTML = articleViews.map(row => `
                 <tr>
                     <td><a href="#${row.sub_category_id}/${row.article_id}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
@@ -2028,11 +2010,11 @@
         if (activityLogTbody) {
             activityLogTbody.innerHTML = activityLog.map(row => {
                 const item = findItem(row.item_id);
-                const itemTitle = item ? item.title : row.item_id;
+                const itemTitle = item ? item.title : 'Unknown Item';
                 const itemLink = item ? `#${item.sectionId}/${item.id}` : '#';
                 return `
                     <tr>
-                        <td><div class="user-name-cell">${escapeHTML(row.user_name)}</div></td>
+                        <td class="user-name-cell">${escapeHTML(row.user_name)}</td>
                         <td><a href="${itemLink}">${escapeHTML(truncateText(itemTitle, 30))}</a></td>
                         <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
                         <td>${formatReadableDate(row.timestamp)}</td>
@@ -2100,7 +2082,6 @@
             return;
         }
         
-        // ✅ FINAL DEBUGGING STEP: Log the IDs before sending them to the RPC function.
         console.log("Calling RPC with:", { p_article_id: itemData.id, p_user_id: currentUser.id });
 
         const { error: rpcError } = await supabase.rpc('record_unique_view', {
@@ -2109,7 +2090,6 @@
         });
         if(rpcError) console.error("Error calling record_unique_view RPC:", rpcError);
 
-        // Refetch all data to get the latest view count and other info
         await loadAndStructureData(); 
         const updatedItemData = findItem(itemId);
 
@@ -2302,7 +2282,6 @@
         }).join('');
     }
     
-    /** 📜 Fetches and displays the view history for a specific item. */
     async function displayViewHistory(itemId) {
         const historyTbody = document.getElementById('viewHistoryTbody');
         if (!historyTbody) return;
@@ -2327,7 +2306,7 @@
         historyTbody.innerHTML = data.map(log => `
             <tr>
                 <td>${escapeHTML(log.user_name)}</td>
-                <td><span class="action-badge ${log.action.toLowerCase()}">${escapeHTML(log.action)}</span></td>
+                <td><span class="action-badge ${log.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(log.action)}</span></td>
                 <td>${formatReadableDate(log.timestamp)}</td>
             </tr>
         `).join('');
@@ -2354,7 +2333,6 @@
         document.getElementById('contentTitle').focus();
     }
 
-    // --- Add/Edit Content Modal Logic ---
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
@@ -2480,7 +2458,6 @@
         openDeleteConfirmModal(sectionId, itemId, itemTitle);
     };
 
-    // --- Delete Modal & Search ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
         confirmDeleteItemBtn.dataset.itemId = itemId;
@@ -2532,7 +2509,6 @@
         searchResultsContainer.classList.remove('hidden');
     });
 
-    // --- Routing and Initialization ---
     function handleNavigation() {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
