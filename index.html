@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html class="dark" data-hash="2025-06-24T14:55" dir="ltr" lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -1223,11 +1222,20 @@
 
     </style>
 <style>
-.minimizable { max-height: 300px; object-fit: contain; }
+/* MODIFIED: Added styles for minimizable images and collapsible sections */
+.minimizable { cursor: pointer; transition: max-height 0.3s ease, opacity 0.3s ease; }
 .minimized { max-height: 120px !important; opacity: 0.7; }
-details { background: #1f2937; padding: 1em; border-radius: 10px; margin-bottom: 1em; }
-summary { cursor: pointer; font-weight: bold; color: #fff; }
-summary:hover { color: #a5b4fc; }
+details { background: var(--bg-color); border: 1px solid var(--border-color); padding: 1em; border-radius: var(--border-radius); margin-bottom: 1em; }
+summary { cursor: pointer; font-weight: 600; color: var(--text-color); display: flex; align-items: center; gap: 0.5rem; }
+summary:hover { color: var(--primary-color); }
+summary::before {
+    content: '▶';
+    font-size: 0.8em;
+    transition: transform 0.2s ease-in-out;
+}
+details[open] > summary::before {
+    transform: rotate(90deg);
+}
 </style></head>
 <body>
 <div class="modal-overlay hidden" id="addContentModalOverlay">
@@ -1512,7 +1520,7 @@ summary:hover { color: #a5b4fc; }
      * @property {string} [name] - User's full name
      * @property {string} email - User's email
      * @property {string} role - User's role (e.g., 'viewer', 'admin')
-     * @property {string} avatar_url - URL for user's avatar
+     * @property {string} [avatar_url] - URL for user's avatar (DEPRECATED)
      * @property {string} [lastLogin] - ISO string of last login time
      */
 
@@ -1575,16 +1583,14 @@ summary:hover { color: #a5b4fc; }
                 userDataFromDB = newProfile;
             }
             
-            const displayName = userDataFromDB.name || userDataFromDB.email || 'User';
-            // CHANGE START: Avatar generation updated to use initials as requested.
-            const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
             /** @type {UserProfile} */
             const comprehensiveUserProfile = {
                 ...userDataFromDB,
-                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&rounded=true&font-size=0.5`,
+                // MODIFIED: Removed ui-avatars.com generation per request.
+                // The main user avatar will now rely on its static `src` and `onerror` fallback.
+                // Avatars in comments are removed entirely in favor of text.
                 lastLogin: new Date().toISOString() 
             };
-            // CHANGE END
 
             localStorage.setItem("infiniBaseUser", JSON.stringify(comprehensiveUserProfile));
             return comprehensiveUserProfile;
@@ -1619,12 +1625,12 @@ summary:hover { color: #a5b4fc; }
                         id: 'sup_flow_compensation', type: 'article', 
                         title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
                         summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
-                        // CHANGE START: Replaced image with a more relevant one representing compensation/refund.
+                        // MODIFIED: Content updated to use local image, make it minimizable, and integrate new scenarios.
                         content: `
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
                                 <div style="text-align:center; margin: 1.5rem 0;">
-                                    <img src="https://img.freepik.com/free-vector/refund-concept-illustration_114360-2646.jpg" alt="Illustration of a person receiving a cash refund, representing the compensation policy." style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                                    <img src="images/compensation_illustration.jpg" alt="Illustration of a person receiving a cash refund, representing the compensation policy." class="minimizable" style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                                 </div>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
                             </div>
@@ -1688,9 +1694,20 @@ summary:hover { color: #a5b4fc; }
                                     <li style="display: flex; align-items: center; gap: 0.75rem;"><i class="fas fa-edit fa-fw" style="color: var(--primary-color);"></i> Log a clear note on the order including the issue, compensation amount, and the reason for compensation.</li>
                                 </ul>
                             </div>
+                            
+                            <div class="content-section-box">
+                                <h3><i class="fas fa-list-ul"></i> Other Common Scenarios</h3>
+                                <details>
+                                    <summary>📦 Missing Items</summary>
+                                    <p>If items are missing from the order, apologize and confirm with the customer which items are missing. Cross-reference with the order details in the system. Offer the customer the choice of a refund for the missing items or having the items re-delivered if feasible. Document the resolution in the case notes.</p>
+                                </details>
+                                <details>
+                                    <summary>🔄 Wrong Order</summary>
+                                    <p>If the customer received a completely wrong order, apologize sincerely. Offer a full refund for the incorrect order and, if they wish, place a new order for them with high priority. Ensure the case is documented for quality control to investigate the mix-up.</p>
+                                </details>
+                            </div>
                         `,
-                        // CHANGE END
-                        tags: ['compensation', 'customer service', 'delay', 'chefz policy', 'sop'],
+                        tags: ['compensation', 'customer service', 'delay', 'chefz policy', 'sop', 'missing items', 'wrong order'],
                         createdAt: '2024-05-20T10:00:00.000Z',
                         lastModified: '2025-06-22T14:30:00.000Z',
                         version: 1.2,
@@ -2504,10 +2521,10 @@ summary:hover { color: #a5b4fc; }
                         <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
                        </div>`;
         
+        // MODIFIED: Removed the avatar image from the comment post area
         detailHTML += `<div class="comments-section">
                         <h4><i class="fas fa-comments"></i> Management Notes</h4>
                         <div class="comment-post-area">
-                            <img src="${currentUser.avatar_url}" alt="Your avatar">
                             <div class="comment-input-wrapper">
                                 <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
                                 <div class="comment-post-actions">
@@ -2614,6 +2631,7 @@ summary:hover { color: #a5b4fc; }
         });
     }
     
+    // MODIFIED: Removed avatar logic from comment rendering
     function renderComments(itemData, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -2625,16 +2643,10 @@ summary:hover { color: #a5b4fc; }
 
         let commentsHTML = '';
         const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const userAvatars = { [currentUser.id]: currentUser.avatar_url }; // Simple cache
-
+        
         sortedComments.forEach(comment => {
-            if(!userAvatars[comment.authorId]) {
-                 userAvatars[comment.authorId] = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
-            }
-
             commentsHTML += `
                 <div class="comment" data-comment-id="${comment.id}">
-                    <img src="${userAvatars[comment.authorId]}" alt="${escapeHTML(comment.authorName)}'s avatar">
                     <div class="comment-content">
                         <div class="comment-header">
                             <span class="comment-author">${escapeHTML(comment.authorName)}</span>
@@ -2990,7 +3002,7 @@ summary:hover { color: #a5b4fc; }
         if (!currentUser) return;
 
         userNameDisplayHeader.textContent = currentUser.name;
-        userAvatar.src = currentUser.avatar_url;
+        if(currentUser.avatar_url) userAvatar.src = currentUser.avatar_url;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
         populateSidebar();
@@ -3019,25 +3031,13 @@ summary:hover { color: #a5b4fc; }
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('img.minimizable').forEach(img => {
-    img.addEventListener('click', () => img.classList.toggle('minimized'));
+  document.body.addEventListener('click', function(event) {
+    if (event.target.matches('img.minimizable')) {
+        event.target.classList.toggle('minimized');
+    }
   });
 });
 </script>
-<section>
-<h2>📄 Compensation Scenarios</h2>
-<details>
-<summary>🚚 Delayed Orders</summary>
-<p>If the order arrives more than 60 minutes late, the customer is eligible for a 20% compensation.</p>
-</details>
-<details>
-<summary>📦 Missing Items</summary>
-<p>Customers can request a refund or re-delivery of any missing item.</p>
-</details>
-<details>
-<summary>🔄 Wrong Order</summary>
-<p>If the customer receives an incorrect order, a full refund or re-order should be offered.</p>
-</details>
-</section>
+<!-- MODIFIED: This section has been integrated into the main knowledge base content and is now removed from here. -->
 </body>
 </html>
