@@ -533,7 +533,7 @@
             background: var(--bg-color-alt);
             border-color: var(--border-color-darker) !important;
             color: var(--text-color);
-            min-height: 250px; 
+            min-height: 150px; 
             border-bottom-left-radius: var(--border-radius);
             border-bottom-right-radius: var(--border-radius);
             font-size: 1rem;
@@ -625,15 +625,6 @@
             color: var(--text-color); /* Ensure pre content is visible */
             position: relative;
         }
-        /* Style for images inside content area */
-        .kb-content img, .ql-editor img {
-            display: block;
-            margin: 1rem auto; /* Center the image */
-            max-width: 100%; /* Make it responsive */
-            height: auto;
-            border-radius: var(--border-radius);
-        }
-
         .kb-content code { /* More specific for inline code if needed */
             background-color: var(--bg-color-hover);
             padding: 0.2em 0.4em;
@@ -1288,12 +1279,6 @@
 <label for="contentTags">Tags (comma-separated)</label>
 <input id="contentTags" placeholder="e.g., important, update, billing" type="text"/>
 </div>
-<div class="form-group" id="parentItemContainer">
-<label for="parentItem">Parent Item (Optional)</label>
-<select id="parentItem">
-<option value="">-- None (Top-Level Item) --</option>
-</select>
-</div>
 <hr style="border-color: var(--border-color-darker); margin: 1.5rem 0;"/>
 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);">Attachments (Optional)</h3>
 <div class="form-group">
@@ -1455,7 +1440,7 @@
             localStorage.setItem("html_hash", htmlHash); // Avoid reload loops
             location.reload(); 
         } else if (htmlHash) {
-             localStorage.setItem("html_hash", htmlHash);
+             
         }
     });
 
@@ -1508,17 +1493,6 @@
     const Auth = {
         /** @returns {Promise<UserProfile|null>} */
         async getCurrentUserProfile() {
-            // NOTE: The reliance on localStorage for the user profile is maintained
-            // for performance, but it's fetched fresh on initial load.
-            const storedUser = localStorage.getItem("infiniBaseUser");
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    // A simple check to see if the object is valid
-                    if (user && user.id && user.role) return user;
-                } catch(e) { /* Fall through to fetch fresh */ }
-            }
-
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError || !session || !session.user) {
@@ -1590,10 +1564,8 @@
     };
 
     // --- KB Data ---
-    // NOTE: This object acts as the live "database" for the application's lifecycle.
-    // On page reload, it resets to this initial state, simulating fetching fresh data.
     let kbSystemData = {
-        meta: { version: '1.4.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
+        meta: { version: '1.3.1', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
         sections: [
             { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
             {
@@ -1606,9 +1578,9 @@
                         content: `
                             <div class="content-section-box">
                                 <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
-                                <div style="text-align:center; margin: 1.5rem 0;">
-                                    <img src="https://img.freepik.com/free-vector/flat-design-time-management-concept_23-2148820638.jpg" alt="Compensation Policy Illustration" style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                                </div>
+    <div style="text-align:center; margin: 1rem 0;">
+        <img src="https://cdn-icons-png.flaticon.com/512/1041/1041916.png" alt="Compensation Illustration" style="max-width: 600px; width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+    </div>
                                 <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
                             </div>
                             
@@ -1720,18 +1692,50 @@
 
     // --- MOCK DATA FOR DASHBOARD TABLES ---
     const mockActivityLog = [
-        { user_name: 'Rahma', email: 'rahma@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'view', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Rahma', email: 'fatima@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'view', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'comment', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Ahmed', email: 'ahmed@example.com', item_id: 'pc_case_01', item_type: 'case', action: 'view', timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'new_guide_456', item_type: 'guide', action: 'create', timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Rahma', email: 'rahma@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'positive_feedback', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() }
+        { user_name: 'Rahma', email: 'fatima@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'positive_feedback', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() }
     ];
     const mockArticleViews = [
-        { user_name: 'Rahma', email: 'rahma@example.com', article_id: 'sup_flow_compensation', views: 15, first_view: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+        { user_name: 'Rahma', email: 'fatima@example.com', article_id: 'sup_flow_compensation', views: 15, first_view: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Ahmed', email: 'ahmed@example.com', article_id: 'sup_flow_compensation', views: 5, first_view: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Nora', email: 'nora@example.com', article_id: 'cp_policy_01', views: 22, first_view: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
         { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', article_id: 'sup_child_example', views: 8, first_view: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
     ];
+
+    const KB_DATA_KEY = 'infiniBaseData';
+
+    function saveDataToLocalStorage() {
+        try {
+            localStorage.setItem(KB_DATA_KEY, JSON.stringify(kbSystemData));
+        } catch (e) {
+            console.error("Failed to save data to localStorage", e);
+        }
+    }
+
+    function loadDataFromLocalStorage() {
+        const storedData = localStorage.getItem(KB_DATA_KEY);
+        const fileVersion = kbSystemData.meta.version;
+        if (storedData) {
+            try {
+                const parsedData = JSON.parse(storedData);
+                // Version check: if stored version matches the file version, use it. Otherwise, use the fresh data from the file.
+                if (parsedData.meta && parsedData.meta.version && parsedData.meta.version === fileVersion) {
+                    kbSystemData = parsedData;
+                    console.log(`Loaded up-to-date data (v${fileVersion}) from localStorage.`);
+                } else {
+                    const storedVersion = parsedData.meta ? parsedData.meta.version : 'unknown';
+                    console.warn(`LocalStorage data (v${storedVersion}) is outdated or mismatched. Using fresh data from file (v${fileVersion}).`);
+                }
+            } catch (e) {
+                console.error("Failed to parse data from localStorage, using default.", e);
+            }
+        }
+    }
+
+    loadDataFromLocalStorage();
 
     // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
@@ -1807,11 +1811,6 @@
             day: '2-digit', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: true
         });
-    }
-    
-    function formatDateOnly(isoString) {
-        if (!isoString) return 'N/A';
-        return new Date(isoString).toLocaleDateString('en-CA'); // YYYY-MM-DD format
     }
 
     function highlightText(text, query) {
@@ -2004,65 +2003,6 @@
             </div>`;
     }
 
-    function renderDashboardTables(filters = {}) {
-        const { name = '', email = '', date = '' } = filters;
-        const nameLower = name.toLowerCase();
-        const emailLower = email.toLowerCase();
-
-        // Filter Article Views
-        const filteredArticleViews = mockArticleViews.filter(row => {
-            const nameMatch = row.user_name.toLowerCase().includes(nameLower);
-            const emailMatch = row.email.toLowerCase().includes(emailLower);
-            const dateMatch = !date || formatDateOnly(row.last_view) === date;
-            return nameMatch && emailMatch && dateMatch;
-        });
-
-        // Filter Activity Log
-        const filteredActivityLog = mockActivityLog.filter(row => {
-            const nameMatch = row.user_name.toLowerCase().includes(nameLower);
-            const emailMatch = row.email.toLowerCase().includes(emailLower);
-            const dateMatch = !date || formatDateOnly(row.timestamp) === date;
-            return nameMatch && emailMatch && dateMatch;
-        });
-
-        // Render Article Views Table
-        const articleViewsTbody = document.getElementById('articleViewsTbody');
-        if (articleViewsTbody) {
-            articleViewsTbody.innerHTML = filteredArticleViews.map(row => `
-                <tr>
-                    <td>
-                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
-                        <div class="email-cell">${escapeHTML(row.email)}</div>
-                    </td>
-                    <td>${escapeHTML(row.article_id)}</td>
-                    <td>${row.views}</td>
-                    <td>${formatReadableDate(row.first_view)}</td>
-                    <td>${formatReadableDate(row.last_view)}</td>
-                </tr>
-            `).join('');
-        }
-
-        // Render Activity Log Table
-        const activityLogTbody = document.getElementById('activityLogTbody');
-        if (activityLogTbody) {
-            activityLogTbody.innerHTML = filteredActivityLog.map(row => `
-                <tr>
-                    <td>
-                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
-                        <div class="email-cell">${escapeHTML(row.email)}</div>
-                    </td>
-                    <td>
-                        <div>${escapeHTML(row.item_id)}</div>
-                        <div style="font-size: 0.8rem; text-transform: capitalize; color: var(--text-color-muted);">${escapeHTML(row.item_type)}</div>
-                    </td>
-                    <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
-                    <td>${formatReadableDate(row.timestamp)}</td>
-                </tr>
-            `).join('');
-        }
-    }
-
-
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2137,9 +2077,8 @@
                     <h3>🔥 Most Used Articles</h3>
                     <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => {
                         const section = kbSystemData.sections.find(s => s.items && s.items.includes(item));
-                        const sectionId = section ? section.id : 'home';
                         return `<li>
-                            <a href="#${sectionId}/${item.id}">${escapeHTML(item.title)}</a> 
+                            <a href="#${section.id}/${item.id}">${escapeHTML(item.title)}</a> 
                             <span class="meta"><i class="fas fa-eye"></i> ${item.views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.comments?.length || 0} comments</span>
                         </li>`
                     }).join('') : '<li>No data yet.</li>'}</ul>
@@ -2158,20 +2097,9 @@
                 <h3>Content Activity (Mock Data)</h3>
                 <canvas id="visitorsChart"></canvas>
             </div>
-
-            <!-- Dashboard Filters -->
-            <div class="card" style="margin-top: 1.5rem; padding: 1.5rem; margin-bottom: 1.5rem;">
-                <h3 style="margin-top:0; margin-bottom: 1rem;">Filter Activity</h3>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                    <input type="text" id="dashboardFilterName" placeholder="Filter by Name..." style="flex: 2 1 180px; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);">
-                    <input type="email" id="dashboardFilterEmail" placeholder="Filter by Email..." style="flex: 2 1 180px; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);">
-                    <input type="date" id="dashboardFilterDate" style="flex: 1 1 150px; padding: 0.5rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); color-scheme: dark;">
-                    <button id="dashboardClearFilters" class="button-secondary" style="padding: 0.625rem 1rem;">Clear</button>
-                </div>
-            </div>
             
             <!-- NEW TABLE 1: ARTICLE VIEWS -->
-            <div class="dashboard-table-card">
+            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
                 <h3>Article Views Per User</h3>
                 <div class="dashboard-table-wrapper">
                     <table>
@@ -2184,7 +2112,20 @@
                                 <th>Last View</th>
                             </tr>
                         </thead>
-                        <tbody id="articleViewsTbody"></tbody>
+                        <tbody>
+                            ${mockArticleViews.map(row => `
+                                <tr>
+                                    <td>
+                                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
+                                        <div class="email-cell">${escapeHTML(row.email)}</div>
+                                    </td>
+                                    <td>${escapeHTML(row.article_id)}</td>
+                                    <td>${row.views}</td>
+                                    <td>${formatReadableDate(row.first_view)}</td>
+                                    <td>${formatReadableDate(row.last_view)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -2202,33 +2143,26 @@
                                 <th>Timestamp</th>
                             </tr>
                         </thead>
-                        <tbody id="activityLogTbody"></tbody>
+                        <tbody>
+                            ${mockActivityLog.map(row => `
+                                <tr>
+                                    <td>
+                                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
+                                        <div class="email-cell">${escapeHTML(row.email)}</div>
+                                    </td>
+                                    <td>
+                                        <div>${escapeHTML(row.item_id)}</div>
+                                        <div style="font-size: 0.8rem; text-transform: capitalize; color: var(--text-color-muted);">${escapeHTML(row.item_type)}</div>
+                                    </td>
+                                    <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
+                                    <td>${formatReadableDate(row.timestamp)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
                     </table>
                 </div>
             </div>
         `;
-
-        // Initial table render
-        renderDashboardTables();
-
-        // Add event listeners for filters
-        const filterInputs = ['dashboardFilterName', 'dashboardFilterEmail', 'dashboardFilterDate'];
-        filterInputs.forEach(id => {
-            document.getElementById(id)?.addEventListener('input', () => {
-                const filters = {
-                    name: document.getElementById('dashboardFilterName').value,
-                    email: document.getElementById('dashboardFilterEmail').value,
-                    date: document.getElementById('dashboardFilterDate').value
-                };
-                renderDashboardTables(filters);
-            });
-        });
-        document.getElementById('dashboardClearFilters')?.addEventListener('click', () => {
-            document.getElementById('dashboardFilterName').value = '';
-            document.getElementById('dashboardFilterEmail').value = '';
-            document.getElementById('dashboardFilterDate').value = '';
-            renderDashboardTables();
-        });
         
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
@@ -2328,12 +2262,69 @@
 
     function trackView(item) {
         if (!currentUser) return;
-        item.views = (item.views || 0) + 1;
-        // NOTE: View count changes are not persisted due to removal of saveDataToLocalStorage()
-        // This is intentional to simulate a stateless "fetch from DB" on every load.
-        console.log(`View tracked for item ${item.id}. New count: ${item.views}. (Will reset on reload)`);
-        const readStatsEl = document.getElementById('readStatsCount');
-        if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
+        const viewKey = `view_log_${currentUser.id}_${item.id}`;
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const lastView = localStorage.getItem(viewKey);
+        const now = Date.now();
+
+        if (!lastView || (now - parseInt(lastView, 10)) > twelveHours) {
+            item.views = (item.views || 0) + 1;
+            saveDataToLocalStorage();
+            localStorage.setItem(viewKey, now.toString());
+            console.log(`View tracked for item ${item.id}. New count: ${item.views}`);
+            // Update the view count on the page if it's visible
+            const readStatsEl = document.getElementById('readStatsCount');
+            if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
+        } else {
+            console.log(`View for item ${item.id} already tracked within the last 12 hours.`);
+        }
+    }
+
+
+    async function downloadItemAsPDF(itemToDownload) {
+        if (!itemToDownload || !itemToDownload.title) {
+            showToast('Error preparing PDF: Item data is missing.', 'error'); return;
+        }
+        const filename = `${itemToDownload.title.replace(/[^a-z0-9_]+/gi, '_').toLowerCase()}.pdf`;
+        showToast('Generating PDF, please wait...', 'info', 5000);
+
+        const element = document.getElementById('itemDetailViewPlaceholder');
+        if (!element) {
+            showToast('Error preparing PDF: Content area not found.', 'error'); return;
+        }
+        const elementTo = element.cloneNode(true);
+        elementTo.style.padding = "20px";
+        elementTo.style.width = "210mm";
+        elementTo.style.backgroundColor = "white";
+        
+        const selectorsToRemove = [ '.item-actions-bar', '.item-feedback-section', '.comments-section', '.copy-script-btn', '.last-updated-info' ];
+        selectorsToRemove.forEach(selector => elementTo.querySelectorAll(selector).forEach(el => el.remove()));
+        
+        elementTo.style.position = 'absolute';
+        elementTo.style.left = '-9999px';
+        document.body.appendChild(elementTo);
+
+        if (elementTo.querySelector('pre.mermaid')) {
+            await renderMermaidDiagramsInElement(elementTo);
+        }
+
+        const opt = {
+            margin: [10, 10, 10, 10], filename: filename,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, logging: false, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        try {
+            await html2pdf().from(elementTo).set(opt).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showToast('Error generating PDF. Check console.', 'error');
+        } finally {
+             document.body.removeChild(elementTo);
+        }
     }
 
     async function displayItemDetail(sectionId, itemId) {
@@ -2347,7 +2338,7 @@
             return;
         }
 
-        trackView(itemData);
+        trackView(itemData); // Track the view for this item
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
         itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
@@ -2387,7 +2378,9 @@
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
-        detailHTML += `</div>`;
+        detailHTML += `<button id="printItemBtn" class="button button-secondary"><i class="fas fa-print"></i> </button>
+                      <button id="downloadPdfItemBtn" class="button button-secondary"><i class="fas fa-file-pdf"></i> </button>
+                      </div>`;
         
         let lastUpdatedHTML = '';
         const createdAt = new Date(itemData.createdAt);
@@ -2490,6 +2483,9 @@
             document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
         }
 
+        document.getElementById('printItemBtn').addEventListener('click', () => window.print());
+        document.getElementById('downloadPdfItemBtn').addEventListener('click', () => downloadItemAsPDF(itemData));
+
         // Feedback logic
         const feedbackPrompt = document.getElementById('feedbackPrompt');
         const rateYesBtn = document.getElementById('rateYesBtn');
@@ -2500,6 +2496,7 @@
         rateYesBtn.addEventListener('click', () => {
             itemData.feedback = itemData.feedback || [];
             itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
+            saveDataToLocalStorage();
             ratingButtons.innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
         });
@@ -2521,6 +2518,7 @@
             if (reason) {
                 itemData.feedback = itemData.feedback || [];
                 itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                saveDataToLocalStorage();
                 document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                 showToast('Feedback received, we will review it.', 'info');
             } else {
@@ -2545,6 +2543,7 @@
                 text: commentText, 
                 timestamp: new Date().toISOString()
             });
+            saveDataToLocalStorage();
             renderComments(itemData, 'commentDisplayAreaForItem'); 
             commentTextEl.value = ''; 
         });
@@ -2654,30 +2653,13 @@
                     toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
                         ['bold', 'italic', 'underline', 'strike'],
-                        ['blockquote', 'code-block'],
+                        [{ 'color': [] }, { 'background': [] }],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'align': [] }],
-                        ['link', 'image', 'video'],
+                        ['link', 'image', 'video', 'blockquote', 'code-block'], 
                         ['clean']
                     ]
                 },
                 placeholder: 'Enter detailed content here...'
-            });
-        }
-
-        // Populate Parent Item dropdown
-        const parentItemSelect = document.getElementById('parentItem');
-        parentItemSelect.innerHTML = '<option value="">-- None (Top-Level Item) --</option>'; // Reset
-        const sectionForParents = kbSystemData.sections.find(s => s.id === sectionIdForContent);
-        if (sectionForParents && sectionForParents.items) {
-            sectionForParents.items.forEach(item => {
-                // Don't allow an item to be its own parent during edit
-                if (!itemToEdit || item.id !== itemToEdit.id) {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = item.title;
-                    parentItemSelect.appendChild(option);
-                }
             });
         }
 
@@ -2689,7 +2671,6 @@
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
-            if (itemToEdit.parentId) parentItemSelect.value = itemToEdit.parentId;
             
             const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
             try {
@@ -2746,8 +2727,6 @@
         if (!section) { showToast('Error: Target section not found!', 'error'); return; }
         
         const editingId = editingItemIdInput.value;
-        const parentId = document.getElementById('parentItem').value;
-
         const commonData = {
             type: contentTypeSelect.value,
             title: document.getElementById('contentTitle').value.trim(),
@@ -2756,10 +2735,6 @@
             videoLink: document.getElementById('videoLink').value.trim(),
             driveLink: document.getElementById('driveLink').value.trim(),
         };
-        if (parentId) {
-            commonData.parentId = parentId;
-        }
-
         if (!commonData.title || !commonData.summary) {
             showToast('Title and Summary are required.', 'error'); return;
         }
@@ -2769,9 +2744,6 @@
 
         if (itemData) { // Editing existing item
             Object.assign(itemData, commonData); 
-            if (!parentId) {
-                delete itemData.parentId; // Remove parentId if "None" is selected
-            }
             itemData.lastModified = new Date().toISOString();
             itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
         } else { // Creating new item
@@ -2793,11 +2765,16 @@
             if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
         }
         
+        saveDataToLocalStorage();
         showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
         closeAddContentModal();
         
-        // Refresh the view to show the changes
-        handleNavigation();
+        if (editingId) {
+            window.location.hash = `#${sectionId}/${editingId}`;
+            handleNavigation();
+        } else {
+            handleNavigation();
+        }
     });
 
     window.openEditModal = (sectionId, itemId) => {
@@ -2829,6 +2806,7 @@
             if (itemIndex > -1) {
                 const deletedItemTitle = section.items[itemIndex].title;
                 section.items.splice(itemIndex, 1);
+                saveDataToLocalStorage();
                 showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
                 deleteConfirmModalOverlay.classList.add('hidden');
                 
@@ -2925,6 +2903,26 @@
     }
 
     initializeApp();
-</script>
+
+
+
+// Updated: Insert image or video at cursor location in Quill
+function insertImageAtCursor(imageUrl) {
+  const range = quill.getSelection();
+  if (range) {
+    quill.insertEmbed(range.index, 'image', imageUrl);
+  } else {
+    quill.insertEmbed(quill.getLength(), 'image', imageUrl);
+  }
+}
+
+function insertVideoAtCursor(videoUrl) {
+  const range = quill.getSelection();
+  if (range) {
+    quill.insertText(range.index, videoUrl);
+  } else {
+    quill.insertText(quill.getLength(), videoUrl);
+  }
+}</script>
 </body>
 </html>
