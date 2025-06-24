@@ -1498,9 +1498,6 @@
             feedback: article.feedback || [],
         }));
     }
-
-    // This function is now replaced by the RPC 'increment_and_log_view'
-    // async function recordArticleView(articleId) { ... }
     
     /** 📝 Adds a new comment to the 'kb_comments' table. */
     async function addComment(articleId, commentText, user) {
@@ -1514,7 +1511,6 @@
             console.error('Error posting comment:', error);
             return {data: null, error};
         }
-        // Log this activity
         await logActivity(currentUser, articleId, 'comment', 'commented');
         return { data, error: null };
     }
@@ -1536,7 +1532,6 @@
     
     /** 🕓 Saves a version of the article to 'version_history'. */
     async function saveVersion(article, user) {
-        // This table might not exist in your schema, handle it gracefully
         try {
             const { error } = await supabase.from('version_history').insert([{
                 item_id: article.id,
@@ -2096,18 +2091,20 @@
             return;
         }
         
-        // ✅ MODIFIED: Call the new smart RPC function for unique views and logging.
+        // ✅ DEBUGGING STEP: Log the IDs before sending them to the RPC function.
+        console.log("Calling RPC with:", { p_article_id: itemData.id, p_user_id: currentUser.id });
+
         const { error: rpcError } = await supabase.rpc('record_unique_view', {
-    p_article_id: itemData.id,
-    p_user_id: currentUser.id
-});
-        if(rpcError) console.error("Error recording unique view and log:", rpcError);
+            p_article_id: itemData.id,
+            p_user_id: currentUser.id
+        });
+        if(rpcError) console.error("Error calling record_unique_view RPC:", rpcError);
 
         // Refetch all data to get the latest view count and other info
         await loadAndStructureData(); 
         const updatedItemData = findItem(itemId);
 
-        if (!updatedItemData) { // Check if the item still exists after refetch
+        if (!updatedItemData) {
              standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
             return;
         }
