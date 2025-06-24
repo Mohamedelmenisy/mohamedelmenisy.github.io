@@ -1154,18 +1154,30 @@
             text-decoration: underline;
         }
         
-        /* ✅ NEW: View History Table Formatting Fix */
+        /* ✅ View History Table Formatting Fix */
         #viewHistorySection table {
             table-layout: fixed;
             width: 100%;
+            border-collapse: collapse;
         }
         #viewHistorySection th, #viewHistorySection td {
-             white-space: normal;
-             word-break: break-word;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: normal;
+            word-break: break-word;
+            text-align: left;
+        }
+        #viewHistorySection th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-color-muted);
+            background-color: var(--bg-color);
         }
         #viewHistorySection th:nth-child(1), #viewHistorySection td:nth-child(1) { width: 40%; }
         #viewHistorySection th:nth-child(2), #viewHistorySection td:nth-child(2) { width: 25%; text-align: center;}
-        #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; }
+        #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; text-align: right; }
         #viewHistorySection .action-badge { margin: 0 auto; }
 
 
@@ -1632,7 +1644,7 @@
 
         return {
             activityLog: activityLogWithEmail,
-            articleViews: insights.data || []
+            articleViews: insights || [] // ✅ FIX: Directly use the result from fetchInsights
         };
     }
 
@@ -1786,14 +1798,15 @@
         
         const sections = categories.map(cat => ({
             ...cat, 
-            slug: createSlug(cat.name), // Add slug property
+            slug: createSlug(cat.name),
             items: []
         }));
 
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
-                parentSection.items.push(article);
+                // ✅ ADD: Create a slug for each article title
+                parentSection.items.push({ ...article, slug: createSlug(article.title) });
             } else {
                 console.warn(`Article "${article.title}" has an unknown sub_category_id: ${article.sub_category_id}`);
             }
@@ -1890,7 +1903,8 @@
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
         const isAdmin = currentUser?.role === 'admin';
-        const viewButton = `<a href="#${sectionData.slug}/${item.id}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
+        // ✅ FIX: Use item.slug in the URL
+        const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
         
@@ -1963,21 +1977,6 @@
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
                 <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p>
             </div>
-             <div class="dashboard-filter-bar">
-                <div class="form-group">
-                    <input type="text" id="filterUserName" placeholder="Filter by User Name..." autocomplete="off">
-                </div>
-                <div class="form-group">
-                    <input type="email" id="filterUserEmail" placeholder="Filter by User Email..." autocomplete="off">
-                </div>
-                <div class="form-group">
-                    <input type="date" id="filterDate" title="Filter by date">
-                </div>
-                <div class="filter-buttons">
-                    <button id="applyFiltersBtn" class="button"><i class="fas fa-filter"></i> Apply</button>
-                    <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
-                </div>
-            </div>
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
                 <div class="dashboard-stat-card"><i class="fas fa-folder-open"></i><span class="stat-value">${kbSystemData.sections.length}</span><span class="stat-label">Total Sections</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-newspaper"></i><span class="stat-value">${totalArticles}</span><span class="stat-label">Total Articles & Guides</span></div>
@@ -1997,36 +1996,56 @@
                      </ul>
                 </div>
             </div>
-             <div class="card chart-container" style="height: 350px;">
+            <div class="card chart-container" style="height: 350px;">
                 <h3>Content Activity (Last 7 Days)</h3>
                 <canvas id="visitorsChart"></canvas>
             </div>
-            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
-                <h3>Article Insights</h3>
-                <div class="dashboard-table-wrapper">
-                    <table>
-                        <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th><th>Last Viewed By</th></tr></thead>
-                        <tbody id="articleViewsTbody"></tbody>
-                    </table>
+            
+            <!-- ✅ NEW: Container for filters and tables -->
+            <div class="dashboard-tables-container" style="margin-top: 1.5rem;">
+                <div class="dashboard-filter-bar">
+                    <div class="form-group">
+                        <input type="text" id="filterUserName" placeholder="Filter by User Name..." autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="filterUserEmail" placeholder="Filter by User Email..." autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <input type="date" id="filterDate" title="Filter by date">
+                    </div>
+                    <div class="filter-buttons">
+                        <button id="applyFiltersBtn" class="button"><i class="fas fa-filter"></i> Apply</button>
+                        <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
+                    </div>
                 </div>
-            </div>
-            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
-                <h3>Recent Activity Log</h3>
-                <div class="dashboard-table-wrapper">
-                    <table>
-                        <thead><tr><th>User</th><th>Email</th><th>Item</th><th>Action</th><th>Timestamp</th></tr></thead>
-                        <tbody id="activityLogTbody"></tbody>
-                    </table>
+                <div class="dashboard-table-card" style="margin-top: 1.5rem; border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;">
+                    <h3>Article Insights</h3>
+                    <div class="dashboard-table-wrapper">
+                        <table>
+                            <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th><th>Last Viewed By</th></tr></thead>
+                            <tbody id="articleViewsTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="dashboard-table-card" style="margin-top: 0; border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
+                    <h3>Recent Activity Log</h3>
+                    <div class="dashboard-table-wrapper">
+                        <table>
+                            <thead><tr><th>User</th><th>Email</th><th>Item</th><th>Action</th><th>Timestamp</th></tr></thead>
+                            <tbody id="activityLogTbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
         
         // Populate most used list
         document.getElementById('mostUsedList').innerHTML = mostUsedArticles.length ? mostUsedArticles.map(item => {
-            const section = findSectionByItemId(item.article_id);
-            const sectionSlug = section ? section.slug : 'home';
+            const fullItem = findItem(item.article_id);
+            const sectionSlug = fullItem ? fullItem.sectionSlug : 'home';
+            const itemSlug = fullItem ? fullItem.slug : item.article_id;
             return `<li>
-                <a href="#${sectionSlug}/${item.article_id}">${escapeHTML(item.article_title)}</a> 
+                <a href="#${sectionSlug}/${itemSlug}">${escapeHTML(item.article_title)}</a> 
                 <span class="meta"><i class="fas fa-eye"></i> ${item.total_views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.total_comments || 0} comments</span>
             </li>`
         }).join('') : '<li>No data yet.</li>';
@@ -2111,7 +2130,6 @@
         }
         if (emailFilter) {
             filteredActivity = filteredActivity.filter(log => log.user_email && log.user_email.toLowerCase().includes(emailFilter));
-            // v_kb_insights does not contain user email, so we can't filter it by email directly.
         }
         if (dateFilter) {
             filteredActivity = filteredActivity.filter(log => log.timestamp && log.timestamp.startsWith(dateFilter));
@@ -2128,11 +2146,12 @@
 
         if (articleViewsTbody) {
             articleViewsTbody.innerHTML = (articleViews || []).map(row => {
-                 const section = findSectionByItemId(row.article_id);
-                 const sectionSlug = section ? section.slug : 'home';
+                 const item = findItem(row.article_id);
+                 const sectionSlug = item ? item.sectionSlug : 'home';
+                 const itemSlug = item ? item.slug : row.article_id; // Fallback to ID if not found
                  return `
                     <tr>
-                        <td><a href="#${sectionSlug}/${row.article_id}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
+                        <td><a href="#${sectionSlug}/${itemSlug}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
                         <td>${row.total_views || 0}</td>
                         <td>${row.total_comments || 0}</td>
                         <td>${row.positive_feedback_count || 0}</td>
@@ -2146,7 +2165,7 @@
             activityLogTbody.innerHTML = (activityLog || []).map(row => {
                 const item = findItem(row.item_id);
                 const itemTitle = item ? item.title : 'Unknown Item';
-                const itemLink = item ? `#${item.sectionSlug}/${item.id}` : '#';
+                const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
                 return `
                     <tr>
                         <td class="user-name-cell">${escapeHTML(row.user_name)}</td>
@@ -2201,15 +2220,7 @@
         });
     }
     
-    function findSectionByItemId(itemId) {
-        for (const section of kbSystemData.sections) {
-            if (section.items?.some(i => i.id === itemId)) {
-                return section;
-            }
-        }
-        return null;
-    }
-
+    // ✅ NEW: Find item by ID
     function findItem(itemId) {
         for (const section of kbSystemData.sections) {
             const item = section.items?.find(i => i.id === itemId);
@@ -2217,45 +2228,48 @@
         }
         return null;
     }
+    
+    // ✅ NEW: Find item by Slug
+    function findItemBySlug(sectionSlug, itemSlug) {
+        const section = kbSystemData.sections.find(s => s.slug === sectionSlug);
+        if (section) {
+            const item = section.items.find(i => i.slug === itemSlug);
+            if (item) return { ...item, sectionId: section.id, sectionSlug: section.slug };
+        }
+        return null;
+    }
 
-    async function displayItemDetail(sectionSlug, itemId) {
-        const itemData = findItem(itemId);
-        const sectionData = kbSystemData.sections.find(s => s.slug === sectionSlug);
-
-        if (!sectionData || !itemData) {
-            standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
+    async function displayItemDetail(sectionSlug, itemSlug) {
+        const itemData = findItemBySlug(sectionSlug, itemSlug);
+        
+        if (!itemData) {
+            standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found with slug "${itemSlug}".</p>`;
             return;
         }
-        
-        console.log("Calling RPC with:", { p_article_id: itemData.id, p_user_id: currentUser.id });
 
         const { error: rpcError } = await supabase.rpc('record_unique_view', {
             p_article_id: itemData.id,
             p_user_id: currentUser.id
         });
         if(rpcError) console.error("Error calling record_unique_view RPC:", rpcError);
-
-        // No need to reload all data, just update the view count locally for immediate feedback
-        const currentViews = parseInt(document.getElementById('readStatsCount')?.textContent || itemData.views || 0, 10);
-        itemData.views = (itemData.views || 0) + 1; // update local object
         
         // This is a full refresh, might be slow but ensures data consistency
         await loadAndStructureData(); 
-        const updatedItemData = findItem(itemId);
+        const updatedItemData = findItem(itemData.id); // Find by ID to get fresh data
 
         if (!updatedItemData) {
              standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
             return;
         }
 
-        currentOpenItem = { sectionId: updatedItemData.sectionId, itemId, title: updatedItemData.title };
+        currentOpenItem = { sectionId: updatedItemData.sectionId, itemId: updatedItemData.id, title: updatedItemData.title };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
 
         breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
-            <a href="#${sectionData.slug}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">›</span>
+            <a href="#${updatedItemData.sectionSlug}">${escapeHTML(updatedItemData.sectionSlug.replace(/-/g, ' '))}</a> <span style="margin: 0 5px;">›</span>
             <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(updatedItemData.title)}</span>`;
         currentSectionTitleEl.textContent = updatedItemData.title;
 
@@ -2266,7 +2280,7 @@
         else if (updatedItemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
         const parentItemInfo = updatedItemData.parent_id ? findItem(updatedItemData.parent_id) : null;
-        const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionSlug}/${parentItemInfo.id}` : `#${sectionSlug}`;
+        const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionSlug}/${parentItemInfo.slug}` : `#${sectionSlug}`;
         const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title, 25))}` : 'Back to Section';
         
         let detailHTML = `<div class="item-actions-bar">
@@ -2293,8 +2307,8 @@
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
                 <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
                 <ul class="child-items-list">${childItems.map(child => {
-                     const childSection = findSectionByItemId(child.id);
-                     return `<li><a href="#${childSection?.slug || sectionSlug}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`
+                     const childSection = findItem(child.id);
+                     return `<li><a href="#${childSection?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`
                     }).join('')}</ul>
             </div>`;
         }
@@ -2635,7 +2649,7 @@
         deleteConfirmModalOverlay.classList.add('hidden');
         await loadAndStructureData();
         
-        if (window.location.hash.includes(itemId)) {
+        if (window.location.hash.includes(itemId)) { // Check if the deleted item ID is in the hash
             window.location.hash = `#home`;
         } else {
             handleNavigation();
@@ -2657,7 +2671,7 @@
         if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
                 const linkEl = document.createElement('a');
-                linkEl.href = `#${r.sectionSlug}/${r.id}`;
+                linkEl.href = `#${r.sectionSlug}/${r.slug}`;
                 linkEl.innerHTML = `<div>${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted);">(${escapeHTML(r.sectionName)})</span></div>`;
                 searchResultsContainer.appendChild(linkEl);
             });
@@ -2670,12 +2684,13 @@
     function handleNavigation() {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
-        const [sectionSlug, itemId] = hash.split('/');
+        // ✅ FIX: Split to get section and item slugs
+        const [sectionSlug, itemSlug] = hash.split('/');
         
         highlightSidebarLink(sectionSlug);
 
         if (sectionSlug === 'home') displayDashboard();
-        else if (itemId) displayItemDetail(sectionSlug, itemId);
+        else if (itemSlug) displayItemDetail(sectionSlug, itemSlug);
         else if (sectionSlug) displaySectionContent(sectionSlug);
         else displayDashboard(); 
 
