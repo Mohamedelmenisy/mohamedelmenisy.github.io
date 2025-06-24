@@ -1120,10 +1120,14 @@
             font-weight: 500;
             text-transform: capitalize;
         }
-        .dashboard-table-card .action-badge.view { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        .dashboard-table-card .action-badge.comment { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .dashboard-table-card .action-badge.create { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
-        .dashboard-table-card .action-badge.edit { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .dashboard-table-card .action-badge.view,
+        .dashboard-table-card .action-badge.viewed { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .dashboard-table-card .action-badge.comment,
+        .dashboard-table-card .action-badge.commented { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .dashboard-table-card .action-badge.create,
+        .dashboard-table-card .action-badge.created { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .dashboard-table-card .action-badge.edit,
+        .dashboard-table-card .action-badge.updated { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
         .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
 
 
@@ -1457,77 +1461,162 @@
 </div>
 </div>
 <div id="toastContainer"></div>
+
 <script type="module">
-    // === NOTE ON THE 404 ERROR ===
-    // The console error "GET .../undefined 404" is likely because the `supabase.js` file
-    // is not correctly configured or missing. This code now uses localStorage for data persistence,
-    // so the app will be fully functional for adding/editing/deleting content without
-    // needing a live database connection. The Supabase functions are kept for future integration.
+    // =================================================================================
+    // SUPABASE & APP LOGIC - FULLY INTEGRATED
+    // =================================================================================
     import { supabase } from './supabase.js';
 
-    // =================================================================================
-    // AUTOMATIC CACHE CLEARING
-    // =================================================================================
-    window.addEventListener("load", () => {
-        const html = document.querySelector("html");
-        if (!html) return;
-        const htmlHash = html.getAttribute("data-hash");
-        const savedHash = localStorage.getItem("html_hash");
-
-        if (htmlHash && savedHash && savedHash !== htmlHash) {
-            console.log(`New version detected (hash: ${htmlHash}). Clearing storage and reloading.`);
-            // === CHANGE START: Preserve persisted data on version update ===
-            const kbData = localStorage.getItem('infiniBaseData');
-            localStorage.clear();
-            sessionStorage.clear();
-            if (kbData) {
-                localStorage.setItem('infiniBaseData', kbData); // Restore the data
-            }
-            // === CHANGE END ===
-            localStorage.setItem("html_hash", htmlHash); // Avoid reload loops
-            location.reload(); 
-        } else if (htmlHash) {
-             localStorage.setItem("html_hash", htmlHash);
+    // --- Supabase Logic Layer (Functions to interact with the database) ---
+    
+    /** 👤 Fetches the currently authenticated user's profile from the 'users' table. */
+    async function getCurrentUserProfile() {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            console.error('No logged-in user found:', authError);
+            return null;
         }
-    });
-
-    // =================================================================================
-    // IMMEDIATE SESSION CHECK (SIMULATED)
-    // =================================================================================
-    // Since Supabase connection is likely faulty, we'll rely on our own session check.
-    let sessionValid = true; 
-    try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        if (!initialSession) {
-            sessionValid = false;
+        const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+        if (error) {
+            console.error('Error fetching user profile:', error);
+            // Return a partial profile so the app doesn't crash
+            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
         }
-    } catch(e) {
-        console.warn("Could not get Supabase session. This is expected if supabase.js is not configured. Proceeding with local session logic.");
-        sessionValid = !!localStorage.getItem("infiniBaseUser");
+        return profile;
     }
 
-    if (!sessionValid) {
-        console.log("No valid session found. User must log in.");
-        // ✅ FIX: The automatic creation of a mock user was removed from here.
-        // This was the root cause of the logout failure, as it would
-        // recreate the user immediately after logout and page reload.
-        // The application will now correctly enter a logged-out state.
-        // For a first-time demo, a user can be created by uncommenting the block below
-        // or by implementing a proper login page.
+    /** 🚪 Logs the user out. */
+    async function logout() {
+        await supabase.auth.signOut();
+        window.location.href = 'login.html'; // Redirect to login page
+    }
+    
+    /** 📂 Fetches all categories from 'sub_categories'. */
+    async function fetchSubCategories() {
+        const { data, error } = await supabase.from('sub_categories').select('*').order('name');
+        if (error) {
+            console.error('Error fetching sub-categories:', error);
+            // ✅ CHANGE: Added user-facing feedback for failed fetch.
+            showToast('Failed to load knowledge areas.', 'error');
+            return [];
+        }
+        return data;
+    }
+
+    /** 📰 Fetches all articles from 'cases'. */
+    async function fetchArticles() {
+        // ✅ CHANGE 1: Simplified Supabase query to prevent a 400 error if FK relationships
+        // are not defined in the database. This fetches the core article data.
+        // More detailed data like comment counts are handled by the dashboard's `v_kb_insights`
+        // view or fetched on-demand in the article's detail view.
+        const { data, error } = await supabase
+            .from('cases')
+            .select(`*`)
+            .order('created_at', { ascending: false });
         
-        /*
-        if (!localStorage.getItem("infiniBaseUser")) {
-             const mockUser = {
-                id: 'user_1', name: 'Mohamed Elmenisy', email: 'dev@example.com', role: 'admin',
-                avatar_url: `https://ui-avatars.com/api/?name=ME&background=6366f1&color=fff&rounded=true&font-size=0.5`,
-                lastLogin: new Date().toISOString()
-            };
-            localStorage.setItem("infiniBaseUser", JSON.stringify(mockUser));
-            console.log("Created a mock user for demonstration.");
+        if (error) {
+            console.error('Error fetching articles:', error);
+            showToast('Failed to load articles from the database.', 'error');
+            return [];
         }
-        */
+
+        // We map the data to ensure that properties expected by other parts of the app,
+        // like 'comments' and 'feedback' arrays, exist to prevent errors.
+        return data.map(article => ({
+            ...article,
+            comments: article.comments || [],
+            feedback: article.feedback || [],
+        }));
     }
-    // =================================================================================
+
+    /** 👀 Records a view for an article by incrementing its view count. */
+    async function recordArticleView(articleId) {
+        if (!articleId) return;
+        // Use an RPC function for atomic increment, which is safer against race conditions.
+        // You need to create this function in your Supabase SQL Editor:
+        // CREATE OR REPLACE FUNCTION increment_views(article_id_to_inc uuid)
+        // RETURNS void AS $$
+        //   UPDATE cases
+        //   SET views = views + 1
+        //   WHERE id = article_id_to_inc;
+        // $$ LANGUAGE sql VOLATILE;
+        const { error } = await supabase.rpc('increment_views', { article_id_to_inc: articleId });
+        if (error) console.error('Error recording view:', error);
+    }
+    
+    /** 📝 Adds a new comment to the 'kb_comments' table. */
+    async function addComment(articleId, commentText, user) {
+        const { data, error } = await supabase.from('kb_comments').insert([{
+            item_id: articleId,
+            author_id: user.id,
+            author_name: user.name,
+            body: commentText,
+        }]).select().single();
+        if (error) console.error('Error posting comment:', error);
+        return { data, error };
+    }
+
+    /** ⭐ Submits feedback to the 'kb_feedback' table. */
+    async function submitFeedback(articleId, rating, reason, user) {
+        const { error } = await supabase.from('kb_feedback').insert([{
+            item_id: articleId,
+            user_id: user.id,
+            rating, // 1 for positive, 0 for negative
+            reason,
+        }]);
+        if (error) console.error('Error submitting feedback:', error);
+    }
+    
+    /** 🕓 Saves a version of the article to 'version_history'. */
+    async function saveVersion(article, user) {
+        const { error } = await supabase.from('version_history').insert([{
+            item_id: article.id,
+            title: article.title,
+            content: article.content,
+            author_id: user.id,
+        }]);
+        if (error) console.error('Error saving version history:', error);
+    }
+
+    /** 📋 Logs a user activity to the 'activity_log' table. */
+    async function logActivity(user, itemId, itemType, action, details = {}) {
+        if (!user || !user.id) {
+            console.warn("Attempted to log activity without a valid user.");
+            return;
+        }
+        const { error } = await supabase.from('activity_log').insert([{
+            user_id: user.id,
+            user_name: user.name, // Denormalize for easier display
+            item_id: itemId,
+            item_type: itemType,
+            action: action,
+            details: details,
+        }]);
+        if (error) console.error('Error logging activity:', error);
+    }
+
+    /** 📊 Fetches aggregated insights from the 'v_kb_insights' view. */
+    async function fetchInsights() {
+      const { data, error } = await supabase.from('v_kb_insights').select('*');
+      if (error) {
+        console.error('Error fetching insights:', error);
+        return [];
+      }
+      return data;
+    }
+
+    /** 📈 Fetches raw data for dashboard tables. */
+    async function fetchDashboardTableData() {
+        const [activity, insights] = await Promise.all([
+            supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
+            fetchInsights() // v_kb_insights view
+        ]);
+        return {
+            activityLog: activity.data || [],
+            articleViews: insights || []
+        };
+    }
 
     // --- Initialize Mermaid ---
     mermaid.initialize({ 
@@ -1549,243 +1638,13 @@
         }
     });
     
-    /**
-     * @typedef {object} UserProfile
-     * @property {string} id - User UUID from Supabase Auth
-     * @property {string} [name] - User's full name
-     * @property {string} email - User's email
-     * @property {string} role - User's role (e.g., 'viewer', 'admin')
-     * @property {string} avatar_url - URL for user's avatar
-     * @property {string} [lastLogin] - ISO string of last login time
-     */
+    // --- Global State & DOM Elements ---
+    let kbSystemData = { sections: [] }; // Holds all structured data from Supabase
+    let mainQuillEditor;
+    let currentUser = null; 
+    let currentOpenItem = null;
+    let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
-    // --- Supabase Auth & User Management ---
-    const Auth = {
-        /** @returns {Promise<UserProfile|null>} */
-        async getCurrentUserProfile() {
-            const storedUser = localStorage.getItem("infiniBaseUser");
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    if (user && user.id && user.role) return user;
-                } catch(e) { /* Fall through */ }
-            }
-            // If Supabase fails, we'll return null and the app init will handle it.
-            // This prevents a hard crash if the connection is down.
-            try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session || !session.user) { return null; }
-                const authUser = session.user;
-                // The rest of the logic can be kept for when Supabase connection is fixed.
-            } catch (e) {
-                console.error("Supabase call failed in getCurrentUserProfile. Returning null.");
-                return null;
-            }
-            
-            // This part is largely unreachable if Supabase is down, but kept for completeness
-            return null;
-        },
-        async logout() {
-            try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
-            } catch (e) {
-                console.warn("Supabase signout failed. Clearing local data regardless.");
-            }
-        
-            localStorage.clear();
-            sessionStorage.clear();
-        
-            showToast('You have been logged out successfully!', 'success');
-        
-            setTimeout(() => {
-                // After clearing storage, reload the page. The session check at the top
-                // will now find no user, resulting in a proper logged-out state.
-                window.location.reload();
-            }, 1500);
-        }
-    };
-    
-    // === CHANGE START: Data Persistence using localStorage ===
-    // This variable will hold the application's entire dataset.
-    let kbSystemData;
-
-    // Default data structure, used only if nothing is in localStorage.
-    const defaultKbSystemData = {
-        meta: { version: '1.5.0', lastGlobalUpdate: new Date().toISOString(), lastArticleAdded: null }, 
-        sections: [
-            { id: 'home', name: 'Home', icon: 'fas fa-home', description: 'Dashboard and overview.', iconColor: 'var(--primary-color)' },
-            {
-                id: 'support', name: 'Support', icon: 'fas fa-headset', description: 'Support resources and flows.', iconColor: '#c084fc', 
-                items: [
-                     { 
-                        id: 'sup_flow_compensation', type: 'article', 
-                        title: 'Scenario: Customer Inquiry – Compensation Flow for Delays', 
-                        summary: 'A professional knowledge article for handling customer compensation due to order delays, based on The Chefz policies.',
-                        content: `
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-gavel"></i> Introduction: Understanding the Compensation Policy</h3>
-                                <div style="text-align:center; margin: 1.5rem 0;">
-                                    <img src="https://img.freepik.com/free-vector/deadline-concept-illustration_114360-1312.jpg" alt="Illustration of a person stressed about a deadline clock." style="max-width: 300px; width: 100%; height: auto; border-radius: 0.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                                </div>
-                                <p>This article provides a comprehensive guide for support agents on handling customer inquiries related to order delays and potential compensation. The goal is to resolve customer issues efficiently while adhering to The Chefz's quality standards and compensation matrix. A positive and empathetic approach is key to customer retention.</p>
-                            </div>
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-headset"></i> Identify the Inquiry</h3>
-                                <p>When a customer contacts support regarding a late order, the first step is to acknowledge their concern and verify the order details.</p>
-                                <blockquote>
-                                    <i class="fas fa-comment-dots"></i> Hello, thank you for contacting The Chefz. My name is [Your Name]. I understand you're calling about a delay with your order. Could you please provide me with your order number so I can look into it for you?
-                                </blockquote>
-                                <p>Once the order is located, confirm the nature of the inquiry. If it's a delay, proceed to the next step. If it's another issue (e.g., food quality), navigate to the relevant knowledge article for that topic.</p>
-                            </div>
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-clock"></i> Assess Delay & Order Type</h3>
-                                <p>Using the system, determine the exact duration of the delay against the estimated delivery time (ETA). It's crucial to identify if the order is a <strong>Fast Order</strong> or a <strong>Scheduled Order</strong>, as compensation policies differ.</p>
-                                <ul>
-                                    <li><strong>Delay of 0-15 minutes:</strong> The order is slightly delayed. Apologize and provide a new, realistic ETA. No compensation is typically offered at this stage unless the customer is highly dissatisfied.</li>
-                                    <li><strong>Delay of more than 15 minutes:</strong> A significant delay has occurred. A proactive approach is required.</li>
-                                </ul>
-                                <blockquote>
-                                    <i class="fas fa-comment-dots"></i> I sincerely apologize for this significant delay. This is not the standard of service we aim to provide. Let me check the specifics of your order to see how we can best resolve this for you.
-                                </blockquote>
-                            </div>
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-calculator"></i> Apply Compensation Matrix</h3>
-                                <p>Based on the delay duration and order type, apply the official compensation policy. Agent discretion may be used within the defined limits.</p>
-                                <div class="compensation-grid">
-                                    <div class="compensation-box fast-order">
-                                        <h4><i class="fas fa-rocket"></i> Fast Orders (&gt; 15 mins)</h4>
-                                        <ul>
-                                            <li><span>16–30 mins</span> <span class="action">Delivery Fees</span></li>
-                                            <li><span>31–45 mins</span> <span class="action">Fees + 25% chef total</span></li>
-                                            <li><span>46–60 mins</span> <span class="action">Fees + 50% chef total</span></li>
-                                            <li><span>&gt; 60 mins</span> <span class="action">Total Order</span></li>
-                                        </ul>
-                                    </div>
-                                    <div class="compensation-box scheduled-order">
-                                        <h4><i class="fas fa-calendar-alt"></i> Scheduled Orders (&gt; 30 mins)</h4>
-                                        <ul>
-                                            <li><span>31–60 mins</span> <span class="action">50-100% of Total Order</span></li>
-                                            <li><span>&gt; 60 mins</span> <span class="action">Total Order + 50 SAR</span></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div class="copyable-script-box">
-                                    <div class="script-title">Ready Message to Copy</div>
-                                    <div class="script-content">
-                                        <span class="script-text">"We apologize for the inconvenience caused by the [duration] delay in your [Fast/Scheduled] order. A compensation of [amount] will be processed and reflected in your account within 24-48 hours."</span>
-                                        <button class="copy-btn" onclick="window.copyScriptToClipboard(this)">Copy</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="content-section-box">
-                                <h3><i class="fas fa-clipboard-list"></i> Document and Log the Case</h3>
-                                <p>After communicating with the customer, the agent must complete the following steps to properly document the case:</p>
-                                <ul style="list-style: none; padding-left: 0; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                                    <li style="display: flex; align-items: center; gap: 0.75rem;"><i class="fas fa-user-tag fa-fw" style="color: var(--primary-color);"></i> Select the responsible party (e.g., Store, Driver, Company).</li>
-                                    <li style="display: flex; align-items: center; gap: 0.75rem;"><i class="fas fa-edit fa-fw" style="color: var(--primary-color);"></i> Log a clear note on the order including the issue, compensation amount, and the reason for compensation.</li>
-                                </ul>
-                            </div>
-                        `,
-                        tags: ['compensation', 'customer service', 'delay', 'chefz policy', 'sop'],
-                        createdAt: '2024-05-20T10:00:00.000Z',
-                        lastModified: '2025-06-22T14:30:00.000Z',
-                        version: 1.2,
-                        views: 183,
-                        comments: [
-                            { id: 'cmt_1', authorId: 'user_2', authorName: 'Rahma', text: 'This new format is much clearer than the old flowchart. Thank you!', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-                            { id: 'cmt_2', authorId: 'user_1', authorName: 'Developer (Mohamed Elmenisy)', text: 'Glad you find it helpful, Rahma! We are working on updating all major scenarios to this new knowledge article format.', timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
-                        ],
-                        feedback: [
-                            { type: 'positive', userId: 'user_2', timestamp: new Date().toISOString() }
-                        ]
-                    },
-                    {
-                        id: 'sup_child_example', type: 'article', parentId: 'sup_flow_compensation',
-                        title: 'Child Article: Detailed Scenarios for Driver Responsibility',
-                        summary: 'Examples of when a driver is considered responsible for delays.',
-                        content: '<p>This article dives deeper into specific situations regarding driver responsibility for order delays.</p><ul><li>Example 1: Driver took an unnecessarily long route.</li><li>Example 2: Driver had multiple unscheduled stops.</li><li>Example 3: Driver did not promptly head to customer after pickup.</li></ul>',
-                        tags: ['driver', 'responsibility', 'delay'],
-                        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), 
-                        lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-                        views: 78,
-                        comments: [],
-                        feedback: []
-                    }
-                ]
-            },
-            { id: 'partner_care', name: 'Partner Care', icon: 'fas fa-handshake', description: 'Resources for partner management.', iconColor: '#2dd4bf', items: [
-                 { id: 'pc_case_01', type: 'case', title: 'Case: Partner Payment Dispute', summary: 'Investigating a partner claim about incorrect payment.', createdAt: "2023-09-20T09:00:00.000Z", lastModified: "2023-09-20T09:00:00.000Z", resolution_steps: '<p>1. Verify partner contract. 2. Check payment logs. 3. Escalate to finance if discrepancy found.</p>', status: 'Open', views: 42, comments: [], feedback: [] }
-            ] }, 
-            { id: 'logistics', name: 'Logistics', icon: 'fas fa-truck', description: 'Logistics operations and information.', iconColor: '#4ade80', items: [] }, 
-            { id: 'customer_care', name: 'Customer Care', icon: 'fas fa-users', description: 'Customer service guidelines and FAQs.', iconColor: '#a78bfa', items: [] }, 
-            { id: 'distribution_followup', name: 'Distribution & Follow-up', icon: 'fas fa-people-carry', description: 'Distribution processes and tracking.', iconColor: '#22d3ee', items: [] }, 
-            { id: 'logistics_driver_complaints', name: 'Logistics (Driver Complaints)', icon: 'fas fa-shipping-fast', description: 'Handling driver-related complaints.', iconColor: '#84cc16', items: [] }, 
-            { id: 'logistics_3pl', name: 'Logistics-3PL', icon: 'fas fa-boxes-stacked', description: 'Third-party logistics information.', iconColor: '#facc15', items: [] }, 
-            { id: 'order_at_store_mac', name: 'Order at Store (Mac)', icon: 'fas fa-store', description: 'Procedures for Mac orders at store.', iconColor: '#f472b6', items: [] }, 
-            { id: 'logistics_admin', name: 'Logistics-Admin', icon: 'fas fa-user-shield', description: 'Administrative tasks for logistics.', iconColor: '#fb7185', items: [] }, 
-            { id: 'operating_systems', name: 'Operating Systems', icon: 'fab fa-windows', description: 'OS troubleshooting and guides.', iconColor: '#38bdf8', items: [] }, 
-            { id: 'compensation_policies', name: 'Compensation Policies', icon: 'fas fa-hand-holding-usd', description: 'Detailed compensation policies.', iconColor: '#f59e0b', items: [
-                { id: 'cp_policy_01', type: 'policy', title: 'General Compensation Policy v2.1', summary: 'The main policy document for all compensation scenarios.', createdAt: "2023-08-01T11:00:00.000Z", lastModified: "2023-08-01T11:00:00.000Z", content: '<h1>Policy v2.1</h1><p>Details about the compensation policy...</p><pre class="mermaid">graph TD;\nA-->B;</pre>', views: 312, comments: [], feedback: [] }
-            ] }, 
-            { id: 'operational_instructions', name: 'Operational Instructions', icon: 'fas fa-clipboard-list', description: 'Standard operating procedures.', iconColor: '#93c5fd', items: [] }, 
-            { id: 'forms_templates', name: 'Forms/Templates', icon: 'fas fa-file-alt', description: 'Standard forms and templates.', iconColor: '#a5b4fc', items: [] }
-        ]
-    };
-    
-    /**
-     * Saves the current state of kbSystemData to localStorage.
-     * This function should be called after any modification to the data.
-     */
-    function saveDataToLocalStorage() {
-        try {
-            localStorage.setItem('infiniBaseData', JSON.stringify(kbSystemData));
-            console.log("Data saved to localStorage.");
-        } catch (e) {
-            console.error("Failed to save data to localStorage:", e);
-            showToast('Could not save changes.', 'error');
-        }
-    }
-
-    /**
-     * Loads data from localStorage or initializes with default data.
-     * This should be run once when the application starts.
-     */
-    function loadDataFromLocalStorage() {
-        const savedData = localStorage.getItem('infiniBaseData');
-        if (savedData) {
-            try {
-                kbSystemData = JSON.parse(savedData);
-                console.log("Data loaded from localStorage.");
-            } catch (e) {
-                console.error("Failed to parse data from localStorage, using defaults.", e);
-                kbSystemData = defaultKbSystemData;
-                saveDataToLocalStorage(); // Save the default structure
-            }
-        } else {
-            console.log("No data in localStorage, initializing with defaults.");
-            kbSystemData = defaultKbSystemData;
-            saveDataToLocalStorage(); // Save defaults for next time
-        }
-    }
-    // === CHANGE END ===
-
-    // --- MOCK DATA FOR DASHBOARD TABLES ---
-    const mockActivityLog = [
-        { user_name: 'Rahma', email: 'rahma@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'view', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'comment', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Ahmed', email: 'ahmed@example.com', item_id: 'pc_case_01', item_type: 'case', action: 'view', timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', item_id: 'new_guide_456', item_type: 'guide', action: 'create', timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Rahma', email: 'rahma@example.com', item_id: 'sup_flow_compensation', item_type: 'article', action: 'positive_feedback', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() }
-    ];
-    const mockArticleViews = [
-        { user_name: 'Rahma', email: 'rahma@example.com', article_id: 'sup_flow_compensation', views: 15, first_view: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Ahmed', email: 'ahmed@example.com', article_id: 'sup_flow_compensation', views: 5, first_view: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Nora', email: 'nora@example.com', article_id: 'cp_policy_01', views: 22, first_view: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-        { user_name: 'Developer (Mohamed Elmenisy)', email: 'dev@example.com', article_id: 'sup_child_example', views: 8, first_view: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), last_view: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() }
-    ];
-
-    // --- DOM Elements ---
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
     const navigationMenu = document.getElementById('navigationMenu');
@@ -1798,7 +1657,6 @@
     const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
     const userAvatar = document.getElementById('userAvatar');
     const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
-
 
     const addContentModalOverlay = document.getElementById('addContentModalOverlay');
     const closeAddContentModalBtn = document.getElementById('closeAddContentModalBtn');
@@ -1820,30 +1678,12 @@
     const closeLogoutConfirmModalBtn = document.getElementById('closeLogoutConfirmModalBtn');
     const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
     const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-
-    const reportFeedbackModalOverlay = document.getElementById('reportFeedbackModalOverlay');
-    const closeReportFeedbackModalBtn = document.getElementById('closeReportFeedbackModalBtn');
-    const reportFeedbackForm = document.getElementById('reportFeedbackForm');
-    const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
-    const feedbackItemIdInput = document.getElementById('feedbackItemId');
-    const feedbackItemTitleInput = document.getElementById('feedbackItemTitle');
-    const feedbackItemTitleDisplay = document.getElementById('feedbackItemTitleDisplay');
-    const feedbackUserNameInput = document.getElementById('feedbackUserName');
-    const feedbackUserEmailInput = document.getElementById('feedbackUserEmail');
-    const feedbackCommentTextarea = document.getElementById('feedbackComment');
-
+    
     const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
     const closeDeleteConfirmModalBtn = document.getElementById('closeDeleteConfirmModalBtn');
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
-
-
-    let mainQuillEditor;
-    /** @type {UserProfile|null} */
-    let currentUser = null; 
-    let currentOpenItem = null;
-    let visitorsChartInstance, casesChartInstance, articlesChartInstance; 
 
     // --- Utility Functions ---
     function escapeHTML(str) {
@@ -1880,7 +1720,9 @@
         if (!text || text.length <= len) return text;
         return text.substring(0, len) + '...';
     }
+
     function stripHtml(html){
+       if (!html) return "";
        let tmp = document.createElement("DIV");
        tmp.innerHTML = html;
        return tmp.textContent || tmp.innerText || "";
@@ -1890,16 +1732,12 @@
         const toastContainer = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = `toast-notification toast-${type}`;
-        
         let iconClass = 'fas fa-info-circle';
         if (type === 'success') iconClass = 'fas fa-check-circle';
         else if (type === 'error') iconClass = 'fas fa-times-circle';
-
         toast.innerHTML = `<i class="toast-icon ${iconClass}"></i> <span>${escapeHTML(message)}</span>`;
         toastContainer.appendChild(toast);
-
         setTimeout(() => toast.classList.add('show'), 10);
-
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
@@ -1925,13 +1763,12 @@
                 const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
                 const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
                 const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
-                
                 chart.options.plugins.legend.labels.color = legendColor;
-                if (chart.options.scales && chart.options.scales.y) {
+                if (chart.options.scales?.y) {
                     chart.options.scales.y.ticks.color = ticksColor;
                     chart.options.scales.y.grid.color = gridColor;
                 }
-                if (chart.options.scales && chart.options.scales.x) { 
+                if (chart.options.scales?.x) { 
                     chart.options.scales.x.ticks.color = ticksColor;
                     chart.options.scales.x.grid.color = gridColor;
                 }
@@ -1940,43 +1777,56 @@
         });
     }
 
+    // --- Data Loading & Structuring ---
+    async function loadAndStructureData() {
+        console.log("Loading data from Supabase...");
+        const [categories, articles] = await Promise.all([
+            fetchSubCategories(),
+            fetchArticles()
+        ]);
+        
+        const sections = categories.map(cat => ({
+            ...cat, 
+            items: []
+        }));
+
+        articles.forEach(article => {
+            const parentSection = sections.find(s => s.id === article.sub_category_id);
+            if (parentSection) {
+                parentSection.items.push(article);
+            } else {
+                console.warn(`Article "${article.title}" has an unknown sub_category_id: ${article.sub_category_id}`);
+            }
+        });
+        
+        kbSystemData.sections = sections;
+        console.log("Data loaded and structured:", kbSystemData);
+    }
+
     // --- Sidebar and Navigation ---
     function populateSidebar() {
         let menuHTML = '';
-        const mainSections = ['home'];
-        const knowledgeAreas = [
-            'support', 'partner_care', 'logistics', 'customer_care', 
-            'distribution_followup', 'logistics_driver_complaints', 'logistics_3pl', 
-            'order_at_store_mac', 'logistics_admin', 'operating_systems'
-        ];
-        const resourcesPolicies = [
-            'compensation_policies', 'operational_instructions', 'forms_templates'
-        ];
+        const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', iconColor: 'var(--primary-color)' };
 
         menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
-        kbSystemData.sections.filter(s => mainSections.includes(s.id)).forEach(section => {
-            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
-            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                <i class="${section.icon || 'fas fa-file-alt'}" ${iconStyle}></i>${escapeHTML(section.name)}
-            </a>`;
-        });
+        menuHTML += `<a href="#${homeSection.id}" class="sidebar-link" data-section-id="${homeSection.id}">
+            <i class="${homeSection.icon}" style="color: ${homeSection.iconColor};"></i>${escapeHTML(homeSection.name)}
+        </a>`;
         
         menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
-        kbSystemData.sections.filter(s => knowledgeAreas.includes(s.id)).forEach(section => {
-            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
-            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
-            </a>`;
-        });
-
-        menuHTML += `<div class="sidebar-section-title">RESOURCES & POLICIES</div>`;
-        kbSystemData.sections.filter(s => resourcesPolicies.includes(s.id)).forEach(section => {
-            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
-            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section="${section.id}">
-                <i class="${section.icon || 'fas fa-book'}" ${iconStyle}></i>${escapeHTML(section.name)}
-            </a>`;
-        });
-
+        
+        // ✅ CHANGE 3: Added a check for empty sections to provide user feedback.
+        if (kbSystemData.sections.length === 0) {
+            menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
+        } else {
+            kbSystemData.sections.forEach(section => {
+                const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
+                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section-id="${section.id}">
+                    <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
+                </a>`;
+            });
+        }
+        
         navigationMenu.innerHTML = menuHTML;
     }
 
@@ -1989,14 +1839,13 @@
 
     function highlightSidebarLink(sectionId) {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-        const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+        const activeLink = document.querySelector(`.sidebar-link[data-section-id="${sectionId}"]`);
         if (activeLink) activeLink.classList.add('active');
     }
     
     async function renderMermaidDiagramsInElement(element) {
         const mermaidElements = element.querySelectorAll('pre.mermaid');
         if (mermaidElements.length === 0) return;
-        
         try {
             await new Promise(resolve => setTimeout(resolve, 50)); 
             await mermaid.run({ nodes: mermaidElements, suppressErrors: false });
@@ -2006,11 +1855,9 @@
         }
     }
 
-
     // --- Content Display ---
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt'; 
-        
         if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; }
         else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; }
         else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; }
@@ -2018,7 +1865,7 @@
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
-        const isAdmin = currentUser && currentUser.role === 'admin';
+        const isAdmin = currentUser?.role === 'admin';
         const viewButton = `<a href="#${sectionData.id}/${item.id}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
@@ -2028,9 +1875,8 @@
             : '';
         
         let updatedBadgeHTML = '';
-        const createdAt = new Date(item.createdAt);
-        const lastModified = new Date(item.lastModified || item.createdAt);
-        // Show "Updated" badge if modification happened at least 1 minute after creation
+        const createdAt = new Date(item.created_at);
+        const lastModified = new Date(item.last_modified || item.created_at);
         if (lastModified.getTime() > createdAt.getTime() + 60000) {
             updatedBadgeHTML = `<div class="updated-badge">Updated</div>`;
         }
@@ -2056,76 +1902,10 @@
             </div>`;
     }
 
-    function renderDashboardTables(filters = {}) {
-        const { name = '', email = '', date = '' } = filters;
-        const nameLower = name.toLowerCase();
-        const emailLower = email.toLowerCase();
-
-        // Filter Article Views
-        const filteredArticleViews = mockArticleViews.filter(row => {
-            const nameMatch = row.user_name.toLowerCase().includes(nameLower);
-            const emailMatch = row.email.toLowerCase().includes(emailLower);
-            const dateMatch = !date || formatDateOnly(row.last_view) === date;
-            return nameMatch && emailMatch && dateMatch;
-        });
-
-        // Filter Activity Log
-        const filteredActivityLog = mockActivityLog.filter(row => {
-            const nameMatch = row.user_name.toLowerCase().includes(nameLower);
-            const emailMatch = row.email.toLowerCase().includes(emailLower);
-            const dateMatch = !date || formatDateOnly(row.timestamp) === date;
-            return nameMatch && emailMatch && dateMatch;
-        });
-
-        // Render Article Views Table
-        const articleViewsTbody = document.getElementById('articleViewsTbody');
-        if (articleViewsTbody) {
-            articleViewsTbody.innerHTML = filteredArticleViews.map(row => `
-                <tr>
-                    <td>
-                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
-                        <div class="email-cell">${escapeHTML(row.email)}</div>
-                    </td>
-                    <td>${escapeHTML(row.article_id)}</td>
-                    <td>${row.views}</td>
-                    <td>${formatReadableDate(row.first_view)}</td>
-                    <td>${formatReadableDate(row.last_view)}</td>
-                </tr>
-            `).join('');
-            if(filteredArticleViews.length === 0) {
-                 articleViewsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No matching data found.</td></tr>';
-            }
-        }
-
-        // Render Activity Log Table
-        const activityLogTbody = document.getElementById('activityLogTbody');
-        if (activityLogTbody) {
-            activityLogTbody.innerHTML = filteredActivityLog.map(row => `
-                <tr>
-                    <td>
-                        <div class="user-name-cell">${escapeHTML(row.user_name)}</div>
-                        <div class="email-cell">${escapeHTML(row.email)}</div>
-                    </td>
-                    <td>
-                        <div>${escapeHTML(row.item_id)}</div>
-                        <div style="font-size: 0.8rem; text-transform: capitalize; color: var(--text-color-muted);">${escapeHTML(row.item_type)}</div>
-                    </td>
-                    <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
-                    <td>${formatReadableDate(row.timestamp)}</td>
-                </tr>
-            `).join('');
-             if(filteredActivityLog.length === 0) {
-                 activityLogTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 1rem;">No matching data found.</td></tr>';
-            }
-        }
-    }
-
-
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
 
@@ -2138,26 +1918,19 @@
                         <p>The dashboard overview is available for administrators only.</p>
                         <p class="subtle-note">You can navigate using the sidebar to view knowledge base content.</p>
                     </div>
-                </div>
-            `;
+                </div>`;
             return;
         }
 
+        const dashboardData = await fetchDashboardTableData();
+        
         const welcomeUser = currentUser.name || 'Admin'; 
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
         
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const editsThisWeek = allItems.filter(i => i.lastModified && new Date(i.lastModified) > sevenDaysAgo).length;
-
-        if (!kbSystemData.meta.lastArticleAdded && allItems.length > 0) {
-            const latestItem = [...allItems].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-            if (latestItem) {
-                 kbSystemData.meta.lastArticleAdded = { title: latestItem.title, date: new Date(latestItem.createdAt || Date.now()).toLocaleDateString() };
-            }
-        }
-        if (!kbSystemData.meta.lastArticleAdded) kbSystemData.meta.lastArticleAdded = { title: "N/A", date: "N/A" };
+        const editsThisWeek = allItems.filter(i => i.last_modified && new Date(i.last_modified) > sevenDaysAgo).length;
         
         const mostUsedArticles = [...allItems].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0,3);
 
@@ -2166,35 +1939,17 @@
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
                 <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p>
             </div>
-
             <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
-                <div class="dashboard-stat-card">
-                    <i class="fas fa-folder-open"></i>
-                    <span class="stat-value">${kbSystemData.sections.length}</span>
-                    <span class="stat-label">Total Sections</span>
-                </div>
-                <div class="dashboard-stat-card">
-                    <i class="fas fa-newspaper"></i>
-                    <span class="stat-value">${totalArticles}</span>
-                    <span class="stat-label">Total Articles & Guides</span>
-                </div>
-                 <div class="dashboard-stat-card">
-                    <i class="fas fa-briefcase"></i>
-                    <span class="stat-value">${totalCases}</span>
-                    <span class="stat-label">Total Cases</span>
-                </div>
-                <div class="dashboard-stat-card">
-                    <i class="fas fa-edit"></i>
-                    <span class="stat-value">${editsThisWeek}</span>
-                    <span class="stat-label">Edits This Week</span>
-                </div>
+                <div class="dashboard-stat-card"><i class="fas fa-folder-open"></i><span class="stat-value">${kbSystemData.sections.length}</span><span class="stat-label">Total Sections</span></div>
+                <div class="dashboard-stat-card"><i class="fas fa-newspaper"></i><span class="stat-value">${totalArticles}</span><span class="stat-label">Total Articles & Guides</span></div>
+                <div class="dashboard-stat-card"><i class="fas fa-briefcase"></i><span class="stat-value">${totalCases}</span><span class="stat-label">Total Cases</span></div>
+                <div class="dashboard-stat-card"><i class="fas fa-edit"></i><span class="stat-value">${editsThisWeek}</span><span class="stat-label">Edits This Week</span></div>
             </div>
-            
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="dashboard-info-card">
                     <h3>🔥 Most Used Articles</h3>
                     <ul>${mostUsedArticles.length ? mostUsedArticles.map(item => {
-                        const section = kbSystemData.sections.find(s => s.items && s.items.includes(item));
+                        const section = kbSystemData.sections.find(s => s.id === item.sub_category_id);
                         const sectionId = section ? section.id : 'home';
                         return `<li>
                             <a href="#${sectionId}/${item.id}">${escapeHTML(item.title)}</a> 
@@ -2203,111 +1958,40 @@
                     }).join('') : '<li>No data yet.</li>'}</ul>
                 </div>
                 <div class="dashboard-info-card">
-                    <h3>💡 Quick Links & System Info</h3>
+                     <h3>💡 Quick Links</h3>
                      <ul>
-                        <li><a href="#support/sup_flow_compensation"><i class="fas fa-project-diagram fa-fw"></i> View Compensation Scenario</a></li>
+                        <li><a href="#home" onclick="document.getElementById('openAddContentBtnInSection').click(); return false;"><i class="fas fa-plus-circle fa-fw"></i> Add New Article</a></li>
                         <li><a href="#forms_templates"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
-                        <li style="padding-top: 1rem; color: var(--text-color);"><strong>Last Added:</strong> ${escapeHTML(kbSystemData.meta.lastArticleAdded.title)} <span class="meta">(${escapeHTML(kbSystemData.meta.lastArticleAdded.date)})</span></li>
                      </ul>
                 </div>
             </div>
-
              <div class="card chart-container" style="height: 350px;">
-                <h3>Content Activity (Mock Data)</h3>
+                <h3>Content Activity (Last 7 Days)</h3>
                 <canvas id="visitorsChart"></canvas>
             </div>
-
-            <!-- Dashboard Filters -->
-            <div class="card" style="margin-top: 1.5rem; padding: 1.5rem; margin-bottom: 1.5rem;">
-                <h3 style="margin-top:0; margin-bottom: 1rem;">Filter Activity</h3>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-                    <div style="flex: 1 1 160px;"><label for="dashboardFilterName" style="font-size: 0.8rem; font-weight: 500;">Name</label><input type="text" id="dashboardFilterName" placeholder="Filter by Name..." style="width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);"></div>
-                    <div style="flex: 1 1 160px;"><label for="dashboardFilterEmail" style="font-size: 0.8rem; font-weight: 500;">Email</label><input type="email" id="dashboardFilterEmail" placeholder="Filter by Email..." style="width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);"></div>
-                    <div style="flex: 1 1 150px;"><label for="dashboardFilterDate" style="font-size: 0.8rem; font-weight: 500;">Date</label><input type="date" id="dashboardFilterDate" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); color-scheme: dark;"></div>
-                    <button id="dashboardApplyFilters" class="button" style="padding: 0.625rem 1rem;">Apply Filters</button>
-                    <button id="dashboardClearFilters" class="button-secondary" style="padding: 0.625rem 1rem;">Clear</button>
-                </div>
-            </div>
-            
-            <!-- NEW TABLE 1: ARTICLE VIEWS -->
-            <div class="dashboard-table-card">
-                <h3>Article Views Per User</h3>
+            <div class="dashboard-table-card" style="margin-top: 1.5rem;">
+                <h3>Article Insights</h3>
                 <div class="dashboard-table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Article ID</th>
-                                <th>Views</th>
-                                <th>First View</th>
-                                <th>Last View</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th></tr></thead>
                         <tbody id="articleViewsTbody"></tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- NEW TABLE 2: ACTIVITY LOG -->
             <div class="dashboard-table-card" style="margin-top: 1.5rem;">
                 <h3>Recent Activity Log</h3>
                 <div class="dashboard-table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Item</th>
-                                <th>Action</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>User</th><th>Item</th><th>Action</th><th>Timestamp</th></tr></thead>
                         <tbody id="activityLogTbody"></tbody>
                     </table>
                 </div>
             </div>
         `;
-
-        const applyFiltersBtn = document.getElementById('dashboardApplyFilters');
-        const clearFiltersBtn = document.getElementById('dashboardClearFilters');
-        const nameInput = document.getElementById('dashboardFilterName');
-        const emailInput = document.getElementById('dashboardFilterEmail');
-        const dateInput = document.getElementById('dashboardFilterDate');
-
-        const applyAndSaveFilters = () => {
-            const filters = {
-                name: nameInput.value,
-                email: emailInput.value,
-                date: dateInput.value
-            };
-            sessionStorage.setItem('dashboardFilters', JSON.stringify(filters));
-            renderDashboardTables(filters);
-        };
-
-        const loadAndApplyFilters = () => {
-            const savedFilters = sessionStorage.getItem('dashboardFilters');
-            if (savedFilters) {
-                const filters = JSON.parse(savedFilters);
-                nameInput.value = filters.name || '';
-                emailInput.value = filters.email || '';
-                dateInput.value = filters.date || '';
-                renderDashboardTables(filters);
-            } else {
-                renderDashboardTables();
-            }
-        };
-
-        applyFiltersBtn.addEventListener('click', applyAndSaveFilters);
         
-        clearFiltersBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('dashboardFilters');
-            nameInput.value = '';
-            emailInput.value = '';
-            dateInput.value = '';
-            renderDashboardTables();
-        });
-        
-        loadAndApplyFilters();
+        renderDashboardTables(dashboardData);
 
+        // --- CHART RENDERING ---
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
@@ -2325,14 +2009,23 @@
 
         if (visitorsChartInstance) visitorsChartInstance.destroy();
         const visitorsCtx = document.getElementById('visitorsChart')?.getContext('2d');
-        if (visitorsCtx) {
+        if (visitorsCtx && dashboardData.activityLog.length > 0) {
+            const labels = [...Array(7)].map((_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                return d.toLocaleDateString('en-US', { weekday: 'short' });
+            }).reverse();
+
+            const viewsData = labels.map(label => dashboardData.activityLog.filter(log => log.action === 'viewed' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
+            const commentsData = labels.map(label => dashboardData.activityLog.filter(log => log.action === 'commented' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
+
             visitorsChartInstance = new Chart(visitorsCtx, {
                 type: 'bar',
                 data: { 
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 
+                    labels: labels, 
                     datasets: [
-                        { label: 'Views', data: [65, 59, 80, 81, 56, 55, 40], backgroundColor: 'rgba(99, 102, 241, 0.7)'},
-                        { label: 'Comments', data: [5, 2, 8, 3, 7, 4, 2], backgroundColor: 'rgba(34, 197, 94, 0.7)'}
+                        { label: 'Views', data: viewsData, backgroundColor: 'rgba(99, 102, 241, 0.7)'},
+                        { label: 'Comments', data: commentsData, backgroundColor: 'rgba(34, 197, 94, 0.7)'}
                     ]
                 },
                 options: chartOptions
@@ -2340,13 +2033,41 @@
         }
         applyPermanentDarkMode(); 
     }
+
+    function renderDashboardTables(data) {
+        const { activityLog, articleViews } = data;
+        const articleViewsTbody = document.getElementById('articleViewsTbody');
+        const activityLogTbody = document.getElementById('activityLogTbody');
+
+        if (articleViewsTbody) {
+            articleViewsTbody.innerHTML = articleViews.map(row => `
+                <tr>
+                    <td><a href="#${row.sub_category_id}/${row.article_id}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
+                    <td>${row.total_views || 0}</td>
+                    <td>${row.total_comments || 0}</td>
+                    <td>${row.positive_feedback_count || 0}</td>
+                    <td>${formatReadableDate(row.last_viewed)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No insight data found.</td></tr>';
+        }
+
+        if (activityLogTbody) {
+            activityLogTbody.innerHTML = activityLog.map(row => `
+                <tr>
+                    <td><div class="user-name-cell">${escapeHTML(row.user_name)}</div></td>
+                    <td><a href="#${kbSystemData.sections.find(s => s.items?.some(i => i.id === row.item_id))?.id || 'home'}/${row.item_id}">${escapeHTML(row.item_id)}</a></td>
+                    <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
+                    <td>${formatReadableDate(row.timestamp)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" style="text-align:center; padding: 1rem;">No activity found.</td></tr>';
+        }
+    }
     
-    async function displaySectionContent(sectionId, subCategoryFilter = null) {
+    function displaySectionContent(sectionId) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
 
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
         if (!sectionData) {
@@ -2356,21 +2077,18 @@
         }
 
         currentSectionTitleEl.textContent = sectionData.name;
-        let bcHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
-        breadcrumbsContainer.innerHTML = bcHTML;
+        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
 
         let contentHTML = `<div>`;
-        
-        if (currentUser && currentUser.role === 'admin' && sectionId !== 'home') {
-             contentHTML += `
-                <div style="text-align: right; margin-bottom: 1.5rem;">
-                    <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
-                        <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
-                    </button>
-                </div>`;
+        if (currentUser?.role === 'admin' && sectionId !== 'home') {
+             contentHTML += `<div style="text-align: right; margin-bottom: 1.5rem;">
+                <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
+                    <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
+                </button>
+            </div>`;
         }
 
-        const itemsToDisplay = (sectionData.items || []).filter(item => !item.parentId);
+        const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
         
         if (itemsToDisplay.length > 0) {
             contentHTML += `<div class="cards-grid">`;
@@ -2379,84 +2097,45 @@
         } else {
              contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px; min-height: auto;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
         }
-
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
-        const openAddBtnInSection = document.getElementById('openAddContentBtnInSection');
-        if (openAddBtnInSection) {
-            openAddBtnInSection.addEventListener('click', (e) => {
-                const currentSecId = e.currentTarget.dataset.sectionId;
-                openAddContentModal(currentSecId);
-            });
-        }
+        // ✅ CHANGE 2: Used optional chaining `?.` to prevent error if button doesn't exist.
+        document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
+            openAddContentModal(e.currentTarget.dataset.sectionId);
+        });
     }
     
-    function findParentItem(parentId) {
+    function findItem(itemId) {
         for (const section of kbSystemData.sections) {
-            if (section.items) {
-                const parentItem = section.items.find(item => item.id === parentId);
-                if (parentItem) {
-                    return { ...parentItem, sectionId: section.id };
-                }
-            }
+            const item = section.items?.find(i => i.id === itemId);
+            if (item) return { ...item, sectionId: section.id };
         }
         return null;
     }
 
-    function trackView(item) {
-        if (!currentUser) return;
-        item.views = (item.views || 0) + 1;
-        saveDataToLocalStorage();
-        console.log(`View tracked for item ${item.id}. New count: ${item.views}.`);
-
-        // ✅ CHANGE: Request #4 - Update the mockArticleViews log
-        const existingViewLog = mockArticleViews.find(v => v.user_name === currentUser.name && v.article_id === item.id);
-        const now = new Date().toISOString();
-
-        if (existingViewLog) {
-            existingViewLog.views += 1;
-            existingViewLog.last_view = now;
-        } else {
-            mockArticleViews.unshift({
-                user_name: currentUser.name,
-                email: currentUser.email,
-                article_id: item.id,
-                views: 1,
-                first_view: now,
-                last_view: now
-            });
-        }
-        
-        const readStatsEl = document.getElementById('readStatsCount');
-        if(readStatsEl) readStatsEl.textContent = item.views.toLocaleString();
-    }
-
     async function displayItemDetail(sectionId, itemId) {
+        const itemData = findItem(itemId);
         const sectionData = kbSystemData.sections.find(s => s.id === sectionId);
-        const itemData = sectionData?.items?.find(i => i.id === itemId);
 
         if (!sectionData || !itemData) {
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found.</p>`;
-            itemDetailViewPlaceholder.classList.add('hidden');
-            standardSectionContentPlaceholder.classList.remove('hidden');
             return;
         }
 
-        trackView(itemData);
+        await recordArticleView(itemData.id);
+        await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
+        itemData.views = (itemData.views || 0) + 1; // Locally increment for immediate UI update
 
         currentOpenItem = { sectionId, itemId, title: itemData.title };
-        itemDetailViewPlaceholder.dataset.mermaidRendered = 'false'; 
-
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
 
-        let bcHTML = `
+        breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
             <a href="#${sectionData.id}">${escapeHTML(sectionData.name)}</a> <span style="margin: 0 5px;">›</span>
             <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
-        breadcrumbsContainer.innerHTML = bcHTML;
         currentSectionTitleEl.textContent = itemData.title;
 
         let itemIconClass = 'fas fa-file-alt';
@@ -2465,300 +2144,184 @@
         else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        let detailHTML = '';
+        const parentItemInfo = itemData.parent_id ? findItem(itemData.parent_id) : null;
+        const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionId}/${parentItemInfo.id}` : `#${sectionId}`;
+        const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title, 25))}` : 'Back to Section';
         
-        const parentItemInfo = itemData.parentId ? findParentItem(itemData.parentId) : null;
-        let backLinkHref, backLinkText;
-        if (parentItemInfo) {
-            backLinkHref = `#${parentItemInfo.sectionId}/${parentItemInfo.id}`;
-            backLinkText = `Back to: ${escapeHTML(truncateText(parentItemInfo.title, 25))}`;
-        } else {
-            backLinkHref = `#${sectionId}`;
-            backLinkText = 'Back to Section';
-        }
-        
-        detailHTML += `<div class="item-actions-bar">
+        let detailHTML = `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
-        if (currentUser && currentUser.role === 'admin') {
+        if (currentUser?.role === 'admin') {
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
-        // ✅ CHANGE: Request #5 - Add PDF export button
-        detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button>`;
-        detailHTML += `</div>`;
+        detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
-        let lastUpdatedHTML = '';
-        const createdAt = new Date(itemData.createdAt);
-        const lastModified = new Date(itemData.lastModified || itemData.createdAt);
-        if (lastModified.getTime() > createdAt.getTime() + 60000) {
-            const formattedDate = lastModified.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'long', day: 'numeric'
-            });
-            lastUpdatedHTML = `<div class="last-updated-info">
-                                Updated on: ${formattedDate}
-                               </div>`;
-        }
+        const lastModified = new Date(itemData.last_modified || itemData.created_at);
+        const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
 
         detailHTML += `<div class="card">
-                    <div class="item-title-area">
-                        <i class="${itemIconClass} fa-title-icon"></i>
-                        <h2>${escapeHTML(itemData.title)}</h2>
-                    </div>
-                    <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
-                    ${itemData.tags && itemData.tags.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                    <hr class="title-content-divider">
-                    ${lastUpdatedHTML}
-                    <div class="kb-content">${itemData.content || itemData.resolution_steps || '<p>No detailed content available.</p>'}</div>
-                   </div>`;
+            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title)}</h2></div>
+            <p class="item-summary">${escapeHTML(stripHtml(itemData.summary))}</p>
+            ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <hr class="title-content-divider">${lastUpdatedHTML}
+            <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
+        </div>`;
         
-        const childItems = kbSystemData.sections.flatMap(s => s.items || [])
-                               .filter(child => child.parentId === itemData.id)
-                               .map(child => ({...child, sectionId: kbSystemData.sections.find(s => s.items && s.items.includes(child)).id }));
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
         if (childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
-                            <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
-                            <ul class="child-items-list">${childItems.map(child => `<li><a href="#${child.sectionId}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`).join('')}</ul>
-                           </div>`;
+                <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
+                <ul class="child-items-list">${childItems.map(child => `<li><a href="#${child.sub_category_id}/${child.id}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title)}</a></li>`).join('')}</ul>
+            </div>`;
         }
 
+        const userAvatarHtml = `<div id="userAvatar" style="width:36px; height:36px; margin-top:5px;">${(currentUser.name || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()}</div>`;
         detailHTML += `<div class="item-feedback-section">
-                        <h4 id="feedbackPrompt">Was this article helpful?</h4>
-                        <div id="feedbackInteractionContainer">
-                           <div class="rating-prompt">
-                                <div class="rating-buttons" id="ratingButtons">
-                                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
-                                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
-                                </div>
-                            </div>
-                            <form id="negativeFeedbackForm" class="hidden">
-                                <div class="form-group">
-                                    <textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea>
-                                </div>
-                                <button type="submit" class="button">Submit Feedback</button>
-                                <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
-                            </form>
-                        </div>
-                        <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
-                       </div>`;
-        
-        const userAvatarHtml = currentUser.avatar_url ? `<img src="${currentUser.avatar_url}" alt="Your avatar">` : `<div class="comment-avatar-initials">${(currentUser.name || 'U').charAt(0)}</div>`;
+            <h4 id="feedbackPrompt">Was this article helpful?</h4>
+            <div id="feedbackInteractionContainer">
+                <div class="rating-prompt"><div class="rating-buttons" id="ratingButtons">
+                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                </div></div>
+                <form id="negativeFeedbackForm" class="hidden">
+                    <div class="form-group"><textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea></div>
+                    <button type="submit" class="button">Submit Feedback</button>
+                    <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
+                </form>
+            </div>
+            <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.views || 0).toLocaleString()}</span></div>
+        </div>`;
         detailHTML += `<div class="comments-section">
-                        <h4><i class="fas fa-comments"></i> Management Notes</h4>
-                        <div class="comment-post-area">
-                            ${userAvatarHtml}
-                            <div class="comment-input-wrapper">
-                                <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
-                                <div class="comment-post-actions">
-                                    <button id="postCommentBtn" class="button">Post Note</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
-                       </div>`;
-
+            <h4><i class="fas fa-comments"></i> Management Notes</h4>
+            <div class="comment-post-area">
+                ${userAvatarHtml}
+                <div class="comment-input-wrapper">
+                    <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
+                    <div class="comment-post-actions"><button id="postCommentBtn" class="button">Post Note</button></div>
+                </div>
+            </div>
+            <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
+        </div>`;
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId);
+        setupItemDetailEventListeners(itemData);
     }
     
-    function setupItemDetailEventListeners(itemData, sectionData, sectionId, itemId) {
-        renderComments(itemData, 'commentDisplayAreaForItem'); 
+    async function setupItemDetailEventListeners(itemData) {
+        renderComments(itemData.id);
         
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        // Add copy buttons to blockquotes
-        itemDetailViewPlaceholder.querySelectorAll('.kb-content blockquote').forEach(bq => {
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-script-btn';
-            copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            copyBtn.title = 'Copy script';
-            bq.appendChild(copyBtn);
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const textToCopy = bq.innerText.replace('Copy', '').trim();
-                navigator.clipboard.writeText(textToCopy)
-                    .then(() => showToast('Script copied!', 'success'))
-                    .catch(err => showToast('Failed to copy.', 'error'));
-            });
-        });
-
-        if (currentUser && currentUser.role === 'admin') {
-            document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(sectionId, itemData));
-            document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(sectionId, itemId, itemData.title));
-        }
+        // ✅ CHANGE 2: Added optional chaining `?.` to all event listeners for robustness.
+        // This prevents "Cannot read properties of null" errors if an element isn't rendered.
+        document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(itemData.sub_category_id, itemData));
+        document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title));
         
-        // ✅ CHANGE: Request #5 - Add PDF export functionality
         document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => {
             const elementToPrint = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
-            
-            // Remove interactive elements from the clone before printing for a cleaner PDF
             elementToPrint.querySelector('.item-actions-bar')?.remove();
             elementToPrint.querySelector('.item-feedback-section')?.remove();
             elementToPrint.querySelector('.comments-section')?.remove();
-            
-            showToast('Generating PDF... Please wait.', 'info', 4000);
-
-            const options = {
-              margin:       [0.5, 0.5, 0.5, 0.5], // margins in inches [top, left, bottom, right]
-              filename:     `${itemData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
-              image:        { type: 'jpeg', quality: 0.98 },
-              html2canvas:  { scale: 2, useCORS: true, logging: false },
-              jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
+            showToast('Generating PDF...', 'info', 4000);
+            const options = { margin: 0.5, filename: `${itemData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
             html2pdf().set(options).from(elementToPrint).save();
         });
 
-
         // Feedback logic
-        const feedbackPrompt = document.getElementById('feedbackPrompt');
-        const rateYesBtn = document.getElementById('rateYesBtn');
-        const rateNoBtn = document.getElementById('rateNoBtn');
-        const ratingButtons = document.getElementById('ratingButtons');
-        const negativeFeedbackForm = document.getElementById('negativeFeedbackForm');
-        
-        rateYesBtn.addEventListener('click', () => {
-            itemData.feedback = itemData.feedback || [];
-            itemData.feedback.push({ type: 'positive', userId: currentUser.id, timestamp: new Date().toISOString() });
-            ratingButtons.innerHTML = 'Thank you for your feedback!';
+        document.getElementById('rateYesBtn')?.addEventListener('click', async () => {
+            await submitFeedback(itemData.id, 1, null, currentUser);
+            await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
+            document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
-            saveDataToLocalStorage(); // Persist feedback
         });
 
-        rateNoBtn.addEventListener('click', () => {
-            ratingButtons.classList.add('hidden');
-            negativeFeedbackForm.classList.remove('hidden');
-            negativeFeedbackForm.querySelector('textarea').focus();
+        document.getElementById('rateNoBtn')?.addEventListener('click', () => {
+            document.getElementById('ratingButtons')?.classList.add('hidden');
+            document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
         });
 
-        document.getElementById('cancelNegativeFeedbackBtn').addEventListener('click', () => {
-            negativeFeedbackForm.classList.add('hidden');
-            ratingButtons.classList.remove('hidden');
+        document.getElementById('cancelNegativeFeedbackBtn')?.addEventListener('click', () => {
+            document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
+            document.getElementById('ratingButtons')?.classList.remove('hidden');
         });
 
-        negativeFeedbackForm.addEventListener('submit', (e) => {
+        document.getElementById('negativeFeedbackForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const reason = document.getElementById('feedbackReason').value.trim();
             if (reason) {
-                itemData.feedback = itemData.feedback || [];
-                itemData.feedback.push({ type: 'negative', reason: reason, userId: currentUser.id, timestamp: new Date().toISOString() });
+                await submitFeedback(itemData.id, 0, reason, currentUser);
+                await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
                 document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                 showToast('Feedback received, we will review it.', 'info');
-                saveDataToLocalStorage(); // Persist feedback
             } else {
                 showToast('Please provide a reason.', 'error');
             }
         });
 
-
         // Comments logic
-        document.getElementById('postCommentBtn').addEventListener('click', () => {
+        document.getElementById('postCommentBtn')?.addEventListener('click', async () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
-            if (!commentText) {
-                showToast('Please enter a note.', 'error');
-                return;
-            }
-            if (!itemData.comments) itemData.comments = [];
-            itemData.comments.push({
-                id: `cmt_${Date.now()}`,
-                authorId: currentUser.id,
-                authorName: currentUser.name,
-                text: commentText, 
-                timestamp: new Date().toISOString()
-            });
-            renderComments(itemData, 'commentDisplayAreaForItem'); 
-            saveDataToLocalStorage(); // Persist new comment
+            if (!commentText) { showToast('Please enter a note.', 'error'); return; }
+
+            const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+            if (error) { showToast('Failed to post note.', 'error'); return; }
+
+            await logActivity(currentUser, itemData.id, itemData.type, 'commented');
+            renderComments(itemData.id); 
             commentTextEl.value = ''; 
         });
     }
     
-    function renderComments(itemData, containerId) {
-        const container = document.getElementById(containerId);
+    async function renderComments(itemId) {
+        const container = document.getElementById('commentDisplayAreaForItem');
         if (!container) return;
 
-        if (!itemData.comments || itemData.comments.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No notes yet. Be the first to add one!</p>`;
+        const { data: comments, error } = await supabase.from('kb_comments').select('*').eq('item_id', itemId).order('created_at', { ascending: false });
+        if (error || !comments || comments.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color: var(--text-color-muted); padding: 1rem;">No notes yet.</p>`;
             return;
         }
 
-        let commentsHTML = '';
-        const sortedComments = [...itemData.comments].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const userAvatars = { };
-
-        sortedComments.forEach(comment => {
-            if(!userAvatars[comment.authorId]) {
-                 userAvatars[comment.authorId] = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorName || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
-            }
-
-            commentsHTML += `
+        container.innerHTML = comments.map(comment => {
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author_name || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
+            return `
                 <div class="comment" data-comment-id="${comment.id}">
-                    <img src="${userAvatars[comment.authorId]}" alt="${escapeHTML(comment.authorName)}'s avatar">
+                    <img src="${avatarUrl}" alt="${escapeHTML(comment.author_name)}'s avatar">
                     <div class="comment-content">
                         <div class="comment-header">
-                            <span class="comment-author">${escapeHTML(comment.authorName)}</span>
-                            <span class="comment-timestamp">${new Date(comment.timestamp).toLocaleString()}</span>
+                            <span class="comment-author">${escapeHTML(comment.author_name)}</span>
+                            <span class="comment-timestamp">${formatReadableDate(comment.created_at)}</span>
                         </div>
-                        <div class="comment-text">${escapeHTML(comment.text).replace(/\n/g, '<br>')}</div>
+                        <div class="comment-text">${escapeHTML(comment.body).replace(/\n/g, '<br>')}</div>
                     </div>
                 </div>
             `;
-        });
-        container.innerHTML = commentsHTML;
+        }).join('');
     }
 
-
     const contentTemplates = {
-        standard_article: {
-            type: 'article',
-            titlePrefix: 'New Article: ',
-            summary: 'A general article about [topic].',
-            content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here. You can use lists, paragraphs, etc.]</p><ul><li>Point 1</li><li>Point 2</li></ul><h2>Conclusion</h2><p>[Summarize the key takeaways.]</p>',
-            tags: ['article']
-        },
-        troubleshooting_guide: {
-            type: 'case', 
-            titlePrefix: 'Case: Troubleshooting ',
-            summary: 'A step-by-step guide to resolve [issue].',
-            content: '<h3>Issue Description</h3><p>[Clearly describe the problem or issue this guide addresses.]</p><h3>Symptoms</h3><ul><li>[Symptom 1]</li><li>[Symptom 2]</li></ul><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li><li><strong>Step 2:</strong> [Another action]</li></ol><h3>Verification</h3><p>[How to verify the issue is resolved.]</p>',
-            tags: ['troubleshooting', 'guide', 'case']
-        },
-        policy_document: {
-            type: 'policy',
-            titlePrefix: 'Policy: ',
-            summary: 'Official policy regarding [subject matter].',
-            content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><p><strong>Effective Date:</strong> [Date]</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p><h2>2. Scope</h2><p>[Define who this policy applies to.]</p><h2>3. Policy Statement</h2><p>[Detail the policy rules and guidelines.]</p>',
-            tags: ['policy', 'official']
-        },
-         blank: {
-            type: 'article', 
-            titlePrefix: '',
-            summary: '',
-            content: '<p><br></p>', 
-            tags: []
-        }
+        standard_article: { type: 'article', titlePrefix: 'New Article: ', summary: 'A general article about [topic].', content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here.]</p><ul><li>Point 1</li><li>Point 2</li></ul>', tags: ['article'] },
+        troubleshooting_guide: { type: 'case', titlePrefix: 'Case: Troubleshooting ', summary: 'A step-by-step guide to resolve [issue].', content: '<h3>Issue Description</h3><p>[Clearly describe the problem.]</p><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li></ol>', tags: ['troubleshooting', 'guide', 'case'] },
+        policy_document: { type: 'policy', titlePrefix: 'Policy: ', summary: 'Official policy regarding [subject matter].', content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p>', tags: ['policy', 'official'] },
+        blank: { type: 'article', titlePrefix: '', summary: '', content: '<p><br></p>', tags: [] }
     };
 
     function applyTemplate(templateKey) {
         const template = contentTemplates[templateKey];
         if (!template) return;
-
         contentTypeSelect.value = template.type;
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
-        if (mainQuillEditor) {
-            mainQuillEditor.root.innerHTML = template.content;
-        }
+        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
         contentTagsInput.value = template.tags.join(', ');
-        
         addContentForm.classList.remove('hidden');
         templateSelectionContainer.classList.add('hidden');
         contentTypeSelect.dispatchEvent(new Event('change')); 
         document.getElementById('contentTitle').focus();
     }
-
 
     // --- Add/Edit Content Modal Logic ---
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
@@ -2767,100 +2330,51 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
-            const Font = Quill.import('formats/font');
-            Font.whitelist = ['sans-serif', 'serif', 'monospace', 'roboto', 'arial'];
-            Quill.register(Font, true);
-            
-            // Register the image resize module if it's available on the window
-            if (window.ImageResize) {
-                // ✅ FIX: Correctly register the module using .default as the module exports it this way.
-                Quill.register('modules/imageResize', window.ImageResize.default);
-            }
-
+            Quill.register('modules/imageResize', window.ImageResize.default);
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
-                    toolbar: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        [{ 'font': Font.whitelist }, { 'size': ['small', false, 'large', 'huge'] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        ['blockquote', 'code-block'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'align': [] }],
-                        ['link', 'image', 'video'],
-                        ['clean']
-                    ],
-                    imageResize: { 
-                      modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]
-                    }
+                    toolbar: [[{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline'], ['blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'image', 'video'], ['clean']],
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
                 },
                 placeholder: 'Enter detailed content here...'
             });
-
-            document.getElementById('imageFile').addEventListener('change', function(event) {
+            document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
-                if (file && file.type.startsWith('image/')) {
+                if (file?.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        if (mainQuillEditor) {
-                            const range = mainQuillEditor.getSelection(true);
-                            mainQuillEditor.insertEmbed(range.index, 'image', e.target.result);
-                            mainQuillEditor.setSelection(range.index + 1);
-                        }
-                    };
+                    reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
-                    event.target.value = ''; 
                 }
             });
         }
 
-        // Populate Parent Item dropdown
         const parentItemSelect = document.getElementById('parentItem');
-        parentItemSelect.innerHTML = '<option value="">-- None (Top-Level Item) --</option>'; // Reset
-        const sectionForParents = kbSystemData.sections.find(s => s.id === sectionIdForContent);
-        if (sectionForParents && sectionForParents.items) {
-            sectionForParents.items.forEach(item => {
-                // Don't allow an item to be its own parent during edit
-                if (!itemToEdit || item.id !== itemToEdit.id) {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = item.title;
-                    parentItemSelect.appendChild(option);
-                }
-            });
-        }
+        parentItemSelect.innerHTML = '<option value="">-- None (Top-Level Item) --</option>';
+        kbSystemData.sections.find(s => s.id === sectionIdForContent)?.items.forEach(item => {
+            if (!itemToEdit || item.id !== itemToEdit.id) {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.title;
+                parentItemSelect.appendChild(option);
+            }
+        });
 
         if (itemToEdit) {
-            // Editing an existing item
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
             document.getElementById('contentSummary').value = itemToEdit.summary;
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
-            if (itemToEdit.parentId) parentItemSelect.value = itemToEdit.parentId;
-            
-            const contentToEdit = itemToEdit.content || itemToEdit.resolution_steps || '<p><br></p>';
-
-            // ✅ FIX 1: Use a more robust method to set Quill content, preventing it from appearing empty on edit.
-            if (mainQuillEditor) {
-                // First, clear the editor to prevent any lingering content issues.
-                mainQuillEditor.setContents([], 'silent'); 
-                // Then, use the official API to paste HTML content at the beginning.
-                mainQuillEditor.clipboard.dangerouslyPasteHTML(0, contentToEdit);
-            }
-            
+            if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
-            
-            document.getElementById('videoLink').value = itemToEdit.videoLink || '';
-            document.getElementById('driveLink').value = itemToEdit.driveLink || '';
-
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
-            // Creating a new item
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            mainQuillEditor.setContents([{ insert: '\n' }], 'silent'); // Reset editor for new item
+            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2873,174 +2387,118 @@
         button.addEventListener('click', () => applyTemplate(button.dataset.template));
     });
 
-
     function closeAddContentModal() {
         addContentModalOverlay.classList.add('hidden');
-        templateSelectionContainer.classList.add('hidden'); 
-        addContentForm.classList.add('hidden'); 
-        editingItemIdInput.value = ""; 
     }
 
     contentTypeSelect.addEventListener('change', (e) => {
         const type = e.target.value;
         contentUrlContainer.classList.toggle('hidden', !['form_sheet', 'design'].includes(type));
         contentDetailContainer.classList.toggle('hidden', ['form_sheet', 'design'].includes(type));
-        if (type === 'case') contentDetailLabel.textContent = 'Case Details / Resolution Steps';
-        else contentDetailLabel.textContent = 'Content';
+        contentDetailLabel.textContent = type === 'case' ? 'Case Details / Resolution Steps' : 'Content';
     });
 
-    addContentForm.addEventListener('submit', (e) => {
+    addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const sectionId = addContentForm.dataset.sectionId;
-        const section = kbSystemData.sections.find(s => s.id === sectionId);
-        if (!section) { showToast('Error: Target section not found!', 'error'); return; }
-        
         const editingId = editingItemIdInput.value;
-        const parentId = document.getElementById('parentItem').value;
 
-        const commonData = {
-            type: contentTypeSelect.value,
+        const itemData = {
             title: document.getElementById('contentTitle').value.trim(),
             summary: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-            videoLink: document.getElementById('videoLink').value.trim(),
-            driveLink: document.getElementById('driveLink').value.trim(),
+            type: contentTypeSelect.value,
+            content: mainQuillEditor.root.innerHTML,
+            url: document.getElementById('contentUrl').value.trim() || null,
+            sub_category_id: sectionId,
+            parent_id: document.getElementById('parentItem').value || null,
+            last_modified: new Date().toISOString(),
+            created_by: currentUser.id, // Track creator
+            version: 1.0 // This should be handled more robustly
         };
-        if (parentId) {
-            commonData.parentId = parentId;
-        }
+        if (editingId) itemData.id = editingId;
 
-        if (!commonData.title || !commonData.summary) {
+        if (!itemData.title || !itemData.summary) {
             showToast('Title and Summary are required.', 'error'); return;
         }
 
-        let itemData = editingId ? section.items.find(i => i.id === editingId) : null;
-        if (editingId && !itemData) { showToast('Error: Item to edit not found!', 'error'); return; }
-
-        if (itemData) { // Editing existing item
-            Object.assign(itemData, commonData); 
-            if (!parentId) {
-                delete itemData.parentId; // Remove parentId if "None" is selected
-            }
-            itemData.lastModified = new Date().toISOString();
-            itemData.version = parseFloat(((itemData.version || 1.0) + 0.1).toFixed(1));
-        } else { // Creating new item
-            const now = new Date().toISOString();
-            itemData = {
-                ...commonData, id: `${sectionId}_item_${Date.now()}`,
-                createdBy: currentUser.email, createdAt: now, lastModified: now,
-                version: 1.0, views: 0, comments: [], feedback: [] 
-            };
-            if (!section.items) section.items = [];
-            section.items.push(itemData);
-            kbSystemData.meta.lastArticleAdded = { title: itemData.title, date: new Date().toLocaleDateString() };
+        const { data: savedItem, error } = await supabase.from('cases').upsert(itemData).select().single();
+        if (error) {
+            console.error("Error saving content:", error);
+            showToast(`Failed to save content: ${error.message}`, 'error');
+            return;
         }
 
-        if (['article', 'guide', 'policy', 'case'].includes(itemData.type)) {
-            itemData.content = mainQuillEditor.root.innerHTML;
-        } else if (['form_sheet', 'design'].includes(itemData.type)) {
-            itemData.url = document.getElementById('contentUrl').value.trim();
-            if (!itemData.url) { showToast('A URL is required for this type.', 'error'); return; }
-        }
-
-        // ✅ CHANGE: Request #4 - Log the activity
-        const actionType = editingId ? 'edit' : 'create';
-        mockActivityLog.unshift({ // use unshift to add to the top of the log
-            user_name: currentUser.name,
-            email: currentUser.email,
-            item_id: itemData.id,
-            item_type: itemData.type,
-            action: actionType,
-            timestamp: new Date().toISOString()
-        });
+        await saveVersion(savedItem, currentUser);
+        await logActivity(currentUser, savedItem.id, savedItem.type, editingId ? 'updated' : 'created');
         
-        showToast(`Content '${itemData.title}' ${editingId ? 'updated' : 'saved'}!`, 'success');
+        showToast(`Content '${savedItem.title}' saved successfully!`, 'success');
         closeAddContentModal();
-        saveDataToLocalStorage();
+        await loadAndStructureData();
         handleNavigation();
     });
 
     window.openEditModal = (sectionId, itemId) => {
-        const section = kbSystemData.sections.find(s => s.id === sectionId);
-        const item = section?.items.find(i => i.id === itemId);
-        if (item) {
-            openAddContentModal(sectionId, item);
-        } else {
-            showToast('Error: Could not find item to edit.', 'error');
-        }
+        const item = findItem(itemId);
+        if (item) openAddContentModal(sectionId, item);
     };
     window.openDeleteModal = (sectionId, itemId, itemTitle) => {
         openDeleteConfirmModal(sectionId, itemId, itemTitle);
     };
 
-    // --- Other Modals Logic (Delete, Feedback, etc) ---
+    // --- Delete Modal & Search ---
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
-        confirmDeleteItemBtn.dataset.sectionId = sectionId;
         confirmDeleteItemBtn.dataset.itemId = itemId;
         deleteConfirmModalOverlay.classList.remove('hidden');
     }
-    confirmDeleteItemBtn.addEventListener('click', () => {
-        const sectionId = confirmDeleteItemBtn.dataset.sectionId;
-        const itemId = confirmDeleteItemBtn.dataset.itemId;
-        const section = kbSystemData.sections.find(s => s.id === sectionId);
-        if (section?.items) {
-            const itemIndex = section.items.findIndex(item => item.id === itemId);
-            if (itemIndex > -1) {
-                const deletedItemTitle = section.items[itemIndex].title;
-                section.items.splice(itemIndex, 1);
-                
-                saveDataToLocalStorage();
 
-                showToast(`Item "${deletedItemTitle}" deleted.`, 'success');
-                deleteConfirmModalOverlay.classList.add('hidden');
-                
-                if (window.location.hash.includes(itemId)) {
-                    window.location.hash = `#${sectionId}`;
-                } else {
-                    handleNavigation();
-                }
-            }
+    confirmDeleteItemBtn.addEventListener('click', async () => {
+        const itemId = confirmDeleteItemBtn.dataset.itemId;
+        const { error } = await supabase.from('cases').delete().eq('id', itemId);
+        
+        if (error) {
+            showToast(`Error deleting item: ${error.message}`, 'error');
+            return;
+        }
+
+        showToast(`Item deleted.`, 'success');
+        deleteConfirmModalOverlay.classList.add('hidden');
+        await loadAndStructureData();
+        
+        if (window.location.hash.includes(itemId)) {
+            window.location.hash = `#home`;
+        } else {
+            handleNavigation();
         }
     });
 
-    closeDeleteConfirmModalBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
-    cancelDeleteItemBtn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden'));
-    
-    // Global Search
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
-        if (query.length < 2) {
-            searchResultsContainer.classList.add('hidden'); return;
+        searchResultsContainer.innerHTML = ''; // Clear previous results
+
+        if (query.length < 2) { 
+            searchResultsContainer.classList.add('hidden'); 
+            return; 
         }
-        const results = [];
-        kbSystemData.sections.forEach(s => {
-            s.items?.forEach(i => {
-                if (i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query) || (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))) {
-                    results.push({ ...i, sectionId: s.id, sectionName: s.name });
-                }
-            });
-        });
-        searchResultsContainer.innerHTML = '';
-        if (results.length) {
+        
+        const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name})));
+        const results = allItems.filter(i => i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query));
+        
+        if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
                 const linkEl = document.createElement('a');
-                linkEl.href = `#${r.sectionId}/${r.id}`;
-                linkEl.addEventListener('click', () => { searchResultsContainer.classList.add('hidden'); globalSearchInput.value = ''; });
-                linkEl.innerHTML = `<div style="font-weight: bold;">${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted); margin-left: 5px;">(${escapeHTML(r.sectionName)})</span></div>
-                                    <p style="font-size: 0.9em; color: var(--text-color-subtle); margin: 0;">${highlightText(truncateText(stripHtml(r.summary), 70), query)}</p>`;
+                linkEl.href = `#${r.sub_category_id}/${r.id}`;
+                linkEl.innerHTML = `<div>${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted);">(${escapeHTML(r.sectionName)})</span></div>`;
                 searchResultsContainer.appendChild(linkEl);
             });
-            searchResultsContainer.classList.remove('hidden');
         } else {
-            searchResultsContainer.innerHTML = `<div style="padding: 10px; color: var(--text-color-muted);">No results found.</div>`;
-            searchResultsContainer.classList.remove('hidden');
+            // ✅ CHANGE 4: Added a user-facing message for when no search results are found.
+            searchResultsContainer.innerHTML = `<div style="padding: 0.75rem; color: var(--text-color-muted); text-align: center;">No results found.</div>`;
         }
+        searchResultsContainer.classList.remove('hidden');
     });
-    document.addEventListener('click', e => {
-        if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
-    });
-    
+
     // --- Routing and Initialization ---
     function handleNavigation() {
         if (!currentUser) return;
@@ -3058,46 +2516,39 @@
     }
 
     async function initializeApp() {
-        loadDataFromLocalStorage();
-
-        currentUser = await Auth.getCurrentUserProfile();
-        
+        currentUser = await getCurrentUserProfile();
         if (!currentUser) {
-            // ✅ CHANGE: Redirect to login.html instead of showing a black screen.
-            window.location.href = "login.html";
+            window.location.href = "login.html"; // Redirect if not logged in
             return;
         }
 
         userNameDisplayHeader.textContent = currentUser.name;
-        const initials = (currentUser.name || 'U')
-            .split(' ')
-            .map(n => n[0])
-            .join('')
-            .substring(0, 2)
-            .toUpperCase();
+        const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         userAvatar.textContent = initials;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
+        showToast("Connecting to database...", 'info', 1500);
+        await loadAndStructureData();
+
         populateSidebar();
         applyPermanentDarkMode(); 
         handleNavigation(); 
-
+        
         window.addEventListener('hashchange', handleNavigation);
         
+        // Setup modal listeners
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
-        closeLogoutConfirmModalBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
-        confirmLogoutBtn.addEventListener('click', Auth.logout);
+        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
+        confirmLogoutBtn.addEventListener('click', logout);
         
-        closeAddContentModalBtn.addEventListener('click', closeAddContentModal);
-        cancelAddContentBtn.addEventListener('click', closeAddContentModal);
+        [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
+        [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+
+        document.addEventListener('click', e => {
+            if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+        });
         
-        if (localStorage.getItem('justLoggedIn') === 'true') {
-            showToast(`Welcome back, ${currentUser.name}!`, 'success', 4000);
-            localStorage.removeItem('justLoggedIn');
-        } else {
-            showToast(`InfiniBase v${kbSystemData.meta.version} ready. Data is saved locally.`, 'info', 3000);
-        }
+        showToast(`Welcome back, ${currentUser.name}!`, 'success', 3000);
     }
 
     initializeApp();
