@@ -1497,32 +1497,36 @@
         const { data, error } = await supabase.from('sub_categories').select('*').order('name');
         if (error) {
             console.error('Error fetching sub-categories:', error);
+            // ✅ CHANGE: Added user-facing feedback for failed fetch.
+            showToast('Failed to load knowledge areas.', 'error');
             return [];
         }
         return data;
     }
 
-    /** 📰 Fetches all articles from 'cases' and their related comments. */
+    /** 📰 Fetches all articles from 'cases'. */
     async function fetchArticles() {
-        // Fetch articles and join related comments and feedback counts
+        // ✅ CHANGE 1: Simplified Supabase query to prevent a 400 error if FK relationships
+        // are not defined in the database. This fetches the core article data.
+        // More detailed data like comment counts are handled by the dashboard's `v_kb_insights`
+        // view or fetched on-demand in the article's detail view.
         const { data, error } = await supabase
             .from('cases')
-            .select(`
-                *,
-                kb_comments ( id ),
-                kb_feedback ( id )
-            `)
+            .select(`*`)
             .order('created_at', { ascending: false });
         
         if (error) {
             console.error('Error fetching articles:', error);
+            showToast('Failed to load articles from the database.', 'error');
             return [];
         }
-        // Process data to have simple counts
+
+        // We map the data to ensure that properties expected by other parts of the app,
+        // like 'comments' and 'feedback' arrays, exist to prevent errors.
         return data.map(article => ({
             ...article,
-            comments: article.kb_comments, // keep the array for rendering
-            feedback: article.kb_feedback,
+            comments: article.comments || [],
+            feedback: article.feedback || [],
         }));
     }
 
@@ -1810,12 +1814,18 @@
         </a>`;
         
         menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
-        kbSystemData.sections.forEach(section => {
-            const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
-            menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section-id="${section.id}">
-                <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
-            </a>`;
-        });
+        
+        // ✅ CHANGE 3: Added a check for empty sections to provide user feedback.
+        if (kbSystemData.sections.length === 0) {
+            menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
+        } else {
+            kbSystemData.sections.forEach(section => {
+                const iconStyle = section.iconColor ? `style="color: ${section.iconColor};"` : '';
+                menuHTML += `<a href="#${section.id}" class="sidebar-link" data-section-id="${section.id}">
+                    <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
+                </a>`;
+            });
+        }
         
         navigationMenu.innerHTML = menuHTML;
     }
@@ -2090,6 +2100,7 @@
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
+        // ✅ CHANGE 2: Used optional chaining `?.` to prevent error if button doesn't exist.
         document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
             openAddContentModal(e.currentTarget.dataset.sectionId);
         });
@@ -2203,6 +2214,8 @@
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
+        // ✅ CHANGE 2: Added optional chaining `?.` to all event listeners for robustness.
+        // This prevents "Cannot read properties of null" errors if an element isn't rendered.
         document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(itemData.sub_category_id, itemData));
         document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title));
         
@@ -2217,24 +2230,24 @@
         });
 
         // Feedback logic
-        document.getElementById('rateYesBtn').addEventListener('click', async () => {
+        document.getElementById('rateYesBtn')?.addEventListener('click', async () => {
             await submitFeedback(itemData.id, 1, null, currentUser);
             await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
             document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
             showToast('Feedback received!', 'success');
         });
 
-        document.getElementById('rateNoBtn').addEventListener('click', () => {
-            document.getElementById('ratingButtons').classList.add('hidden');
-            document.getElementById('negativeFeedbackForm').classList.remove('hidden');
+        document.getElementById('rateNoBtn')?.addEventListener('click', () => {
+            document.getElementById('ratingButtons')?.classList.add('hidden');
+            document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
         });
 
-        document.getElementById('cancelNegativeFeedbackBtn').addEventListener('click', () => {
-            document.getElementById('negativeFeedbackForm').classList.add('hidden');
-            document.getElementById('ratingButtons').classList.remove('hidden');
+        document.getElementById('cancelNegativeFeedbackBtn')?.addEventListener('click', () => {
+            document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
+            document.getElementById('ratingButtons')?.classList.remove('hidden');
         });
 
-        document.getElementById('negativeFeedbackForm').addEventListener('submit', async (e) => {
+        document.getElementById('negativeFeedbackForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const reason = document.getElementById('feedbackReason').value.trim();
             if (reason) {
@@ -2248,7 +2261,7 @@
         });
 
         // Comments logic
-        document.getElementById('postCommentBtn').addEventListener('click', async () => {
+        document.getElementById('postCommentBtn')?.addEventListener('click', async () => {
             const commentTextEl = document.getElementById('newCommentText');
             const commentText = commentTextEl.value.trim();
             if (!commentText) { showToast('Please enter a note.', 'error'); return; }
@@ -2462,20 +2475,28 @@
 
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
-        if (query.length < 2) { searchResultsContainer.classList.add('hidden'); return; }
+        searchResultsContainer.innerHTML = ''; // Clear previous results
+
+        if (query.length < 2) { 
+            searchResultsContainer.classList.add('hidden'); 
+            return; 
+        }
+        
         const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name})));
         const results = allItems.filter(i => i.title.toLowerCase().includes(query) || stripHtml(i.summary).toLowerCase().includes(query));
         
-        searchResultsContainer.innerHTML = '';
-        if (results.length) {
+        if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
                 const linkEl = document.createElement('a');
                 linkEl.href = `#${r.sub_category_id}/${r.id}`;
                 linkEl.innerHTML = `<div>${highlightText(r.title, query)} <span style="font-size: 0.8em; color: var(--text-color-muted);">(${escapeHTML(r.sectionName)})</span></div>`;
                 searchResultsContainer.appendChild(linkEl);
             });
-            searchResultsContainer.classList.remove('hidden');
+        } else {
+            // ✅ CHANGE 4: Added a user-facing message for when no search results are found.
+            searchResultsContainer.innerHTML = `<div style="padding: 0.75rem; color: var(--text-color-muted); text-align: center;">No results found.</div>`;
         }
+        searchResultsContainer.classList.remove('hidden');
     });
 
     // --- Routing and Initialization ---
