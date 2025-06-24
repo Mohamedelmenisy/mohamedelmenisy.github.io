@@ -1494,8 +1494,7 @@
     // =================================================================================
     // IMMEDIATE SESSION CHECK (SIMULATED)
     // =================================================================================
-    // Since Supabase connection is likely faulty, we'll rely on our own session check
-    // and create a mock user if none exists for demonstration purposes.
+    // Since Supabase connection is likely faulty, we'll rely on our own session check.
     let sessionValid = true; 
     try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
@@ -1508,9 +1507,14 @@
     }
 
     if (!sessionValid) {
-        console.log("No valid session found. Redirecting to login.");
-        // To prevent a redirect loop if login.html is also broken, we can create a mock user
-        // for testing purposes if no user exists in localStorage.
+        console.log("No valid session found. User must log in.");
+        // ✅ FIX: The automatic creation of a mock user was removed from here.
+        // This was the root cause of the logout failure, as it would
+        // recreate the user immediately after logout and page reload.
+        // The application will now correctly enter a logged-out state.
+        // For a first-time demo, a user can be created by uncommenting the block below
+        // or by implementing a proper login page.
+        /*
         if (!localStorage.getItem("infiniBaseUser")) {
              const mockUser = {
                 id: 'user_1', name: 'Mohamed Elmenisy', email: 'dev@example.com', role: 'admin',
@@ -1520,8 +1524,7 @@
             localStorage.setItem("infiniBaseUser", JSON.stringify(mockUser));
             console.log("Created a mock user for demonstration.");
         }
-        // If you have a working login.html, uncomment the line below
-        // window.location.href = 'login.html';
+        */
     }
     // =================================================================================
 
@@ -1588,16 +1591,16 @@
             } catch (e) {
                 console.warn("Supabase signout failed. Clearing local data regardless.");
             }
+        
             localStorage.clear();
             sessionStorage.clear();
+        
             showToast('You have been logged out successfully!', 'success');
+        
             setTimeout(() => {
-                // ✅ FIX: The original code re-created a mock user for testing.
-                // This has been removed to allow for a true logout. The page will
-                // now reload to a blank/logged-out state.
+                // After clearing storage, reload the page. The session check at the top
+                // will now find no user, resulting in a proper logged-out state.
                 window.location.reload();
-                // If you have a working login page, you would redirect here instead:
-                // window.location.href = 'login.html';
             }, 1500);
         }
     };
@@ -3054,17 +3057,25 @@
     }
 
     async function initializeApp() {
+        // First-time load needs a user for the demo to work.
+        // This is a one-off creation. The bug fix above prevents this from
+        // running after a logout.
+        if (!localStorage.getItem('infiniBaseUser')) {
+            const mockUser = {
+                id: 'user_1', name: 'Mohamed Elmenisy', email: 'dev@example.com', role: 'admin',
+                avatar_url: `https://ui-avatars.com/api/?name=ME&background=6366f1&color=fff&rounded=true&font-size=0.5`,
+                lastLogin: new Date().toISOString()
+            };
+            localStorage.setItem("infiniBaseUser", JSON.stringify(mockUser));
+            console.log("Created a mock user for first-time demonstration.");
+        }
+        
         loadDataFromLocalStorage();
 
         currentUser = await Auth.getCurrentUserProfile(); 
         if (!currentUser) {
-            const storedUser = localStorage.getItem("infiniBaseUser");
-            if (storedUser) {
-                currentUser = JSON.parse(storedUser);
-            } else {
-                 document.body.innerHTML = '<div style="color: white; padding: 2rem; text-align: center;"><h1>Authentication Error</h1><p>Could not verify user. Please <a href="login.html" style="color: #6366f1;">log in</a> again.</p></div>';
-                 return;
-            }
+            document.body.innerHTML = '<div style="color: white; padding: 2rem; text-align: center;"><h1>Authentication Error</h1><p>Could not verify user. Please clear your browser cache or re-enable the mock user creation in the code.</p></div>';
+            return;
         }
 
         userNameDisplayHeader.textContent = currentUser.name;
