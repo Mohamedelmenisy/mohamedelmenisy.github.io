@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase.js';
 
 /** ✅ جلب كل المقالات من جدول 'cases' */
@@ -65,4 +66,67 @@ export async function getCurrentUserProfile() {
   }
 
   return profile;
+}
+
+/** 👀 تسجيل مشاهدة مقال في article_views */
+export async function recordArticleView(articleId) {
+  const { error } = await supabase.from('article_views').upsert({
+    article_id: articleId,
+    total_views: 1
+  }, {
+    onConflict: ['article_id']
+  });
+
+  if (error) console.error('Error recording view:', error);
+}
+
+/** 🕓 حفظ نسخة من المقال في version_history */
+export async function saveVersion(articleId, title, content, user) {
+  const { error } = await supabase.from('version_history').insert([{
+    item_id: articleId,
+    title,
+    content,
+    author_id: user.id,
+    created_at: new Date().toISOString()
+  }]);
+
+  if (error) console.error('Error saving version:', error);
+}
+
+/** 📋 تسجيل أي نشاط يتم في النظام */
+export async function logActivity(user, itemId, itemType, action, details = {}) {
+  const { error } = await supabase.from('activity_log').insert([{
+    user_id: user.id,
+    item_id: itemId,
+    item_type: itemType,
+    action,
+    details,
+    timestamp: new Date().toISOString()
+  }]);
+
+  if (error) console.error('Error logging activity:', error);
+}
+
+/** 📂 جلب التصنيفات من sub_categories */
+export async function fetchSubCategories() {
+  const { data, error } = await supabase.from('sub_categories').select('*');
+
+  if (error) {
+    console.error('Error fetching sub-categories:', error);
+    return [];
+  }
+
+  return data;
+}
+
+/** 📊 جلب تحليلات من v_kb_insights */
+export async function fetchInsights() {
+  const { data, error } = await supabase.from('v_kb_insights').select('*');
+
+  if (error) {
+    console.error('Error fetching insights:', error);
+    return [];
+  }
+
+  return data;
 }
