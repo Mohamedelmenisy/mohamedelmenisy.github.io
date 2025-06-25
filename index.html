@@ -2307,7 +2307,7 @@
     }
 
     async function displayItemDetail(sectionSlug, itemSlug) {
-        const itemData = findItemBySlug(sectionSlug, itemSlug);
+        let itemData = findItemBySlug(sectionSlug, itemSlug);
         
         if (!itemData) {
             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item not found with slug "${itemSlug}".</p>`;
@@ -2317,11 +2317,14 @@
         // Log every view action directly to the activity log
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
+        // Reload all data from the database to get the latest view count
         await loadAndStructureData(); 
+        
+        // Find the item again from the NEWLY loaded data
         const updatedItemData = findItem(itemData.id);
 
         if (!updatedItemData) {
-             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
+             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed after view.</p>`;
             return;
         }
 
@@ -2390,7 +2393,7 @@
                     <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
                 </form>
             </div>
-            <div class="read-stats">Total Views: <span id="readStatsCount">${(updatedItemData.views || 0).toLocaleString()}</span></div>
+            <div class="read-stats">Total Views: <span id="readStatsCount">${(updatedItemData.total_views || 0).toLocaleString()}</span></div>
         </div>`;
         detailHTML += `<div class="comments-section">
             <h4><i class="fas fa-comments"></i> Management Notes</h4>
