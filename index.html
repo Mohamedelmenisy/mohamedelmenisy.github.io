@@ -539,6 +539,14 @@
         .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
         .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
 
+        /* ✅ START: Quill Custom Button Style */
+        .ql-toolbar .ql-html::after {
+            content: '</>';
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        /* ✅ END: Quill Custom Button Style */
 
         .ql-container {
             background: var(--bg-color-alt);
@@ -1454,6 +1462,28 @@
 </div>
 </div>
 </div>
+<!-- ✅ START: Insert HTML Modal -->
+<div class="modal-overlay hidden" id="insertHtmlModalOverlay">
+    <div class="modal-content" style="max-width: 40rem;">
+        <div class="modal-header">
+            <h2>Insert HTML</h2>
+            <button aria-label="Close" class="close-button" id="closeInsertHtmlModalBtn">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 0.9rem; color: var(--text-color-muted); margin-bottom: 1rem;">
+                Paste your HTML code below. It will be rendered in the editor.
+            </p>
+            <div class="form-group">
+                <textarea id="htmlTextarea" style="min-height: 200px; font-family: monospace;" placeholder="<table>...</table>"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions no-border">
+            <button class="button" id="confirmInsertHtmlBtn" type="button"><i class="fas fa-code"></i> Insert Now</button>
+            <button class="button-secondary" id="cancelInsertHtmlBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+    </div>
+</div>
+<!-- ✅ END: Insert HTML Modal -->
 <div class="container-fluid">
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
@@ -1644,7 +1674,7 @@
 
         return {
             activityLog: activityLogWithEmail,
-            articleViews: insights || [] // ✅ FIX: Directly use the result from fetchInsights
+            articleViews: insights || [] 
         };
     }
 
@@ -1709,6 +1739,14 @@
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
+    
+    // ✅ START: HTML Insert Modal Elements
+    const insertHtmlModalOverlay = document.getElementById('insertHtmlModalOverlay');
+    const closeInsertHtmlModalBtn = document.getElementById('closeInsertHtmlModalBtn');
+    const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
+    const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
+    const htmlTextarea = document.getElementById('htmlTextarea');
+    // ✅ END: HTML Insert Modal Elements
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -1747,7 +1785,6 @@
        return tmp.textContent || tmp.innerText || "";
     }
     
-    // ✅ NEW: Slug creation function for user-friendly URLs
     function createSlug(text) {
         if (!text) return 'untitled';
         return text
@@ -1805,7 +1842,6 @@
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
-                // ✅ ADD: Create a slug for each article title
                 parentSection.items.push({ ...article, slug: createSlug(article.title) });
             } else {
                 console.warn(`Article "${article.title}" has an unknown sub_category_id: ${article.sub_category_id}`);
@@ -1903,7 +1939,6 @@
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
         const isAdmin = currentUser?.role === 'admin';
-        // ✅ FIX: Use item.slug in the URL
         const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
@@ -2001,7 +2036,6 @@
                 <canvas id="visitorsChart"></canvas>
             </div>
             
-            <!-- ✅ NEW: Container for filters and tables -->
             <div class="dashboard-tables-container" style="margin-top: 1.5rem;">
                 <div class="dashboard-filter-bar">
                     <div class="form-group">
@@ -2039,7 +2073,6 @@
             </div>
         `;
         
-        // Populate most used list
         document.getElementById('mostUsedList').innerHTML = mostUsedArticles.length ? mostUsedArticles.map(item => {
             const fullItem = findItem(item.article_id);
             const sectionSlug = fullItem ? fullItem.sectionSlug : 'home';
@@ -2050,7 +2083,6 @@
             </li>`
         }).join('') : '<li>No data yet.</li>';
 
-        // Add event listeners for quick links
         const handleQuickAdd = (e) => {
             e.preventDefault();
             const firstSectionId = kbSystemData.sections[0]?.id;
@@ -2063,13 +2095,17 @@
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
         document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
 
-        // Setup filter listeners
+        // ✅ FIX: Setup filter listeners to trigger on input for instant feedback
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
+        document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
+        document.getElementById('filterUserEmail').addEventListener('input', applyDashboardFilters);
+        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters); // 'change' is better for date inputs
+        
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('filterUserName').value = '';
             document.getElementById('filterUserEmail').value = '';
             document.getElementById('filterDate').value = '';
-            renderDashboardTables(originalDashboardData); // Re-render with original data
+            renderDashboardTables(originalDashboardData); 
         });
 
         
@@ -2169,7 +2205,7 @@
                 return `
                     <tr>
                         <td class="user-name-cell">${escapeHTML(row.user_name)}</td>
-                        <td>${escapeHTML(row.user_email || 'N/A')}</td>
+                        <td class="email-cell">${escapeHTML(row.user_email || 'N/A')}</td>
                         <td><a href="${itemLink}">${escapeHTML(truncateText(itemTitle, 30))}</a></td>
                         <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
                         <td>${formatReadableDate(row.timestamp)}</td>
@@ -2220,7 +2256,6 @@
         });
     }
     
-    // ✅ NEW: Find item by ID
     function findItem(itemId) {
         for (const section of kbSystemData.sections) {
             const item = section.items?.find(i => i.id === itemId);
@@ -2229,7 +2264,6 @@
         return null;
     }
     
-    // ✅ NEW: Find item by Slug
     function findItemBySlug(sectionSlug, itemSlug) {
         const section = kbSystemData.sections.find(s => s.slug === sectionSlug);
         if (section) {
@@ -2253,9 +2287,8 @@
         });
         if(rpcError) console.error("Error calling record_unique_view RPC:", rpcError);
         
-        // This is a full refresh, might be slow but ensures data consistency
         await loadAndStructureData(); 
-        const updatedItemData = findItem(itemData.id); // Find by ID to get fresh data
+        const updatedItemData = findItem(itemData.id);
 
         if (!updatedItemData) {
              standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
@@ -2499,6 +2532,25 @@
         contentTypeSelect.dispatchEvent(new Event('change')); 
         document.getElementById('contentTitle').focus();
     }
+    
+    // ✅ START: Quill Tooltip Function
+    function addQuillTooltips() {
+        const tooltips = {
+            'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
+            'ql-blockquote': 'Blockquote', 'ql-code-block': 'Code Block',
+            'ql-header[value="1"]': 'Heading 1', 'ql-header[value="2"]': 'Heading 2',
+            'ql-list[value="ordered"]': 'Ordered List', 'ql-list[value="bullet"]': 'Bulleted List',
+            'ql-indent[value="-1"]': 'Decrease Indent', 'ql-indent[value="+1"]': 'Increase Indent',
+            'ql-direction': 'Text Direction', 'ql-script[value="sub"]': 'Subscript', 'ql-script[value="super"]': 'Superscript',
+            'ql-link': 'Insert Link', 'ql-image': 'Insert Image', 'ql-video': 'Insert Video',
+            'ql-clean': 'Clear Formatting', 'ql-html': 'Insert HTML'
+        };
+        Object.keys(tooltips).forEach(selector => {
+            const el = document.querySelector(`.ql-toolbar .${selector}`);
+            if (el) el.setAttribute('title', tooltips[selector]);
+        });
+    }
+    // ✅ END: Quill Tooltip Function
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
@@ -2507,26 +2559,40 @@
         
         if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
+            // ✅ START: Quill Toolbar and Handler Fix
+            const quillToolbarOptions = {
+                container: [
+                    [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'direction': 'rtl' }, { 'align': [] }],
+                    ['link', 'image', 'video', 'html'], // Added 'html' button
+                    ['clean']
+                ],
+                handlers: {
+                    'html': function() {
+                        htmlTextarea.value = ''; // Clear previous content
+                        insertHtmlModalOverlay.classList.remove('hidden');
+                    }
+                }
+            };
+            // ✅ END: Quill Toolbar and Handler Fix
+
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
-                    toolbar: [
-      [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      [{ 'header': 1 }, { 'header': 2 }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'direction': 'rtl' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
+                    toolbar: quillToolbarOptions,
                     imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
                 },
                 placeholder: 'Enter detailed content here...'
             });
+            
+            // ✅ FIX: Add tooltips after editor initialization
+            addQuillTooltips();
+
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
@@ -2661,8 +2727,10 @@
         deleteConfirmModalOverlay.classList.add('hidden');
         await loadAndStructureData();
         
-        if (window.location.hash.includes(itemId)) { // Check if the deleted item ID is in the hash
-            window.location.hash = `#home`;
+        const currentHash = window.location.hash;
+        const itemSlug = findItem(itemId)?.slug;
+        if(itemSlug && currentHash.includes(`/${itemSlug}`)) {
+             window.location.hash = `#home`;
         } else {
             handleNavigation();
         }
@@ -2696,7 +2764,6 @@
     function handleNavigation() {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
-        // ✅ FIX: Split to get section and item slugs
         const [sectionSlug, itemSlug] = hash.split('/');
         
         highlightSidebarLink(sectionSlug);
@@ -2735,6 +2802,20 @@
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+        
+        // ✅ START: HTML Insert Modal Listeners
+        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
+            insertHtmlModalOverlay.classList.add('hidden');
+        }));
+        confirmInsertHtmlBtn.addEventListener('click', () => {
+            if (mainQuillEditor) {
+                const html = htmlTextarea.value;
+                const delta = mainQuillEditor.clipboard.convert(html);
+                mainQuillEditor.setContents(delta, 'silent');
+            }
+            insertHtmlModalOverlay.classList.add('hidden');
+        });
+        // ✅ END: HTML Insert Modal Listeners
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
