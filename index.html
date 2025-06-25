@@ -538,15 +538,15 @@
         .ql-toolbar .ql-picker-label { color: var(--text-color-muted); }
         .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
         .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
-        
-        /* ✅ START: Custom Quill Button for HTML Insertion */
-        .ql-toolbar .ql-html::before {
+
+        /* ✅ START: Quill Custom Button Style */
+        .ql-toolbar .ql-html::after {
             content: '</>';
-            font-family: monospace;
             font-weight: bold;
-            font-size: 16px;
+            font-family: monospace;
+            font-size: 14px;
         }
-        /* ✅ END: Custom Quill Button for HTML Insertion */
+        /* ✅ END: Quill Custom Button Style */
 
         .ql-container {
             background: var(--bg-color-alt);
@@ -993,6 +993,36 @@
             align-items: center;
             flex-shrink: 0;
         }
+
+        /* ✅ START: Date Input with Icon Style */
+        .dashboard-filter-bar .date-input-container {
+            position: relative;
+        }
+        .dashboard-filter-bar .date-input-container .date-picker-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color-muted);
+            pointer-events: none;
+        }
+        .dashboard-filter-bar .date-input-container input[type="date"] {
+            padding-right: 2.5rem; /* Make space for the icon */
+        }
+        /* Style the date input to look consistent and hide the native icon */
+        .dashboard-filter-bar .date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: auto;
+            height: auto;
+            color: transparent;
+            background: transparent;
+            cursor: pointer;
+        }
+        /* ✅ END: Date Input with Icon Style */
 
         .dashboard-stat-card {
             background-color: var(--bg-color-alt);
@@ -1462,29 +1492,28 @@
 </div>
 </div>
 </div>
-<!-- ✅ START: HTML Insert Modal -->
-<div class="modal-overlay hidden" id="htmlInsertModalOverlay">
-    <div class="modal-content" style="max-width: 40rem; z-index: 1001;">
+<!-- ✅ START: Insert HTML Modal -->
+<div class="modal-overlay hidden" id="insertHtmlModalOverlay">
+    <div class="modal-content" style="max-width: 40rem;">
         <div class="modal-header">
-            <h2>Insert Custom HTML</h2>
-            <button aria-label="Close" class="close-button" id="closeHtmlInsertModalBtn">×</button>
+            <h2>Insert HTML</h2>
+            <button aria-label="Close" class="close-button" id="closeInsertHtmlModalBtn">×</button>
         </div>
         <div class="modal-body">
             <p style="font-size: 0.9rem; color: var(--text-color-muted); margin-bottom: 1rem;">
-                Paste your HTML code below. The editor will attempt to convert it into rich text.
-                Complex layouts or scripts may not be fully supported.
+                Paste your HTML code below. It will be rendered in the editor.
             </p>
             <div class="form-group">
-                <textarea id="htmlInsertTextarea" style="min-height: 250px; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 0.9rem;" placeholder="e.g., <h2>My Title</h2><p>Some content...</p>"></textarea>
+                <textarea id="htmlTextarea" style="min-height: 200px; font-family: monospace;" placeholder="<table>...</table>"></textarea>
             </div>
         </div>
-        <div class="modal-actions">
-            <button class="button" id="confirmHtmlInsertBtn" type="button"><i class="fas fa-check"></i> Insert Now</button>
-            <button class="button-secondary" id="cancelHtmlInsertBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
+        <div class="modal-actions no-border">
+            <button class="button" id="confirmInsertHtmlBtn" type="button"><i class="fas fa-code"></i> Insert Now</button>
+            <button class="button-secondary" id="cancelInsertHtmlBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
         </div>
     </div>
 </div>
-<!-- ✅ END: HTML Insert Modal -->
+<!-- ✅ END: Insert HTML Modal -->
 <div class="container-fluid">
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
@@ -1659,8 +1688,6 @@
       return data;
     }
 
-    // ✅ FIX 2: Dashboard filter logic
-    // This function now maps user IDs to names for the insights table, ensuring filters work correctly.
     async function fetchDashboardTableData() {
         const { data: users, error: usersError } = await supabase.from('users').select('id, name, email');
         if(usersError) console.error("Could not fetch users for email mapping:", usersError);
@@ -1675,15 +1702,9 @@
             return { ...log, user_email: user?.email || null };
         });
 
-        const insightsWithUserName = (insights || []).map(insight => {
-            // Assumes 'last_viewed_by' from the view is the user_id. We map it to the user's name.
-            const user = (users || []).find(u => u.id === insight.last_viewed_by); 
-            return { ...insight, last_viewed_by: user?.name || null }; // Overwrite the ID with the name
-        });
-
         return {
             activityLog: activityLogWithEmail,
-            articleViews: insightsWithUserName
+            articleViews: insights || [] 
         };
     }
 
@@ -1707,7 +1728,7 @@
     });
     
     let kbSystemData = { sections: [] };
-    // let mainQuillEditor; // This is now a global window property
+    let mainQuillEditor;
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance;
@@ -1750,11 +1771,11 @@
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
     
     // ✅ START: HTML Insert Modal Elements
-    const htmlInsertModalOverlay = document.getElementById('htmlInsertModalOverlay');
-    const closeHtmlInsertModalBtn = document.getElementById('closeHtmlInsertModalBtn');
-    const cancelHtmlInsertBtn = document.getElementById('cancelHtmlInsertBtn');
-    const confirmHtmlInsertBtn = document.getElementById('confirmHtmlInsertBtn');
-    const htmlInsertTextarea = document.getElementById('htmlInsertTextarea');
+    const insertHtmlModalOverlay = document.getElementById('insertHtmlModalOverlay');
+    const closeInsertHtmlModalBtn = document.getElementById('closeInsertHtmlModalBtn');
+    const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
+    const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
+    const htmlTextarea = document.getElementById('htmlTextarea');
     // ✅ END: HTML Insert Modal Elements
 
     function escapeHTML(str) {
@@ -2016,18 +2037,6 @@
         
         const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a,b) => (b.total_views || 0) - (a.total_views || 0)).slice(0,3);
 
-        // ✅ FIX 3: Add visual cue for date picker
-        const dateInputHTML = `
-            <div class="form-group">
-                <div style="position: relative;">
-                     <input type="date" id="filterDate" title="Filter by date" style="width: 100%;">
-                     <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-color-muted);">
-                        <i class="fas fa-calendar-alt"></i>
-                     </span>
-                </div>
-            </div>
-        `;
-
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
@@ -2065,7 +2074,12 @@
                     <div class="form-group">
                         <input type="email" id="filterUserEmail" placeholder="Filter by User Email..." autocomplete="off">
                     </div>
-                    ${dateInputHTML}
+                    <div class="form-group">
+                        <div class="date-input-container">
+                            <input type="date" id="filterDate" title="Filter by date">
+                            <i class="fas fa-calendar-alt date-picker-icon"></i>
+                        </div>
+                    </div>
                     <div class="filter-buttons">
                         <button id="applyFiltersBtn" class="button"><i class="fas fa-filter"></i> Apply</button>
                         <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
@@ -2092,7 +2106,6 @@
             </div>
         `;
         
-        // Populate most used list
         document.getElementById('mostUsedList').innerHTML = mostUsedArticles.length ? mostUsedArticles.map(item => {
             const fullItem = findItem(item.article_id);
             const sectionSlug = fullItem ? fullItem.sectionSlug : 'home';
@@ -2103,7 +2116,6 @@
             </li>`
         }).join('') : '<li>No data yet.</li>';
 
-        // Add event listeners for quick links
         const handleQuickAdd = (e) => {
             e.preventDefault();
             const firstSectionId = kbSystemData.sections[0]?.id;
@@ -2116,13 +2128,17 @@
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
         document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
 
-        // Setup filter listeners
+        // ✅ FIX: Setup filter listeners to trigger on input for instant feedback
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
+        document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
+        document.getElementById('filterUserEmail').addEventListener('input', applyDashboardFilters);
+        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters); // 'change' is better for date inputs
+        
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('filterUserName').value = '';
             document.getElementById('filterUserEmail').value = '';
             document.getElementById('filterDate').value = '';
-            renderDashboardTables(originalDashboardData); // Re-render with original data
+            renderDashboardTables(originalDashboardData); 
         });
 
         
@@ -2222,7 +2238,7 @@
                 return `
                     <tr>
                         <td class="user-name-cell">${escapeHTML(row.user_name)}</td>
-                        <td>${escapeHTML(row.user_email || 'N/A')}</td>
+                        <td class="email-cell">${escapeHTML(row.user_email || 'N/A')}</td>
                         <td><a href="${itemLink}">${escapeHTML(truncateText(itemTitle, 30))}</a></td>
                         <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
                         <td>${formatReadableDate(row.timestamp)}</td>
@@ -2304,9 +2320,8 @@
         });
         if(rpcError) console.error("Error calling record_unique_view RPC:", rpcError);
         
-        // This is a full refresh, might be slow but ensures data consistency
         await loadAndStructureData(); 
-        const updatedItemData = findItem(itemData.id); // Find by ID to get fresh data
+        const updatedItemData = findItem(itemData.id);
 
         if (!updatedItemData) {
              standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed.</p>`;
@@ -2543,7 +2558,7 @@
         contentTypeSelect.value = template.type;
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
-        if (window.mainQuillEditor) window.mainQuillEditor.root.innerHTML = template.content;
+        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
         contentTagsInput.value = template.tags.join(', ');
         addContentForm.classList.remove('hidden');
         templateSelectionContainer.classList.add('hidden');
@@ -2551,94 +2566,71 @@
         document.getElementById('contentTitle').focus();
     }
     
-    // ✅ FIX 1: Handler function for the new "Insert HTML" button in the toolbar
-    function quillInsertHtmlHandler() {
-        // 'this.quill' is the Quill instance passed automatically by the handler
-        const quill = this.quill; 
-        htmlInsertTextarea.value = ''; // Clear the textarea
-        htmlInsertModalOverlay.classList.remove('hidden');
-        htmlInsertTextarea.focus();
-    }
-
-    // ✅ FIX 1: Utility to add tooltips to Quill's toolbar for better UX
-    function addQuillToolbarTooltips() {
+    // ✅ START: Quill Tooltip Function
+    function addQuillTooltips() {
         const tooltips = {
-            '.ql-bold': 'Bold (Ctrl+B)',
-            '.ql-italic': 'Italic (Ctrl+I)',
-            '.ql-underline': 'Underline (Ctrl+U)',
-            '.ql-strike': 'Strikethrough',
-            '.ql-link': 'Insert Link',
-            '.ql-image': 'Insert Image',
-            '.ql-video': 'Insert Video',
-            '.ql-list[value="ordered"]': 'Ordered List',
-            '.ql-list[value="bullet"]': 'Bulleted List',
-            '.ql-indent[value="-1"]': 'Decrease Indent',
-            '.ql-indent[value="+1"]': 'Increase Indent',
-            '.ql-script[value="sub"]': 'Subscript',
-            '.ql-script[value="super"]': 'Superscript',
-            '.ql-header[value="1"]': 'Header 1',
-            '.ql-header[value="2"]': 'Header 2',
-            '.ql-align': 'Alignment',
-            '.ql-color': 'Font Color',
-            '.ql-background': 'Background Color',
-            '.ql-font': 'Font',
-            '.ql-size': 'Font Size',
-            '.ql-direction': 'Text Direction',
-            '.ql-clean': 'Remove Formatting',
-            '.ql-html': 'Insert Custom HTML'
+            'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
+            'ql-blockquote': 'Blockquote', 'ql-code-block': 'Code Block',
+            'ql-header[value="1"]': 'Heading 1', 'ql-header[value="2"]': 'Heading 2',
+            'ql-list[value="ordered"]': 'Ordered List', 'ql-list[value="bullet"]': 'Bulleted List',
+            'ql-indent[value="-1"]': 'Decrease Indent', 'ql-indent[value="+1"]': 'Increase Indent',
+            'ql-direction': 'Text Direction', 'ql-script[value="sub"]': 'Subscript', 'ql-script[value="super"]': 'Superscript',
+            'ql-link': 'Insert Link', 'ql-image': 'Insert Image', 'ql-video': 'Insert Video',
+            'ql-clean': 'Clear Formatting', 'ql-html': 'Insert HTML'
         };
-
-        for (const selector in tooltips) {
-            const elem = document.querySelector(`.ql-toolbar ${selector}`);
-            if (elem) {
-                elem.setAttribute('title', tooltips[selector]);
-            }
-        }
+        Object.keys(tooltips).forEach(selector => {
+            const el = document.querySelector(`.ql-toolbar .${selector}`);
+            if (el) el.setAttribute('title', tooltips[selector]);
+        });
     }
+    // ✅ END: Quill Tooltip Function
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = ""; 
         
-        // ✅ FIX 1: Updated Quill Initialization with the new HTML button
-        if (!window.mainQuillEditor) {
+        if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
+            // ✅ START: Quill Toolbar and Handler Fix
+            const quillToolbarOptions = {
+                container: [
+                    [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'direction': 'rtl' }, { 'align': [] }],
+                    ['link', 'image', 'video', 'html'], // Added 'html' button
+                    ['clean']
+                ],
+                handlers: {
+                    'html': function() {
+                        htmlTextarea.value = ''; // Clear previous content
+                        insertHtmlModalOverlay.classList.remove('hidden');
+                    }
+                }
+            };
+            // ✅ END: Quill Toolbar and Handler Fix
 
-            window.mainQuillEditor = new Quill('#quillEditor', { 
+            mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
-                    toolbar: {
-                        container: [
-                            [{ 'header': [1, 2, 3, false] }, { 'font': [] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'color': [] }, { 'background': [] }],
-                            [{ 'script': 'sub'}, { 'script': 'super' }],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'indent': '-1'}, { 'indent': '+1' }],
-                            [{ 'direction': 'rtl' }, { 'align': [] }],
-                            ['link', 'image', 'video', 'blockquote', 'code-block'],
-                            ['html'], // The new custom button
-                            ['clean']
-                        ],
-                        handlers: {
-                            'html': quillInsertHtmlHandler // Registering the handler
-                        }
-                    },
-                    imageResize: { 
-                        modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] 
-                    }
+                    toolbar: quillToolbarOptions,
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
                 },
                 placeholder: 'Enter detailed content here...'
             });
             
-            addQuillToolbarTooltips(); // Add tooltips after initialization
+            // ✅ FIX: Add tooltips after editor initialization
+            addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = e => window.mainQuillEditor.insertEmbed(window.mainQuillEditor.getSelection(true).index, 'image', e.target.result);
+                    reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
             });
@@ -2666,13 +2658,13 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            window.mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            window.mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
+            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2706,7 +2698,7 @@
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: window.mainQuillEditor.root.innerHTML,
+            content: mainQuillEditor.root.innerHTML,
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2768,8 +2760,10 @@
         deleteConfirmModalOverlay.classList.add('hidden');
         await loadAndStructureData();
         
-        if (window.location.hash.includes(itemId)) { // Check if the deleted item ID is in the hash
-            window.location.hash = `#home`;
+        const currentHash = window.location.hash;
+        const itemSlug = findItem(itemId)?.slug;
+        if(itemSlug && currentHash.includes(`/${itemSlug}`)) {
+             window.location.hash = `#home`;
         } else {
             handleNavigation();
         }
@@ -2842,26 +2836,19 @@
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
         
-        // ✅ START: HTML Insert Modal Event Listeners
-        confirmHtmlInsertBtn.addEventListener('click', () => {
-            const htmlToInsert = htmlInsertTextarea.value;
-            if (htmlToInsert) {
-                try {
-                    const delta = window.mainQuillEditor.clipboard.convert(htmlToInsert);
-                    window.mainQuillEditor.setContents(delta, 'user');
-                    showToast('HTML content loaded successfully.', 'success');
-                } catch (e) {
-                    console.error("Error converting HTML to Delta:", e);
-                    showToast('Could not parse the provided HTML.', 'error');
-                }
+        // ✅ START: HTML Insert Modal Listeners
+        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
+            insertHtmlModalOverlay.classList.add('hidden');
+        }));
+        confirmInsertHtmlBtn.addEventListener('click', () => {
+            if (mainQuillEditor) {
+                const html = htmlTextarea.value;
+                const delta = mainQuillEditor.clipboard.convert(html);
+                mainQuillEditor.setContents(delta, 'silent');
             }
-            htmlInsertModalOverlay.classList.add('hidden');
+            insertHtmlModalOverlay.classList.add('hidden');
         });
-
-        [closeHtmlInsertModalBtn, cancelHtmlInsertBtn].forEach(btn => {
-            btn.addEventListener('click', () => htmlInsertModalOverlay.classList.add('hidden'));
-        });
-        // ✅ END: HTML Insert Modal Event Listeners
+        // ✅ END: HTML Insert Modal Listeners
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
