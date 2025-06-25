@@ -2248,7 +2248,28 @@
         }
 
         if (activityLogTbody) {
-            activityLogTbody.innerHTML = (activityLog || []).map(row => {
+            // ✅ START: Filter for unique recent view activities
+            const uniqueActivity = [];
+            const seenViewKeys = new Set();
+            
+            // The log is already sorted from newest to oldest
+            for (const log of (activityLog || [])) {
+                if (log.action === 'viewed') {
+                    const key = `${log.user_id}-${log.item_id}`;
+                    // Only add the FIRST (newest) view we encounter for this user/item combo
+                    if (!seenViewKeys.has(key)) {
+                        uniqueActivity.push(log);
+                        seenViewKeys.add(key);
+                    }
+                } else {
+                    // For any other action (create, comment, etc.), always show it.
+                    uniqueActivity.push(log);
+                }
+            }
+            // ✅ END: Filter for unique recent view activities
+
+            // Now, map over the filtered 'uniqueActivity' array
+            activityLogTbody.innerHTML = uniqueActivity.map(row => {
                 const item = findItem(row.item_id);
                 const itemTitle = item ? item.title : 'Unknown Item';
                 const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
@@ -2260,7 +2281,8 @@
                         <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
                         <td>${formatReadableDate(row.timestamp)}</td>
                     </tr>
-                `}).join('') || '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No activity found for the current filters.</td></tr>';
+                `
+            }).join('') || '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No activity found for the current filters.</td></tr>';
         }
     }
     
