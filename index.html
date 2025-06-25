@@ -538,7 +538,15 @@
         .ql-toolbar .ql-picker-label { color: var(--text-color-muted); }
         .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
         .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
-
+        
+        /* ✅ START: Custom Quill Button for HTML Insertion */
+        .ql-toolbar .ql-html::before {
+            content: '</>';
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        /* ✅ END: Custom Quill Button for HTML Insertion */
 
         .ql-container {
             background: var(--bg-color-alt);
@@ -2499,6 +2507,25 @@
         contentTypeSelect.dispatchEvent(new Event('change')); 
         document.getElementById('contentTitle').focus();
     }
+    
+    // ✅ START: Handler function for the new HTML button
+    function quillInsertHtmlHandler() {
+        const quill = this.quill;
+        const htmlToInsert = prompt('ألصق كود HTML هنا:');
+        if (htmlToInsert) {
+            try {
+                // Use the clipboard module to convert HTML to a Quill Delta
+                const delta = quill.clipboard.convert(htmlToInsert);
+                // Replace the entire editor content with the new Delta
+                quill.setContents(delta, 'user');
+                showToast('تم تحميل محتوى HTML بنجاح.', 'success');
+            } catch (e) {
+                console.error("Error converting HTML to Delta:", e);
+                showToast('لم يتمكن من تحليل كود HTML.', 'error');
+            }
+        }
+    }
+    // ✅ END: Handler function
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
@@ -2507,26 +2534,39 @@
         
         if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
+
+            // ✅ START: Updated Quill Initialization
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
-                    toolbar: [
-      [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      [{ 'header': 1 }, { 'header': 2 }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'direction': 'rtl' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
+                    toolbar: {
+                        // Define the toolbar buttons, including our new 'html' button
+                        container: [
+                            [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'script': 'sub'}, { 'script': 'super' }],
+                            [{ 'header': 1 }, { 'header': 2 }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'indent': '-1'}, { 'indent': '+1' }],
+                            [{ 'direction': 'rtl' }],
+                            [{ 'align': [] }],
+                            ['link', 'image', 'video', 'html'], // Added 'html' button here
+                            ['clean']
+                        ],
+                        // Define the handler for the 'html' button
+                        handlers: {
+                            'html': quillInsertHtmlHandler
+                        }
+                    },
+                    imageResize: { 
+                        modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] 
+                    }
                 },
                 placeholder: 'Enter detailed content here...'
             });
+            // ✅ END: Updated Quill Initialization
+
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
