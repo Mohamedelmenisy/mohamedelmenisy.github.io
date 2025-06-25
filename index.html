@@ -1728,7 +1728,7 @@
     });
     
     let kbSystemData = { sections: [] };
-    let mainQuillEditor;
+    // let mainQuillEditor; // No longer needed as a local-scope variable
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance;
@@ -2558,7 +2558,7 @@
         contentTypeSelect.value = template.type;
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
-        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
+        if (window.mainQuillEditor) window.mainQuillEditor.root.innerHTML = template.content;
         contentTagsInput.value = template.tags.join(', ');
         addContentForm.classList.remove('hidden');
         templateSelectionContainer.classList.add('hidden');
@@ -2590,9 +2590,8 @@
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = ""; 
         
-        if (!mainQuillEditor) {
+        if (!window.mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
-            // ✅ START: Quill Toolbar and Handler Fix
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2612,25 +2611,26 @@
                     }
                 }
             };
-            // ✅ END: Quill Toolbar and Handler Fix
-
-            mainQuillEditor = new Quill('#quillEditor', { 
+            
+            // ✅ START: GLOBAL QUILL EDITOR INITIALIZATION
+            window.mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: quillToolbarOptions,
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
+                    clipboard: { matchVisual: false } // Ensures raw HTML is pasted correctly
                 },
                 placeholder: 'Enter detailed content here...'
             });
+            // ✅ END: GLOBAL QUILL EDITOR INITIALIZATION
             
-            // ✅ FIX: Add tooltips after editor initialization
             addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
+                    reader.onload = e => window.mainQuillEditor.insertEmbed(window.mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
             });
@@ -2658,13 +2658,13 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
+            window.mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
+            window.mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2698,7 +2698,7 @@
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: mainQuillEditor.root.innerHTML,
+            content: window.mainQuillEditor.root.innerHTML,
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2841,11 +2841,11 @@
             insertHtmlModalOverlay.classList.add('hidden');
         }));
         confirmInsertHtmlBtn.addEventListener('click', () => {
-            if (mainQuillEditor) {
+            if (window.mainQuillEditor) {
                 const html = htmlTextarea.value;
-                const range = mainQuillEditor.getSelection(true); // Get cursor position
+                const range = window.mainQuillEditor.getSelection(true); // Get cursor position
                 // Paste the raw HTML at the current cursor position.
-                mainQuillEditor.clipboard.dangerouslyPasteHTML(range.index, html, 'user');
+                window.mainQuillEditor.clipboard.dangerouslyPasteHTML(range.index, html, 'user');
             }
             insertHtmlModalOverlay.classList.add('hidden');
         });
