@@ -2314,10 +2314,8 @@
             return;
         }
 
-        // --- MODIFICATION START ---
-        // Log every view action directly to the activity log instead of using unique view RPC.
+        // Log every view action directly to the activity log
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
-        // --- MODIFICATION END ---
         
         await loadAndStructureData(); 
         const updatedItemData = findItem(itemData.id);
@@ -2535,7 +2533,17 @@
             return;
         }
 
-        historyTbody.innerHTML = data.map(log => `
+        // Filter for unique users, keeping only their most recent activity
+        const uniqueHistory = [];
+        const usersSeen = new Set();
+        for (const log of data) {
+            if (!usersSeen.has(log.user_name)) {
+                uniqueHistory.push(log);
+                usersSeen.add(log.user_name);
+            }
+        }
+
+        historyTbody.innerHTML = uniqueHistory.map(log => `
             <tr>
                 <td>${escapeHTML(log.user_name)}</td>
                 <td><span class="action-badge ${log.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(log.action)}</span></td>
