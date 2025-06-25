@@ -1636,6 +1636,8 @@
       return data;
     }
 
+    // ✅ FIX 2: Dashboard filter logic
+    // This function now maps user IDs to names for the insights table, ensuring filters work correctly.
     async function fetchDashboardTableData() {
         const { data: users, error: usersError } = await supabase.from('users').select('id, name, email');
         if(usersError) console.error("Could not fetch users for email mapping:", usersError);
@@ -1650,9 +1652,15 @@
             return { ...log, user_email: user?.email || null };
         });
 
+        const insightsWithUserName = (insights || []).map(insight => {
+            // Assumes 'last_viewed_by' from the view is the user_id. We map it to the user's name.
+            const user = (users || []).find(u => u.id === insight.last_viewed_by); 
+            return { ...insight, last_viewed_by: user?.name || null }; // Overwrite the ID with the name
+        });
+
         return {
             activityLog: activityLogWithEmail,
-            articleViews: insights || [] // ✅ FIX: Directly use the result from fetchInsights
+            articleViews: insightsWithUserName
         };
     }
 
@@ -1676,7 +1684,7 @@
     });
     
     let kbSystemData = { sections: [] };
-    let mainQuillEditor;
+    // let mainQuillEditor; // This is now a global window property
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance;
@@ -1755,7 +1763,6 @@
        return tmp.textContent || tmp.innerText || "";
     }
     
-    // ✅ NEW: Slug creation function for user-friendly URLs
     function createSlug(text) {
         if (!text) return 'untitled';
         return text
@@ -1813,7 +1820,6 @@
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
-                // ✅ ADD: Create a slug for each article title
                 parentSection.items.push({ ...article, slug: createSlug(article.title) });
             } else {
                 console.warn(`Article "${article.title}" has an unknown sub_category_id: ${article.sub_category_id}`);
@@ -1911,7 +1917,6 @@
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
         const isAdmin = currentUser?.role === 'admin';
-        // ✅ FIX: Use item.slug in the URL
         const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
@@ -1980,6 +1985,18 @@
         
         const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a,b) => (b.total_views || 0) - (a.total_views || 0)).slice(0,3);
 
+        // ✅ FIX 3: Add visual cue for date picker
+        const dateInputHTML = `
+            <div class="form-group">
+                <div style="position: relative;">
+                     <input type="date" id="filterDate" title="Filter by date" style="width: 100%;">
+                     <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-color-muted);">
+                        <i class="fas fa-calendar-alt"></i>
+                     </span>
+                </div>
+            </div>
+        `;
+
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
                 <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
@@ -2009,7 +2026,6 @@
                 <canvas id="visitorsChart"></canvas>
             </div>
             
-            <!-- ✅ NEW: Container for filters and tables -->
             <div class="dashboard-tables-container" style="margin-top: 1.5rem;">
                 <div class="dashboard-filter-bar">
                     <div class="form-group">
@@ -2018,9 +2034,7 @@
                     <div class="form-group">
                         <input type="email" id="filterUserEmail" placeholder="Filter by User Email..." autocomplete="off">
                     </div>
-                    <div class="form-group">
-                        <input type="date" id="filterDate" title="Filter by date">
-                    </div>
+                    ${dateInputHTML}
                     <div class="filter-buttons">
                         <button id="applyFiltersBtn" class="button"><i class="fas fa-filter"></i> Apply</button>
                         <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
@@ -2228,7 +2242,6 @@
         });
     }
     
-    // ✅ NEW: Find item by ID
     function findItem(itemId) {
         for (const section of kbSystemData.sections) {
             const item = section.items?.find(i => i.id === itemId);
@@ -2237,7 +2250,6 @@
         return null;
     }
     
-    // ✅ NEW: Find item by Slug
     function findItemBySlug(sectionSlug, itemSlug) {
         const section = kbSystemData.sections.find(s => s.slug === sectionSlug);
         if (section) {
@@ -2500,7 +2512,7 @@
         contentTypeSelect.value = template.type;
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
-        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
+        if (window.mainQuillEditor) window.mainQuillEditor.root.innerHTML = template.content;
         contentTagsInput.value = template.tags.join(', ');
         addContentForm.classList.remove('hidden');
         templateSelectionContainer.classList.add('hidden');
@@ -2508,55 +2520,85 @@
         document.getElementById('contentTitle').focus();
     }
     
-    // ✅ START: Handler function for the new HTML button
+    // ✅ FIX 1: Handler function for the new "Insert HTML" button
     function quillInsertHtmlHandler() {
         const quill = this.quill;
-        const htmlToInsert = prompt('ألصق كود HTML هنا:');
+        const htmlToInsert = prompt('Paste your HTML code here:');
         if (htmlToInsert) {
             try {
-                // Use the clipboard module to convert HTML to a Quill Delta
                 const delta = quill.clipboard.convert(htmlToInsert);
-                // Replace the entire editor content with the new Delta
                 quill.setContents(delta, 'user');
-                showToast('تم تحميل محتوى HTML بنجاح.', 'success');
+                showToast('HTML content loaded successfully.', 'success');
             } catch (e) {
                 console.error("Error converting HTML to Delta:", e);
-                showToast('لم يتمكن من تحليل كود HTML.', 'error');
+                showToast('Could not parse the provided HTML.', 'error');
             }
         }
     }
-    // ✅ END: Handler function
+
+    // ✅ FIX 1: Utility to add tooltips to Quill's toolbar
+    function addQuillToolbarTooltips() {
+        const tooltips = {
+            '.ql-bold': 'Bold (Ctrl+B)',
+            '.ql-italic': 'Italic (Ctrl+I)',
+            '.ql-underline': 'Underline (Ctrl+U)',
+            '.ql-strike': 'Strikethrough',
+            '.ql-link': 'Insert Link',
+            '.ql-image': 'Insert Image',
+            '.ql-video': 'Insert Video',
+            '.ql-list[value="ordered"]': 'Ordered List',
+            '.ql-list[value="bullet"]': 'Bulleted List',
+            '.ql-indent[value="-1"]': 'Decrease Indent',
+            '.ql-indent[value="+1"]': 'Increase Indent',
+            '.ql-script[value="sub"]': 'Subscript',
+            '.ql-script[value="super"]': 'Superscript',
+            '.ql-header[value="1"]': 'Header 1',
+            '.ql-header[value="2"]': 'Header 2',
+            '.ql-align': 'Alignment',
+            '.ql-color': 'Font Color',
+            '.ql-background': 'Background Color',
+            '.ql-font': 'Font',
+            '.ql-size': 'Font Size',
+            '.ql-direction': 'Text Direction',
+            '.ql-clean': 'Remove Formatting',
+            '.ql-html': 'Insert HTML'
+        };
+
+        for (const selector in tooltips) {
+            const elem = document.querySelector(`.ql-toolbar ${selector}`);
+            if (elem) {
+                elem.setAttribute('title', tooltips[selector]);
+            }
+        }
+    }
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = ""; 
         
-        if (!mainQuillEditor) {
+        // ✅ FIX 1: Updated Quill Initialization
+        if (!window.mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
 
-            // ✅ START: Updated Quill Initialization with GLOBAL variable
-            window.mainQuillEditor = mainQuillEditor = new Quill('#quillEditor', { 
+            window.mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: {
-                        // Define the toolbar buttons, including our new 'html' button
                         container: [
-                            [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                            [{ 'header': [1, 2, 3, false] }, { 'font': [] }],
                             ['bold', 'italic', 'underline', 'strike'],
                             [{ 'color': [] }, { 'background': [] }],
                             [{ 'script': 'sub'}, { 'script': 'super' }],
-                            [{ 'header': 1 }, { 'header': 2 }],
                             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                             [{ 'indent': '-1'}, { 'indent': '+1' }],
-                            [{ 'direction': 'rtl' }],
-                            [{ 'align': [] }],
-                            ['link', 'image', 'video', 'html'], // Added 'html' button here
+                            [{ 'direction': 'rtl' }, { 'align': [] }],
+                            ['link', 'image', 'video', 'blockquote', 'code-block'],
+                            ['html'], // Added 'html' button
                             ['clean']
                         ],
-                        // Define the handler for the 'html' button
                         handlers: {
-                            'html': quillInsertHtmlHandler
+                            'html': quillInsertHtmlHandler // Register handler
                         }
                     },
                     imageResize: { 
@@ -2565,13 +2607,14 @@
                 },
                 placeholder: 'Enter detailed content here...'
             });
-            // ✅ END: Updated Quill Initialization
+            
+            addQuillToolbarTooltips(); // Add tooltips after initialization
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
+                    reader.onload = e => window.mainQuillEditor.insertEmbed(window.mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
             });
@@ -2599,13 +2642,13 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
+            window.mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
+            window.mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2639,7 +2682,7 @@
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: mainQuillEditor.root.innerHTML,
+            content: window.mainQuillEditor.root.innerHTML,
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2736,7 +2779,6 @@
     function handleNavigation() {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
-        // ✅ FIX: Split to get section and item slugs
         const [sectionSlug, itemSlug] = hash.split('/');
         
         highlightSidebarLink(sectionSlug);
