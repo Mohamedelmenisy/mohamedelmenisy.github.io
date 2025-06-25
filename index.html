@@ -1462,6 +1462,29 @@
 </div>
 </div>
 </div>
+<!-- ✅ START: HTML Insert Modal -->
+<div class="modal-overlay hidden" id="htmlInsertModalOverlay">
+    <div class="modal-content" style="max-width: 40rem; z-index: 1001;">
+        <div class="modal-header">
+            <h2>Insert Custom HTML</h2>
+            <button aria-label="Close" class="close-button" id="closeHtmlInsertModalBtn">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 0.9rem; color: var(--text-color-muted); margin-bottom: 1rem;">
+                Paste your HTML code below. The editor will attempt to convert it into rich text.
+                Complex layouts or scripts may not be fully supported.
+            </p>
+            <div class="form-group">
+                <textarea id="htmlInsertTextarea" style="min-height: 250px; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 0.9rem;" placeholder="e.g., <h2>My Title</h2><p>Some content...</p>"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="button" id="confirmHtmlInsertBtn" type="button"><i class="fas fa-check"></i> Insert Now</button>
+            <button class="button-secondary" id="cancelHtmlInsertBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+    </div>
+</div>
+<!-- ✅ END: HTML Insert Modal -->
 <div class="container-fluid">
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
@@ -1725,6 +1748,14 @@
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
+    
+    // ✅ START: HTML Insert Modal Elements
+    const htmlInsertModalOverlay = document.getElementById('htmlInsertModalOverlay');
+    const closeHtmlInsertModalBtn = document.getElementById('closeHtmlInsertModalBtn');
+    const cancelHtmlInsertBtn = document.getElementById('cancelHtmlInsertBtn');
+    const confirmHtmlInsertBtn = document.getElementById('confirmHtmlInsertBtn');
+    const htmlInsertTextarea = document.getElementById('htmlInsertTextarea');
+    // ✅ END: HTML Insert Modal Elements
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -2520,23 +2551,16 @@
         document.getElementById('contentTitle').focus();
     }
     
-    // ✅ FIX 1: Handler function for the new "Insert HTML" button
+    // ✅ FIX 1: Handler function for the new "Insert HTML" button in the toolbar
     function quillInsertHtmlHandler() {
-        const quill = this.quill;
-        const htmlToInsert = prompt('Paste your HTML code here:');
-        if (htmlToInsert) {
-            try {
-                const delta = quill.clipboard.convert(htmlToInsert);
-                quill.setContents(delta, 'user');
-                showToast('HTML content loaded successfully.', 'success');
-            } catch (e) {
-                console.error("Error converting HTML to Delta:", e);
-                showToast('Could not parse the provided HTML.', 'error');
-            }
-        }
+        // 'this.quill' is the Quill instance passed automatically by the handler
+        const quill = this.quill; 
+        htmlInsertTextarea.value = ''; // Clear the textarea
+        htmlInsertModalOverlay.classList.remove('hidden');
+        htmlInsertTextarea.focus();
     }
 
-    // ✅ FIX 1: Utility to add tooltips to Quill's toolbar
+    // ✅ FIX 1: Utility to add tooltips to Quill's toolbar for better UX
     function addQuillToolbarTooltips() {
         const tooltips = {
             '.ql-bold': 'Bold (Ctrl+B)',
@@ -2561,7 +2585,7 @@
             '.ql-size': 'Font Size',
             '.ql-direction': 'Text Direction',
             '.ql-clean': 'Remove Formatting',
-            '.ql-html': 'Insert HTML'
+            '.ql-html': 'Insert Custom HTML'
         };
 
         for (const selector in tooltips) {
@@ -2577,7 +2601,7 @@
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = ""; 
         
-        // ✅ FIX 1: Updated Quill Initialization
+        // ✅ FIX 1: Updated Quill Initialization with the new HTML button
         if (!window.mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
 
@@ -2594,11 +2618,11 @@
                             [{ 'indent': '-1'}, { 'indent': '+1' }],
                             [{ 'direction': 'rtl' }, { 'align': [] }],
                             ['link', 'image', 'video', 'blockquote', 'code-block'],
-                            ['html'], // Added 'html' button
+                            ['html'], // The new custom button
                             ['clean']
                         ],
                         handlers: {
-                            'html': quillInsertHtmlHandler // Register handler
+                            'html': quillInsertHtmlHandler // Registering the handler
                         }
                     },
                     imageResize: { 
@@ -2817,6 +2841,27 @@
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+        
+        // ✅ START: HTML Insert Modal Event Listeners
+        confirmHtmlInsertBtn.addEventListener('click', () => {
+            const htmlToInsert = htmlInsertTextarea.value;
+            if (htmlToInsert) {
+                try {
+                    const delta = window.mainQuillEditor.clipboard.convert(htmlToInsert);
+                    window.mainQuillEditor.setContents(delta, 'user');
+                    showToast('HTML content loaded successfully.', 'success');
+                } catch (e) {
+                    console.error("Error converting HTML to Delta:", e);
+                    showToast('Could not parse the provided HTML.', 'error');
+                }
+            }
+            htmlInsertModalOverlay.classList.add('hidden');
+        });
+
+        [closeHtmlInsertModalBtn, cancelHtmlInsertBtn].forEach(btn => {
+            btn.addEventListener('click', () => htmlInsertModalOverlay.classList.add('hidden'));
+        });
+        // ✅ END: HTML Insert Modal Event Listeners
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
