@@ -2185,7 +2185,21 @@
                 return d.toLocaleDateString('en-US', { weekday: 'short' });
             }).reverse();
 
-            const viewsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'viewed' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
+            // ✅ START: Calculate UNIQUE views per day
+            const viewsData = labels.map(label => {
+                // Get all view logs for a specific day
+                const dailyViews = originalDashboardData.activityLog.filter(log => 
+                    log.action === 'viewed' && 
+                    new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label
+                );
+                
+                // Use a Set to count only unique user-article combinations for that day
+                const uniqueDailyViews = new Set(dailyViews.map(v => `${v.user_id}-${v.item_id}`));
+                
+                return uniqueDailyViews.size;
+            });
+            // ✅ END: Calculate UNIQUE views per day
+
             const commentsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'commented' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
 
             visitorsChartInstance = new Chart(visitorsCtx, {
