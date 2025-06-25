@@ -539,12 +539,14 @@
         .ql-snow .ql-picker.ql-expanded .ql-picker-options { background-color: var(--bg-color-alt); border-color: var(--border-color-darker); }
         .ql-snow .ql-picker-options .ql-picker-item:hover { color: var(--primary-color); }
 
+        /* ✅ START: Quill Custom Button Style */
         .ql-toolbar .ql-html::after {
             content: '</>';
             font-weight: bold;
             font-family: monospace;
             font-size: 14px;
         }
+        /* ✅ END: Quill Custom Button Style */
 
         .ql-container {
             background: var(--bg-color-alt);
@@ -560,25 +562,6 @@
             color: var(--text-color-muted);
             opacity: 0.6;
         }
-        
-        /* ✅ START: Quill Table Styles */
-        .ql-editor table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-        .ql-editor th,
-        .ql-editor td {
-            border: 1px solid var(--border-color-darker);
-            padding: 0.75rem;
-            text-align: left;
-        }
-        .ql-editor th {
-            background-color: var(--bg-color);
-            font-weight: 600;
-            color: var(--text-color);
-        }
-        /* ✅ END: Quill Table Styles */
 
 
         footer {
@@ -1011,6 +994,7 @@
             flex-shrink: 0;
         }
 
+        /* ✅ START: Date Input with Icon Style */
         .dashboard-filter-bar .date-input-container {
             position: relative;
         }
@@ -1025,6 +1009,7 @@
         .dashboard-filter-bar .date-input-container input[type="date"] {
             padding-right: 2.5rem; /* Make space for the icon */
         }
+        /* Style the date input to look consistent and hide the native icon */
         .dashboard-filter-bar .date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
             position: absolute;
             top: 0;
@@ -1037,6 +1022,7 @@
             background: transparent;
             cursor: pointer;
         }
+        /* ✅ END: Date Input with Icon Style */
 
         .dashboard-stat-card {
             background-color: var(--bg-color-alt);
@@ -1206,6 +1192,7 @@
             text-decoration: underline;
         }
         
+        /* ✅ View History Table Formatting Fix */
         #viewHistorySection table {
             table-layout: fixed;
             width: 100%;
@@ -1741,7 +1728,7 @@
     });
     
     let kbSystemData = { sections: [] };
-    // window.mainQuillEditor is defined globally in openAddContentModal
+    let mainQuillEditor;
     let currentUser = null; 
     let currentOpenItem = null;
     let visitorsChartInstance;
@@ -1783,11 +1770,13 @@
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
     
+    // ✅ START: HTML Insert Modal Elements
     const insertHtmlModalOverlay = document.getElementById('insertHtmlModalOverlay');
     const closeInsertHtmlModalBtn = document.getElementById('closeInsertHtmlModalBtn');
     const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
+    // ✅ END: HTML Insert Modal Elements
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -2139,10 +2128,11 @@
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
         document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
 
+        // ✅ FIX: Setup filter listeners to trigger on input for instant feedback
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
         document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
         document.getElementById('filterUserEmail').addEventListener('input', applyDashboardFilters);
-        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters);
+        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters); // 'change' is better for date inputs
         
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('filterUserName').value = '';
@@ -2568,7 +2558,7 @@
         contentTypeSelect.value = template.type;
         document.getElementById('contentTitle').value = template.titlePrefix;
         document.getElementById('contentSummary').value = template.summary;
-        if (window.mainQuillEditor) window.mainQuillEditor.root.innerHTML = template.content;
+        if (mainQuillEditor) mainQuillEditor.root.innerHTML = template.content;
         contentTagsInput.value = template.tags.join(', ');
         addContentForm.classList.remove('hidden');
         templateSelectionContainer.classList.add('hidden');
@@ -2576,6 +2566,7 @@
         document.getElementById('contentTitle').focus();
     }
     
+    // ✅ START: Quill Tooltip Function
     function addQuillTooltips() {
         const tooltips = {
             'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
@@ -2592,14 +2583,16 @@
             if (el) el.setAttribute('title', tooltips[selector]);
         });
     }
+    // ✅ END: Quill Tooltip Function
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = ""; 
         
-        if (!window.mainQuillEditor) {
+        if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
+            // ✅ START: Quill Toolbar and Handler Fix
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2609,35 +2602,35 @@
                     [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
                     [{ 'direction': 'rtl' }, { 'align': [] }],
-                    ['link', 'image', 'video', 'html'],
+                    ['link', 'image', 'video', 'html'], // Added 'html' button
                     ['clean']
                 ],
                 handlers: {
                     'html': function() {
-                        htmlTextarea.value = '';
+                        htmlTextarea.value = ''; // Clear previous content
                         insertHtmlModalOverlay.classList.remove('hidden');
                     }
                 }
             };
-            
-            // ✅ GLOBAL QUILL EDITOR INITIALIZATION
-            window.mainQuillEditor = new Quill('#quillEditor', { 
+            // ✅ END: Quill Toolbar and Handler Fix
+
+            mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
                 modules: { 
                     toolbar: quillToolbarOptions,
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
-                    clipboard: { matchVisual: false }
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
                 },
                 placeholder: 'Enter detailed content here...'
             });
             
+            // ✅ FIX: Add tooltips after editor initialization
             addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = e => window.mainQuillEditor.insertEmbed(window.mainQuillEditor.getSelection(true).index, 'image', e.target.result);
+                    reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
             });
@@ -2665,13 +2658,13 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            window.mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
         } else {
             document.getElementById('addContentModalTitle').textContent = 'Add New Content';
-            window.mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
+            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
@@ -2705,7 +2698,7 @@
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: window.mainQuillEditor.root.innerHTML,
+            content: mainQuillEditor.root.innerHTML,
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2843,20 +2836,19 @@
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
         
+        // ✅ START: HTML Insert Modal Listeners
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
-
         confirmInsertHtmlBtn.addEventListener('click', () => {
-            if (window.mainQuillEditor) {
+            if (mainQuillEditor) {
                 const html = htmlTextarea.value;
-                const range = window.mainQuillEditor.getSelection(true);
-                window.mainQuillEditor.clipboard.dangerouslyPasteHTML(range.index, html, 'user');
-                insertHtmlModalOverlay.classList.add('hidden');
-            } else {
-                showToast('Editor not available.', 'error');
+                const delta = mainQuillEditor.clipboard.convert(html);
+                mainQuillEditor.setContents(delta, 'silent');
             }
+            insertHtmlModalOverlay.classList.add('hidden');
         });
+        // ✅ END: HTML Insert Modal Listeners
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
@@ -2868,4 +2860,4 @@
     initializeApp();
 </script>
 </body>
-</html>
+</html
