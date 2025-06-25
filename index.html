@@ -1857,21 +1857,38 @@
     window.copyScriptToClipboard = copyScriptToClipboard;
 
     async function loadAndStructureData() {
-        console.log("Loading data from Supabase...");
-        const [categories, articles] = await Promise.all([
+        console.log("Loading and merging data from Supabase...");
+        
+        // Fetch all data sources in parallel
+        const [categories, articles, insights] = await Promise.all([
             fetchSubCategories(),
-            fetchArticles()
+            fetchArticles(),
+            fetchInsights() // <-- Fetch the statistics as well
         ]);
         
+        // Create a quick lookup map for insights based on article_id
+        const insightsMap = new Map(insights.map(i => [i.article_id, i]));
+
+        // Structure the sections
         const sections = categories.map(cat => ({
             ...cat, 
             slug: createSlug(cat.name),
             items: []
         }));
 
+        // Process articles and merge insights data into each article object
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
+                const insightData = insightsMap.get(article.id);
+                
+                // Merge the total_views from insights into the main article object
+                if (insightData) {
+                    article.total_views = insightData.total_views;
+                } else {
+                    article.total_views = 0; // Default to 0 if no views recorded yet
+                }
+                
                 parentSection.items.push({ ...article, slug: createSlug(article.title) });
             } else {
                 console.warn(`Article "${article.title}" has an unknown sub_category_id: ${article.sub_category_id}`);
@@ -1879,7 +1896,7 @@
         });
         
         kbSystemData.sections = sections;
-        console.log("Data loaded and structured:", kbSystemData);
+        console.log("Data loaded and successfully merged:", kbSystemData);
     }
 
     function populateSidebar() {
