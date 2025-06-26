@@ -1613,19 +1613,15 @@
         return { data, error };
     }
 
-    // ✅✅✅ FIX: Reverted the change that caused the error.
-    // The columns `user_name` and `user_email` did not exist in the `kb_feedback` table schema.
     async function submitFeedback(articleId, rating, reason, user) {
         const { error } = await supabase.from('kb_feedback').insert([{
             item_id: articleId,
             user_id: user.id,
-            user_name: user.name,
             rating,
             reason,
         }]);
         if (error) {
             console.error('Error submitting feedback:', error);
-            showToast(`Error submitting feedback: ${error.message}`, 'error');
         }
         return { error };
     }
@@ -1652,7 +1648,6 @@
 
         let typeToLog = itemType;
 
-        // If itemType is not provided, fetch it from the database to prevent errors
         if (!typeToLog) {
             const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
             if (fetchError || !item) {
@@ -1667,7 +1662,7 @@
             user_id: user.id,
             user_name: user.name,
             item_id: itemId,
-            item_type: typeToLog, // Use the potentially fetched type
+            item_type: typeToLog,
             action: action,
             details: details,
         }]);
@@ -2157,7 +2152,16 @@
                 return d.toLocaleDateString('en-US', { weekday: 'short' });
             }).reverse();
 
-            const viewsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'viewed' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
+            // ✅✅✅ FINAL FIX: Calculate UNIQUE views for the chart
+            const viewsData = labels.map(label => {
+                const dailyViews = originalDashboardData.activityLog.filter(log => 
+                    log.action === 'viewed' && 
+                    new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label
+                );
+                const uniqueDailyViews = new Set(dailyViews.map(v => `${v.user_id}-${v.item_id}`));
+                return uniqueDailyViews.size;
+            });
+            
             const commentsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'commented' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
 
             visitorsChartInstance = new Chart(visitorsCtx, {
@@ -2321,9 +2325,10 @@
 
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
+        // This line is commented out to rely on the database view for accurate unique counts.
         // itemData.total_views = (itemData.total_views || 0) + 1;
 
-        currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title };
+        currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
@@ -2374,7 +2379,7 @@
             </div>`;
         }
 
-        const userAvatarHtml = `<div id="userAvatar" style="width:36px; height:36px; margin-top:5px;">${(currentUser.name || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()}</div>`;
+        const userAvatarHtml = `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name||'U')}&background=random&color=fff&rounded=true&size=36" alt="User Avatar">`;
         detailHTML += `<div class="item-feedback-section">
             <h4 id="feedbackPrompt">Was this article helpful?</h4>
             <div id="feedbackInteractionContainer">
@@ -2385,7 +2390,7 @@
                 <form id="negativeFeedbackForm" class="hidden">
                     <div class="form-group"><textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea></div>
                     <button type="submit" class="button">Submit Feedback</button>
-                    <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
+                    <button type="button" id="cancelNegativeFeedbackBtn" class="button-secondary">Cancel</button>
                 </form>
             </div>
             <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.total_views || 0).toLocaleString()}</span></div>
@@ -2416,84 +2421,14 @@
             </div>`;
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        setupItemDetailEventListeners(itemData);
-
-        // Fetch new data in the background for the next navigation
-        loadAndStructureData();
-    }
-    
-    async function setupItemDetailEventListeners(itemData) {
-        renderComments(itemData.id);
         
+        renderComments(itemData.id);
+        displayViewHistory(itemData.id);
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        document.getElementById('editItemBtn')?.addEventListener('click', () => openAddContentModal(itemData.sub_category_id, itemData));
-        document.getElementById('deleteItemBtn')?.addEventListener('click', () => openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title));
-        
-        document.getElementById('downloadPdfItemBtn')?.addEventListener('click', () => {
-            const elementToPrint = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
-            elementToPrint.querySelector('.item-actions-bar')?.remove();
-            elementToPrint.querySelector('.item-feedback-section')?.remove();
-            elementToPrint.querySelector('.comments-section')?.remove();
-            elementToPrint.querySelector('#viewHistorySection')?.remove();
-            showToast('Generating PDF...', 'info', 4000);
-            const options = { margin: 0.5, filename: `${itemData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
-            html2pdf().set(options).from(elementToPrint).save();
-        });
-
-        document.getElementById('rateYesBtn')?.addEventListener('click', async () => {
-            const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
-            if (!error) {
-                await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
-                document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
-                showToast('Feedback received!', 'success');
-            }
-        });
-
-        document.getElementById('rateNoBtn')?.addEventListener('click', () => {
-            document.getElementById('ratingButtons')?.classList.add('hidden');
-            document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
-        });
-
-        document.getElementById('cancelNegativeFeedbackBtn')?.addEventListener('click', () => {
-            document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
-            document.getElementById('ratingButtons')?.classList.remove('hidden');
-        });
-
-        document.getElementById('negativeFeedbackForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const reason = document.getElementById('feedbackReason').value.trim();
-            if (reason) {
-                const { error } = await submitFeedback(itemData.id, 0, reason, currentUser);
-                 if (!error) {
-                    await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
-                    document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
-                    showToast('Feedback received, we will review it.', 'info');
-                }
-            } else {
-                showToast('Please provide a reason.', 'error');
-            }
-        });
-
-        document.getElementById('postCommentBtn')?.addEventListener('click', async () => {
-            const commentTextEl = document.getElementById('newCommentText');
-            const commentText = commentTextEl.value.trim();
-            if (!commentText) { showToast('Please enter a note.', 'error'); return; }
-
-            const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
-            if (error) {
-                showToast('Failed to post note. Check console for details.', 'error');
-                return;
-            }
-
-            await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
-            renderComments(itemData.id); 
-            commentTextEl.value = ''; 
-        });
-        
-        displayViewHistory(itemData.id);
+        loadAndStructureData();
     }
     
     async function renderComments(itemId) {
@@ -2812,11 +2747,22 @@
         
         highlightSidebarLink(sectionSlug);
 
-        if (sectionSlug === 'home') displayDashboard();
-        else if (itemSlug) displayItemDetail(sectionSlug, itemSlug);
-        else if (sectionSlug) displaySectionContent(sectionSlug);
-        else displayDashboard(); 
+        // ✅✅✅ FINAL FIX: Logic to handle event listener duplication
+        if (!itemSlug) {
+            // Remove the detailed view and its specific listeners if we're not on a detail page
+            itemDetailViewPlaceholder.classList.add('hidden');
+            currentOpenItem = null;
+        }
 
+        if (sectionSlug === 'home') {
+             displayDashboard();
+        } else if (itemSlug) {
+             displayItemDetail(sectionSlug, itemSlug);
+        } else if (sectionSlug) {
+             displaySectionContent(sectionSlug);
+        } else {
+             displayDashboard(); 
+        }
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
 
@@ -2832,13 +2778,16 @@
         userAvatar.textContent = initials;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
         
-        showToast("Connecting to database...", 'info', 1500);
         await loadAndStructureData();
-
         populateSidebar();
-        handleNavigation(); 
+
+        // ✅✅✅ FINAL FIX: Remove specific event listener setup and use delegation
+        // setupGlobalEventListeners(); // This was the old approach causing issues
         
+        handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
+        
+        // --- Setup event listeners that ONLY need to be attached once ---
         
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
         [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
@@ -2853,8 +2802,7 @@
         confirmInsertHtmlBtn.addEventListener('click', () => {
             if (mainQuillEditor) {
                 const html = htmlTextarea.value;
-                const delta = mainQuillEditor.clipboard.convert(html);
-                mainQuillEditor.setContents(delta, 'silent');
+                mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
             }
             insertHtmlModalOverlay.classList.add('hidden');
         });
@@ -2863,9 +2811,82 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
-        showToast(`Welcome back, ${currentUser.name}!`, 'success', 3000);
+        // ✅✅✅ FINAL FIX: Use a single, delegated event listener for dynamic content
+        pageContentArea.addEventListener('click', async (e) => {
+            if (!currentOpenItem) return;
+
+            const itemData = findItem(currentOpenItem.itemId);
+            if (!itemData) return;
+
+            // --- Feedback Buttons ---
+            if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
+                const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
+                if (!error) {
+                    await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
+                    document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
+                    showToast('Feedback received!', 'success');
+                } else showToast('Failed to submit feedback.', 'error');
+            }
+
+            if (e.target.id === 'rateNoBtn' || e.target.closest('#rateNoBtn')) {
+                document.getElementById('ratingButtons')?.classList.add('hidden');
+                document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
+            }
+            
+            if (e.target.id === 'cancelNegativeFeedbackBtn') {
+                document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
+                document.getElementById('ratingButtons')?.classList.remove('hidden');
+            }
+
+            // --- Comment Button ---
+            if (e.target.id === 'postCommentBtn') {
+                const commentTextEl = document.getElementById('newCommentText');
+                const commentText = commentTextEl.value.trim();
+                if (!commentText) { showToast('Please enter a note.', 'error'); return; }
+
+                const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+                if (error) { showToast('Failed to post note.', 'error'); return; }
+
+                await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
+                renderComments(itemData.id); 
+                commentTextEl.value = ''; 
+            }
+
+            // --- Action Bar Buttons ---
+            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
+            if (e.target.id === 'downloadPdfItemBtn') {
+                const el = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
+                el.querySelectorAll('.item-actions-bar, .item-feedback-section, .comments-section, #viewHistorySection').forEach(e => e.remove());
+                showToast('Generating PDF...', 'info');
+                html2pdf().set({ margin: 0.5, filename: `${itemData.title.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(el).save();
+            }
+        });
+        
+        pageContentArea.addEventListener('submit', async (e) => {
+            if (e.target.id === 'negativeFeedbackForm') {
+                e.preventDefault();
+                if (!currentOpenItem) return;
+
+                const itemData = findItem(currentOpenItem.itemId);
+                if (!itemData) return;
+
+                const reason = document.getElementById('feedbackReason').value.trim();
+                if (reason) {
+                    const { error } = await submitFeedback(itemData.id, 0, reason, currentUser);
+                    if (!error) {
+                        await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
+                        document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4>';
+                    } else showToast('Failed to submit feedback.', 'error');
+                } else showToast('Please provide a reason.', 'error');
+            }
+        });
+
+        showToast(`Welcome back, ${currentUser.name}!`, 'success');
     }
 
+    window.openEditModal = openAddContentModal;
+    window.openDeleteModal = openDeleteConfirmModal;
     initializeApp();
 </script>
 </body>
