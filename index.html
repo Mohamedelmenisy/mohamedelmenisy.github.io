@@ -1600,8 +1600,6 @@
         return data;
     }
     
-    // ✅✅✅ FIX 1: تم تعديل هذه الدالة (addComment) (بالعربية)
-    // الآن هي مسؤولة فقط عن إضافة التعليق. تم نقل تسجيل النشاط (logActivity) إلى المكان الذي يتم فيه استدعاؤها
     async function addComment(articleId, commentText, user) {
         const { data, error } = await supabase.from('kb_comments').insert([{
             item_id: articleId,
@@ -1615,19 +1613,20 @@
         return { data, error };
     }
 
-    // ✅✅✅ FIX 2: تم تعديل هذه الدالة (submitFeedback) (بالعربية)
-    // الآن هي مسؤولة فقط عن إضافة الفيدباك. تم نقل تسجيل النشاط (logActivity) إلى المكان الذي يتم فيه استدعاؤها
+    // ✅✅✅ FIX: Reverted the change that caused the error.
+    // The columns `user_name` and `user_email` did not exist in the `kb_feedback` table schema.
     async function submitFeedback(articleId, rating, reason, user) {
         const { error } = await supabase.from('kb_feedback').insert([{
             item_id: articleId,
             user_id: user.id,
-            user_name: user.name, // <-- MODIFICATION: Added user name
-            user_email: user.email, // <-- MODIFICATION: Added user email
+            // user_name: user.name,   // <-- REVERTED: This caused an error.
+            // user_email: user.email, // <-- REVERTED: This caused an error.
             rating,
             reason,
         }]);
         if (error) {
             console.error('Error submitting feedback:', error);
+            showToast(`Error submitting feedback: ${error.message}`, 'error');
         }
         return { error };
     }
@@ -1646,8 +1645,6 @@
         }
     }
 
-    // ✅✅✅ FIX 3: تم تعديل هذه الدالة (logActivity) (بالعربية)
-    // أصبحت أكثر ذكاء. إذا لم يتم تمرير نوع العنصر (itemType)، ستحاول جلبه من قاعدة البيانات لضمان عدم حدوث خطأ
     async function logActivity(user, itemId, itemType, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
@@ -1876,7 +1873,6 @@
         console.log("Data loaded successfully:", kbSystemData);
     }
     
-    // ... (populateSidebar, mobileSidebarToggle, highlightSidebarLink, renderMermaidDiagramsInElement, renderItemCard functions are unchanged and correct)
     function populateSidebar() {
         let menuHTML = '';
         const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', color: 'var(--primary-color)', slug: 'home' };
@@ -2228,24 +2224,18 @@
         }
 
         if (activityLogTbody) {
-            // ✅ START: MODIFICATION - Filter for unique recent activities
             const uniqueActivity = [];
             const seenKeys = new Set();
             
-            // The log is already sorted from newest to oldest
             for (const log of (activityLog || [])) {
-                // Create a unique key for each activity type per user per item
                 const key = `${log.user_id}-${log.item_id}-${log.action}`;
                 
-                // Add the activity only if it hasn't been seen before
                 if (!seenKeys.has(key)) {
                     uniqueActivity.push(log);
                     seenKeys.add(key);
                 }
             }
-            // ✅ END: MODIFICATION
 
-            // Now, map over the filtered 'uniqueActivity' array
             activityLogTbody.innerHTML = uniqueActivity.map(row => {
                 const item = findItem(row.item_id);
                 const itemTitle = item ? item.title : 'Unknown Item';
@@ -2330,13 +2320,10 @@
             return;
         }
 
-        // Log the view immediately. The updated logActivity function will handle fetching the type if needed.
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        // MODIFICATION: Rely on DB for view counts, remove local increment for immediate UI update.
         // itemData.total_views = (itemData.total_views || 0) + 1;
 
-        // Render the page with the locally updated data
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2436,8 +2423,6 @@
         loadAndStructureData();
     }
     
-    // ✅✅✅ FIX 4: تم تعديل هذه الدالة (setupItemDetailEventListeners) (بالعربية)
-    // الآن تستدعي logActivity بعد التأكد من نجاح عملية الحفظ وتمرر النوع الصحيح للعنصر
     async function setupItemDetailEventListeners(itemData) {
         renderComments(itemData.id);
         
@@ -2465,8 +2450,6 @@
                 await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
                 document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
                 showToast('Feedback received!', 'success');
-            } else {
-                showToast('Failed to submit feedback.', 'error');
             }
         });
 
@@ -2489,8 +2472,6 @@
                     await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
                     document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
                     showToast('Feedback received, we will review it.', 'info');
-                } else {
-                    showToast('Failed to submit feedback.', 'error');
                 }
             } else {
                 showToast('Please provide a reason.', 'error');
