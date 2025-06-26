@@ -1621,6 +1621,8 @@
         const { error } = await supabase.from('kb_feedback').insert([{
             item_id: articleId,
             user_id: user.id,
+            user_name: user.name, // <-- MODIFICATION: Added user name
+            user_email: user.email, // <-- MODIFICATION: Added user email
             rating,
             reason,
         }]);
@@ -2226,7 +2228,25 @@
         }
 
         if (activityLogTbody) {
-            activityLogTbody.innerHTML = (activityLog || []).map(row => {
+            // ✅ START: MODIFICATION - Filter for unique recent activities
+            const uniqueActivity = [];
+            const seenKeys = new Set();
+            
+            // The log is already sorted from newest to oldest
+            for (const log of (activityLog || [])) {
+                // Create a unique key for each activity type per user per item
+                const key = `${log.user_id}-${log.item_id}-${log.action}`;
+                
+                // Add the activity only if it hasn't been seen before
+                if (!seenKeys.has(key)) {
+                    uniqueActivity.push(log);
+                    seenKeys.add(key);
+                }
+            }
+            // ✅ END: MODIFICATION
+
+            // Now, map over the filtered 'uniqueActivity' array
+            activityLogTbody.innerHTML = uniqueActivity.map(row => {
                 const item = findItem(row.item_id);
                 const itemTitle = item ? item.title : 'Unknown Item';
                 const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
@@ -2238,7 +2258,7 @@
                         <td><span class="action-badge ${row.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(row.action)}</span></td>
                         <td>${formatReadableDate(row.timestamp)}</td>
                     </tr>
-                `
+                `;
             }).join('') || '<tr><td colspan="5" style="text-align:center; padding: 1rem;">No activity found for the current filters.</td></tr>';
         }
     }
@@ -2313,8 +2333,8 @@
         // Log the view immediately. The updated logActivity function will handle fetching the type if needed.
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        // Increment view count locally for instant UI update
-        itemData.total_views = (itemData.total_views || 0) + 1;
+        // MODIFICATION: Rely on DB for view counts, remove local increment for immediate UI update.
+        // itemData.total_views = (itemData.total_views || 0) + 1;
 
         // Render the page with the locally updated data
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title };
