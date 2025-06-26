@@ -1570,7 +1570,6 @@
         const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
         if (error) {
             console.error('Error fetching user profile:', error);
-            // Fallback for users who exist in auth but not in the 'users' table
             return { id: user.id, email: user.email, role: 'viewer', name: user.email };
         }
         return profile;
@@ -1592,11 +1591,7 @@
     }
 
     async function fetchArticles() {
-        const { data, error } = await supabase
-            .from('cases')
-            .select(`*`)
-            .order('created_at', { ascending: false });
-        
+        const { data, error } = await supabase.from('cases').select(`*`).order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching articles:', error);
             showToast('Failed to load articles from the database.', 'error');
@@ -1614,12 +1609,9 @@
             author_name: user.name,
             body: commentText,
         }]).select().single();
-
         if (error) {
             console.error('Error posting comment:', error);
-            // We return the error so the calling function can handle it
         }
-        // Return both data and error for the calling function to handle
         return { data, error };
     }
 
@@ -1632,11 +1624,9 @@
             rating,
             reason,
         }]);
-
         if (error) {
             console.error('Error submitting feedback:', error);
         }
-        // Return the error status for the calling function to handle
         return { error };
     }
     
@@ -1650,27 +1640,41 @@
             }]);
             if (error) throw error;
         } catch(e) {
-            console.warn("Could not save to version_history. Ensure the table exists and RLS is configured.", e.message);
+            console.warn("Could not save to version_history.", e.message);
         }
     }
 
+    // ✅✅✅ FIX 3: تم تعديل هذه الدالة (logActivity) (بالعربية)
+    // أصبحت أكثر ذكاء. إذا لم يتم تمرير نوع العنصر (itemType)، ستحاول جلبه من قاعدة البيانات لضمان عدم حدوث خطأ
     async function logActivity(user, itemId, itemType, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
             return;
         }
+
+        let typeToLog = itemType;
+
+        // If itemType is not provided, fetch it from the database to prevent errors
+        if (!typeToLog) {
+            const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
+            if (fetchError || !item) {
+                console.error(`Could not fetch item type for logging activity (ItemID: ${itemId}).`, fetchError);
+                typeToLog = 'unknown'; // Fallback
+            } else {
+                typeToLog = item.type;
+            }
+        }
+        
         const { error } = await supabase.from('activity_log').insert([{
             user_id: user.id,
             user_name: user.name,
             item_id: itemId,
-            item_type: itemType,
+            item_type: typeToLog, // Use the potentially fetched type
             action: action,
             details: details,
         }]);
         if (error) {
             console.error('Error logging activity:', error);
-            // Optionally show a toast for logging failure if it's critical
-            // showToast('Could not record your activity.', 'error');
         }
     }
 
@@ -1771,7 +1775,6 @@
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
 
-
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
         const el = document.createElement('div');
@@ -1815,10 +1818,10 @@
             .toString()
             .toLowerCase()
             .trim()
-            .replace(/\s+/g, '-') // Replace spaces with -
-            .replace(/&/g, '-and-') // Replace & with 'and'
-            .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-            .replace(/\-\-+/g, '-'); // Replace multiple - with single -
+            .replace(/\s+/g, '-') 
+            .replace(/&/g, '-and-') 
+            .replace(/[^\w\-]+/g, '') 
+            .replace(/\-\-+/g, '-'); 
     }
 
     function showToast(message, type = 'info', duration = 3000) {
@@ -1838,7 +1841,7 @@
     }
     
     async function loadAndStructureData() {
-        console.log("Loading and merging data from Supabase...");
+        console.log("Loading data from Supabase...");
         
         const [categories, articles, insights] = await Promise.all([
             fetchSubCategories(),
@@ -1858,8 +1861,6 @@
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
                 const insightData = insightsMap.get(article.id);
-                
-                // Merge view count and other stats into the main article object
                 article.total_views = insightData?.total_views || 0;
                 article.total_comments = insightData?.total_comments || 0;
                 
@@ -1870,7 +1871,7 @@
         });
         
         kbSystemData.sections = sections;
-        console.log("Data loaded and successfully merged:", kbSystemData);
+        console.log("Data loaded successfully:", kbSystemData);
     }
     
     // ... (populateSidebar, mobileSidebarToggle, highlightSidebarLink, renderMermaidDiagramsInElement, renderItemCard functions are unchanged and correct)
@@ -2309,14 +2310,13 @@
             return;
         }
 
-        // ✅✅✅ FIX 3: تحسين الأداء وتحديث المشاهدات (بالعربية)
-        // أولاً: نسجل المشاهدة
+        // Log the view immediately. The updated logActivity function will handle fetching the type if needed.
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        // ثانياً: نزيد عداد المشاهدات في الكائن الحالي يدوياً لعرضه فوراً
+        // Increment view count locally for instant UI update
         itemData.total_views = (itemData.total_views || 0) + 1;
 
-        // ثالثاً: نعرض الصفحة باستخدام البيانات المحدثة فوراً
+        // Render the page with the locally updated data
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2412,12 +2412,12 @@
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         setupItemDetailEventListeners(itemData);
 
-        // رابعاً: بعد عرض الصفحة، نطلب تحديث البيانات في الخلفية استعداداً للتصفح التالي
+        // Fetch new data in the background for the next navigation
         loadAndStructureData();
     }
     
     // ✅✅✅ FIX 4: تم تعديل هذه الدالة (setupItemDetailEventListeners) (بالعربية)
-    // الآن تستدعي logActivity بعد التأكد من نجاح عملية الحفظ
+    // الآن تستدعي logActivity بعد التأكد من نجاح عملية الحفظ وتمرر النوع الصحيح للعنصر
     async function setupItemDetailEventListeners(itemData) {
         renderComments(itemData.id);
         
@@ -2523,8 +2523,6 @@
         }).join('');
     }
     
-    // ✅✅✅ FIX 5: تحسين عرض سجل المشاهدات (بالعربية)
-    // الآن يعرض آخر نشاط لكل مستخدم فريد لتجنب التكرار
     async function displayViewHistory(itemId) {
         const historyTbody = document.getElementById('viewHistoryTbody');
         if (!historyTbody) return;
@@ -2545,9 +2543,7 @@
             historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No activity recorded for this item yet.</td></tr>`;
             return;
         }
-
-        // Filter for unique users, keeping only their most recent activity.
-        // Since the data is sorted from newest to oldest, the first time we see a user is their most recent log.
+        
         const uniqueHistory = [];
         const usersSeen = new Set();
         for (const log of data) {
@@ -2587,7 +2583,6 @@
         document.getElementById('contentTitle').focus();
     }
     
-    // ... (addQuillTooltips, openAddContentModal, and other modal/form functions are unchanged and correct) ...
     function addQuillTooltips() {
         const tooltips = {
             'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
@@ -2778,7 +2773,7 @@
         await loadAndStructureData();
         
         const currentHash = window.location.hash;
-        if(currentHash.includes(itemId)) { // A simple check if the deleted item's ID is in the URL
+        if(currentHash.includes(itemId)) {
              window.location.hash = `#home`;
         } else {
             handleNavigation();
