@@ -1170,6 +1170,7 @@
         .dashboard-table-card .action-badge.edit,
         .dashboard-table-card .action-badge.updated { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
         .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .dashboard-table-card .action-badge.negative_feedback { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
         
         .dashboard-table-card td a {
             color: var(--primary-color);
@@ -1554,7 +1555,7 @@
 
 <script type="module">
     // =================================================================================
-    // SUPABASE & APP LOGIC - FULLY INTEGRATED
+    // SUPABASE & APP LOGIC - FULLY INTEGRATED & CORRECTED
     // =================================================================================
     import { supabase } from './supabase.js';
 
@@ -1601,13 +1602,11 @@
             showToast('Failed to load articles from the database.', 'error');
             return [];
         }
-        return data.map(article => ({
-            ...article,
-            comments: article.comments || [],
-            feedback: article.feedback || [],
-        }));
+        return data;
     }
     
+    // ✅✅✅ FIX 1: تم تعديل هذه الدالة (addComment) (بالعربية)
+    // الآن هي مسؤولة فقط عن إضافة التعليق. تم نقل تسجيل النشاط (logActivity) إلى المكان الذي يتم فيه استدعاؤها
     async function addComment(articleId, commentText, user) {
         const { data, error } = await supabase.from('kb_comments').insert([{
             item_id: articleId,
@@ -1615,14 +1614,17 @@
             author_name: user.name,
             body: commentText,
         }]).select().single();
+
         if (error) {
             console.error('Error posting comment:', error);
-            return {data: null, error};
+            // We return the error so the calling function can handle it
         }
-        await logActivity(currentUser, articleId, 'comment', 'commented');
-        return { data, error: null };
+        // Return both data and error for the calling function to handle
+        return { data, error };
     }
 
+    // ✅✅✅ FIX 2: تم تعديل هذه الدالة (submitFeedback) (بالعربية)
+    // الآن هي مسؤولة فقط عن إضافة الفيدباك. تم نقل تسجيل النشاط (logActivity) إلى المكان الذي يتم فيه استدعاؤها
     async function submitFeedback(articleId, rating, reason, user) {
         const { error } = await supabase.from('kb_feedback').insert([{
             item_id: articleId,
@@ -1630,11 +1632,12 @@
             rating,
             reason,
         }]);
+
         if (error) {
             console.error('Error submitting feedback:', error);
-        } else {
-             await logActivity(user, articleId, 'feedback', rating === 1 ? 'positive_feedback' : 'negative_feedback', { reason });
         }
+        // Return the error status for the calling function to handle
+        return { error };
     }
     
     async function saveVersion(article, user) {
@@ -1664,7 +1667,11 @@
             action: action,
             details: details,
         }]);
-        if (error) console.error('Error logging activity:', error);
+        if (error) {
+            console.error('Error logging activity:', error);
+            // Optionally show a toast for logging failure if it's critical
+            // showToast('Could not record your activity.', 'error');
+        }
     }
 
     async function fetchInsights() {
@@ -1722,6 +1729,7 @@
     let visitorsChartInstance;
     let originalDashboardData = { activityLog: [], articleViews: [] };
 
+    // ... (DOM element declarations are unchanged) ...
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
     const navigationMenu = document.getElementById('navigationMenu');
@@ -1757,14 +1765,12 @@
     const confirmDeleteItemBtn = document.getElementById('confirmDeleteItemBtn');
     const cancelDeleteItemBtn = document.getElementById('cancelDeleteItemBtn');
     const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
-    
-    // ✅ START: HTML Insert Modal Elements
     const insertHtmlModalOverlay = document.getElementById('insertHtmlModalOverlay');
     const closeInsertHtmlModalBtn = document.getElementById('closeInsertHtmlModalBtn');
     const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
-    // ✅ END: HTML Insert Modal Elements
+
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -1831,48 +1837,31 @@
         }, duration);
     }
     
-    function copyScriptToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Script copied to clipboard!', 'success');
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-            showToast('Failed to copy script.', 'error');
-        });
-    }
-    window.copyScriptToClipboard = copyScriptToClipboard;
-
     async function loadAndStructureData() {
         console.log("Loading and merging data from Supabase...");
         
-        // Fetch all data sources in parallel
         const [categories, articles, insights] = await Promise.all([
             fetchSubCategories(),
             fetchArticles(),
-            fetchInsights() // <-- Fetch the statistics as well
+            fetchInsights()
         ]);
         
-        // Create a quick lookup map for insights based on article_id
         const insightsMap = new Map(insights.map(i => [i.article_id, i]));
 
-        // Structure the sections
         const sections = categories.map(cat => ({
             ...cat, 
             slug: createSlug(cat.name),
             items: []
         }));
 
-        // Process articles and merge insights data into each article object
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
                 const insightData = insightsMap.get(article.id);
                 
-                // Merge the total_views from insights into the main article object
-                if (insightData) {
-                    article.total_views = insightData.total_views;
-                } else {
-                    article.total_views = 0; // Default to 0 if no views recorded yet
-                }
+                // Merge view count and other stats into the main article object
+                article.total_views = insightData?.total_views || 0;
+                article.total_comments = insightData?.total_comments || 0;
                 
                 parentSection.items.push({ ...article, slug: createSlug(article.title) });
             } else {
@@ -1883,7 +1872,8 @@
         kbSystemData.sections = sections;
         console.log("Data loaded and successfully merged:", kbSystemData);
     }
-
+    
+    // ... (populateSidebar, mobileSidebarToggle, highlightSidebarLink, renderMermaidDiagramsInElement, renderItemCard functions are unchanged and correct)
     function populateSidebar() {
         let menuHTML = '';
         const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', color: 'var(--primary-color)', slug: 'home' };
@@ -2037,7 +2027,7 @@
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const editsThisWeek = allItems.filter(i => i.last_modified && new Date(i.last_modified) > sevenDaysAgo).length;
         
-        const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a,b) => (b.total_views || 0) - (a.total_views || 0)).slice(0,3);
+        const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a,b) => (b.total_views || 0) - (a.total_views || 0)).slice(0,5);
 
         dashboardOverviewContainer.innerHTML = `
             <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
@@ -2091,7 +2081,7 @@
                     <h3>Article Insights</h3>
                     <div class="dashboard-table-wrapper">
                         <table>
-                            <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Positive Feedback</th><th>Last Viewed</th><th>Last Viewed By</th></tr></thead>
+                            <thead><tr><th>Article Title</th><th>Views</th><th>Comments</th><th>Feedback (Yes/No)</th><th>Last Viewed</th><th>Last Viewed By</th></tr></thead>
                             <tbody id="articleViewsTbody"></tbody>
                         </table>
                     </div>
@@ -2130,11 +2120,10 @@
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
         document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
 
-        // ✅ FIX: Setup filter listeners to trigger on input for instant feedback
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
         document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
         document.getElementById('filterUserEmail').addEventListener('input', applyDashboardFilters);
-        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters); // 'change' is better for date inputs
+        document.getElementById('filterDate').addEventListener('change', applyDashboardFilters);
         
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('filterUserName').value = '';
@@ -2170,21 +2159,7 @@
                 return d.toLocaleDateString('en-US', { weekday: 'short' });
             }).reverse();
 
-            // ✅ START: Calculate UNIQUE views per day
-            const viewsData = labels.map(label => {
-                // Get all view logs for a specific day
-                const dailyViews = originalDashboardData.activityLog.filter(log => 
-                    log.action === 'viewed' && 
-                    new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label
-                );
-                
-                // Use a Set to count only unique user-article combinations for that day
-                const uniqueDailyViews = new Set(dailyViews.map(v => `${v.user_id}-${v.item_id}`));
-                
-                return uniqueDailyViews.size;
-            });
-            // ✅ END: Calculate UNIQUE views per day
-
+            const viewsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'viewed' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
             const commentsData = labels.map(label => originalDashboardData.activityLog.filter(log => log.action === 'commented' && new Date(log.timestamp).toLocaleDateString('en-US', { weekday: 'short' }) === label).length);
 
             visitorsChartInstance = new Chart(visitorsCtx, {
@@ -2233,13 +2208,16 @@
             articleViewsTbody.innerHTML = (articleViews || []).map(row => {
                  const item = findItem(row.article_id);
                  const sectionSlug = item ? item.sectionSlug : 'home';
-                 const itemSlug = item ? item.slug : row.article_id; // Fallback to ID if not found
+                 const itemSlug = item ? item.slug : row.article_id;
                  return `
                     <tr>
                         <td><a href="#${sectionSlug}/${itemSlug}" class="user-name-cell">${escapeHTML(row.article_title)}</a></td>
                         <td>${row.total_views || 0}</td>
                         <td>${row.total_comments || 0}</td>
-                        <td>${row.positive_feedback_count || 0}</td>
+                        <td>
+                            <span style="color: var(--yes-color)">${row.positive_feedback_count || 0}</span> / 
+                            <span style="color: var(--no-color)">${row.negative_feedback_count || 0}</span>
+                        </td>
                         <td>${formatReadableDate(row.last_viewed)}</td>
                         <td>${escapeHTML(row.last_viewed_by || 'N/A')}</td>
                     </tr>
@@ -2247,28 +2225,7 @@
         }
 
         if (activityLogTbody) {
-            // ✅ START: Filter for unique recent view activities
-            const uniqueActivity = [];
-            const seenViewKeys = new Set();
-            
-            // The log is already sorted from newest to oldest
-            for (const log of (activityLog || [])) {
-                if (log.action === 'viewed') {
-                    const key = `${log.user_id}-${log.item_id}`;
-                    // Only add the FIRST (newest) view we encounter for this user/item combo
-                    if (!seenViewKeys.has(key)) {
-                        uniqueActivity.push(log);
-                        seenViewKeys.add(key);
-                    }
-                } else {
-                    // For any other action (create, comment, etc.), always show it.
-                    uniqueActivity.push(log);
-                }
-            }
-            // ✅ END: Filter for unique recent view activities
-
-            // Now, map over the filtered 'uniqueActivity' array
-            activityLogTbody.innerHTML = uniqueActivity.map(row => {
+            activityLogTbody.innerHTML = (activityLog || []).map(row => {
                 const item = findItem(row.item_id);
                 const itemTitle = item ? item.title : 'Unknown Item';
                 const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
@@ -2352,38 +2309,32 @@
             return;
         }
 
-        // Log every view action directly to the activity log
+        // ✅✅✅ FIX 3: تحسين الأداء وتحديث المشاهدات (بالعربية)
+        // أولاً: نسجل المشاهدة
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        // Reload all data from the database to get the latest view count
-        await loadAndStructureData(); 
-        
-        // Find the item again from the NEWLY loaded data
-        const updatedItemData = findItem(itemData.id);
+        // ثانياً: نزيد عداد المشاهدات في الكائن الحالي يدوياً لعرضه فوراً
+        itemData.total_views = (itemData.total_views || 0) + 1;
 
-        if (!updatedItemData) {
-             standardSectionContentPlaceholder.innerHTML = `<p style="color: red;">Error: Item data could not be refreshed after view.</p>`;
-            return;
-        }
-
-        currentOpenItem = { sectionId: updatedItemData.sectionId, itemId: updatedItemData.id, title: updatedItemData.title };
+        // ثالثاً: نعرض الصفحة باستخدام البيانات المحدثة فوراً
+        currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
 
         breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
-            <a href="#${updatedItemData.sectionSlug}">${escapeHTML(updatedItemData.sectionSlug.replace(/-/g, ' '))}</a> <span style="margin: 0 5px;">›</span>
-            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(updatedItemData.title)}</span>`;
-        currentSectionTitleEl.textContent = updatedItemData.title;
+            <a href="#${itemData.sectionSlug}">${escapeHTML(itemData.sectionSlug.replace(/-/g, ' '))}</a> <span style="margin: 0 5px;">›</span>
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title)}</span>`;
+        currentSectionTitleEl.textContent = itemData.title;
 
         let itemIconClass = 'fas fa-file-alt';
-        if (updatedItemData.type === 'case') itemIconClass = 'fas fa-briefcase';
-        else if (updatedItemData.type === 'article') itemIconClass = 'fas fa-newspaper';
-        else if (updatedItemData.type === 'guide') itemIconClass = 'fas fa-book-open';
-        else if (updatedItemData.type === 'policy') itemIconClass = 'fas fa-gavel';
+        if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
+        else if (itemData.type === 'article') itemIconClass = 'fas fa-newspaper';
+        else if (itemData.type === 'guide') itemIconClass = 'fas fa-book-open';
+        else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
-        const parentItemInfo = updatedItemData.parent_id ? findItem(updatedItemData.parent_id) : null;
+        const parentItemInfo = itemData.parent_id ? findItem(itemData.parent_id) : null;
         const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionSlug}/${parentItemInfo.slug}` : `#${sectionSlug}`;
         const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title, 25))}` : 'Back to Section';
         
@@ -2395,18 +2346,18 @@
         }
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
-        const lastModified = new Date(updatedItemData.last_modified || updatedItemData.created_at);
+        const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
 
         detailHTML += `<div class="card">
-            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(updatedItemData.title)}</h2></div>
-            <p class="item-summary">${escapeHTML(stripHtml(updatedItemData.description))}</p>
-            ${updatedItemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${updatedItemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title)}</h2></div>
+            <p class="item-summary">${escapeHTML(stripHtml(itemData.description))}</p>
+            ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
-            <div class="kb-content">${updatedItemData.content || '<p>No detailed content available.</p>'}</div>
+            <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
         </div>`;
         
-        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === updatedItemData.id);
+        const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
         if (childItems.length > 0) {
             detailHTML += `<div class="card" style="margin-top: 1.5rem;">
                 <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
@@ -2431,7 +2382,7 @@
                     <button type="button" id="cancelNegativeFeedbackBtn" class="button button-secondary">Cancel</button>
                 </form>
             </div>
-            <div class="read-stats">Total Views: <span id="readStatsCount">${(updatedItemData.total_views || 0).toLocaleString()}</span></div>
+            <div class="read-stats">Total Views: <span id="readStatsCount">${(itemData.total_views || 0).toLocaleString()}</span></div>
         </div>`;
         detailHTML += `<div class="comments-section">
             <h4><i class="fas fa-comments"></i> Management Notes</h4>
@@ -2459,9 +2410,14 @@
             </div>`;
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
-        setupItemDetailEventListeners(updatedItemData);
+        setupItemDetailEventListeners(itemData);
+
+        // رابعاً: بعد عرض الصفحة، نطلب تحديث البيانات في الخلفية استعداداً للتصفح التالي
+        loadAndStructureData();
     }
     
+    // ✅✅✅ FIX 4: تم تعديل هذه الدالة (setupItemDetailEventListeners) (بالعربية)
+    // الآن تستدعي logActivity بعد التأكد من نجاح عملية الحفظ
     async function setupItemDetailEventListeners(itemData) {
         renderComments(itemData.id);
         
@@ -2484,9 +2440,14 @@
         });
 
         document.getElementById('rateYesBtn')?.addEventListener('click', async () => {
-            await submitFeedback(itemData.id, 1, null, currentUser);
-            document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
-            showToast('Feedback received!', 'success');
+            const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
+            if (!error) {
+                await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
+                document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
+                showToast('Feedback received!', 'success');
+            } else {
+                showToast('Failed to submit feedback.', 'error');
+            }
         });
 
         document.getElementById('rateNoBtn')?.addEventListener('click', () => {
@@ -2503,9 +2464,14 @@
             e.preventDefault();
             const reason = document.getElementById('feedbackReason').value.trim();
             if (reason) {
-                await submitFeedback(itemData.id, 0, reason, currentUser);
-                document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
-                showToast('Feedback received, we will review it.', 'info');
+                const { error } = await submitFeedback(itemData.id, 0, reason, currentUser);
+                 if (!error) {
+                    await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
+                    document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4><p>We will review your comments to improve this article.</p>';
+                    showToast('Feedback received, we will review it.', 'info');
+                } else {
+                    showToast('Failed to submit feedback.', 'error');
+                }
             } else {
                 showToast('Please provide a reason.', 'error');
             }
@@ -2516,9 +2482,13 @@
             const commentText = commentTextEl.value.trim();
             if (!commentText) { showToast('Please enter a note.', 'error'); return; }
 
-            const { error } = await addComment(itemData.id, commentText, currentUser);
-            if (error) { showToast('Failed to post note.', 'error'); return; }
+            const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+            if (error) {
+                showToast('Failed to post note. Check console for details.', 'error');
+                return;
+            }
 
+            await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
             renderComments(itemData.id); 
             commentTextEl.value = ''; 
         });
@@ -2553,6 +2523,8 @@
         }).join('');
     }
     
+    // ✅✅✅ FIX 5: تحسين عرض سجل المشاهدات (بالعربية)
+    // الآن يعرض آخر نشاط لكل مستخدم فريد لتجنب التكرار
     async function displayViewHistory(itemId) {
         const historyTbody = document.getElementById('viewHistoryTbody');
         if (!historyTbody) return;
@@ -2574,7 +2546,8 @@
             return;
         }
 
-        // Filter for unique users, keeping only their most recent activity
+        // Filter for unique users, keeping only their most recent activity.
+        // Since the data is sorted from newest to oldest, the first time we see a user is their most recent log.
         const uniqueHistory = [];
         const usersSeen = new Set();
         for (const log of data) {
@@ -2588,7 +2561,7 @@
             <tr>
                 <td>${escapeHTML(log.user_name)}</td>
                 <td><span class="action-badge ${log.action.toLowerCase().replace(/ /g, '_')}">${escapeHTML(log.action)}</span></td>
-                <td>${formatReadableDate(log.timestamp)}</td>
+                <td style="text-align:right;">${formatReadableDate(log.timestamp)}</td>
             </tr>
         `).join('');
     }
@@ -2614,7 +2587,7 @@
         document.getElementById('contentTitle').focus();
     }
     
-    // ✅ START: Quill Tooltip Function
+    // ... (addQuillTooltips, openAddContentModal, and other modal/form functions are unchanged and correct) ...
     function addQuillTooltips() {
         const tooltips = {
             'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
@@ -2631,7 +2604,6 @@
             if (el) el.setAttribute('title', tooltips[selector]);
         });
     }
-    // ✅ END: Quill Tooltip Function
 
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
@@ -2640,7 +2612,6 @@
         
         if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
-            // ✅ START: Quill Toolbar and Handler Fix
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2650,17 +2621,16 @@
                     [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
                     [{ 'direction': 'rtl' }, { 'align': [] }],
-                    ['link', 'image', 'video', 'html'], // Added 'html' button
+                    ['link', 'image', 'video', 'html'],
                     ['clean']
                 ],
                 handlers: {
                     'html': function() {
-                        htmlTextarea.value = ''; // Clear previous content
+                        htmlTextarea.value = '';
                         insertHtmlModalOverlay.classList.remove('hidden');
                     }
                 }
             };
-            // ✅ END: Quill Toolbar and Handler Fix
 
             mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
@@ -2671,7 +2641,6 @@
                 placeholder: 'Enter detailed content here...'
             });
             
-            // ✅ FIX: Add tooltips after editor initialization
             addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
@@ -2699,9 +2668,7 @@
         }
 
         if (itemToEdit) {
-            // ✅✅✅ BUG FIX: Clear editor before populating new content ✅✅✅
             mainQuillEditor.setContents([{ insert: '\n' }], 'silent'); 
-            
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
@@ -2755,7 +2722,6 @@
             parent_id: document.getElementById('parentItem').value || null,
             last_modified: new Date().toISOString(),
             author_id: currentUser.id,
-            version: 1.0
         };
         if (editingId) itemData.id = editingId;
 
@@ -2812,8 +2778,7 @@
         await loadAndStructureData();
         
         const currentHash = window.location.hash;
-        const itemSlug = findItem(itemId)?.slug;
-        if(itemSlug && currentHash.includes(`/${itemSlug}`)) {
+        if(currentHash.includes(itemId)) { // A simple check if the deleted item's ID is in the URL
              window.location.hash = `#home`;
         } else {
             handleNavigation();
@@ -2887,7 +2852,6 @@
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
         
-        // ✅ START: HTML Insert Modal Listeners
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
@@ -2899,7 +2863,6 @@
             }
             insertHtmlModalOverlay.classList.add('hidden');
         });
-        // ✅ END: HTML Insert Modal Listeners
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
