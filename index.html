@@ -14,6 +14,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Quill Better Table -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.js"></script>
 <style>
         :root {
             /* Permanent Dark Theme Variables */
@@ -1315,6 +1318,23 @@
             }
         }
 
+        // 1. أضف CSS للجداول والعناصر داخل .kb-content (ابحث عن نهاية <style> أو أضف قبل </style>):
+        .kb-content table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 1em;
+        }
+        .kb-content th, .kb-content td {
+          border: 1px solid var(--border-color);
+          padding: 0.5em;
+          text-align: left;
+        }
+        .kb-content thead {
+          background: var(--bg-color-hover);
+        }
+        .kb-content tr:nth-child(even) {
+          background: var(--bg-color-alt);
+        }
     </style>
 </head>
 <body>
@@ -1367,23 +1387,18 @@
 <label for="contentTitle">Title</label>
 <input id="contentTitle" required="" type="text"/>
 </div>
-<!-- ✅ START: UI IMPROVEMENT TO GUIDE USER -->
 <div class="form-group">
-    <label for="contentSummary">Short Summary (Plain Text Only)</label>
-    <textarea id="contentSummary" required="" rows="3" placeholder="Enter a brief, plain-text summary for card previews..."></textarea>
-    <p style="font-size: 0.8rem; color: var(--text-color-muted); margin-top: 0.25rem;">
-        Note: For tables and complex formatting, use the main content editor below.
-    </p>
+<label for="contentSummary">Summary / Description</label>
+<textarea id="contentSummary" required="" rows="3"></textarea>
 </div>
 <div class="form-group hidden" id="contentUrlContainer">
-    <label for="contentUrl">Link (for Forms, Designs, etc.)</label>
-    <input id="contentUrl" type="url"/>
+<label for="contentUrl">Link (for Forms, Designs, etc.)</label>
+<input id="contentUrl" type="url"/>
 </div>
 <div class="form-group" id="contentDetailContainer">
-    <label for="contentDetail" id="contentDetailLabel">Main Content (With Formatting)</label>
-    <div id="quillEditor"></div> 
+<label for="contentDetail" id="contentDetailLabel">Details / Content</label>
+<div id="quillEditor"></div> 
 </div>
-<!-- ✅ END: UI IMPROVEMENT TO GUIDE USER -->
 <div class="form-group">
 <label for="contentTags">Tags (comma-separated)</label>
 <input id="contentTags" placeholder="e.g., important, update, billing" type="text"/>
@@ -2330,6 +2345,9 @@
 
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
+        // This line is commented out to rely on the database view for accurate unique counts.
+        // itemData.total_views = (itemData.total_views || 0) + 1;
+
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2543,7 +2561,9 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
-            Quill.register('modules/imageResize', window.ImageResize.default);
+            Quill.register({
+                'modules/better-table': QuillBetterTable
+            }, true);
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2554,7 +2574,8 @@
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
                     [{ 'direction': 'rtl' }, { 'align': [] }],
                     ['link', 'image', 'video', 'html'],
-                    ['clean']
+                    ['clean'],
+                    [{ 'table': [] }], // زر إدراج جدول
                 ],
                 handlers: {
                     'html': function() {
@@ -2564,14 +2585,32 @@
                 }
             };
 
-            mainQuillEditor = new Quill('#quillEditor', { 
+            mainQuillEditor = new Quill('#quillEditor', {
                 theme: 'snow',
-                modules: { 
+                modules: {
                     toolbar: quillToolbarOptions,
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
+                    'better-table': {
+                        operationMenu: {
+                            items: {
+                                unmergeCells: { text: 'Unmerge cells' }
+                            },
+                            color: {
+                                colors: ['#fff', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black'],
+                                text: 'Background Colors:'
+                            }
+                        }
+                    },
+                    keyboard: {
+                        bindings: QuillBetterTable.keyboardBindings
+                    }
                 },
-                // ✅ UI IMPROVEMENT: Add a helpful placeholder to the main editor
-                placeholder: 'Use the toolbar to format content, add images, or insert HTML tables...'
+                placeholder: 'Enter detailed content here...',
+                formats: [
+                    'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
+                    'header', 'list', 'indent', 'direction', 'align', 'link', 'image', 'video',
+                    'table', 'td', 'th', 'tr', 'tbody', 'thead', 'tfoot', 'div', 'span', 'color', 'background', 'font', 'size'
+                ]
             });
             
             addQuillTooltips();
@@ -2583,6 +2622,14 @@
                     reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
+            });
+            // امنع لصق أو إدراج <style> أو أي كود CSS في المحتوى:
+            mainQuillEditor.clipboard.addMatcher(Node.ELEMENT_NODE, function(node, delta) {
+                if (node.nodeName === 'STYLE') return new Delta();
+                if (node.nodeName === 'DIV' && node.innerText && node.innerText.match(/\.(kb-content|table|th|td|thead|tr|tfoot|border|collapse|padding|background)/)) {
+                    return new Delta();
+                }
+                return delta;
             });
         }
 
@@ -2636,7 +2683,7 @@
         const type = e.target.value;
         contentUrlContainer.classList.toggle('hidden', !['form_sheet', 'design'].includes(type));
         contentDetailContainer.classList.toggle('hidden', ['form_sheet', 'design'].includes(type));
-        contentDetailLabel.textContent = type === 'case' ? 'Case Details / Resolution Steps' : 'Main Content (With Formatting)';
+        contentDetailLabel.textContent = type === 'case' ? 'Case Details / Resolution Steps' : 'Content';
     });
 
     addContentForm.addEventListener('submit', async (e) => {
@@ -2659,7 +2706,7 @@
         if (editingId) itemData.id = editingId;
 
         if (!itemData.title || !itemData.description) {
-            showToast('Title and Summary are required.', 'error');
+            showToast('Title and Summary/Description are required.', 'error');
             return;
         }
 
@@ -2750,7 +2797,9 @@
         
         highlightSidebarLink(sectionSlug);
 
+        // ✅✅✅ FINAL FIX: Logic to handle event listener duplication
         if (!itemSlug) {
+            // Remove the detailed view and its specific listeners if we're not on a detail page
             itemDetailViewPlaceholder.classList.add('hidden');
             currentOpenItem = null;
         }
@@ -2781,6 +2830,9 @@
         
         await loadAndStructureData();
         populateSidebar();
+
+        // ✅✅✅ FINAL FIX: Remove specific event listener setup and use delegation
+        // setupGlobalEventListeners(); // This was the old approach causing issues
         
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
@@ -2797,10 +2849,12 @@
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
-
         confirmInsertHtmlBtn.addEventListener('click', () => {
             if (mainQuillEditor) {
-                const html = htmlTextarea.value;
+                let html = htmlTextarea.value;
+                // احذف أي <style> أو كود CSS من النص المدخل
+                html = html.replace(/<style[\s\S]*?<\/style>/gi, '');
+                html = html.replace(/\.(kb-content|table|th|td|thead|tr|tfoot|border|collapse|padding|background)[^{]*{[^}]*}/gi, '');
                 mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
             }
             insertHtmlModalOverlay.classList.add('hidden');
@@ -2810,6 +2864,7 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
+        // ✅✅✅ FINAL FIX: Use a single, delegated event listener for dynamic content
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
 
@@ -2851,7 +2906,7 @@
             }
 
             // --- Action Bar Buttons ---
-            if (e.target.id === 'editItemBtn') openEditModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
                 const el = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
