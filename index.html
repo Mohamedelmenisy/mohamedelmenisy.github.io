@@ -2341,7 +2341,8 @@
         }
         return null;
     }
-
+    
+    // ================== START: CORRECTED FUNCTION ==================
     async function displayItemDetail(sectionSlug, itemSlug) {
         let itemData = findItemBySlug(sectionSlug, itemSlug);
         
@@ -2389,6 +2390,8 @@
             <p class="item-summary">${escapeHTML(stripHtml(itemData.description))}</p>
             ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
+            
+            <!-- ✅ FIX: Removed escapeHTML() from itemData.content to render HTML correctly -->
             <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
         </div>`;
         
@@ -2454,6 +2457,7 @@
 
         loadAndStructureData();
     }
+    // ================== END: CORRECTED FUNCTION ==================
     
     async function renderComments(itemId) {
         const container = document.getElementById('commentDisplayAreaForItem');
@@ -2559,14 +2563,12 @@
         });
     }
 
-    // ================== START: CORRECTED FUNCTION ==================
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
         editingItemIdInput.value = "";
 
         if (!mainQuillEditor) {
-            // ✅ FIX: Check if QuillBetterTable is loaded on the window object before registering.
             if (window.Quill && window.QuillBetterTable) {
                 Quill.register({ 'modules/better-table': window.QuillBetterTable }, true);
             } else {
@@ -2593,12 +2595,11 @@
                 }
             };
             
-            // ✅ FIX: Import Delta and dynamically configure modules
             const Delta = Quill.import('delta');
             const quillModules = {
                 toolbar: quillToolbarOptions,
                 imageResize: { modules: ['Resize', 'DisplaySize', 'Toolbar'] },
-                table: false, // Disable the native table module
+                table: false, 
                 clipboard: {
                     matchers: [
                         ['style', (node, delta) => new Delta()]
@@ -2606,7 +2607,6 @@
                 }
             };
 
-            // Conditionally add the better-table module if it was loaded.
             if (window.QuillBetterTable) {
                 quillModules['better-table'] = {
                     operationMenu: {
@@ -2680,8 +2680,6 @@
         contentTypeSelect.dispatchEvent(new Event('change'));
         addContentModalOverlay.classList.remove('hidden');
     }
-    // ================== END: CORRECTED FUNCTION ==================
-
 
     document.querySelectorAll('.template-button').forEach(button => {
         button.addEventListener('click', () => applyTemplate(button.dataset.template));
