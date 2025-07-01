@@ -14,9 +14,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<!-- Quill Better Table -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.js"></script>
 <style>
         :root {
             /* Permanent Dark Theme Variables */
@@ -1318,23 +1315,6 @@
             }
         }
 
-        // 1. أضف CSS للجداول والعناصر داخل .kb-content (ابحث عن نهاية <style> أو أضف قبل </style>):
-        .kb-content table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 1em;
-        }
-        .kb-content th, .kb-content td {
-          border: 1px solid var(--border-color);
-          padding: 0.5em;
-          text-align: left;
-        }
-        .kb-content thead {
-          background: var(--bg-color-hover);
-        }
-        .kb-content tr:nth-child(even) {
-          background: var(--bg-color-alt);
-        }
     </style>
 </head>
 <body>
@@ -2561,9 +2541,7 @@
         editingItemIdInput.value = ""; 
         
         if (!mainQuillEditor) {
-            Quill.register({
-                'modules/better-table': QuillBetterTable
-            }, true);
+            Quill.register('modules/imageResize', window.ImageResize.default);
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2574,8 +2552,7 @@
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
                     [{ 'direction': 'rtl' }, { 'align': [] }],
                     ['link', 'image', 'video', 'html'],
-                    ['clean'],
-                    [{ 'table': [] }], // زر إدراج جدول
+                    ['clean']
                 ],
                 handlers: {
                     'html': function() {
@@ -2585,32 +2562,13 @@
                 }
             };
 
-            mainQuillEditor = new Quill('#quillEditor', {
+            mainQuillEditor = new Quill('#quillEditor', { 
                 theme: 'snow',
-                modules: {
+                modules: { 
                     toolbar: quillToolbarOptions,
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
-                    'better-table': {
-                        operationMenu: {
-                            items: {
-                                unmergeCells: { text: 'Unmerge cells' }
-                            },
-                            color: {
-                                colors: ['#fff', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black'],
-                                text: 'Background Colors:'
-                            }
-                        }
-                    },
-                    keyboard: {
-                        bindings: QuillBetterTable.keyboardBindings
-                    }
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
                 },
-                placeholder: 'Enter detailed content here...',
-                formats: [
-                    'bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block',
-                    'header', 'list', 'indent', 'direction', 'align', 'link', 'image', 'video',
-                    'table', 'td', 'th', 'tr', 'tbody', 'thead', 'tfoot', 'div', 'span', 'color', 'background', 'font', 'size'
-                ]
+                placeholder: 'Enter detailed content here...'
             });
             
             addQuillTooltips();
@@ -2622,14 +2580,6 @@
                     reader.onload = e => mainQuillEditor.insertEmbed(mainQuillEditor.getSelection(true).index, 'image', e.target.result);
                     reader.readAsDataURL(file);
                 }
-            });
-            // امنع لصق أو إدراج <style> أو أي كود CSS في المحتوى:
-            mainQuillEditor.clipboard.addMatcher(Node.ELEMENT_NODE, function(node, delta) {
-                if (node.nodeName === 'STYLE') return new Delta();
-                if (node.nodeName === 'DIV' && node.innerText && node.innerText.match(/\.(kb-content|table|th|td|thead|tr|tfoot|border|collapse|padding|background)/)) {
-                    return new Delta();
-                }
-                return delta;
             });
         }
 
@@ -2830,9 +2780,6 @@
         
         await loadAndStructureData();
         populateSidebar();
-
-        // ✅✅✅ FINAL FIX: Remove specific event listener setup and use delegation
-        // setupGlobalEventListeners(); // This was the old approach causing issues
         
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
@@ -2849,12 +2796,11 @@
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
+
         confirmInsertHtmlBtn.addEventListener('click', () => {
             if (mainQuillEditor) {
-                let html = htmlTextarea.value;
-                // احذف أي <style> أو كود CSS من النص المدخل
-                html = html.replace(/<style[\s\S]*?<\/style>/gi, '');
-                html = html.replace(/\.(kb-content|table|th|td|thead|tr|tfoot|border|collapse|padding|background)[^{]*{[^}]*}/gi, '');
+                const html = htmlTextarea.value;
+                // ✅ This is the crucial line that correctly inserts the raw HTML.
                 mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
             }
             insertHtmlModalOverlay.classList.add('hidden');
@@ -2864,7 +2810,7 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
-        // ✅✅✅ FINAL FIX: Use a single, delegated event listener for dynamic content
+        // Use a single, delegated event listener for dynamic content in the page area
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
 
@@ -2906,7 +2852,7 @@
             }
 
             // --- Action Bar Buttons ---
-            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'editItemBtn') openEditModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
                 const el = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
