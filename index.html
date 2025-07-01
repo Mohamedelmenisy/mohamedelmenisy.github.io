@@ -2559,15 +2559,20 @@
         });
     }
 
+    // ================== START: CORRECTED FUNCTION ==================
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = ""; 
-        
+        editingItemIdInput.value = "";
+
         if (!mainQuillEditor) {
-            // ✅ START: Quill Table Config
-            Quill.register({ 'modules/better-table': window.QuillBetterTable }, true);
-            
+            // ✅ FIX: Check if QuillBetterTable is loaded on the window object before registering.
+            if (window.Quill && window.QuillBetterTable) {
+                Quill.register({ 'modules/better-table': window.QuillBetterTable }, true);
+            } else {
+                console.warn('QuillBetterTable script not loaded. Advanced table features will be unavailable.');
+            }
+
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2588,38 +2593,44 @@
                 }
             };
             
-            mainQuillEditor = new Quill('#quillEditor', { 
-                theme: 'snow',
-                modules: { 
-                    toolbar: quillToolbarOptions,
-                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
-                    table: false, // Disable the native table module
-                    'better-table': {
-                        operationMenu: {
-                            items: {
-                                unmergeCells: { text: 'Unmerge Cells' },
-                                deleteRow: { text: 'Delete Row' },
-                                deleteColumn: { text: 'Delete Column' },
-                                insertRowAbove: { text: 'Insert Row Above' },
-                                insertRowBelow: { text: 'Insert Row Below' },
-                                insertColumnLeft: { text: 'Insert Column Left' },
-                                insertColumnRight: { text: 'Insert Column Right' },
-                                deleteTable: { text: 'Delete Table' }
-                            },
+            // ✅ FIX: Import Delta and dynamically configure modules
+            const Delta = Quill.import('delta');
+            const quillModules = {
+                toolbar: quillToolbarOptions,
+                imageResize: { modules: ['Resize', 'DisplaySize', 'Toolbar'] },
+                table: false, // Disable the native table module
+                clipboard: {
+                    matchers: [
+                        ['style', (node, delta) => new Delta()]
+                    ]
+                }
+            };
+
+            // Conditionally add the better-table module if it was loaded.
+            if (window.QuillBetterTable) {
+                quillModules['better-table'] = {
+                    operationMenu: {
+                        items: {
+                            unmergeCells: { text: 'Unmerge Cells' },
+                            deleteRow: { text: 'Delete Row' },
+                            deleteColumn: { text: 'Delete Column' },
+                            insertRowAbove: { text: 'Insert Row Above' },
+                            insertRowBelow: { text: 'Insert Row Below' },
+                            insertColumnLeft: { text: 'Insert Column Left' },
+                            insertColumnRight: { text: 'Insert Column Right' },
+                            deleteTable: { text: 'Delete Table' }
                         },
                     },
-                    keyboard: { bindings: window.QuillBetterTable.keyboardBindings },
-                    clipboard: {
-                        // Prevents pasting <style> tags into the editor.
-                        matchers: [
-                            ['style', (node, delta) => new Delta()]
-                        ]
-                    }
-                },
+                };
+                quillModules.keyboard = { bindings: window.QuillBetterTable.keyboardBindings };
+            }
+
+            mainQuillEditor = new Quill('#quillEditor', {
+                theme: 'snow',
+                modules: quillModules,
                 placeholder: 'Enter detailed content here...'
             });
-            // ✅ END: Quill Table Config
-            
+
             addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
@@ -2647,11 +2658,11 @@
         }
 
         if (itemToEdit) {
-            mainQuillEditor.setContents([{ insert: '\n' }], 'silent'); 
+            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
-            editingItemIdInput.value = itemToEdit.id; 
+            editingItemIdInput.value = itemToEdit.id;
             document.getElementById('contentTitle').value = itemToEdit.title;
-            document.getElementById('contentSummary').value = itemToEdit.description; 
+            document.getElementById('contentSummary').value = itemToEdit.description;
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
@@ -2665,10 +2676,12 @@
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
-        
+
         contentTypeSelect.dispatchEvent(new Event('change'));
         addContentModalOverlay.classList.remove('hidden');
     }
+    // ================== END: CORRECTED FUNCTION ==================
+
 
     document.querySelectorAll('.template-button').forEach(button => {
         button.addEventListener('click', () => applyTemplate(button.dataset.template));
