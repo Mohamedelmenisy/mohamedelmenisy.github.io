@@ -2780,9 +2780,6 @@
         
         await loadAndStructureData();
         populateSidebar();
-
-        // ✅✅✅ FINAL FIX: Remove specific event listener setup and use delegation
-        // setupGlobalEventListeners(); // This was the old approach causing issues
         
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
@@ -2799,9 +2796,11 @@
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
+
         confirmInsertHtmlBtn.addEventListener('click', () => {
             if (mainQuillEditor) {
                 const html = htmlTextarea.value;
+                // ✅ This is the crucial line that correctly inserts the raw HTML.
                 mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
             }
             insertHtmlModalOverlay.classList.add('hidden');
@@ -2811,7 +2810,7 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
-        // ✅✅✅ FINAL FIX: Use a single, delegated event listener for dynamic content
+        // Use a single, delegated event listener for dynamic content in the page area
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
 
@@ -2853,7 +2852,7 @@
             }
 
             // --- Action Bar Buttons ---
-            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'editItemBtn') openEditModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
                 const el = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
