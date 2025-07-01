@@ -2389,8 +2389,6 @@
             <p class="item-summary">${escapeHTML(stripHtml(itemData.description))}</p>
             ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
-            
-            <!-- ✅ FIX: Removed escapeHTML() from itemData.content to allow the browser to render the HTML (images, tables, etc.) correctly. -->
             <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
         </div>`;
         
@@ -2564,15 +2562,12 @@
     function openAddContentModal(sectionIdForContent, itemToEdit = null) {
         addContentForm.reset();
         addContentForm.dataset.sectionId = sectionIdForContent;
-        editingItemIdInput.value = "";
-
+        editingItemIdInput.value = ""; 
+        
         if (!mainQuillEditor) {
-            if (window.Quill && window.QuillBetterTable) {
-                Quill.register({ 'modules/better-table': window.QuillBetterTable }, true);
-            } else {
-                console.warn('QuillBetterTable script not loaded. Advanced table features will be unavailable.');
-            }
-
+            // ✅ START: Quill Table Config
+            Quill.register({ 'modules/better-table': window.QuillBetterTable }, true);
+            
             const quillToolbarOptions = {
                 container: [
                     [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
@@ -2593,42 +2588,38 @@
                 }
             };
             
-            const Delta = Quill.import('delta');
-            const quillModules = {
-                toolbar: quillToolbarOptions,
-                imageResize: { modules: ['Resize', 'DisplaySize', 'Toolbar'] },
-                table: false, 
-                clipboard: {
-                    matchers: [
-                        ['style', (node, delta) => new Delta()]
-                    ]
-                }
-            };
-
-            if (window.QuillBetterTable) {
-                quillModules['better-table'] = {
-                    operationMenu: {
-                        items: {
-                            unmergeCells: { text: 'Unmerge Cells' },
-                            deleteRow: { text: 'Delete Row' },
-                            deleteColumn: { text: 'Delete Column' },
-                            insertRowAbove: { text: 'Insert Row Above' },
-                            insertRowBelow: { text: 'Insert Row Below' },
-                            insertColumnLeft: { text: 'Insert Column Left' },
-                            insertColumnRight: { text: 'Insert Column Right' },
-                            deleteTable: { text: 'Delete Table' }
+            mainQuillEditor = new Quill('#quillEditor', { 
+                theme: 'snow',
+                modules: { 
+                    toolbar: quillToolbarOptions,
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] },
+                    table: false, // Disable the native table module
+                    'better-table': {
+                        operationMenu: {
+                            items: {
+                                unmergeCells: { text: 'Unmerge Cells' },
+                                deleteRow: { text: 'Delete Row' },
+                                deleteColumn: { text: 'Delete Column' },
+                                insertRowAbove: { text: 'Insert Row Above' },
+                                insertRowBelow: { text: 'Insert Row Below' },
+                                insertColumnLeft: { text: 'Insert Column Left' },
+                                insertColumnRight: { text: 'Insert Column Right' },
+                                deleteTable: { text: 'Delete Table' }
+                            },
                         },
                     },
-                };
-                quillModules.keyboard = { bindings: window.QuillBetterTable.keyboardBindings };
-            }
-
-            mainQuillEditor = new Quill('#quillEditor', {
-                theme: 'snow',
-                modules: quillModules,
+                    keyboard: { bindings: window.QuillBetterTable.keyboardBindings },
+                    clipboard: {
+                        // Prevents pasting <style> tags into the editor.
+                        matchers: [
+                            ['style', (node, delta) => new Delta()]
+                        ]
+                    }
+                },
                 placeholder: 'Enter detailed content here...'
             });
-
+            // ✅ END: Quill Table Config
+            
             addQuillTooltips();
 
             document.getElementById('imageFile').addEventListener('change', (event) => {
@@ -2656,11 +2647,11 @@
         }
 
         if (itemToEdit) {
-            mainQuillEditor.setContents([{ insert: '\n' }], 'silent');
+            mainQuillEditor.setContents([{ insert: '\n' }], 'silent'); 
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
-            editingItemIdInput.value = itemToEdit.id;
+            editingItemIdInput.value = itemToEdit.id; 
             document.getElementById('contentTitle').value = itemToEdit.title;
-            document.getElementById('contentSummary').value = itemToEdit.description;
+            document.getElementById('contentSummary').value = itemToEdit.description; 
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
@@ -2674,7 +2665,7 @@
             templateSelectionContainer.classList.remove('hidden');
             addContentForm.classList.add('hidden');
         }
-
+        
         contentTypeSelect.dispatchEvent(new Event('change'));
         addContentModalOverlay.classList.remove('hidden');
     }
