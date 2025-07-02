@@ -2727,6 +2727,7 @@
     });
 
     window.openEditModal = (sectionId, itemId) => {
+               // ... (هذا هو الكود السابق، يتم إكماله من هنا)
         const item = findItem(itemId);
         if (item) openAddContentModal(sectionId, item);
     };
@@ -2793,9 +2794,7 @@
         
         highlightSidebarLink(sectionSlug);
 
-        // ✅✅✅ FINAL FIX: Logic to handle event listener duplication
         if (!itemSlug) {
-            // Remove the detailed view and its specific listeners if we're not on a detail page
             itemDetailViewPlaceholder.classList.add('hidden');
             currentOpenItem = null;
         }
@@ -2826,9 +2825,6 @@
         
         await loadAndStructureData();
         populateSidebar();
-
-        // ✅✅✅ FINAL FIX: Remove specific event listener setup and use delegation
-        // setupGlobalEventListeners(); // This was the old approach causing issues
         
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
@@ -2857,12 +2853,27 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
-        // ✅✅✅ FINAL FIX: Use a single, delegated event listener for dynamic content
+        // Use a single, delegated event listener for dynamic content
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
 
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
+            
+            // ✅ START: NEW CODE FOR TOGGLE STEPS
+            if (e.target.id === 'toggleScribeStepsBtn' || e.target.closest('#toggleScribeStepsBtn')) {
+                e.preventDefault(); 
+                const stepsContainer = document.getElementById('scribe-steps-container');
+                const button = e.target.closest('#toggleScribeStepsBtn');
+                if (stepsContainer && button) {
+                    stepsContainer.classList.toggle('hidden');
+                    const isHidden = stepsContainer.classList.contains('hidden');
+                    button.innerHTML = isHidden 
+                        ? '<i class="fas fa-eye"></i> Show How-To Steps' 
+                        : '<i class="fas fa-eye-slash"></i> Hide Steps';
+                }
+            }
+            // ✅ END: NEW CODE FOR TOGGLE STEPS
 
             // --- Feedback Buttons ---
             if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
