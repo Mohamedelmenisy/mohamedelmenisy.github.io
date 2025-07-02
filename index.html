@@ -870,6 +870,77 @@
             stroke: var(--primary-color) !important;
         }
 
+        /* Styles for Interactive Delay Calculator */
+        .delay-calculator-box {
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            margin: 2rem 0;
+        }
+        .delay-calculator-box h4 {
+            margin-top: 0;
+            font-size: 1.2em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+        .order-type-chooser {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .order-type-chooser label {
+            flex-grow: 1;
+        }
+        .order-type-chooser input[type="radio"] {
+            display: none;
+        }
+        .order-type-chooser span {
+            display: block;
+            text-align: center;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .order-type-chooser input:checked + span {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: 600;
+        }
+        .recommendation-box {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border-left-width: 4px;
+            border-style: solid;
+            line-height: 1.6;
+        }
+        .recommendation-box.info {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+        .recommendation-box.success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border-color: #22c55e;
+            color: #86efac;
+        }
+        .recommendation-box.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
 
         #itemDetailViewPlaceholder .item-title-area {
             display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
@@ -2812,6 +2883,65 @@
         }
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
+    
+    function handleDelayCalculator() {
+        const estimatedTimeInput = document.getElementById('estimatedTime');
+        const actualTimeInput = document.getElementById('actualTime');
+        const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
+        const resultBox = document.getElementById('recommendationBox');
+        const resultText = document.getElementById('recommendationText');
+
+        if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !resultBox) {
+            return;
+        }
+
+        const estimatedTime = estimatedTimeInput.value;
+        const actualTime = actualTimeInput.value;
+        const orderType = orderTypeRadio.value;
+
+        if (estimatedTime && actualTime) {
+            const time1 = new Date(`1970-01-01T${estimatedTime}:00`);
+            const time2 = new Date(`1970-01-01T${actualTime}:00`);
+            const differenceMinutes = (time2 - time1) / (1000 * 60);
+            
+            let recommendation = '';
+            let boxClass = 'info';
+
+            if (differenceMinutes < 0) {
+                recommendation = 'Actual delivery time cannot be before the estimated time.';
+                boxClass = 'error';
+            } else if (differenceMinutes <= 15) {
+                recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize to the customer for the slight delay. No compensation is required unless the customer specifically asks.`;
+                boxClass = 'info';
+            } else {
+                if (orderType === 'fast') {
+                    if (differenceMinutes <= 30) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only.`;
+                    } else if (differenceMinutes <= 45) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
+                    } else if (differenceMinutes <= 60) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
+                    } else {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
+                    }
+                } else { // Scheduled
+                    if (differenceMinutes <= 60) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled Order).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
+                    } else {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled Order).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
+                    }
+                }
+                boxClass = 'success';
+            }
+
+            resultText.innerHTML = recommendation;
+            resultBox.className = `recommendation-box ${boxClass}`;
+            resultBox.classList.remove('hidden');
+        } else {
+            resultBox.classList.add('hidden');
+        }
+    }
+
 
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
@@ -2857,11 +2987,6 @@
         
         // Use a single, delegated event listener for dynamic content
         pageContentArea.addEventListener('click', async (e) => {
-            if (!currentOpenItem) return;
-
-            const itemData = findItem(currentOpenItem.itemId);
-            if (!itemData) return;
-            
             // ✅ START: MODIFIED CODE FOR TOGGLE STEPS (SUPPORTS TOP AND BOTTOM BUTTONS)
             if (e.target.matches('#toggleScribeStepsBtn, #toggleScribeStepsBtnBottom')) {
                 e.preventDefault(); 
@@ -2873,8 +2998,8 @@
                     stepsContainer.classList.toggle('hidden');
                     const isHidden = stepsContainer.classList.contains('hidden');
                     const newText = isHidden 
-                        ? '<i class="fas fa-eye"></i> Show How-To Steps' 
-                        : '<i class="fas fa-eye-slash"></i> Hide Steps';
+                        ? '<i class="fas fa-eye"></i> Show Visual Guide' 
+                        : '<i class="fas fa-eye-slash"></i> Hide Visual Guide';
                     topButton.innerHTML = newText;
                     bottomButton.innerHTML = newText;
                     bottomButton.classList.toggle('hidden', isHidden); // Hide bottom button when steps are hidden
@@ -2882,19 +3007,9 @@
             }
             // ✅ END: MODIFIED CODE FOR TOGGLE STEPS
 
-            // ✅ START: NEW CODE FOR COPY BUTTON
-            if (e.target.matches('.copy-script-btn')) {
-                const textToCopy = e.target.previousElementSibling.textContent;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    e.target.textContent = 'Copied!';
-                    showToast('Comment template copied!', 'success');
-                    setTimeout(() => { e.target.textContent = 'Copy'; }, 2000);
-                }).catch(err => {
-                    console.error('Failed to copy: ', err);
-                    showToast('Failed to copy text.', 'error');
-                });
-            }
-            // ✅ END: NEW CODE FOR COPY BUTTON
+            if (!currentOpenItem) return;
+            const itemData = findItem(currentOpenItem.itemId);
+            if (!itemData) return;
 
             // --- Feedback Buttons ---
             if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
@@ -2941,6 +3056,12 @@
             }
         });
         
+        pageContentArea.addEventListener('input', (e) => {
+            if (e.target.matches('#estimatedTime, #actualTime, input[name="orderType"]')) {
+                handleDelayCalculator();
+            }
+        });
+
         pageContentArea.addEventListener('submit', async (e) => {
             if (e.target.id === 'negativeFeedbackForm') {
                 e.preventDefault();
