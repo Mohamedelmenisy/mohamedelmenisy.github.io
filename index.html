@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>InfiniBase - Knowledge Base</title>
 <!-- Updated Favicon -->
-<link href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='%236366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>" rel="icon" type="image/svg+xml"/>
+<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
 <!-- CDNs -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"/>
@@ -795,14 +795,49 @@
             font-size: 1.2em;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.75rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
         .calculator-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 1.5rem;
             align-items: end;
         }
+        .custom-time-input-wrapper {
+            position: relative;
+        }
+        .custom-time-input-wrapper .time-display {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            padding: 0.625rem 2.5rem 0.625rem 1rem;
+            color: var(--text-color);
+            width: 100%;
+            text-align: left;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+         .custom-time-input-wrapper .time-display.placeholder {
+            color: var(--text-color-muted);
+        }
+        .custom-time-input-wrapper i {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color-muted);
+            pointer-events: none;
+        }
+        .custom-time-input-wrapper input[type="time"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
         .order-type-chooser {
             display: flex;
             gap: 0.5rem;
@@ -831,7 +866,7 @@
         }
         .recommendation-box {
             margin-top: 1.5rem;
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             border-radius: var(--border-radius);
             border-left-width: 4px;
             border-style: solid;
@@ -2116,7 +2151,7 @@
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
         currentSectionTitleEl.textContent = 'Dashboard';
-        breadcrumbsContainer.innerHTML = `<span style="font-weight: bold; color: var(--primary-color);">Home</span>`;
+        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
 
         if (!currentUser || currentUser.role !== 'admin') {
             dashboardOverviewContainer.innerHTML = `
@@ -2133,42 +2168,39 @@
 
         originalDashboardData = await fetchDashboardTableData();
         
-        const welcomeUser = currentUser.name || 'Admin'; 
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
         const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
         const totalCases = allItems.filter(i => i.type === 'case').length;
+        const editsThisWeek = allItems.filter(i => i.last_modified && new Date(i.last_modified) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
         
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const editsThisWeek = allItems.filter(i => i.last_modified && new Date(i.last_modified) > sevenDaysAgo).length;
-        
-        const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a,b) => (b.total_views || 0) - (a.total_views || 0)).slice(0,5);
+        const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 5);
 
         dashboardOverviewContainer.innerHTML = `
-            <div class="card" style="background: linear-gradient(to right, var(--primary-color), #4c1d95); color: white; min-height: auto;">
-                <h2 style="font-size: 1.75rem; margin-bottom: 4px;">Welcome back, ${escapeHTML(welcomeUser)}!</h2>
-                <p style="opacity: 0.95; font-size: 0.95rem; color: var(--text-color-inverted);">Overview of your knowledge base activity.</p>
-            </div>
-            <div class="cards-grid md:grid-cols-2 lg:grid-cols-4 my-6">
+            <div class="cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
                 <div class="dashboard-stat-card"><i class="fas fa-folder-open"></i><span class="stat-value">${kbSystemData.sections.length}</span><span class="stat-label">Total Sections</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-newspaper"></i><span class="stat-value">${totalArticles}</span><span class="stat-label">Total Articles & Guides</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-briefcase"></i><span class="stat-value">${totalCases}</span><span class="stat-label">Total Cases</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-edit"></i><span class="stat-value">${editsThisWeek}</span><span class="stat-label">Edits This Week</span></div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div class="dashboard-info-card">
-                    <h3>🔥 Most Used Articles</h3>
-                    <ul id="mostUsedList"></ul>
-                </div>
-                <div class="dashboard-quicklink-card">
-                     <h3>💡 Quick Links</h3>
-                     <ul>
-                        <li><a href="#" id="addNewArticleLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li><a href="#" id="browseTemplatesLink"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
-                     </ul>
-                </div>
             </div>
-            <div class="card chart-container" style="height: 350px;">
-                <h3>Content Activity (Last 7 Days)</h3>
-                <canvas id="visitorsChart"></canvas>
+
+            <div class="cards-grid" style="grid-template-columns: repeat(1, 1fr); lg:grid-template-columns: 2fr 1fr; margin-top: 1.5rem;">
+                <div class="flex flex-col gap-6">
+                    <div class="dashboard-info-card">
+                        <h3>🔥 Most Used Articles</h3>
+                        <ul id="mostUsedList"></ul>
+                    </div>
+                    <div class="dashboard-quicklink-card">
+                        <h3>💡 Quick Links</h3>
+                        <ul>
+                            <li><a href="#" id="addNewArticleLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
+                            <li><a href="#" id="browseTemplatesLink"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>Content Activity (Last 7 Days)</h3>
+                    <canvas id="visitorsChart"></canvas>
+                </div>
             </div>
             
             <div class="dashboard-tables-container" style="margin-top: 1.5rem;">
@@ -2217,7 +2249,7 @@
             const itemSlug = fullItem ? fullItem.slug : item.article_id;
             return `<li>
                 <a href="#${sectionSlug}/${itemSlug}">${escapeHTML(item.article_title)}</a> 
-                <span class="meta"><i class="fas fa-eye"></i> ${item.total_views || 0} views    <i class="fas fa-comments"></i> ${item.total_comments || 0} comments</span>
+                <span class="meta"><i class="fas fa-eye"></i> ${item.total_views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.total_comments || 0} comments</span>
             </li>`
         }).join('') : '<li>No data yet.</li>';
 
@@ -2272,7 +2304,6 @@
                 return d.toLocaleDateString('en-US', { weekday: 'short' });
             }).reverse();
 
-            // ✅✅✅ FINAL FIX: Calculate UNIQUE views for the chart
             const viewsData = labels.map(label => {
                 const dailyViews = originalDashboardData.activityLog.filter(log => 
                     log.action === 'viewed' && 
@@ -2445,9 +2476,6 @@
 
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        // This line is commented out to rely on the database view for accurate unique counts.
-        // itemData.total_views = (itemData.total_views || 0) + 1;
-
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
@@ -2890,10 +2918,28 @@
         const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
         const resultBox = document.getElementById('recommendationBox');
         const resultText = document.getElementById('recommendationText');
+        
+        const estDisplay = document.getElementById('estTimeDisplay');
+        const actDisplay = document.getElementById('actTimeDisplay');
 
-        if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !resultBox) {
+        if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !resultBox || !estDisplay || !actDisplay) {
             return;
         }
+        
+        const formatTimeForDisplay = (timeString) => {
+            if (!timeString) return '--:-- --';
+            const [hours, minutes] = timeString.split(':');
+            const h = parseInt(hours, 10);
+            const suffix = h >= 12 ? 'PM' : 'AM';
+            const displayHours = ((h + 11) % 12 + 1);
+            return `${String(displayHours).padStart(2, '0')}:${minutes} ${suffix}`;
+        }
+        
+        estDisplay.textContent = formatTimeForDisplay(estimatedTimeInput.value);
+        actDisplay.textContent = formatTimeForDisplay(actualTimeInput.value);
+        estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
+        actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
+
 
         const estimatedTime = estimatedTimeInput.value;
         const actualTime = actualTimeInput.value;
@@ -2902,7 +2948,7 @@
         if (estimatedTime && actualTime) {
             const time1 = new Date(`1970-01-01T${estimatedTime}:00`);
             const time2 = new Date(`1970-01-01T${actualTime}:00`);
-            const differenceMinutes = (time2 - time1) / (1000 * 60);
+            const differenceMinutes = Math.round((time2 - time1) / (1000 * 60));
             
             let recommendation = '';
             let boxClass = 'info';
@@ -2987,7 +3033,6 @@
         
         // Use a single, delegated event listener for dynamic content
         pageContentArea.addEventListener('click', async (e) => {
-            // ✅ START: MODIFIED CODE FOR TOGGLE STEPS (SUPPORTS TOP AND BOTTOM BUTTONS)
             if (e.target.matches('#toggleScribeStepsBtn, #toggleScribeStepsBtnBottom')) {
                 e.preventDefault(); 
                 const stepsContainer = document.getElementById('scribe-steps-container');
@@ -3002,16 +3047,14 @@
                         : '<i class="fas fa-eye-slash"></i> Hide Visual Guide';
                     topButton.innerHTML = newText;
                     bottomButton.innerHTML = newText;
-                    bottomButton.classList.toggle('hidden', isHidden); // Hide bottom button when steps are hidden
+                    bottomButton.classList.toggle('hidden', isHidden);
                 }
             }
-            // ✅ END: MODIFIED CODE FOR TOGGLE STEPS
-
+            
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
 
-            // --- Feedback Buttons ---
             if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
                 const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
                 if (!error) {
@@ -3031,7 +3074,6 @@
                 document.getElementById('ratingButtons')?.classList.remove('hidden');
             }
 
-            // --- Comment Button ---
             if (e.target.id === 'postCommentBtn') {
                 const commentTextEl = document.getElementById('newCommentText');
                 const commentText = commentTextEl.value.trim();
@@ -3045,7 +3087,6 @@
                 commentTextEl.value = ''; 
             }
 
-            // --- Action Bar Buttons ---
             if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
@@ -3061,7 +3102,7 @@
                 handleDelayCalculator();
             }
         });
-        pageContentArea.addEventListener('change', (e) => { // ✅ FIX FOR TIME INPUT
+         pageContentArea.addEventListener('change', (e) => { // ✅ FIX FOR TIME INPUT
             if (e.target.matches('#estimatedTime, #actualTime')) {
                 handleDelayCalculator();
             }
