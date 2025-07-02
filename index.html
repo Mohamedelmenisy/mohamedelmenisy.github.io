@@ -775,7 +775,8 @@
             opacity: 0;
             cursor: pointer;
         }
-        .custom-time-input-wrapper input[type="time"]:focus + .time-display {
+        .custom-time-input-wrapper input[type="time"]:focus + .time-display,
+        .custom-time-input-wrapper input[type="time"]:hover + .time-display {
              border-color: var(--primary-color);
              box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
@@ -1823,7 +1824,6 @@
     let visitorsChartInstance;
     let originalDashboardData = { activityLog: [], articleViews: [] };
 
-    // ... (DOM element declarations are unchanged) ...
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
     const navigationMenu = document.getElementById('navigationMenu');
@@ -2117,7 +2117,7 @@
         const mostUsedArticles = (originalDashboardData.articleViews || []).sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 5);
 
         dashboardOverviewContainer.innerHTML = `
-             <div class="cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
                 <div class="dashboard-stat-card"><i class="fas fa-folder-open"></i><span class="stat-value">${kbSystemData.sections.length}</span><span class="stat-label">Total Sections</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-newspaper"></i><span class="stat-value">${totalArticles}</span><span class="stat-label">Total Articles & Guides</span></div>
                 <div class="dashboard-stat-card"><i class="fas fa-briefcase"></i><span class="stat-value">${totalCases}</span><span class="stat-label">Total Cases</span></div>
@@ -2880,7 +2880,6 @@
         estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
         actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
 
-
         const estimatedTime = estimatedTimeInput.value;
         const actualTime = actualTimeInput.value;
         const orderType = orderTypeRadio.value;
@@ -2946,8 +2945,6 @@
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
         
-        // --- Setup event listeners that ONLY need to be attached once ---
-        
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
         [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
         confirmLogoutBtn.addEventListener('click', logout);
@@ -2970,26 +2967,23 @@
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
-        // Use a single, delegated event listener for dynamic content
         pageContentArea.addEventListener('click', async (e) => {
-            if (e.target.matches('#toggleScribeStepsBtn, #toggleScribeStepsBtnBottom')) {
-                e.preventDefault(); 
-                const stepsContainer = document.getElementById('scribe-steps-container');
-                const topButton = document.getElementById('toggleScribeStepsBtn');
-                const bottomButton = document.getElementById('toggleScribeStepsBtnBottom');
-
-                if (stepsContainer && topButton && bottomButton) {
-                    stepsContainer.classList.toggle('hidden');
-                    const isHidden = stepsContainer.classList.contains('hidden');
-                    const newText = isHidden 
-                        ? '<i class="fas fa-eye"></i> Show Visual Guide' 
-                        : '<i class="fas fa-eye-slash"></i> Hide Visual Guide';
-                    topButton.innerHTML = newText;
-                    bottomButton.innerHTML = newText;
-                    bottomButton.classList.toggle('hidden', isHidden);
+            const toggleBtn = e.target.closest('[data-toggle]');
+            if (toggleBtn) {
+                e.preventDefault();
+                const targetId = toggleBtn.dataset.toggle;
+                const targetContainer = document.getElementById(targetId);
+                if(targetContainer) {
+                    const isHidden = targetContainer.classList.toggle('hidden');
+                    toggleBtn.innerHTML = isHidden ? '<i class="fas fa-eye"></i> Show Visual Guide' : '<i class="fas fa-eye-slash"></i> Hide Visual Guide';
+                    const bottomBtn = document.getElementById(toggleBtn.id + 'Bottom');
+                    if(bottomBtn) {
+                        bottomBtn.classList.toggle('hidden', isHidden);
+                        bottomBtn.innerHTML = toggleBtn.innerHTML;
+                    }
                 }
             }
-            
+
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
