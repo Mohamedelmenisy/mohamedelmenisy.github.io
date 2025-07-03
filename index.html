@@ -2694,7 +2694,9 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content || '<p><br></p>');
+            // ✅ UPDATED: Find the correct content block to insert
+            const kbContentDiv = new DOMParser().parseFromString(itemToEdit.content, 'text/html').querySelector('.kb-content');
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, kbContentDiv ? kbContentDiv.innerHTML : itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
@@ -2729,12 +2731,15 @@
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
 
+        // ✅ UPDATED: Wrap content in the .kb-content div for consistency
+        const finalContent = `<div class="kb-content">${mainQuillEditor.root.innerHTML}</div>`;
+
         const itemData = {
             title: document.getElementById('contentTitle').value.trim(),
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: mainQuillEditor.root.innerHTML,
+            content: finalContent, // Use the wrapped content
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2852,20 +2857,28 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
+    // ✅ =================================================================
+    // ✅ START: UPDATED JAVASCRIPT LOGIC FOR DELAYED ORDER GUIDE
+    // ✅ =================================================================
     function handleDelayCalculator() {
+        // --- Get all required elements ---
         const estimatedTimeInput = document.getElementById('estimatedTime');
         const actualTimeInput = document.getElementById('actualTime');
         const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
-        const resultBox = document.getElementById('recommendationBox');
-        const resultText = document.getElementById('recommendationText');
-        
+        const recommendationBox = document.getElementById('recommendationBox');
+        const recommendationTextEl = document.getElementById('recommendationText');
         const estDisplay = document.getElementById('estTimeDisplay');
         const actDisplay = document.getElementById('actTimeDisplay');
+        const responseGenerator = document.getElementById('responseGenerator');
+        const arabicResponseEl = document.getElementById('arabicResponse');
+        const englishResponseEl = document.getElementById('englishResponse');
 
-        if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !resultBox || !estDisplay || !actDisplay) {
+        // --- Exit if any element is not found on the page ---
+        if (!estimatedTimeInput || !recommendationBox || !responseGenerator) {
             return;
         }
-        
+
+        // --- Update time display fields ---
         const formatTimeForDisplay = (timeString) => {
             if (!timeString) return '--:-- --';
             const [hours, minutes] = timeString.split(':');
@@ -2873,16 +2886,15 @@
             const suffix = h >= 12 ? 'PM' : 'AM';
             const displayHours = ((h + 11) % 12 + 1);
             return `${String(displayHours).padStart(2, '0')}:${minutes} ${suffix}`;
-        }
-        
+        };
         estDisplay.textContent = formatTimeForDisplay(estimatedTimeInput.value);
         actDisplay.textContent = formatTimeForDisplay(actualTimeInput.value);
         estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
         actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
 
+        // --- Start calculation logic only if both times are present ---
         const estimatedTime = estimatedTimeInput.value;
         const actualTime = actualTimeInput.value;
-        const orderType = orderTypeRadio.value;
 
         if (estimatedTime && actualTime) {
             const time1 = new Date(`1970-01-01T${estimatedTime}:00`);
@@ -2891,41 +2903,76 @@
             
             let recommendation = '';
             let boxClass = 'info';
+            let arabicResponseText = '';
+            let englishResponseText = '';
+            const orderType = orderTypeRadio.value;
 
             if (differenceMinutes < 0) {
                 recommendation = 'Actual delivery time cannot be before the estimated time.';
                 boxClass = 'error';
+                arabicResponseText = 'لا يمكن أن يكون وقت التسليم الفعلي قبل الوقت المقدر. يرجى التحقق من الأوقات المدخلة.';
+                englishResponseText = 'Actual delivery time cannot be before the estimated time. Please check the entered times.';
             } else if (differenceMinutes <= 15) {
-                recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize to the customer for the slight delay. No compensation is required unless the customer specifically asks.`;
+                recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize for the slight delay. No compensation is required unless the customer specifically asks.`;
                 boxClass = 'info';
+                arabicResponseText = 'نعتذر عن التأخير الطفيف في طلبكم. نقدر صبركم وتفهمكم.';
+                englishResponseText = 'We apologize for the slight delay with your order. We appreciate your patience and understanding.';
             } else {
+                boxClass = 'success'; // All other cases are compensation cases
                 if (orderType === 'fast') {
                     if (differenceMinutes <= 30) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only.`;
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
+                        arabicResponseText = 'تقديراً لصبركم، قمنا بتعويضكم برسوم التوصيل. نعتذر مرة أخرى عن التأخير.';
+                        englishResponseText = 'As a token of our appreciation for your patience, we have compensated you with the delivery fees. We apologize again for the delay.';
                     } else if (differenceMinutes <= 45) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير. كتعويض، سيتم إعادة رسوم التوصيل بالإضافة إلى 25% من قيمة الطلب (بدون التوصيل).';
+                        englishResponseText = 'We sincerely apologize for this delay. As compensation, you will be refunded the delivery fees plus 25% of the order subtotal.';
                     } else if (differenceMinutes <= 60) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
+                         arabicResponseText = 'نأسف جداً للتأخير الكبير. سيتم تعويضكم برسوم التوصيل كاملة بالإضافة إلى 50% من قيمة الطلب (بدون التوصيل).';
+                        englishResponseText = 'We are very sorry for the significant delay. You will be compensated with the full delivery fees plus 50% of the order subtotal.';
                     } else {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا الإزعاج. سيتم تعويضكم بقيمة الطلب كاملة.';
+                        englishResponseText = 'We deeply apologize for this inconvenience. You will be compensated with the full amount of your order.';
                     }
-                } else { // Scheduled
+                } else { // Scheduled Orders
                     if (differenceMinutes <= 60) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled Order).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
+                        arabicResponseText = 'بسبب التأخير في طلبكم المجدول، سيتم تعويضكم بنسبة 50% إلى 100% من قيمة الطلب. يرجى تأكيد المبلغ مع العميل.';
+                        englishResponseText = 'Due to the delay of your scheduled order, you will be compensated with 50% to 100% of the order total. Please confirm the amount with the customer.';
                     } else {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled Order).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير الكبير في طلبكم المجدول. سيتم تعويضكم بقيمة الطلب كاملة بالإضافة إلى 50 ريال كرصيد في محفظتكم.';
+                        englishResponseText = 'We deeply apologize for this major delay in your scheduled order. You will be compensated with the full order amount plus an additional 50 SAR credit.';
                     }
                 }
-                boxClass = 'success';
             }
 
-            resultText.innerHTML = recommendation;
-            resultBox.className = `recommendation-box ${boxClass}`;
-            resultBox.classList.remove('hidden');
+            // --- Update UI with results ---
+            recommendationTextEl.innerHTML = recommendation;
+            recommendationBox.className = `recommendation-box ${boxClass}`;
+            recommendationBox.classList.remove('hidden');
+
+            if (arabicResponseText) {
+                arabicResponseEl.textContent = arabicResponseText;
+                englishResponseEl.textContent = englishResponseText;
+                responseGenerator.classList.remove('hidden');
+            } else {
+                responseGenerator.classList.add('hidden');
+            }
+
         } else {
-            resultBox.classList.add('hidden');
+            // --- Hide results if inputs are incomplete ---
+            recommendationBox.classList.add('hidden');
+            responseGenerator.classList.add('hidden');
         }
     }
+    // ✅ =================================================================
+    // ✅ END: UPDATED JAVASCRIPT LOGIC
+    // ✅ =================================================================
+
 
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
@@ -2968,25 +3015,38 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
+            // ✅ START: ADDED CLIPBOARD LOGIC
+            const copyButton = e.target.closest('[data-copy-target]');
+            if (copyButton) {
+                const targetId = copyButton.dataset.copyTarget;
+                const textToCopy = document.getElementById(targetId)?.textContent;
+                if (textToCopy) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showToast('Response copied to clipboard!', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        showToast('Failed to copy.', 'error');
+                    });
+                }
+                return; // Stop further execution
+            }
+            // ✅ END: ADDED CLIPBOARD LOGIC
+
             const toggleBtn = e.target.closest('button[data-toggle]');
             if (toggleBtn) {
                 e.preventDefault();
                 const targetId = toggleBtn.dataset.toggle;
                 const targetContainer = document.getElementById(targetId);
-                const bottomBtnId = toggleBtn.id + 'Bottom';
-                const bottomBtn = document.getElementById(bottomBtnId);
-
+                
                 if(targetContainer) {
                     const isHidden = targetContainer.classList.toggle('hidden');
                     const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
-                    const text = toggleBtn.id.includes('Scribe') ? 'Visual Guide' : 'Where to Find Times';
+                    let text = 'Visual Guide'; // Default text
+                    if (toggleBtn.id.includes('FindOrder')) text = 'Visual Guide: Finding an Order';
+                    if (toggleBtn.id.includes('Compensation')) text = 'Visual Guide: Applying Compensation';
+
                     const action = isHidden ? 'Show' : 'Hide';
-                    
                     toggleBtn.innerHTML = `<i class="fas ${icon}"></i> ${action} ${text}`;
-                    if(bottomBtn) {
-                         bottomBtn.innerHTML = `<i class="fas ${icon}"></i> ${action} ${text}`;
-                         bottomBtn.classList.toggle('hidden', isHidden);
-                    }
                 }
             }
 
@@ -3029,10 +3089,14 @@
             if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
-                const el = document.getElementById('itemDetailViewPlaceholder').cloneNode(true);
-                el.querySelectorAll('.item-actions-bar, .item-feedback-section, .comments-section, #viewHistorySection').forEach(e => e.remove());
-                showToast('Generating PDF...', 'info');
-                html2pdf().set({ margin: 0.5, filename: `${itemData.title.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(el).save();
+                // ✅ UPDATED: Select only the .card containing the content for better PDF export
+                const contentCard = document.querySelector('#itemDetailViewPlaceholder .card .kb-content')?.closest('.card');
+                if (contentCard) {
+                    showToast('Generating PDF...', 'info');
+                    html2pdf().set({ margin: 0.5, filename: `${itemData.title.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(contentCard).save();
+                } else {
+                    showToast('Could not find content to export.', 'error');
+                }
             }
         });
         
