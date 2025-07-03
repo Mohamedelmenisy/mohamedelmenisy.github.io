@@ -740,10 +740,12 @@
             gap: 1.5rem;
             align-items: end;
         }
+        /* ✅ REVISED: Improved Time Input for better clickability */
         .custom-time-input-wrapper {
             position: relative;
         }
         .custom-time-input-wrapper .time-display {
+            display: block;
             background-color: var(--bg-color-alt);
             border: 1px solid var(--border-color-darker);
             border-radius: var(--border-radius);
@@ -754,6 +756,7 @@
             font-family: monospace;
             font-size: 1.1em;
             transition: border-color 0.2s;
+            cursor: pointer; /* Make the whole box look clickable */
         }
          .custom-time-input-wrapper .time-display.placeholder {
             color: var(--text-color-muted);
@@ -774,12 +777,14 @@
             height: 100%;
             opacity: 0;
             cursor: pointer;
+            z-index: 2; /* Ensure it's on top of the icon */
         }
         .custom-time-input-wrapper input[type="time"]:focus + .time-display,
-        .custom-time-input-wrapper input[type="time"]:hover + .time-display {
+        .custom-time-input-wrapper:hover .time-display {
              border-color: var(--primary-color);
              box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
+        /* End of improved time input styles */
 
         .order-type-chooser {
             display: flex;
@@ -1382,7 +1387,7 @@
     text-align: left !important;
 }
 .kb-content img {
-    margin: 1rem 0;
+    margin: 1rem auto;
 }
 
 .kb-content, 
@@ -2862,8 +2867,8 @@
     // ✅ =================================================================
     function handleDelayCalculator() {
         // --- Get all required elements ---
-        const estimatedTimeInput = document.getElementById('estimatedTime');
-        const actualTimeInput = document.getElementById('actualTime');
+        const estimatedTimeInput = document.getElementById('estTimeInput');
+        const actualTimeInput = document.getElementById('actTimeInput');
         const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
         const recommendationBox = document.getElementById('recommendationBox');
         const recommendationTextEl = document.getElementById('recommendationText');
@@ -3043,6 +3048,7 @@
                     const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
                     let text = 'Visual Guide'; // Default text
                     if (toggleBtn.id.includes('FindOrder')) text = 'Visual Guide: Finding an Order';
+                    if (toggleBtn.id.includes('DeliveryTab')) text = 'Where to Find Times';
                     if (toggleBtn.id.includes('Compensation')) text = 'Visual Guide: Applying Compensation';
 
                     const action = isHidden ? 'Show' : 'Hide';
@@ -3089,7 +3095,6 @@
             if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
             if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (e.target.id === 'downloadPdfItemBtn') {
-                // ✅ UPDATED: Select only the .card containing the content for better PDF export
                 const contentCard = document.querySelector('#itemDetailViewPlaceholder .card .kb-content')?.closest('.card');
                 if (contentCard) {
                     showToast('Generating PDF...', 'info');
@@ -3101,12 +3106,13 @@
         });
         
         pageContentArea.addEventListener('input', (e) => {
-            if (e.target.matches('#estimatedTime, #actualTime, input[name="orderType"]')) {
+            // ✅ REVISED: Listen to the correct input IDs
+            if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
                 handleDelayCalculator();
             }
         });
          pageContentArea.addEventListener('change', (e) => { // ✅ FIX FOR TIME INPUT
-            if (e.target.matches('#estimatedTime, #actualTime')) {
+            if (e.target.matches('#estTimeInput, #actTimeInput')) {
                 handleDelayCalculator();
             }
         });
