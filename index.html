@@ -652,7 +652,7 @@
         }
         .kb-content img, .ql-editor img {
             display: block;
-            margin: 1rem auto;
+            margin: 1rem 0;
             max-width: 100%;
             height: auto;
             border-radius: var(--border-radius);
@@ -779,7 +779,6 @@
             cursor: pointer;
             z-index: 2; /* Ensure it's on top of the icon */
         }
-        .custom-time-input-wrapper input[type="time"]:focus + .time-display,
         .custom-time-input-wrapper:hover .time-display {
              border-color: var(--primary-color);
              box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
@@ -2699,7 +2698,6 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            // ✅ UPDATED: Find the correct content block to insert
             const kbContentDiv = new DOMParser().parseFromString(itemToEdit.content, 'text/html').querySelector('.kb-content');
             mainQuillEditor.clipboard.dangerouslyPasteHTML(0, kbContentDiv ? kbContentDiv.innerHTML : itemToEdit.content || '<p><br></p>');
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
@@ -2736,7 +2734,6 @@
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
 
-        // ✅ UPDATED: Wrap content in the .kb-content div for consistency
         const finalContent = `<div class="kb-content">${mainQuillEditor.root.innerHTML}</div>`;
 
         const itemData = {
@@ -2744,7 +2741,7 @@
             description: document.getElementById('contentSummary').value.trim(),
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: finalContent, // Use the wrapped content
+            content: finalContent, 
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2862,11 +2859,7 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
-    // ✅ =================================================================
-    // ✅ START: UPDATED JAVASCRIPT LOGIC FOR DELAYED ORDER GUIDE
-    // ✅ =================================================================
     function handleDelayCalculator() {
-        // --- Get all required elements ---
         const estimatedTimeInput = document.getElementById('estTimeInput');
         const actualTimeInput = document.getElementById('actTimeInput');
         const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
@@ -2878,12 +2871,10 @@
         const arabicResponseEl = document.getElementById('arabicResponse');
         const englishResponseEl = document.getElementById('englishResponse');
 
-        // --- Exit if any element is not found on the page ---
         if (!estimatedTimeInput || !recommendationBox || !responseGenerator) {
             return;
         }
 
-        // --- Update time display fields ---
         const formatTimeForDisplay = (timeString) => {
             if (!timeString) return '--:-- --';
             const [hours, minutes] = timeString.split(':');
@@ -2897,7 +2888,6 @@
         estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
         actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
 
-        // --- Start calculation logic only if both times are present ---
         const estimatedTime = estimatedTimeInput.value;
         const actualTime = actualTimeInput.value;
 
@@ -2923,7 +2913,7 @@
                 arabicResponseText = 'نعتذر عن التأخير الطفيف في طلبكم. نقدر صبركم وتفهمكم.';
                 englishResponseText = 'We apologize for the slight delay with your order. We appreciate your patience and understanding.';
             } else {
-                boxClass = 'success'; // All other cases are compensation cases
+                boxClass = 'success';
                 if (orderType === 'fast') {
                     if (differenceMinutes <= 30) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
@@ -2955,7 +2945,6 @@
                 }
             }
 
-            // --- Update UI with results ---
             recommendationTextEl.innerHTML = recommendation;
             recommendationBox.className = `recommendation-box ${boxClass}`;
             recommendationBox.classList.remove('hidden');
@@ -2969,15 +2958,10 @@
             }
 
         } else {
-            // --- Hide results if inputs are incomplete ---
             recommendationBox.classList.add('hidden');
             responseGenerator.classList.add('hidden');
         }
     }
-    // ✅ =================================================================
-    // ✅ END: UPDATED JAVASCRIPT LOGIC
-    // ✅ =================================================================
-
 
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
@@ -3020,7 +3004,6 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
-            // ✅ START: ADDED CLIPBOARD LOGIC
             const copyButton = e.target.closest('[data-copy-target]');
             if (copyButton) {
                 const targetId = copyButton.dataset.copyTarget;
@@ -3033,9 +3016,25 @@
                         showToast('Failed to copy.', 'error');
                     });
                 }
-                return; // Stop further execution
+                return;
             }
-            // ✅ END: ADDED CLIPBOARD LOGIC
+
+            // ✅ START: Improved Time Picker Activation
+            const timeWrapper = e.target.closest('.custom-time-input-wrapper');
+            if (timeWrapper) {
+                const timeInput = timeWrapper.querySelector('input[type="time"]');
+                if (timeInput) {
+                    try {
+                        // Modern way to open the picker
+                        timeInput.showPicker();
+                    } catch (error) {
+                        // Fallback for older browsers
+                        console.log("showPicker() not supported, falling back to click().");
+                        timeInput.click();
+                    }
+                }
+            }
+            // ✅ END: Improved Time Picker Activation
 
             const toggleBtn = e.target.closest('button[data-toggle]');
             if (toggleBtn) {
@@ -3046,7 +3045,7 @@
                 if(targetContainer) {
                     const isHidden = targetContainer.classList.toggle('hidden');
                     const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
-                    let text = 'Visual Guide'; // Default text
+                    let text = 'Visual Guide';
                     if (toggleBtn.id.includes('FindOrder')) text = 'Visual Guide: Finding an Order';
                     if (toggleBtn.id.includes('DeliveryTab')) text = 'Where to Find Times';
                     if (toggleBtn.id.includes('Compensation')) text = 'Visual Guide: Applying Compensation';
@@ -3106,12 +3105,11 @@
         });
         
         pageContentArea.addEventListener('input', (e) => {
-            // ✅ REVISED: Listen to the correct input IDs
             if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
                 handleDelayCalculator();
             }
         });
-         pageContentArea.addEventListener('change', (e) => { // ✅ FIX FOR TIME INPUT
+         pageContentArea.addEventListener('change', (e) => {
             if (e.target.matches('#estTimeInput, #actTimeInput')) {
                 handleDelayCalculator();
             }
