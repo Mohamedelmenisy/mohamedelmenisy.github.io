@@ -1396,6 +1396,11 @@
   direction: ltr !important;
 }
 
+#ar-content, #ar-content * {
+    text-align: right !important;
+    direction: rtl !important;
+}
+
 .kb-content table {
   width: 100%;
   border-collapse: collapse;
@@ -3005,28 +3010,50 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
-            // ✅ START: NEW LANGUAGE TOGGLE LOGIC
-            if (e.target.id === 'lang-toggle-btn' || e.target.closest('#lang-toggle-btn')) {
-                const btn = document.getElementById('lang-toggle-btn');
-                const enContent = document.getElementById('en-content');
-                const arContent = document.getElementById('ar-content');
-
-                if (enContent && arContent && btn) {
-                    const isEnglishVisible = !enContent.classList.contains('hidden');
-
-                    if (isEnglishVisible) {
-                        enContent.classList.add('hidden');
-                        arContent.classList.remove('hidden');
-                        btn.innerHTML = '<i class="fas fa-language"></i> English';
-                    } else {
-                        arContent.classList.add('hidden');
-                        enContent.classList.remove('hidden');
-                        btn.innerHTML = '<i class="fas fa-language"></i> العربية';
+            // ✅ START: UNIFIED EVENT HANDLER
+            const button = e.target.closest('button');
+            if (button) {
+                 // --- Language Toggle ---
+                if (button.id === 'lang-toggle-btn') {
+                    const enContent = document.getElementById('en-content');
+                    const arContent = document.getElementById('ar-content');
+                    if (enContent && arContent) {
+                        const isEnglishVisible = !enContent.classList.contains('hidden');
+                        enContent.classList.toggle('hidden', isEnglishVisible);
+                        arContent.classList.toggle('hidden', !isEnglishVisible);
+                        button.innerHTML = isEnglishVisible ? '<i class="fas fa-language"></i> English' : '<i class="fas fa-language"></i> العربية';
                     }
+                    return;
                 }
-                return; // Stop further execution in this click handler
+
+                // --- Visual Guide Toggles ---
+                if (button.dataset.toggle) {
+                    e.preventDefault();
+                    const targetContainer = document.getElementById(button.dataset.toggle);
+                    if (targetContainer) {
+                        const isHidden = targetContainer.classList.toggle('hidden');
+                        const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
+                        const action = isHidden ? 'إظهار' : 'إخفاء';
+                        
+                        // Update both English and Arabic buttons if they exist
+                        document.querySelectorAll(`[data-toggle="${button.dataset.toggle}"]`).forEach(btn => {
+                            let textKey = btn.id.replace('AR', '').replace('Btn',''); //e.g. toggleFindOrder
+                            const texts = {
+                                toggleFindOrder: { en: 'Visual Guide: Finding an Order', ar: 'الدليل المرئي: كيفية إيجاد الطلب' },
+                                toggleDeliveryTab: { en: 'Where to Find Times', ar: 'مكان وجود الأوقات' },
+                                toggleCompensation: { en: 'Visual Guide: Applying Compensation', ar: 'الدليل المرئي: كيفية تطبيق التعويض'}
+                            };
+                             const currentLang = btn.id.includes('AR') ? 'ar' : 'en';
+                             const showText = currentLang === 'ar' ? 'إظهار' : 'Show';
+                             const hideText = currentLang === 'ar' ? 'إخفاء' : 'Hide';
+                             
+                             btn.innerHTML = `<i class="fas ${icon}"></i> ${isHidden ? showText : hideText} ${texts[textKey][currentLang]}`;
+                        });
+                    }
+                    return;
+                }
             }
-            // ✅ END: NEW LANGUAGE TOGGLE LOGIC
+            // ✅ END: UNIFIED EVENT HANDLER
 
             const copyButton = e.target.closest('[data-copy-target]');
             if (copyButton) {
@@ -3043,42 +3070,12 @@
                 return;
             }
 
-            // ✅ START: Improved Time Picker Activation
             const timeWrapper = e.target.closest('.custom-time-input-wrapper');
             if (timeWrapper) {
                 const timeInput = timeWrapper.querySelector('input[type="time"]');
-                if (timeInput) {
-                    try {
-                        // Modern way to open the picker
-                        timeInput.showPicker();
-                    } catch (error) {
-                        // Fallback for older browsers
-                        console.log("showPicker() not supported, falling back to click().");
-                        timeInput.click();
-                    }
-                }
+                if (timeInput) { try { timeInput.showPicker(); } catch (error) { timeInput.click(); } }
             }
-            // ✅ END: Improved Time Picker Activation
-
-            const toggleBtn = e.target.closest('button[data-toggle]');
-            if (toggleBtn) {
-                e.preventDefault();
-                const targetId = toggleBtn.dataset.toggle;
-                const targetContainer = document.getElementById(targetId);
-                
-                if(targetContainer) {
-                    const isHidden = targetContainer.classList.toggle('hidden');
-                    const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
-                    let text = 'Visual Guide';
-                    if (toggleBtn.id.includes('FindOrder')) text = 'Visual Guide: Finding an Order';
-                    if (toggleBtn.id.includes('DeliveryTab')) text = 'Where to Find Times';
-                    if (toggleBtn.id.includes('Compensation')) text = 'Visual Guide: Applying Compensation';
-
-                    const action = isHidden ? 'Show' : 'Hide';
-                    toggleBtn.innerHTML = `<i class="fas ${icon}"></i> ${action} ${text}`;
-                }
-            }
-
+            
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
