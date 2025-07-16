@@ -638,8 +638,8 @@
         .kb-content strong { font-weight: bold; }
         .kb-content em { font-style: italic; }
         .kb-content a { color: var(--primary-color); text-decoration: underline; }
-        .kb-content a.spotlight img { transition: transform 0.2s ease; }
-        .kb-content a.spotlight:hover img { transform: scale(1.03); }
+        .kb-content a.spotlight img { transition: transform 0.2s ease; border: 1px solid var(--border-color); }
+        .kb-content a.spotlight:hover img { transform: scale(1.03); border-color: var(--primary-color); }
         .kb-content pre {
             background-color: var(--bg-color);
             padding: 10px;
@@ -666,13 +666,14 @@
             border-radius: 3px;
         }
         .kb-content blockquote {
-            background-color: var(--bg-color-hover);
             padding: 0.75rem 1rem;
             border-radius: var(--border-radius);
             margin: 1em 0;
-            border-left: 4px solid var(--primary-color);
             color: var(--text-color);
             position: relative;
+            background-color: var(--bg-color);
+            border-inline-start: 4px solid var(--primary-color);
+            border-inline-end: none;
         }
         .kb-content blockquote i.fa-comment-dots {
             margin-right: 0.5rem;
@@ -741,7 +742,6 @@
             gap: 1.5rem;
             align-items: end;
         }
-        /* ✅ REVISED: Improved Time Input for better clickability */
         .custom-time-input-wrapper {
             position: relative;
         }
@@ -757,7 +757,7 @@
             font-family: monospace;
             font-size: 1.1em;
             transition: border-color 0.2s;
-            cursor: pointer; /* Make the whole box look clickable */
+            cursor: pointer;
         }
          .custom-time-input-wrapper .time-display.placeholder {
             color: var(--text-color-muted);
@@ -778,13 +778,12 @@
             height: 100%;
             opacity: 0;
             cursor: pointer;
-            z-index: 2; /* Ensure it's on top of the icon */
+            z-index: 2;
         }
         .custom-time-input-wrapper:hover .time-display {
              border-color: var(--primary-color);
              box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
-        /* End of improved time input styles */
 
         .order-type-chooser {
             display: flex;
@@ -843,6 +842,59 @@
         }
 
         .hidden { display: none !important; }
+
+        /* General RTL Fixes */
+        [dir="rtl"] .sidebar {
+            left: auto;
+            right: 0;
+            border-right: none;
+            border-left: 1px solid var(--border-color);
+        }
+        [dir="rtl"] .sidebar.closed {
+            transform: translateX(100%);
+        }
+        [dir="rtl"] .content-wrapper {
+            margin-left: 0;
+            margin-right: var(--sidebar-width);
+        }
+        [dir="rtl"] .sidebar.closed + .content-wrapper {
+            margin-right: 0;
+        }
+        [dir="rtl"] .sidebar-header i, 
+        [dir="rtl"] .sidebar-link i {
+            margin-right: 0;
+            margin-left: 0.75rem;
+        }
+        
+        /* ✅✅✅ START: ARABIC CONTENT STYLING ✅✅✅ */
+        #ar-content {
+            direction: rtl;
+            text-align: right;
+        }
+        #ar-content h1, #ar-content h2, #ar-content h3, #ar-content h4, #ar-content p, #ar-content li {
+            text-align: right;
+        }
+        #ar-content ul, #ar-content ol {
+            padding-left: 0;
+            padding-right: 20px;
+        }
+        #ar-content .custom-time-input-wrapper i {
+            right: auto;
+            left: 1rem;
+        }
+        #ar-content .custom-time-input-wrapper .time-display {
+            text-align: right;
+            padding: 0.625rem 1rem 0.625rem 2.5rem;
+        }
+        #ar-content .calculator-grid {
+            /* Reverse the grid order for RTL */
+            direction: ltr; /* Keep grid behavior LTR */
+            grid-auto-flow: dense;
+        }
+         #ar-content .calculator-grid > * {
+            direction: rtl; /* Set children back to RTL */
+        }
+        /* ✅✅✅ END: ARABIC CONTENT STYLING ✅✅✅ */
 
         .chart-container {
             position: relative;
@@ -1371,58 +1423,6 @@
                 padding: 8px !important;
             }
         }
-
-    
-.kb-content {
-    text-align: left;
-}
-.kb-content h1,
-.kb-content h2,
-.kb-content h3,
-.kb-content h4,
-.kb-content p,
-.kb-content ul,
-.kb-content ol,
-.kb-content li {
-    text-align: left !important;
-}
-.kb-content img {
-    margin: 1rem auto;
-}
-
-.kb-content, 
-.kb-content * {
-  text-align: left !important;
-  direction: ltr !important;
-}
-
-#ar-content, #ar-content * {
-    text-align: right !important;
-    direction: rtl !important;
-}
-
-.kb-content table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #222;
-}
-
-.kb-content th,
-.kb-content td {
-  border: 1px solid #555;
-  padding: 10px;
-  color: #ddd;
-}
-
-.kb-content thead {
-  background-color: #333;
-  color: #fff;
-}
-
-.kb-content img {
-  margin: 1rem 0;
-  max-width: 100%;
-}
 </style>
 </head>
 <body>
@@ -2873,12 +2873,10 @@
         const recommendationTextEl = document.getElementById('recommendationText');
         const estDisplay = document.getElementById('estTimeDisplay');
         const actDisplay = document.getElementById('actTimeDisplay');
-        const responseGenerator = document.getElementById('responseGenerator');
-        const arabicResponseEl = document.getElementById('arabicResponse');
-        const englishResponseEl = document.getElementById('englishResponse');
-
-        if (!estimatedTimeInput || !recommendationBox || !responseGenerator) {
-            return;
+        
+        if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !recommendationBox || !estDisplay || !actDisplay) {
+             console.warn("Calculator elements not found. Skipping calculation.");
+             return;
         }
 
         const formatTimeForDisplay = (timeString) => {
@@ -2889,6 +2887,7 @@
             const displayHours = ((h + 11) % 12 + 1);
             return `${String(displayHours).padStart(2, '0')}:${minutes} ${suffix}`;
         };
+        
         estDisplay.textContent = formatTimeForDisplay(estimatedTimeInput.value);
         actDisplay.textContent = formatTimeForDisplay(actualTimeInput.value);
         estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
@@ -2904,49 +2903,31 @@
             
             let recommendation = '';
             let boxClass = 'info';
-            let arabicResponseText = '';
-            let englishResponseText = '';
             const orderType = orderTypeRadio.value;
 
             if (differenceMinutes < 0) {
                 recommendation = 'Actual delivery time cannot be before the estimated time.';
                 boxClass = 'error';
-                arabicResponseText = 'لا يمكن أن يكون وقت التسليم الفعلي قبل الوقت المقدر. يرجى التحقق من الأوقات المدخلة.';
-                englishResponseText = 'Actual delivery time cannot be before the estimated time. Please check the entered times.';
             } else if (differenceMinutes <= 15) {
                 recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize for the slight delay. No compensation is required unless the customer specifically asks.`;
                 boxClass = 'info';
-                arabicResponseText = 'نعتذر عن التأخير الطفيف في طلبكم. نقدر صبركم وتفهمكم.';
-                englishResponseText = 'We apologize for the slight delay with your order. We appreciate your patience and understanding.';
             } else {
                 boxClass = 'success';
                 if (orderType === 'fast') {
                     if (differenceMinutes <= 30) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
-                        arabicResponseText = 'تقديراً لصبركم، قمنا بتعويضكم برسوم التوصيل. نعتذر مرة أخرى عن التأخير.';
-                        englishResponseText = 'As a token of our appreciation for your patience, we have compensated you with the delivery fees. We apologize again for the delay.';
                     } else if (differenceMinutes <= 45) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
-                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير. كتعويض، سيتم إعادة رسوم التوصيل بالإضافة إلى 25% من قيمة الطلب (بدون التوصيل).';
-                        englishResponseText = 'We sincerely apologize for this delay. As compensation, you will be refunded the delivery fees plus 25% of the order subtotal.';
                     } else if (differenceMinutes <= 60) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
-                         arabicResponseText = 'نأسف جداً للتأخير الكبير. سيتم تعويضكم برسوم التوصيل كاملة بالإضافة إلى 50% من قيمة الطلب (بدون التوصيل).';
-                        englishResponseText = 'We are very sorry for the significant delay. You will be compensated with the full delivery fees plus 50% of the order subtotal.';
                     } else {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
-                        arabicResponseText = 'نعتذر بشدة عن هذا الإزعاج. سيتم تعويضكم بقيمة الطلب كاملة.';
-                        englishResponseText = 'We deeply apologize for this inconvenience. You will be compensated with the full amount of your order.';
                     }
                 } else { // Scheduled Orders
                     if (differenceMinutes <= 60) {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
-                        arabicResponseText = 'بسبب التأخير في طلبكم المجدول، سيتم تعويضكم بنسبة 50% إلى 100% من قيمة الطلب. يرجى تأكيد المبلغ مع العميل.';
-                        englishResponseText = 'Due to the delay of your scheduled order, you will be compensated with 50% to 100% of the order total. Please confirm the amount with the customer.';
                     } else {
                         recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
-                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير الكبير في طلبكم المجدول. سيتم تعويضكم بقيمة الطلب كاملة بالإضافة إلى 50 ريال كرصيد في محفظتكم.';
-                        englishResponseText = 'We deeply apologize for this major delay in your scheduled order. You will be compensated with the full order amount plus an additional 50 SAR credit.';
                     }
                 }
             }
@@ -2954,18 +2935,8 @@
             recommendationTextEl.innerHTML = recommendation;
             recommendationBox.className = `recommendation-box ${boxClass}`;
             recommendationBox.classList.remove('hidden');
-
-            if (arabicResponseText) {
-                arabicResponseEl.textContent = arabicResponseText;
-                englishResponseEl.textContent = englishResponseText;
-                responseGenerator.classList.remove('hidden');
-            } else {
-                responseGenerator.classList.add('hidden');
-            }
-
         } else {
             recommendationBox.classList.add('hidden');
-            responseGenerator.classList.add('hidden');
         }
     }
 
@@ -3010,10 +2981,9 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
-            // ✅ START: UNIFIED EVENT HANDLER
             const button = e.target.closest('button');
             if (button) {
-                 // --- Language Toggle ---
+                // --- Language Toggle ---
                 if (button.id === 'lang-toggle-btn') {
                     const enContent = document.getElementById('en-content');
                     const arContent = document.getElementById('ar-content');
@@ -3029,32 +2999,32 @@
                 // --- Visual Guide Toggles ---
                 if (button.dataset.toggle) {
                     e.preventDefault();
-                    const targetContainer = document.getElementById(button.dataset.toggle);
-                    if (targetContainer) {
-                        const isHidden = targetContainer.classList.toggle('hidden');
-                        const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
-                        const action = isHidden ? 'إظهار' : 'إخفاء';
-                        
-                        // Update both English and Arabic buttons if they exist
-                        document.querySelectorAll(`[data-toggle="${button.dataset.toggle}"]`).forEach(btn => {
-                            let textKey = btn.id.replace('AR', '').replace('Btn',''); //e.g. toggleFindOrder
-                            const texts = {
-                                toggleFindOrder: { en: 'Visual Guide: Finding an Order', ar: 'الدليل المرئي: كيفية إيجاد الطلب' },
-                                toggleDeliveryTab: { en: 'Where to Find Times', ar: 'مكان وجود الأوقات' },
-                                toggleCompensation: { en: 'Visual Guide: Applying Compensation', ar: 'الدليل المرئي: كيفية تطبيق التعويض'}
-                            };
-                             const currentLang = btn.id.includes('AR') ? 'ar' : 'en';
-                             const showText = currentLang === 'ar' ? 'إظهار' : 'Show';
-                             const hideText = currentLang === 'ar' ? 'إخفاء' : 'Hide';
-                             
-                             btn.innerHTML = `<i class="fas ${icon}"></i> ${isHidden ? showText : hideText} ${texts[textKey][currentLang]}`;
-                        });
-                    }
+                    const targetId = button.dataset.toggle;
+                    document.querySelectorAll(`[data-toggle="${targetId}"]`).forEach(btn => {
+                        const targetContainer = document.getElementById(targetId);
+                        if (targetContainer) {
+                            const isHidden = targetContainer.classList.toggle('hidden');
+                            // This logic will run once but update all buttons with the same data-toggle attribute
+                            document.querySelectorAll(`[data-toggle="${targetId}"]`).forEach(b => {
+                                const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
+                                let textKey = b.id.replace('AR', '').replace('Btn','');
+                                const texts = {
+                                    'toggleDriverLeft': { en: 'How to Check Driver Status', ar: 'كيفية التحقق من حالة السائق' },
+                                    'toggleCompensation': { en: 'Visual Guide: Applying Compensation', ar: 'الدليل المرئي: كيفية تطبيق التعويض' }
+                                };
+                                const currentLang = b.id.includes('AR') ? 'ar' : 'en';
+                                const showText = currentLang === 'ar' ? 'إظهار' : 'Show';
+                                const hideText = currentLang === 'ar' ? 'إخفاء' : 'Hide';
+                                if (texts[textKey]) {
+                                    b.innerHTML = `<i class="fas ${icon}"></i> ${isHidden ? showText : hideText} ${texts[textKey][currentLang]}`;
+                                }
+                            });
+                        }
+                    });
                     return;
                 }
             }
-            // ✅ END: UNIFIED EVENT HANDLER
-
+            
             const copyButton = e.target.closest('[data-copy-target]');
             if (copyButton) {
                 const targetId = copyButton.dataset.copyTarget;
@@ -3131,7 +3101,7 @@
             }
         });
          pageContentArea.addEventListener('change', (e) => {
-            if (e.target.matches('#estTimeInput, #actTimeInput')) {
+            if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
                 handleDelayCalculator();
             }
         });
