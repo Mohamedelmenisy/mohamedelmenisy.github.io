@@ -1535,6 +1535,46 @@
             color: var(--text-color-subtle);
             margin-bottom: 0;
         }
+        .kb-content .workflow-card {
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .kb-content .workflow-card h4 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+        }
+        .kb-content .policy-rule {
+            background-color: rgba(251, 191, 36, 0.1);
+            border-left-color: var(--rating-color) !important;
+            color: #fcd34d;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .kb-content .policy-rule i {
+            font-size: 1.5rem;
+            color: var(--rating-color);
+        }
+        .kb-content .arrow-down {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--border-color-darker);
+            margin: 2rem 0;
+        }
+        .kb-content .arrow-down span {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+            vertical-align: middle;
+            margin: 0 0.5rem;
+        }
         /* ✅✅✅ START: ARABIC CONTENT STYLING ✅✅✅ */
         #ar-content {
             direction: rtl;
@@ -1589,6 +1629,22 @@
         #ar-content .recommendation-box {
             border-left-width: 0;
             border-right-width: 4px;
+        }
+        #ar-content .workflow-card {
+            border-left: none;
+            border-right: 4px solid var(--primary-color);
+        }
+        #ar-content .workflow-card h4 {
+            flex-direction: row-reverse;
+        }
+        #ar-content .workflow-card h4 i {
+            margin-left: 0.75rem;
+            margin-right: 0;
+        }
+        #ar-content .policy-rule {
+            border-left-color: transparent !important;
+            border-right-color: var(--rating-color) !important;
+            flex-direction: row-reverse;
         }
         /* ✅✅✅ END: ARABIC & WORKFLOW STYLES ✅✅✅ */
 </style>
@@ -3033,17 +3089,18 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
-    function handleDelayCalculator() {
-        const estimatedTimeInput = document.getElementById('estTimeInput');
-        const actualTimeInput = document.getElementById('actTimeInput');
-        const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
-        const recommendationBox = document.getElementById('recommendationBox');
-        const recommendationTextEl = document.getElementById('recommendationText');
-        const estDisplay = document.getElementById('estTimeDisplay');
-        const actDisplay = document.getElementById('actTimeDisplay');
-        
+    function handleDelayCalculator(lang) {
+        const suffix = lang === 'ar' ? 'Ar' : 'En';
+        const estimatedTimeInput = document.getElementById(`estTimeInput${suffix}`);
+        const actualTimeInput = document.getElementById(`actTimeInput${suffix}`);
+        const orderTypeRadio = document.querySelector(`input[name="orderType${suffix}"]:checked`);
+        const recommendationBox = document.getElementById(`recommendationBox${suffix}`);
+        const recommendationTextEl = document.getElementById(`recommendationText${suffix}`);
+        const estDisplay = document.querySelector(`label[for="estTimeInput${suffix}"]`);
+        const actDisplay = document.querySelector(`label[for="actTimeInput${suffix}"]`);
+
         if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !recommendationBox || !estDisplay || !actDisplay) {
-             console.warn("Calculator elements not found. Skipping calculation.");
+             console.warn("Calculator elements not found for lang:", lang);
              return;
         }
 
@@ -3072,30 +3129,45 @@
             let recommendation = '';
             let boxClass = 'info';
             const orderType = orderTypeRadio.value;
+            const isArabic = lang === 'ar';
 
             if (differenceMinutes < 0) {
-                recommendation = 'Actual delivery time cannot be before the estimated time.';
+                recommendation = isArabic ? 'لا يمكن أن يكون وقت التوصيل الفعلي قبل الوقت المتوقع.' : 'Actual delivery time cannot be before the estimated time.';
                 boxClass = 'error';
             } else if (differenceMinutes <= 15) {
-                recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize for the slight delay. No compensation is required unless the customer specifically asks.`;
+                recommendation = isArabic 
+                    ? `<strong>التأخير: ${differenceMinutes} دقيقة.</strong><br>اعتذر عن التأخير البسيط. لا يلزم تقديم تعويض ما لم يصر العميل على ذلك.`
+                    : `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize for the slight delay. No compensation is required unless the customer insists.`;
                 boxClass = 'info';
             } else {
                 boxClass = 'success';
                 if (orderType === 'fast') {
                     if (differenceMinutes <= 30) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
+                        recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب فوري).</strong><br><strong>الإجراء:</strong> تعويض برسوم التوصيل فقط (بحد أقصى 15 ريال).`
+                            : `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
                     } else if (differenceMinutes <= 45) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
+                        recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب فوري).</strong><br><strong>الإجراء:</strong> تعويض برسوم التوصيل + 25% من قيمة الطلب.`
+                            : `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
                     } else if (differenceMinutes <= 60) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
+                         recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب فوري).</strong><br><strong>الإجراء:</strong> تعويض برسوم التوصيل + 50% من قيمة الطلب.`
+                            : `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
                     } else {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
+                        recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب فوري).</strong><br><strong>الإجراء:</strong> تعويض بقيمة الطلب بالكامل.`
+                            : `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
                     }
                 } else { // Scheduled Orders
                     if (differenceMinutes <= 60) {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
+                        recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب مجدول).</strong><br><strong>الإجراء:</strong> تعويض بنسبة 50% إلى 100% من قيمة الطلب.`
+                            : `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
                     } else {
-                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
+                         recommendation = isArabic 
+                            ? `<strong>التأخير: ${differenceMinutes} دقيقة (طلب مجدول).</strong><br><strong>الإجراء:</strong> تعويض بالمبلغ كاملاً + 50 ريال.`
+                            : `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
                     }
                 }
             }
@@ -3169,10 +3241,17 @@
                 if (button.dataset.toggle) {
                     e.preventDefault();
                     const targetContainer = document.getElementById(button.dataset.toggle);
-                    if (targetContainer) {
-                        targetContainer.classList.toggle('hidden');
+                     if (targetContainer) {
+                        const isHidden = targetContainer.classList.toggle('hidden');
+                        const textSpan = button.querySelector('span.toggle-text');
+                        const icon = button.querySelector('i');
+                        const showText = button.dataset.showText || 'Show';
+                        const hideText = button.dataset.hideText || 'Hide';
+
+                        if (icon) icon.className = `fas ${isHidden ? 'fa-eye' : 'fa-eye-slash'}`;
+                        if (textSpan) textSpan.textContent = isHidden ? showText : hideText;
                     }
-                    return; // Stop further processing
+                    return; 
                 }
             }
             
@@ -3249,13 +3328,15 @@
         });
 
         pageContentArea.addEventListener('input', (e) => {
-            if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
-                handleDelayCalculator();
+            if (e.target.id.startsWith('estTimeInput') || e.target.id.startsWith('actTimeInput') || e.target.name.startsWith('orderType')) {
+                const lang = e.target.id.includes('Ar') || e.target.name.includes('Ar') ? 'ar' : 'en';
+                handleDelayCalculator(lang);
             }
         });
          pageContentArea.addEventListener('change', (e) => {
-            if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
-                handleDelayCalculator();
+            if (e.target.id.startsWith('estTimeInput') || e.target.id.startsWith('actTimeInput') || e.target.name.startsWith('orderType')) {
+               const lang = e.target.id.includes('Ar') || e.target.name.includes('Ar') ? 'ar' : 'en';
+               handleDelayCalculator(lang);
             }
         });
 
