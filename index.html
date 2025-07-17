@@ -3096,14 +3096,14 @@
         const orderTypeRadio = document.querySelector(`input[name="orderType${suffix}"]:checked`);
         const recommendationBox = document.getElementById(`recommendationBox${suffix}`);
         const recommendationTextEl = document.getElementById(`recommendationText${suffix}`);
-        const estDisplay = document.querySelector(`label[for="estTimeInput${suffix}"]`);
-        const actDisplay = document.querySelector(`label[for="actTimeInput${suffix}"]`);
-
+        const estDisplay = document.getElementById(`estTimeDisplay${suffix}`);
+        const actDisplay = document.getElementById(`actTimeDisplay${suffix}`);
+        
         if (!estimatedTimeInput || !actualTimeInput || !orderTypeRadio || !recommendationBox || !estDisplay || !actDisplay) {
              console.warn("Calculator elements not found for lang:", lang);
              return;
         }
-
+    
         const formatTimeForDisplay = (timeString) => {
             if (!timeString) return '--:-- --';
             const [hours, minutes] = timeString.split(':');
@@ -3117,10 +3117,10 @@
         actDisplay.textContent = formatTimeForDisplay(actualTimeInput.value);
         estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
         actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
-
+    
         const estimatedTime = estimatedTimeInput.value;
         const actualTime = actualTimeInput.value;
-
+    
         if (estimatedTime && actualTime) {
             const time1 = new Date(`1970-01-01T${estimatedTime}:00`);
             const time2 = new Date(`1970-01-01T${actualTime}:00`);
@@ -3130,7 +3130,7 @@
             let boxClass = 'info';
             const orderType = orderTypeRadio.value;
             const isArabic = lang === 'ar';
-
+    
             if (differenceMinutes < 0) {
                 recommendation = isArabic ? 'لا يمكن أن يكون وقت التوصيل الفعلي قبل الوقت المتوقع.' : 'Actual delivery time cannot be before the estimated time.';
                 boxClass = 'error';
@@ -3171,7 +3171,7 @@
                     }
                 }
             }
-
+    
             recommendationTextEl.innerHTML = recommendation;
             recommendationBox.className = `recommendation-box ${boxClass}`;
             recommendationBox.classList.remove('hidden');
@@ -3222,7 +3222,7 @@
         
         pageContentArea.addEventListener('click', async (e) => {
             const button = e.target.closest('button');
-
+        
             if (button) {
                 // --- Language Toggle ---
                 if (button.id === 'lang-toggle-btn') {
@@ -3234,9 +3234,9 @@
                         arContent.classList.toggle('hidden', !isEnglishVisible);
                         button.innerHTML = isEnglishVisible ? '<i class="fas fa-language"></i> English' : '<i class="fas fa-language"></i> العربية';
                     }
-                    return; // Stop further processing
+                    return; 
                 }
-
+        
                 // --- Visual Guide Toggle ---
                 if (button.dataset.toggle) {
                     e.preventDefault();
@@ -3247,7 +3247,7 @@
                         const icon = button.querySelector('i');
                         const showText = button.dataset.showText || 'Show';
                         const hideText = button.dataset.hideText || 'Hide';
-
+        
                         if (icon) icon.className = `fas ${isHidden ? 'fa-eye' : 'fa-eye-slash'}`;
                         if (textSpan) textSpan.textContent = isHidden ? showText : hideText;
                     }
@@ -3270,7 +3270,7 @@
                 }
                 return;
             }
-
+        
             const timeWrapper = e.target.closest('.custom-time-input-wrapper');
             if (timeWrapper) {
                 const timeInput = timeWrapper.querySelector('input[type="time"]');
@@ -3281,7 +3281,7 @@
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
-
+        
             if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
                 const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
                 if (!error) {
@@ -3290,7 +3290,7 @@
                     showToast('Feedback received!', 'success');
                 } else showToast('Failed to submit feedback.', 'error');
             }
-
+        
             if (e.target.id === 'rateNoBtn' || e.target.closest('#rateNoBtn')) {
                 document.getElementById('ratingButtons')?.classList.add('hidden');
                 document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
@@ -3300,20 +3300,20 @@
                 document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
                 document.getElementById('ratingButtons')?.classList.remove('hidden');
             }
-
+        
             if (e.target.id === 'postCommentBtn') {
                 const commentTextEl = document.getElementById('newCommentText');
                 const commentText = commentTextEl.value.trim();
                 if (!commentText) { showToast('Please enter a note.', 'error'); return; }
-
+        
                 const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
                 if (error) { showToast('Failed to post note.', 'error'); return; }
-
+        
                 await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
                 renderComments(itemData.id); 
                 commentTextEl.value = ''; 
             }
-
+        
             if (button && button.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
             if (button && button.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title);
             if (button && button.id === 'downloadPdfItemBtn') {
