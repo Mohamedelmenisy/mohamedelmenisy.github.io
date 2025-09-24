@@ -1742,36 +1742,51 @@
         }
     }
 
+    // << --- START: UPDATED AND IMPROVED logActivity FUNCTION --- <<
     async function logActivity(user, itemId, itemType, action, details = {}) {
+        // This function now has more detailed console logs to help us debug.
+        console.log(`Attempting to log activity:`, { user: user?.id, itemId, itemType, action });
+        
         if (!user || !user.id) {
-            console.warn("Attempted to log activity without a valid user.");
+            console.error("Activity log failed: User is not valid.");
             return;
         }
 
         let typeToLog = itemType;
 
         if (!typeToLog) {
+            console.warn("No itemType provided, attempting to fetch from 'cases' table...");
             const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
             if (fetchError || !item) {
                 console.error(`Could not fetch item type for logging activity (ItemID: ${itemId}).`, fetchError);
-                typeToLog = 'unknown'; // Fallback
+                typeToLog = 'case'; // Fallback to 'case' as a default
             } else {
                 typeToLog = item.type;
+                console.log(`Successfully fetched itemType: '${typeToLog}'`);
             }
         }
         
-        const { error } = await supabase.from('activity_log').insert([{
+        const payload = {
             user_id: user.id,
             user_name: user.name,
             item_id: itemId,
             item_type: typeToLog,
             action: action,
             details: details,
-        }]);
+        };
+
+        console.log("Sending payload to activity_log:", payload);
+
+        const { error } = await supabase.from('activity_log').insert([payload]);
+        
         if (error) {
             console.error('Error logging activity:', error);
+            showToast(`Failed to log activity: ${error.message}`, 'error'); // Show error to user
+        } else {
+            console.log("Activity logged successfully!");
         }
     }
+    // << --- END: UPDATED logActivity FUNCTION --- <<
 
     async function fetchInsights() {
       const { data, error } = await supabase.from('v_kb_insights').select('*');
@@ -2410,6 +2425,7 @@
         return null;
     }
 
+    // << --- START: FINAL UPDATED FUNCTION --- <<
     async function displayItemDetail(sectionSlug, itemSlug) {
         let itemData = findItemBySlug(sectionSlug, itemSlug);
         
@@ -2418,7 +2434,10 @@
             return;
         }
 
+        // --- THIS IS THE CRITICAL FIX ---
+        // Log the activity first, then wait a moment before trying to display the history.
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
+        // --- END OF THE CRITICAL FIX ---
         
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
@@ -2514,15 +2533,21 @@
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
-        renderComments(itemData.id);
-        displayViewHistory(itemData.id);
+        // This small delay gives Supabase time to process the insert before we ask for the history.
+        setTimeout(() => {
+            renderComments(itemData.id);
+            displayViewHistory(itemData.id);
+        }, 300); // 300 milliseconds delay
+
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        loadAndStructureData();
+        // We also delay this call slightly to ensure the view count in the dashboard is updated.
+        setTimeout(loadAndStructureData, 500);
     }
-    
+    // << --- END: FINAL UPDATED FUNCTION --- <<
+
     async function renderComments(itemId) {
         const container = document.getElementById('commentDisplayAreaForItem');
         if (!container) return;
