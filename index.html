@@ -82,7 +82,7 @@
             left: 0; /* LTR */
             height: 100vh;
             overflow-y: auto;
-            transition: transform 0.3s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.3s ease-in-out, background-color: 0.3s ease, border-color: 0.3s ease;
             z-index: 100;
             display: flex;
             flex-direction: column;
@@ -129,7 +129,7 @@
             align-items: center;
             padding: 0.75rem;
             border-radius: var(--border-radius);
-            transition: background-color 0.2s ease, color 0.2s ease;
+            transition: background-color: 0.2s ease, color: 0.2s ease;
             font-weight: 500;
             color: var(--text-color-subtle);
             text-decoration: none;
@@ -286,7 +286,7 @@
             padding: 1.5rem;
             margin-bottom: 1.5rem; 
             box-shadow: var(--card-shadow);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color: 0.3s ease, border-color: 0.3s ease;
             display: flex;
             flex-direction: column; 
             min-height: 150px; 
@@ -370,7 +370,7 @@
             cursor: pointer;
             font-size: 0.875rem; 
             font-weight: 500; 
-            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            transition: background-color: 0.2s, border-color: 0.2s, color: 0.2s;
             text-decoration: none; 
             display: inline-flex; 
             align-items: center;
@@ -427,7 +427,7 @@
             overflow-y: auto;
             transform: scale(0.95);
             opacity: 0;
-            transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color: 0.3s ease, border-color: 0.3s ease;
         }
         .modal-overlay:not(.hidden) .modal-content { transform: scale(1); opacity: 1; }
         .modal-header {
@@ -1693,7 +1693,11 @@
     }
 
     async function fetchArticles() {
-        const { data, error } = await supabase.from('cases').select(`*`).order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('cases')
+            .select(`*`)
+            .eq('is_published', true) // <-- This is the only change in this function
+            .order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching articles:', error);
             showToast('Failed to load articles from the database.', 'error');
@@ -2514,13 +2518,18 @@
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
-        renderComments(itemData.id);
-        displayViewHistory(itemData.id);
+        // This small delay gives Supabase time to process the insert before we ask for the history.
+        setTimeout(() => {
+            renderComments(itemData.id);
+            displayViewHistory(itemData.id);
+        }, 300); // 300 milliseconds delay
+
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        loadAndStructureData();
+        // We also delay this call slightly to ensure the view count in the dashboard is updated.
+        setTimeout(loadAndStructureData, 500);
     }
     
     async function renderComments(itemId) {
@@ -3004,6 +3013,33 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
+            
+            // ======================================================
+            // START: الكود المضاف لتبديل اللغة
+            // ======================================================
+            const langToggleButton = e.target.closest('#lang-toggle-btn');
+            if (langToggleButton) {
+                const englishContent = document.getElementById('en-content');
+                const arabicContent = document.getElementById('ar-content');
+
+                if (englishContent && arabicContent) {
+                    englishContent.classList.toggle('hidden');
+                    arabicContent.classList.toggle('hidden');
+
+                    const isArabicVisible = !arabicContent.classList.contains('hidden');
+                    
+                    if (isArabicVisible) {
+                        langToggleButton.innerHTML = '<i class="fas fa-language"></i> English';
+                    } else {
+                        langToggleButton.innerHTML = '<i class="fas fa-language"></i> العربية';
+                    }
+                }
+                return; // نوقف التنفيذ هنا لأننا فقط نغير اللغة
+            }
+            // ======================================================
+            // END: الكود المضاف لتبديل اللغة
+            // ======================================================
+
             const copyButton = e.target.closest('[data-copy-target]');
             if (copyButton) {
                 const targetId = copyButton.dataset.copyTarget;
@@ -3143,3 +3179,4 @@
 </script>
 </body>
 </html>
+```
