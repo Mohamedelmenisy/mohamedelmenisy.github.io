@@ -1864,6 +1864,17 @@
     const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
+    
+    // ======================================================
+    // ✅✅✅ START OF MODIFICATION ✅✅✅
+    // Helper function to check for admin privileges from either 'role' or 'is_admin'
+    function isCurrentUserAdmin() {
+        if (!currentUser) return false;
+        // The user is an admin if their role is 'admin' OR if is_admin is true.
+        return currentUser.role === 'admin' || currentUser.is_admin === true;
+    }
+    // ✅✅✅ END OF MODIFICATION ✅✅✅
+    // ======================================================
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -2050,7 +2061,11 @@
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
-        const isAdmin = currentUser?.role === 'admin';
+        // ======================================================
+        // ✅✅✅ MODIFICATION 1 ✅✅✅
+        const isAdmin = isCurrentUserAdmin();
+        // ======================================================
+
         const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
@@ -2094,7 +2109,9 @@
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
 
-        if (!currentUser || currentUser.role !== 'admin') {
+        // ======================================================
+        // ✅✅✅ MODIFICATION 2 ✅✅✅
+        if (!isCurrentUserAdmin()) {
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
                     <div class="card">
@@ -2106,6 +2123,7 @@
                 </div>`;
             return;
         }
+        // ======================================================
 
         originalDashboardData = await fetchDashboardTableData();
         
@@ -2364,13 +2382,17 @@
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
 
         let contentHTML = `<div>`;
-        if (currentUser?.role === 'admin' && sectionSlug !== 'home') {
+        
+        // ======================================================
+        // ✅✅✅ MODIFICATION 3 ✅✅✅
+        if (isCurrentUserAdmin() && sectionSlug !== 'home') {
              contentHTML += `<div style="text-align: right; margin-bottom: 1.5rem;">
                 <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
                     <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
                 </button>
             </div>`;
         }
+        // ======================================================
 
         const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
         
@@ -2439,10 +2461,15 @@
         
         let detailHTML = `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
-        if (currentUser?.role === 'admin') {
+
+        // ======================================================
+        // ✅✅✅ MODIFICATION 4 ✅✅✅
+        if (isCurrentUserAdmin()) {
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
+        // ======================================================
+        
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
