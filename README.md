@@ -48,5 +48,3 @@ Open the index.html or the relevant application file in your browser.
 📞 Contact
 Mohamed Elmenisy
 Project Link: https://github.com/Mohamedelmenisy/infini-base
-code
-Code
