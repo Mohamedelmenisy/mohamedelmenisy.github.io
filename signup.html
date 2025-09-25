@@ -304,6 +304,7 @@
             }
 
             try {
+                // Step 1: Create the authentication user
                 const { data: authResponse, error: authError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
@@ -318,17 +319,14 @@
                     if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) {
                         errorDiv.textContent = "This email is already registered. Redirecting to login...";
                         errorDiv.classList.remove('hidden');
-                        successDiv.classList.add('hidden');
-                        signupForm.classList.add('hidden');
                         setTimeout(() => {
                             window.location.href = "login.html";
                         }, 2500);
-                        return;
+                    } else {
+                        errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
+                        errorDiv.classList.remove('hidden');
+                        emailInput.focus();
                     }
-                    
-                    errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
-                    errorDiv.classList.remove('hidden');
-                    emailInput.focus();
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
@@ -337,19 +335,27 @@
                 if (authResponse.user) {
                     const user = authResponse.user;
 
+                    // Step 2: Insert profile into the public.users table (CRITICAL STEP)
                     const { error: insertError } = await supabase
                         .from('users')
                         .insert({
                             id: user.id,
                             email: user.email,
                             name: fullName,
-                            role: 'agent'
+                            role: 'agent' // Default role
                         });
                     
+                    // *** THIS IS THE CORRECTED LOGIC ***
+                    // If inserting the profile fails, stop and show a specific error.
                     if (insertError) {
-                        console.error("Error inserting user profile into public.users table. However, continuing with signup flow as requested.", insertError);
+                        console.error("CRITICAL: Failed to insert user profile into public.users table.", insertError);
+                        errorDiv.textContent = `Account created, but profile could not be saved. Please contact support. (Error: ${insertError.message})`;
+                        errorDiv.classList.remove('hidden');
+                        // Do not re-enable the button to avoid confusion
+                        return; 
                     }
                     
+                    // Only proceed if both steps were successful
                     console.log('Supabase Signup Successful & User Profile Created:', user);
                     
                     signupForm.classList.add('hidden');
@@ -358,7 +364,6 @@
                     successDiv.innerHTML = "Signup successful! Please check your email to confirm your account, then you can login. <br> Redirecting to login page...";
                     successDiv.classList.remove('hidden');
                     
-                    // Sign out before redirecting to enforce login after email confirmation
                     await supabase.auth.signOut();
                     
                     setTimeout(() => {
@@ -366,7 +371,7 @@
                     }, 4000);
 
                 } else {
-                    errorDiv.textContent = 'An unexpected issue occurred. Please try again.';
+                    errorDiv.textContent = 'An unexpected issue occurred. User data was not returned after signup.';
                     errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
