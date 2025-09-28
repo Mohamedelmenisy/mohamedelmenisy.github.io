@@ -1725,7 +1725,7 @@
         try {
             const { error } = await supabase.from('version_history').insert([{
                 item_id: article.id,
-                title: article.title_en, // ✅ FIX: Use title_en
+                title: article.title_en, // ✅ FIX
                 content: article.content,
                 author_id: user.id,
             }]);
@@ -2194,7 +2194,6 @@
             const fullItem = findItem(item.article_id);
             const sectionSlug = fullItem ? fullItem.sectionSlug : 'home';
             const itemSlug = fullItem ? fullItem.slug : item.article_id;
-            // ✅ FIX: Use article_title from the view
             return `<li>
                 <a href="#${sectionSlug}/${itemSlug}">${escapeHTML(item.article_title)}</a> 
                 <span class="meta"><i class="fas fa-eye"></i> ${item.total_views || 0} views &nbsp;&nbsp; <i class="fas fa-comments"></i> ${item.total_comments || 0} comments</span>
@@ -2340,7 +2339,7 @@
 
             activityLogTbody.innerHTML = uniqueActivity.map(row => {
                 const item = findItem(row.item_id);
-                const itemTitle = item ? (item.title_en || item.title) : 'Unknown Item'; // ✅ FIX
+                const itemTitle = item ? (item.title_en || 'Unknown Item') : 'Unknown Item'; // ✅ FIX
                 const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
                 return `
                     <tr>
@@ -2423,9 +2422,10 @@
             return;
         }
 
-        // ✅ FIX: Use title_en and description_en
+        // ✅ FIX: Use title_en, description_en, and content
         const title = itemData.title_en || 'Untitled';
         const description = itemData.description_en || '';
+        const content = itemData.content || '<p>No detailed content available.</p>';
 
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
@@ -2468,7 +2468,7 @@
             <p class="item-summary">${escapeHTML(stripHtml(description))}</p>
             ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
-            <div class="kb-content">${itemData.content || '<p>No detailed content available.</p>'}</div>
+            <div class="kb-content">${content}</div>
         </div>`;
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
@@ -2754,9 +2754,9 @@
         const itemData = {
             title_en: document.getElementById('contentTitle').value.trim(),
             description_en: document.getElementById('contentSummary').value.trim(),
+            content: finalContent, // Make sure content is saved to the correct column
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
-            content: finalContent, 
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
@@ -2897,7 +2897,177 @@
         handleNavigation(); 
         window.addEventListener('hashchange', handleNavigation);
         
-        // ... (All event listeners remain the same)
+        logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
+        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
+        confirmLogoutBtn.addEventListener('click', logout);
+        
+        [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
+        [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+        
+        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
+            insertHtmlModalOverlay.classList.add('hidden');
+        }));
+        confirmInsertHtmlBtn.addEventListener('click', () => {
+            if (mainQuillEditor) {
+                const html = htmlTextarea.value;
+                mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
+            }
+            insertHtmlModalOverlay.classList.add('hidden');
+        });
+
+        document.addEventListener('click', e => {
+            if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+        });
+        
+        pageContentArea.addEventListener('click', async (e) => {
+            
+            const langToggleButton = e.target.closest('#lang-toggle-btn');
+            if (langToggleButton) {
+                const englishContent = document.getElementById('en-content');
+                const arabicContent = document.getElementById('ar-content');
+
+                if (englishContent && arabicContent) {
+                    englishContent.classList.toggle('hidden');
+                    arabicContent.classList.toggle('hidden');
+
+                    const isArabicVisible = !arabicContent.classList.contains('hidden');
+                    
+                    if (isArabicVisible) {
+                        langToggleButton.innerHTML = '<i class="fas fa-language"></i> English';
+                    } else {
+                        langToggleButton.innerHTML = '<i class="fas fa-language"></i> العربية';
+                    }
+                }
+                return;
+            }
+
+            const copyButton = e.target.closest('[data-copy-target]');
+            if (copyButton) {
+                const targetId = copyButton.dataset.copyTarget;
+                const textToCopy = document.getElementById(targetId)?.textContent;
+                if (textToCopy) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showToast('Response copied to clipboard!', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        showToast('Failed to copy.', 'error');
+                    });
+                }
+                return;
+            }
+
+            const timeWrapper = e.target.closest('.custom-time-input-wrapper');
+            if (timeWrapper) {
+                const timeInput = timeWrapper.querySelector('input[type="time"]');
+                if (timeInput) {
+                    try {
+                        timeInput.showPicker();
+                    } catch (error) {
+                        console.log("showPicker() not supported, falling back to click().");
+                        timeInput.click();
+                    }
+                }
+            }
+
+            const toggleBtn = e.target.closest('button[data-toggle]');
+            if (toggleBtn) {
+                e.preventDefault();
+                const targetId = toggleBtn.dataset.toggle;
+                const targetContainer = document.getElementById(targetId);
+                
+                if(targetContainer) {
+                    const isHidden = targetContainer.classList.toggle('hidden');
+                    const icon = isHidden ? 'fa-eye' : 'fa-eye-slash';
+                    let text = 'Visual Guide';
+                    if (toggleBtn.id.includes('FindOrder')) text = 'Visual Guide: Finding an Order';
+                    if (toggleBtn.id.includes('DeliveryTab')) text = 'Where to Find Times';
+                    if (toggleBtn.id.includes('Compensation')) text = 'Visual Guide: Applying Compensation';
+
+                    const action = isHidden ? 'Show' : 'Hide';
+                    toggleBtn.innerHTML = `<i class="fas ${icon}"></i> ${action} ${text}`;
+                }
+            }
+
+            if (!currentOpenItem) return;
+            const itemData = findItem(currentOpenItem.itemId);
+            if (!itemData) return;
+
+            if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
+                const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
+                if (!error) {
+                    await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
+                    document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
+                    showToast('Feedback received!', 'success');
+                } else showToast('Failed to submit feedback.', 'error');
+            }
+
+            if (e.target.id === 'rateNoBtn' || e.target.closest('#rateNoBtn')) {
+                document.getElementById('ratingButtons')?.classList.add('hidden');
+                document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
+            }
+            
+            if (e.target.id === 'cancelNegativeFeedbackBtn') {
+                document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
+                document.getElementById('ratingButtons')?.classList.remove('hidden');
+            }
+
+            if (e.target.id === 'postCommentBtn') {
+                const commentTextEl = document.getElementById('newCommentText');
+                const commentText = commentTextEl.value.trim();
+                if (!commentText) { showToast('Please enter a note.', 'error'); return; }
+
+                const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+                if (error) { showToast('Failed to post note.', 'error'); return; }
+
+                await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
+                renderComments(itemData.id); 
+                commentTextEl.value = ''; 
+            }
+
+            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title_en);
+            if (e.target.id === 'downloadPdfItemBtn') {
+                const contentCard = document.querySelector('#itemDetailViewPlaceholder .card .kb-content')?.closest('.card');
+                if (contentCard) {
+                    showToast('Generating PDF...', 'info');
+                    html2pdf().set({ margin: 0.5, filename: `${itemData.title_en.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(contentCard).save();
+                } else {
+                    showToast('Could not find content to export.', 'error');
+                }
+            }
+        });
+        
+        pageContentArea.addEventListener('input', (e) => {
+            if (e.target.matches('#estTimeInput, #actTimeInput, input[name="orderType"]')) {
+                handleDelayCalculator();
+            }
+        });
+         pageContentArea.addEventListener('change', (e) => {
+            if (e.target.matches('#estTimeInput, #actTimeInput')) {
+                handleDelayCalculator();
+            }
+        });
+
+        pageContentArea.addEventListener('submit', async (e) => {
+            if (e.target.id === 'negativeFeedbackForm') {
+                e.preventDefault();
+                if (!currentOpenItem) return;
+
+                const itemData = findItem(currentOpenItem.itemId);
+                if (!itemData) return;
+
+                const reason = document.getElementById('feedbackReason').value.trim();
+                if (reason) {
+                    const { error } = await submitFeedback(itemData.id, 0, reason, currentUser);
+                    if (!error) {
+                        await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
+                        document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4>';
+                    } else showToast('Failed to submit feedback.', 'error');
+                } else showToast('Please provide a reason.', 'error');
+            }
+        });
+
+        showToast(`Welcome back, ${currentUser.name}!`, 'success');
     }
 
     window.openEditModal = openAddContentModal;
