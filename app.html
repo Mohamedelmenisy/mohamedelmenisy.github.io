@@ -4,8 +4,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>InfiniBase - Knowledge Base</title>
-<!-- Favicon, CDNs, and other head elements -->
+<!-- Updated Favicon -->
 <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+<!-- CDNs -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"/>
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
@@ -13,8 +14,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Spotlight.js for Lightbox Effect -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/spotlight.js/dist/css/spotlight.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/spotlight.js/dist/js/spotlight.min.js" defer></script>
+<!-- Diff2HTML for Version History -->
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
 <style>
         :root {
             /* Permanent Dark Theme Variables */
@@ -61,6 +66,7 @@
             margin: 0;
             line-height: 1.6;
             font-size: 16px;
+            overflow: hidden;
         }
 
         a { text-decoration-skip-ink: none; }
@@ -1227,19 +1233,19 @@
             text-decoration: underline;
         }
         
-        #viewHistorySection table {
+        #viewHistorySection table, #changeHistorySection table {
             table-layout: fixed;
             width: 100%;
             border-collapse: collapse;
         }
-        #viewHistorySection th, #viewHistorySection td {
+        #viewHistorySection th, #viewHistorySection td, #changeHistorySection th, #changeHistorySection td {
             padding: 0.75rem;
             border-bottom: 1px solid var(--border-color);
             white-space: normal;
             word-break: break-word;
             text-align: left;
         }
-        #viewHistorySection th {
+        #viewHistorySection th, #changeHistorySection th {
             font-weight: 600;
             font-size: 0.8rem;
             text-transform: uppercase;
@@ -1251,6 +1257,76 @@
         #viewHistorySection th:nth-child(2), #viewHistorySection td:nth-child(2) { width: 25%; text-align: center;}
         #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; text-align: right; }
         #viewHistorySection .action-badge { margin: 0 auto; }
+
+        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 35%; }
+        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 35%; }
+        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 30%; text-align: right; }
+
+
+        /* Styles for Diff2HTML Modal */
+        #diffModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #diffModal .diff-modal-content {
+            background: #2a3142;
+            color: #d1d5db;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        #diffModal .diff-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        #diffModal .diff-modal-header h3 {
+             margin: 0;
+             font-size: 1.25rem;
+        }
+        #diffModal .close-diff-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-color-muted);
+            cursor: pointer;
+        }
+        #diffModal .diff-modal-body {
+            flex-grow: 1;
+            overflow: auto;
+            background-color: #1f2937;
+            border-radius: var(--border-radius);
+            padding: 0.5rem;
+        }
+        /* Diff2HTML Theme Adjustments */
+        .d2h-file-header { display: none; }
+        .d2h-wrapper { text-align: left; }
+        .d2h-code-line {
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .d2h-code-side-linenumber {
+            background-color: #1f2937;
+            border-color: #374151;
+            color: #9ca3af;
+        }
+        .d2h-code-line-ctn {
+            background-color: #2a3142;
+        }
+        .d2h-ins { background-color: rgba(34, 197, 94, 0.15); border-color: #22c55e; }
+        .d2h-del { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
 
 
         @media print {
@@ -1593,6 +1669,16 @@
         </div>
     </div>
 </div>
+<!-- Diff Viewer Modal -->
+<div id="diffModal" class="modal-overlay hidden">
+  <div class="diff-modal-content">
+    <div class="diff-modal-header">
+        <h3>Viewing Changes</h3>
+        <button class="close-diff-modal" id="closeDiffModalBtn">×</button>
+    </div>
+    <div class="diff-modal-body" id="diffContent"></div>
+  </div>
+</div>
 <div class="container-fluid">
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
@@ -1682,9 +1768,10 @@
     }
 
     async function fetchArticles() {
+        // ✅✅✅ MODIFICATION: Explicitly select columns to ensure we get language-specific ones ✅✅✅
         const { data, error } = await supabase
             .from('cases')
-            .select(`*`)
+            .select('id, sub_category_id, title_en, description_en, content_en, title_ar, description_ar, content_ar, tags, type, url, parent_id, created_at, last_modified, is_published')
             .eq('is_published', true)
             .order('created_at', { ascending: false });
         if (error) {
@@ -1722,17 +1809,9 @@
     }
     
     async function saveVersion(article, user) {
-        try {
-            const { error } = await supabase.from('version_history').insert([{
-                item_id: article.id,
-                title: article.title_en, // ✅ FIX
-                content: article.content,
-                author_id: user.id,
-            }]);
-            if (error) throw error;
-        } catch(e) {
-            console.warn("Could not save to version_history.", e.message);
-        }
+        // This function might not be needed if the trigger handles everything,
+        // but can be kept for manual versioning if required later.
+        // The DB trigger is now the primary source of truth for versioning.
     }
 
     async function logActivity(user, itemId, itemType, action, details = {}) {
@@ -1861,6 +1940,8 @@
     const cancelInsertHtmlBtn = document.getElementById('cancelInsertHtmlBtn');
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
+    const diffModal = document.getElementById('diffModal');
+    const closeDiffModalBtn = document.getElementById('closeDiffModalBtn');
     
     function isCurrentUserAdmin() {
         if (!currentUser) return false;
@@ -1955,8 +2036,7 @@
                 const insightData = insightsMap.get(article.id);
                 article.total_views = insightData?.total_views || 0;
                 article.total_comments = insightData?.total_comments || 0;
-                
-                // ✅ FIX: Use title_en for slug creation
+                 // ✅✅✅ MODIFICATION: Use title_en for the slug calculation ✅✅✅
                 parentSection.items.push({ ...article, slug: createSlug(article.title_en) });
             } else {
                 console.warn(`Article "${article.title_en}" has an unknown sub_category_id: ${article.sub_category_id}`);
@@ -2053,14 +2133,12 @@
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
-        // ✅ FIX: Use title_en and description_en
-        const title = item.title_en || 'Untitled';
-        const description = item.description_en || '';
-
         const isAdmin = isCurrentUserAdmin();
+
         const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
+        // ✅✅✅ MODIFICATION: Use title_en for the delete modal ✅✅✅
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
-        const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
+        const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
         
         const tagsHTML = item.tags && item.tags.length > 0
             ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
@@ -2073,6 +2151,7 @@
             updatedBadgeHTML = `<div class="updated-badge">Updated</div>`;
         }
 
+        // ✅✅✅ MODIFICATION: Display title_en and description_en in the card ✅✅✅
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
                 <div class="card-header-icon">
@@ -2080,12 +2159,12 @@
                         <i class="${itemIconClass}"></i>
                     </div>
                     <div class="card-title-group">
-                        <h3>${escapeHTML(title)}</h3>
+                        <h3>${escapeHTML(item.title_en)}</h3>
                         ${updatedBadgeHTML}
                     </div>
                 </div>
                 ${tagsHTML}
-                <p>${escapeHTML(truncateText(stripHtml(description), 120))}</p>
+                <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
                 <div class="card-actions">
                     ${viewButton}
                     ${editButton}
@@ -2339,7 +2418,8 @@
 
             activityLogTbody.innerHTML = uniqueActivity.map(row => {
                 const item = findItem(row.item_id);
-                const itemTitle = item ? (item.title_en || 'Unknown Item') : 'Unknown Item'; // ✅ FIX
+                 // ✅✅✅ MODIFICATION: Use title_en ✅✅✅
+                const itemTitle = item ? item.title_en : 'Unknown Item';
                 const itemLink = item ? `#${item.sectionSlug}/${item.slug}` : '#';
                 return `
                     <tr>
@@ -2422,23 +2502,20 @@
             return;
         }
 
-        // ✅ FIX: Use title_en, description_en, and content
-        const title = itemData.title_en || 'Untitled';
-        const description = itemData.description_en || '';
-        const content = itemData.content || '<p>No detailed content available.</p>';
-
         await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
-        currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: title, type: itemData.type };
+        // ✅✅✅ MODIFICATION: Use title_en for currentOpenItem ✅✅✅
+        currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title_en, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
-
+        
+        // ✅✅✅ MODIFICATION: Use title_en for breadcrumbs and section title ✅✅✅
         breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
             <a href="#${itemData.sectionSlug}">${escapeHTML(itemData.sectionSlug.replace(/-/g, ' '))}</a> <span style="margin: 0 5px;">›</span>
-            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(title)}</span>`;
-        currentSectionTitleEl.textContent = title;
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title_en)}</span>`;
+        currentSectionTitleEl.textContent = itemData.title_en;
 
         let itemIconClass = 'fas fa-file-alt';
         if (itemData.type === 'case') itemIconClass = 'fas fa-briefcase';
@@ -2447,8 +2524,9 @@
         else if (itemData.type === 'policy') itemIconClass = 'fas fa-gavel';
 
         const parentItemInfo = itemData.parent_id ? findItem(itemData.parent_id) : null;
+        // ✅✅✅ MODIFICATION: Use parentItemInfo.title_en for the back link ✅✅✅
         const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionSlug}/${parentItemInfo.slug}` : `#${sectionSlug}`;
-        const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title_en, 25))}` : 'Back to Section'; // ✅ FIX
+        const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title_en, 25))}` : 'Back to Section';
         
         let detailHTML = `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
@@ -2463,12 +2541,13 @@
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
 
+        // ✅✅✅ MODIFICATION: Display title_en, description_en, content_en ✅✅✅
         detailHTML += `<div class="card">
-            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(title)}</h2></div>
-            <p class="item-summary">${escapeHTML(stripHtml(description))}</p>
+            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div>
+            <p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>
             ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
             <hr class="title-content-divider">${lastUpdatedHTML}
-            <div class="kb-content">${content}</div>
+            <div class="kb-content">${itemData.content_en || '<p>No detailed content available.</p>'}</div>
         </div>`;
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
@@ -2477,7 +2556,8 @@
                 <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
                 <ul class="child-items-list">${childItems.map(child => {
                      const childSection = findItem(child.id);
-                     return `<li><a href="#${childSection?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title_en)}</a></li>` // ✅ FIX
+                      // ✅✅✅ MODIFICATION: Use child.title_en in the link ✅✅✅
+                     return `<li><a href="#${childSection?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title_en)}</a></li>`
                     }).join('')}</ul>
             </div>`;
         }
@@ -2522,12 +2602,31 @@
                     </table>
                 </div>
             </div>`;
+        
+        // ✅✅✅ NEW FEATURE: Add Change History section for Admins ✅✅✅
+        if (isCurrentUserAdmin()) {
+            detailHTML += `
+                <div class="comments-section" id="changeHistorySection" style="margin-top: 1rem;">
+                    <h4><i class="fas fa-edit"></i> Change History</h4>
+                    <div class="dashboard-table-wrapper" style="max-height: 250px;">
+                        <table>
+                            <thead><tr><th>Modified By</th><th>Modification Date</th><th style="text-align:right;">Actions</th></tr></thead>
+                            <tbody id="changeHistoryTbody">
+                                <tr><td colspan="3" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
         setTimeout(() => {
             renderComments(itemData.id);
             displayViewHistory(itemData.id);
+            if (isCurrentUserAdmin()) {
+                displayChangeHistory(itemData.id); // Call the new function
+            }
         }, 300);
 
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
@@ -2602,6 +2701,73 @@
             </tr>
         `).join('');
     }
+
+    // ✅✅✅ NEW FEATURE: Function to display the change history from version_history table ✅✅✅
+    async function displayChangeHistory(itemId) {
+        const historyTbody = document.getElementById('changeHistoryTbody');
+        if (!historyTbody) return;
+
+        const { data, error } = await supabase
+            .from('version_history')
+            .select('id, modified_by_name, modified_at')
+            .eq('item_id', itemId)
+            .order('modified_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching change history:', error);
+            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">Failed to load change history.</td></tr>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
+            return;
+        }
+
+        historyTbody.innerHTML = data.map(log => `
+            <tr>
+                <td>${escapeHTML(log.modified_by_name || 'Unknown User')}</td>
+                <td>${formatReadableDate(log.modified_at)}</td>
+                <td style="text-align:right;">
+                    <button class="button button-secondary" data-version-id="${log.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">View Changes</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // ✅✅✅ NEW FEATURE: Function to show a diff of a specific version ✅✅✅
+    async function showDiff(versionId) {
+        const { data: versionRecord, error: versionError } = await supabase.from('version_history').select('*').eq('id', versionId).single();
+        if (versionError || !versionRecord) {
+            showToast('Could not load version details.', 'error');
+            return;
+        }
+
+        const { data: currentItem, error: currentError } = await supabase.from('cases').select('content_en').eq('id', versionRecord.item_id).single();
+        if (currentError || !currentItem) {
+            showToast('Could not load current item to compare.', 'error');
+            return;
+        }
+
+        const oldContent = versionRecord.content_en_before || '';
+        const newContent = currentItem.content_en || '';
+
+        if (oldContent === newContent) {
+            showToast('No content changes to display for this version compared to current.', 'info');
+            return;
+        }
+        
+        const diffString = Diff.createTwoFilesPatch('Before', 'Current', oldContent, newContent, '', '', { context: 5 });
+        const diffHtml = Diff2Html.html(diffString, {
+            drawFileList: false,
+            matching: 'lines',
+            outputFormat: 'side-by-side'
+        });
+
+        document.getElementById('diffContent').innerHTML = diffHtml;
+        diffModal.classList.remove('hidden');
+    }
+
 
     const contentTemplates = {
         standard_article: { type: 'article', titlePrefix: 'New Article: ', summary: 'A general article about [topic].', content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here.]</p><ul><li>Point 1</li><li>Point 2</li></ul>', tags: ['article'] },
@@ -2697,7 +2863,8 @@
                 if (!itemToEdit || item.id !== itemToEdit.id) {
                     const option = document.createElement('option');
                     option.value = item.id;
-                    option.textContent = item.title_en; // ✅ FIX
+                    // ✅✅✅ MODIFICATION: Use title_en in the dropdown ✅✅✅
+                    option.textContent = item.title_en;
                     parentItemSelect.appendChild(option);
                 }
             });
@@ -2707,13 +2874,15 @@
             mainQuillEditor.setContents([{ insert: '\n' }], 'silent'); 
             document.getElementById('addContentModalTitle').textContent = 'Edit Content';
             editingItemIdInput.value = itemToEdit.id; 
-            document.getElementById('contentTitle').value = itemToEdit.title_en; // ✅ FIX
-            document.getElementById('contentSummary').value = itemToEdit.description_en; // ✅ FIX
+            // ✅✅✅ MODIFICATION: Populate form with _en columns ✅✅✅
+            document.getElementById('contentTitle').value = itemToEdit.title_en;
+            document.getElementById('contentSummary').value = itemToEdit.description_en; 
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            const kbContentDiv = new DOMParser().parseFromString(itemToEdit.content, 'text/html').querySelector('.kb-content');
-            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, kbContentDiv ? kbContentDiv.innerHTML : itemToEdit.content || '<p><br></p>');
+            // The content might contain HTML tags like <div class="kb-content">, let's handle that.
+            const contentToPaste = itemToEdit.content_en || '<p><br></p>';
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, contentToPaste);
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
@@ -2748,13 +2917,13 @@
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
 
-        const finalContent = `<div class="kb-content">${mainQuillEditor.root.innerHTML}</div>`;
-
-        // ✅ FIX: Save to title_en and description_en
+        // Note: For now, we save everything to the English (_en) columns.
+        // A more advanced UI would be needed to edit _ar columns separately.
         const itemData = {
+            // ✅✅✅ MODIFICATION: Save data to _en columns ✅✅✅
             title_en: document.getElementById('contentTitle').value.trim(),
             description_en: document.getElementById('contentSummary').value.trim(),
-            content: finalContent, // Make sure content is saved to the correct column
+            content_en: mainQuillEditor.root.innerHTML,
             tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
             type: contentTypeSelect.value,
             url: document.getElementById('contentUrl').value.trim() || null,
@@ -2764,6 +2933,17 @@
             author_id: currentUser.id,
         };
         if (editingId) itemData.id = editingId;
+        
+        // As we are not editing arabic content, let's preserve it if it exists
+        if(editingId) {
+            const originalItem = findItem(editingId);
+            if(originalItem) {
+                itemData.title_ar = originalItem.title_ar;
+                itemData.description_ar = originalItem.description_ar;
+                itemData.content_ar = originalItem.content_ar;
+            }
+        }
+
 
         if (!itemData.title_en || !itemData.description_en) {
             showToast('Title and Summary/Description are required.', 'error');
@@ -2777,7 +2957,8 @@
             return;
         }
 
-        await saveVersion(savedItem, currentUser);
+        // The database trigger will handle versioning automatically on UPDATE.
+        // We only need to log the 'create' action manually.
         if(!editingId) {
             await logActivity(currentUser, savedItem.id, savedItem.type, 'created');
         } else {
@@ -2835,8 +3016,8 @@
         }
         
         const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
-        // ✅ FIX: Search in title_en and description_en
-        const results = allItems.filter(i => (i.title_en || '').toLowerCase().includes(query) || stripHtml(i.description_en || '').toLowerCase().includes(query));
+        // ✅✅✅ MODIFICATION: Search in title_en and description_en ✅✅✅
+        const results = allItems.filter(i => i.title_en.toLowerCase().includes(query) || stripHtml(i.description_en).toLowerCase().includes(query));
         
         if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
@@ -2876,7 +3057,107 @@
     }
     
     function handleDelayCalculator() {
-        // This function is for the calculator inside the case content, it does not need changes.
+        const estimatedTimeInput = document.getElementById('estTimeInput');
+        const actualTimeInput = document.getElementById('actTimeInput');
+        const orderTypeRadio = document.querySelector('input[name="orderType"]:checked');
+        const recommendationBox = document.getElementById('recommendationBox');
+        const recommendationTextEl = document.getElementById('recommendationText');
+        const estDisplay = document.getElementById('estTimeDisplay');
+        const actDisplay = document.getElementById('actTimeDisplay');
+        const responseGenerator = document.getElementById('responseGenerator');
+        const arabicResponseEl = document.getElementById('arabicResponse');
+        const englishResponseEl = document.getElementById('englishResponse');
+
+        if (!estimatedTimeInput || !recommendationBox || !responseGenerator) {
+            return;
+        }
+
+        const formatTimeForDisplay = (timeString) => {
+            if (!timeString) return '--:-- --';
+            const [hours, minutes] = timeString.split(':');
+            const h = parseInt(hours, 10);
+            const suffix = h >= 12 ? 'PM' : 'AM';
+            const displayHours = ((h + 11) % 12 + 1);
+            return `${String(displayHours).padStart(2, '0')}:${minutes} ${suffix}`;
+        };
+        estDisplay.textContent = formatTimeForDisplay(estimatedTimeInput.value);
+        actDisplay.textContent = formatTimeForDisplay(actualTimeInput.value);
+        estDisplay.classList.toggle('placeholder', !estimatedTimeInput.value);
+        actDisplay.classList.toggle('placeholder', !actualTimeInput.value);
+
+        const estimatedTime = estimatedTimeInput.value;
+        const actualTime = actualTimeInput.value;
+
+        if (estimatedTime && actualTime) {
+            const time1 = new Date(`1970-01-01T${estimatedTime}:00`);
+            const time2 = new Date(`1970-01-01T${actualTime}:00`);
+            const differenceMinutes = Math.round((time2 - time1) / (1000 * 60));
+            
+            let recommendation = '';
+            let boxClass = 'info';
+            let arabicResponseText = '';
+            let englishResponseText = '';
+            const orderType = orderTypeRadio.value;
+
+            if (differenceMinutes < 0) {
+                recommendation = 'Actual delivery time cannot be before the estimated time.';
+                boxClass = 'error';
+                arabicResponseText = 'لا يمكن أن يكون وقت التسليم الفعلي قبل الوقت المقدر. يرجى التحقق من الأوقات المدخلة.';
+                englishResponseText = 'Actual delivery time cannot be before the estimated time. Please check the entered times.';
+            } else if (differenceMinutes <= 15) {
+                recommendation = `<strong>Delay: ${differenceMinutes} mins.</strong><br>Apologize for the slight delay. No compensation is required unless the customer specifically asks.`;
+                boxClass = 'info';
+                arabicResponseText = 'نعتذر عن التأخير الطفيف في طلبكم. نقدر صبركم وتفهمكم.';
+                englishResponseText = 'We apologize for the slight delay with your order. We appreciate your patience and understanding.';
+            } else {
+                boxClass = 'success';
+                if (orderType === 'fast') {
+                    if (differenceMinutes <= 30) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees only (Max 15 SAR).`;
+                        arabicResponseText = 'تقديراً لصبركم، قمنا بتعويضكم برسوم التوصيل. نعتذر مرة أخرى عن التأخير.';
+                        englishResponseText = 'As a token of our appreciation for your patience, we have compensated you with the delivery fees. We apologize again for the delay.';
+                    } else if (differenceMinutes <= 45) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير. كتعويض، سيتم إعادة رسوم التوصيل بالإضافة إلى 25% من قيمة الطلب (بدون التوصيل).';
+                        englishResponseText = 'We sincerely apologize for this delay. As compensation, you will be refunded the delivery fees plus 25% of the order subtotal.';
+                    } else if (differenceMinutes <= 60) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.`;
+                         arabicResponseText = 'نأسف جداً للتأخير الكبير. سيتم تعويضكم برسوم التوصيل كاملة بالإضافة إلى 50% من قيمة الطلب (بدون التوصيل).';
+                        englishResponseText = 'We are very sorry for the significant delay. You will be compensated with the full delivery fees plus 50% of the order subtotal.';
+                    } else {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Fast Order).</strong><br><strong>Action:</strong> Compensate with the Full Order Amount.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا الإزعاج. سيتم تعويضكم بقيمة الطلب كاملة.';
+                        englishResponseText = 'We deeply apologize for this inconvenience. You will be compensated with the full amount of your order.';
+                    }
+                } else { // Scheduled Orders
+                    if (differenceMinutes <= 60) {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with 50% to 100% of the order total.`;
+                        arabicResponseText = 'بسبب التأخير في طلبكم المجدول، سيتم تعويضكم بنسبة 50% إلى 100% من قيمة الطلب. يرجى تأكيد المبلغ مع العميل.';
+                        englishResponseText = 'Due to the delay of your scheduled order, you will be compensated with 50% to 100% of the order total. Please confirm the amount with the customer.';
+                    } else {
+                        recommendation = `<strong>Delay: ${differenceMinutes} mins (Scheduled).</strong><br><strong>Action:</strong> Compensate with the Full Amount + 50 SAR.`;
+                        arabicResponseText = 'نعتذر بشدة عن هذا التأخير الكبير في طلبكم المجدول. سيتم تعويضكم بقيمة الطلب كاملة بالإضافة إلى 50 ريال كرصيد في محفظتكم.';
+                        englishResponseText = 'We deeply apologize for this major delay in your scheduled order. You will be compensated with the full order amount plus an additional 50 SAR credit.';
+                    }
+                }
+            }
+
+            recommendationTextEl.innerHTML = recommendation;
+            recommendationBox.className = `recommendation-box ${boxClass}`;
+            recommendationBox.classList.remove('hidden');
+
+            if (arabicResponseText) {
+                arabicResponseEl.textContent = arabicResponseText;
+                englishResponseEl.textContent = englishResponseText;
+                responseGenerator.classList.remove('hidden');
+            } else {
+                responseGenerator.classList.add('hidden');
+            }
+
+        } else {
+            recommendationBox.classList.add('hidden');
+            responseGenerator.classList.add('hidden');
+        }
     }
 
     async function initializeApp() {
@@ -2915,12 +3196,25 @@
             insertHtmlModalOverlay.classList.add('hidden');
         });
 
+        // ✅✅✅ NEW FEATURE: Event listener for the diff modal close button ✅✅✅
+        closeDiffModalBtn.addEventListener('click', () => {
+            diffModal.classList.add('hidden');
+        });
+
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
         
         pageContentArea.addEventListener('click', async (e) => {
             
+            // ✅✅✅ NEW FEATURE: Event listener for 'View Changes' button clicks ✅✅✅
+            const viewChangesBtn = e.target.closest('button[data-version-id]');
+            if (viewChangesBtn) {
+                const versionId = viewChangesBtn.dataset.versionId;
+                showDiff(versionId);
+                return;
+            }
+
             const langToggleButton = e.target.closest('#lang-toggle-btn');
             if (langToggleButton) {
                 const englishContent = document.getElementById('en-content');
