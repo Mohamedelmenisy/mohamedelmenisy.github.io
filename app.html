@@ -63,7 +63,7 @@
             margin: 0;
             line-height: 1.6;
             font-size: 16px;
-            overflow: hidden;
+            /* ✅ تم الحل: تم حذف "overflow: hidden;" من هنا لحل مشكلة اختفاء المحتوى */
         }
 
         a { text-decoration-skip-ink: none; }
@@ -1865,16 +1865,10 @@
     const confirmInsertHtmlBtn = document.getElementById('confirmInsertHtmlBtn');
     const htmlTextarea = document.getElementById('htmlTextarea');
     
-    // ======================================================
-    // ✅✅✅ START OF MODIFICATION ✅✅✅
-    // Helper function to check for admin privileges from either 'role' or 'is_admin'
     function isCurrentUserAdmin() {
         if (!currentUser) return false;
-        // The user is an admin if their role is 'admin' OR if is_admin is true.
         return currentUser.role === 'admin' || currentUser.is_admin === true;
     }
-    // ✅✅✅ END OF MODIFICATION ✅✅✅
-    // ======================================================
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return '';
@@ -2061,11 +2055,7 @@
         else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
         else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
-        // ======================================================
-        // ✅✅✅ MODIFICATION 1 ✅✅✅
         const isAdmin = isCurrentUserAdmin();
-        // ======================================================
-
         const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item"><i class="fas fa-eye"></i> View</a>`;
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
@@ -2109,8 +2099,6 @@
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
 
-        // ======================================================
-        // ✅✅✅ MODIFICATION 2 ✅✅✅
         if (!isCurrentUserAdmin()) {
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
@@ -2123,7 +2111,6 @@
                 </div>`;
             return;
         }
-        // ======================================================
 
         originalDashboardData = await fetchDashboardTableData();
         
@@ -2383,8 +2370,6 @@
 
         let contentHTML = `<div>`;
         
-        // ======================================================
-        // ✅✅✅ MODIFICATION 3 ✅✅✅
         if (isCurrentUserAdmin() && sectionSlug !== 'home') {
              contentHTML += `<div style="text-align: right; margin-bottom: 1.5rem;">
                 <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
@@ -2392,7 +2377,6 @@
                 </button>
             </div>`;
         }
-        // ======================================================
 
         const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
         
@@ -2462,13 +2446,10 @@
         let detailHTML = `<div class="item-actions-bar">
             <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
 
-        // ======================================================
-        // ✅✅✅ MODIFICATION 4 ✅✅✅
         if (isCurrentUserAdmin()) {
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
-        // ======================================================
         
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
@@ -3184,172 +3165,5 @@
     window.openDeleteModal = openDeleteConfirmModal;
     initializeApp();
 </script>
-
-<!-- START: InfiniBase KB Extensions (language toggle, edit save with versioning, activity log, diff viewer) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css">
-<script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
-
-<style>
-/* Small styles for activity log and toggle */
-#langToggle { margin-left:10px; padding:6px 10px; border-radius:6px; cursor:pointer; }
-#activityLog { margin-top:24px; border-top:1px solid rgba(255,255,255,0.06); padding-top:16px; display:none; }
-.activity-row { padding:8px 0; border-bottom:1px dashed rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center; }
-.activity-meta { font-size:13px; opacity:0.9; }
-.diff-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; }
-.diff-modal .panel { background:#fff; color:#111; max-width:90%; max-height:90%; overflow:auto; border-radius:8px; padding:16px; }
-.diff-modal .close { float:right; cursor:pointer; padding:6px; }
-</style>
-
-<button id="langToggle">عرض بالعربية</button>
-
-<div id="activityLog" aria-live="polite">
-  <h3>Activity Log (Visible to Admins)</h3>
-  <div id="activityList"></div>
-</div>
-
-<div id="diffModal" class="diff-modal" role="dialog" aria-modal="true">
-  <div class="panel">
-    <span class="close" id="closeDiff">✕</span>
-    <div id="diffContent"></div>
-  </div>
-</div>
-
-<script>
-(async function(){
-  // assume supabase client exists as `supabase`
-  if(typeof supabase === 'undefined') return;
-  const urlParams = new URLSearchParams(window.location.search);
-  const caseId = urlParams.get('id') || window.caseId || null;
-  if(!caseId) return;
-
-  // language toggle
-  let currentLang = 'en';
-  const toggleBtn = document.getElementById('langToggle');
-  function setToggleText(){
-    toggleBtn.innerText = currentLang === 'en' ? 'عرض بالعربية' : 'View in English';
-  }
-  setToggleText();
-
-  // load case data (both languages) into window.caseData
-  async function loadCase(){
-    const { data, error } = await supabase
-      .from('cases')
-      .select('id,title_en,content_en,title_ar,content_ar,last_modified_by,last_modified_by_name,updated_at')
-      .eq('id', caseId).single();
-    if(error){ console.error('loadCase error', error); return; }
-    window.caseData = data;
-    renderCase();
-    // check admin to show activity log
-    const { data:user } = await supabase.rpc('get_current_user_role'); // optional helper
-    // fallback: fetch public.users by auth.uid if rpc not available
-    let isAdmin = false;
-    try{
-      const uid = supabase.auth.user() ? supabase.auth.user().id : null;
-      if(uid){
-        const { data: u } = await supabase.from('public.users').select('role,is_admin').eq('id', uid).single();
-        if(u && (u.role === 'admin' || u.is_admin === true)) isAdmin = true;
-      }
-    }catch(e){}
-    if(isAdmin){
-      document.getElementById('activityLog').style.display = 'block';
-      loadActivityLog();
-    }
-  }
-
-  function renderCase(){
-    const t = currentLang === 'en' ? (caseData.title_en || '') : (caseData.title_ar || caseData.title_en || '');
-    const c = currentLang === 'en' ? (caseData.content_en || '') : (caseData.content_ar || caseData.content_en || '');
-    const titleEl = document.querySelector('[data-case-title]') || document.getElementById('caseTitle') || document.querySelector('h1');
-    const contentEl = document.querySelector('[data-case-content]') || document.getElementById('caseContent');
-    if(titleEl) titleEl.innerText = t;
-    if(contentEl) contentEl.innerHTML = c;
-  }
-
-  toggleBtn.addEventListener('click', ()=>{
-    currentLang = currentLang === 'en' ? 'ar' : 'en';
-    setToggleText();
-    renderCase();
-  });
-
-  // Save edits helper: when editor saves it must include last_modified_by and last_modified_by_name
-  window.saveCaseEditsWithTracking = async function(payload){
-    try{
-      const user = supabase.auth.user();
-      if(!user) throw new Error('Not authenticated');
-      const updatePayload = {
-        ...payload,
-        last_modified_by: user.id,
-        last_modified_by_name: user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email,
-        updated_at: new Date().toISOString()
-      };
-      const { data, error } = await supabase.from('cases').update(updatePayload).eq('id', caseId).select();
-      if(error) throw error;
-      // notify success
-      console.log('Saved', data);
-      // supabase realtime will notify subscribers (including core-flow)
-      return data;
-    }catch(e){
-      console.error(e);
-      throw e;
-    }
-  };
-
-  // Activity log loader
-  async function loadActivityLog(){
-    const { data, error } = await supabase.from('version_history').select('*').eq('item_id', caseId).order('modified_at', { ascending: false }).limit(50);
-    if(error){ console.error('activity log error', error); return; }
-    const list = document.getElementById('activityList');
-    list.innerHTML = '';
-    data.forEach(rec=>{
-      const row = document.createElement('div');
-      row.className = 'activity-row';
-      const meta = document.createElement('div');
-      meta.className = 'activity-meta';
-      meta.innerText = `${new Date(rec.modified_at).toLocaleString()} — ${rec.modified_by_name || 'Unknown'}`;
-      const btn = document.createElement('button');
-      btn.innerText = 'View Changes';
-      btn.onclick = ()=> showDiff(rec);
-      row.appendChild(meta);
-      row.appendChild(btn);
-      list.appendChild(row);
-    });
-  }
-
-  // Show diff between version_history record (before) and current case
-  async function showDiff(versionRecord){
-    const before = versionRecord.content_en_before || '';
-    const { data: current } = await supabase.from('cases').select('content_en').eq('id', caseId).single();
-    const after = current ? (current.content_en || '') : '';
-    const d = Diff.createTwoFilesPatch('Before', 'After', before, after);
-    const html = Diff2Html.html(d, { drawFileList: false, matching: 'lines' });
-    document.getElementById('diffContent').innerHTML = html;
-    document.getElementById('diffModal').style.display = 'flex';
-  }
-
-  document.getElementById('closeDiff').addEventListener('click', ()=> {
-    document.getElementById('diffModal').style.display = 'none';
-  });
-
-  // initial load
-  await loadCase();
-
-  // subscribe to changes on this case to update page in real-time (admins/editors will cause updates)
-  try{
-    const channel = supabase.channel('public:cases')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cases', filter: `id=eq.${caseId}` }, (payload)=>{
-        console.log('Realtime case update', payload);
-        window.caseData = payload.record;
-        renderCase();
-        // small toast
-        if(window.showToast) window.showToast('تم تحديث محتوى السيناريو');
-      })
-      .subscribe();
-    // store to allow unsubscribing later
-    window._infini_case_channel = channel;
-  }catch(e){ console.warn('realtime subscription failed', e); }
-
-})();
-</script>
-<!-- END: InfiniBase KB Extensions -->
 </body>
 </html>
