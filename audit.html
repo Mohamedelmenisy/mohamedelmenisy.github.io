@@ -288,10 +288,17 @@
 
         document.getElementById('closeDiffModalBtn').addEventListener('click', () => diffModal.classList.add('hidden'));
 
-        // Initial Load
+        // Initial Load & Realtime Subscription
         (async () => {
             await checkAuth();
             await fetchAuditData();
+
+            supabase.channel('public:case_history')
+              .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'case_history' }, payload => {
+                console.log('Realtime change received!', payload);
+                fetchAuditData(); // Refetch all data to ensure consistency and order
+              })
+              .subscribe();
         })();
     </script>
 </body>
