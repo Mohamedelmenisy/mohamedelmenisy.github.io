@@ -1,3 +1,4 @@
+بالتأكيد، فهمت تمامًا المشكلة والتحسينات المطلوبة. قسم "Change History" لا يعرض البيانات حاليًا، وترغب في تحسينه ليصبح أداة قوية وواضحة لمراقبة التعديلات، مع إضافة الفارق الزمني بين كل تعديل.
 <!DOCTYPE html>
 <html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
 <head>
@@ -1551,9 +1552,10 @@
         #viewHistorySection .action-badge { margin: 0 auto; }
 
         /* === MODIFIED CSS FOR CHANGE HISTORY TABLE === */
-        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 40%; text-align: left; }
-        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 30%; text-align: center; }
-        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 30%; text-align: center; }
+        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 25%; } /* Modified By */
+        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 25%; text-align: center; } /* Modification Date */
+        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 20%; text-align: center; } /* Time Since Last Change */
+        #changeHistorySection th:nth-child(4), #changeHistorySection td:nth-child(4) { width: 30%; text-align: center; } /* Actions */
 
 
         /* Styles for Diff2HTML Modal */
@@ -2195,20 +2197,47 @@
         return el.innerHTML;
     }
 
-    // =================================================================
-    // ===== START OF MODIFIED CODE / بداية الكود المعدل =================
-    // =================================================================
     function formatReadableDate(isoString) {
         if (!isoString) return 'N/A';
-        // This code converts the UTC time to Egypt's local time
         return new Date(isoString).toLocaleString('en-GB', {
             day: '2-digit', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: true,
-            timeZone: 'Africa/Cairo' // The requested timezone addition
+            timeZone: 'Africa/Cairo'
         });
     }
+
+    // =================================================================
+    // ===== START OF NEW CODE / بداية الكود الجديد =======================
+    // =================================================================
+    function formatTimeDifference(currentDate, previousDate) {
+        if (!previousDate) return '—';
+
+        let diff = new Date(currentDate) - new Date(previousDate);
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        diff -= days * (1000 * 60 * 60 * 24);
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        diff -= hours * (1000 * 60 * 60);
+
+        const minutes = Math.floor(diff / (1000 * 60));
+        diff -= minutes * (1000 * 60);
+        
+        const seconds = Math.floor(diff / 1000);
+
+        let result = '⏱ ';
+        if (days > 0) result += `${days}d `;
+        if (hours > 0) result += `${hours}h `;
+        if (minutes > 0) result += `${minutes}m `;
+        if (days === 0 && hours === 0 && minutes < 10) {
+            if (seconds > 0) result += `${seconds}s`;
+        }
+        
+        const finalResult = result.trim();
+        return finalResult === '⏱' ? 'Just now' : finalResult;
+    }
     // ===============================================================
-    // ===== END OF MODIFIED CODE / نهاية الكود المعدل ===================
+    // ===== END OF NEW CODE / نهاية الكود الجديد =====================
     // ===============================================================
 
     function highlightText(text, query) {
@@ -2848,9 +2877,9 @@
                     <h4><i class="fas fa-edit"></i> Change History</h4>
                     <div class="dashboard-table-wrapper" style="max-height: 250px;">
                         <table>
-                            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Actions</th></tr></thead>
+                            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Time Since Last Change</th><th>Actions</th></tr></thead>
                             <tbody id="changeHistoryTbody">
-                                <tr><td colspan="3" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
+                                <tr><td colspan="4" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -2941,66 +2970,65 @@
         `).join('');
     }
 
+    // =================================================================
+    // ===== START OF MODIFIED CODE / بداية الكود المعدل =================
+    // =================================================================
     async function displayChangeHistory(itemId) {
         const historyTbody = document.getElementById('changeHistoryTbody');
         if (!historyTbody) return;
     
-        // =================================================================
-        // ===== START OF CORRECTED CODE / بداية الكود المصحح =================
-        // =================================================================
         const { data, error } = await supabase
-            .from('case_history') // The correct table name
-            .select('id, modified_by_name, modified_at, field_changed, old_value, new_value') // Requesting the correct columns
-            .eq('case_id', itemId) // Linking to the article's ID
+            .from('case_history')
+            .select('id, modified_by_name, modified_at, field_changed, old_value, new_value')
+            .eq('case_id', itemId)
             .order('modified_at', { ascending: false });
-        // ===============================================================
-        // ===== END OF CORRECTED CODE / نهاية الكود المصحح ===================
-        // ===============================================================
     
         if (error) {
             console.error('Error fetching change history:', error);
-            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">Failed to load change history. Check console for details.</td></tr>`;
+            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Failed to load change history. Check console.</td></tr>`;
             return;
         }
     
         if (data.length === 0) {
-            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
+            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
             return;
         }
         
-        // Group changes that happened at the same time
         const groupedByTimestamp = data.reduce((acc, log) => {
             const timestamp = log.modified_at;
             if (!acc[timestamp]) {
-acc[timestamp] = {
+                acc[timestamp] = {
                     modified_by_name: log.modified_by_name,
                     modified_at: log.modified_at,
-                    // Create an array to store all changes that occurred at this time
                     changes: []
                 };
             }
-            // Add the details of the current change to the changes array for this timestamp
             acc[timestamp].changes.push(log);
             return acc;
         }, {});
 
-        // Convert the grouped object into an array for rendering
         const groupedLogs = Object.values(groupedByTimestamp);
 
-        historyTbody.innerHTML = groupedLogs.map(group => {
-            // Display a summary of the fields that were changed
-            const fieldsChangedSummary = group.changes.map(c => escapeHTML(c.field_changed)).join(', ');
-            
-            // Store the full changes data in the "View Details" button
+        const finalLogs = [];
+        for (let i = 0; i < groupedLogs.length; i++) {
+            const currentGroup = groupedLogs[i];
+            const previousGroup = (i < groupedLogs.length - 1) ? groupedLogs[i + 1] : null;
+            const timeDiff = formatTimeDifference(currentGroup.modified_at, previousGroup ? previousGroup.modified_at : null);
+            finalLogs.push({ ...currentGroup, timeDiff });
+        }
+
+        historyTbody.innerHTML = finalLogs.map(group => {
+            const fieldsChangedSummary = [...new Set(group.changes.map(c => escapeHTML(c.field_changed)))].join(', ');
             const changesDataAttribute = escapeHTML(JSON.stringify(group.changes));
 
             return `
                 <tr>
                     <td>${escapeHTML(group.modified_by_name || 'Unknown User')}</td>
                     <td style="text-align:center;">${formatReadableDate(group.modified_at)}</td>
+                    <td style="text-align:center; font-family: monospace; color: var(--text-color-muted);">${group.timeDiff}</td>
                     <td style="text-align:center;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-color-muted);">${fieldsChangedSummary}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-color-muted); text-transform: capitalize;">${fieldsChangedSummary}</span>
                             <button class="button button-secondary view-changes-btn" data-changes='${changesDataAttribute}' style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
                                 View Details
                             </button>
@@ -3010,20 +3038,20 @@ acc[timestamp] = {
             `;
         }).join('');
     }
+    // ===============================================================
+    // ===== END OF MODIFIED CODE / نهاية الكود المعدل ===================
+    // ===============================================================
 
-    // New function to display grouped changes in the diff modal
     function showGroupedDiff(changes) {
         if (!changes || changes.length === 0) {
             showToast('No changes to display.', 'info');
             return;
         }
 
-        // Create a combined diff string from all the changes
         const combinedDiffString = changes.map(change => {
             const oldContent = change.old_value || '';
             const newContent = change.new_value || '';
             const fieldName = change.field_changed || 'Field';
-            // Create a "patch" for each field separately
             return Diff.createTwoFilesPatch(
                 `${fieldName} (Before)`, 
                 `${fieldName} (After)`, 
@@ -3031,16 +3059,17 @@ acc[timestamp] = {
                 newContent, 
                 '', '', { context: 5 }
             );
-        }).join('\n'); // Combine all patches into a single string
+        }).join('\n');
 
         const diffHtml = Diff2Html.html(combinedDiffString, {
-            drawFileList: true, // Display the name of each changed field
+            drawFileList: true,
             matching: 'lines',
             outputFormat: 'side-by-side'
         });
 
         document.getElementById('diffContent').innerHTML = diffHtml;
-        diffModal.classList.remove('hidden');
+        diffModal.style.display = 'flex'; // Use flex to align center
+        setTimeout(() => diffModal.classList.remove('hidden'), 10);
     }
 
 
@@ -3213,8 +3242,8 @@ acc[timestamp] = {
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id });
-        await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name });
+        await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id, is_local: true });
+        await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
@@ -3400,6 +3429,7 @@ acc[timestamp] = {
         });
 
         closeDiffModalBtn.addEventListener('click', () => {
+            diffModal.style.display = 'none';
             diffModal.classList.add('hidden');
         });
 
@@ -3498,4 +3528,3 @@ acc[timestamp] = {
 </script>
 </body>
 </html>
-```
