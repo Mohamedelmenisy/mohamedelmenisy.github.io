@@ -753,7 +753,7 @@
             padding: 0.5rem 1rem;
             font-size: 0.9rem;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
 
         .kb-content .lang-toggle-btn:hover {
@@ -1544,19 +1544,19 @@
             text-decoration: underline;
         }
         
-        #viewHistorySection table, #changeHistorySection table {
+        #viewHistorySection table {
             table-layout: fixed;
             width: 100%;
             border-collapse: collapse;
         }
-        #viewHistorySection th, #viewHistorySection td, #changeHistorySection th, #changeHistorySection td {
+        #viewHistorySection th, #viewHistorySection td {
             padding: 0.75rem;
             border-bottom: 1px solid var(--border-color);
             white-space: normal;
             word-break: break-word;
             text-align: left;
         }
-        #viewHistorySection th, #changeHistorySection th {
+        #viewHistorySection th {
             font-weight: 600;
             font-size: 0.8rem;
             text-transform: uppercase;
@@ -1568,12 +1568,6 @@
         #viewHistorySection th:nth-child(2), #viewHistorySection td:nth-child(2) { width: 25%; text-align: center;}
         #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; text-align: right; }
         #viewHistorySection .action-badge { margin: 0 auto; }
-
-        /* === MODIFIED CSS FOR CHANGE HISTORY TABLE === */
-        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 25%; } /* Modified By */
-        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 25%; text-align: center; } /* Modification Date */
-        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 20%; text-align: center; } /* Time Since Last Change */
-        #changeHistorySection th:nth-child(4), #changeHistorySection td:nth-child(4) { width: 30%; text-align: center; } /* Actions */
 
 
         /* Styles for Diff2HTML Modal */
@@ -1936,6 +1930,17 @@
         </div>
     </div>
 </div>
+<!-- Access Denied Modal -->
+<div class="modal-overlay hidden" id="accessDeniedModalOverlay">
+    <div class="modal-content" style="max-width: 28rem; text-align: center;">
+        <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"><i class="fas fa-user-lock"></i></div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Access Denied</h2>
+        <p style="color: var(--text-color-muted); margin-bottom: 1.5rem;">
+            This section is restricted to administrators only.
+        </p>
+        <button class="button" id="closeAccessDeniedModalBtn">Understood</button>
+    </div>
+</div>
 <!-- Diff Viewer Modal -->
 <div id="diffModal" class="modal-overlay hidden">
   <div class="diff-modal-content">
@@ -2202,6 +2207,8 @@
     const htmlTextarea = document.getElementById('htmlTextarea');
     const diffModal = document.getElementById('diffModal');
     const closeDiffModalBtn = document.getElementById('closeDiffModalBtn');
+    const accessDeniedModalOverlay = document.getElementById('accessDeniedModalOverlay');
+    const closeAccessDeniedModalBtn = document.getElementById('closeAccessDeniedModalBtn');
     
     function isCurrentUserAdmin() {
         if (!currentUser) return false;
@@ -2222,34 +2229,6 @@
             hour: '2-digit', minute: '2-digit', hour12: true,
             timeZone: 'Africa/Cairo'
         });
-    }
-
-    function formatTimeDifference(currentDate, previousDate) {
-        if (!previousDate) return '—';
-
-        let diff = new Date(currentDate) - new Date(previousDate);
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        diff -= days * (1000 * 60 * 60 * 24);
-
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        diff -= hours * (1000 * 60 * 60);
-
-        const minutes = Math.floor(diff / (1000 * 60));
-        diff -= minutes * (1000 * 60);
-        
-        const seconds = Math.floor(diff / 1000);
-
-        let result = '⏱ ';
-        if (days > 0) result += `${days}d `;
-        if (hours > 0) result += `${hours}h `;
-        if (minutes > 0) result += `${minutes}m `;
-        if (days === 0 && hours === 0 && minutes < 10) {
-            if (seconds > 0) result += `${seconds}s`;
-        }
-        
-        const finalResult = result.trim();
-        return finalResult === '⏱' ? 'Just now' : finalResult;
     }
 
     function highlightText(text, query) {
@@ -2470,10 +2449,12 @@
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
                     <div class="card">
-                        <i class="fas fa-user-shield"></i>
-                        <h2>Access Restricted</h2>
-                        <p>The dashboard overview is available for administrators only.</p>
-                        <p class="subtle-note">You can navigate using the sidebar to view knowledge base content.</p>
+                        <i class="fas fa-columns"></i>
+                        <h2>Welcome to the Knowledge Base</h2>
+                        <p>Use the sidebar to navigate through different sections and find the information you need.</p>
+                         <div style="margin-top: 1.5rem;">
+                            <button id="goToAuditLogBtn" class="button"><i class="fas fa-history"></i> View Audit Log</button>
+                        </div>
                     </div>
                 </div>`;
             return;
@@ -2505,7 +2486,7 @@
                      <h3>💡 Quick Links</h3>
                      <ul>
                         <li><a href="#" id="addNewArticleLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li><a href="#" id="browseTemplatesLink"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
+                        <li><button id="goToAuditLogBtn" class="button-secondary" style="width: 100%; justify-content: flex-start; padding: 0.5rem; border: none;"><i class="fas fa-history fa-fw"></i> View Audit Log</button></li>
                      </ul>
                 </div>
             </div>
@@ -2575,8 +2556,7 @@
             }
         };
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
-        document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
-
+        
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
         document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
         document.getElementById('filterUserEmail').addEventListener('input', applyDashboardFilters);
@@ -2823,7 +2803,6 @@
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
         
-        // IMPORTANT CHANGE: Do not wrap the content in a card if it contains a full-width kb-container
         const hasCustomContainer = itemData.content_en && itemData.content_en.includes('class="kb-container"');
 
         if (hasCustomContainer) {
@@ -2889,30 +2868,12 @@
                     </table>
                 </div>
             </div>`;
-        
-        if (isCurrentUserAdmin()) {
-            detailHTML += `
-                <div class="comments-section" id="changeHistorySection" style="margin-top: 1rem;">
-                    <h4><i class="fas fa-edit"></i> Change History</h4>
-                    <div class="dashboard-table-wrapper" style="max-height: 250px;">
-                        <table>
-                            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Time Since Last Change</th><th>Actions</th></tr></thead>
-                            <tbody id="changeHistoryTbody">
-                                <tr><td colspan="4" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>`;
-        }
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
         setTimeout(() => {
             renderComments(itemData.id);
             displayViewHistory(itemData.id);
-            if (isCurrentUserAdmin()) {
-                displayChangeHistory(itemData.id);
-            }
         }, 300);
 
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
@@ -2987,129 +2948,6 @@
                 <td style="text-align:right;">${formatReadableDate(log.timestamp)}</td>
             </tr>
         `).join('');
-    }
-
-    async function displayChangeHistory(itemId) {
-        const historyTbody = document.getElementById('changeHistoryTbody');
-        if (!historyTbody) return;
-    
-        const { data, error } = await supabase
-            .from('case_history')
-            .select('id, modified_by_name, modified_at, field_changed, old_value, new_value')
-            .eq('case_id', itemId)
-            .order('modified_at', { ascending: false });
-    
-        if (error) {
-            console.error('Error fetching change history:', error);
-            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Failed to load change history. Check console.</td></tr>`;
-            return;
-        }
-    
-        if (data.length === 0) {
-            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
-            return;
-        }
-        
-        const groupedByTimestamp = data.reduce((acc, log) => {
-            const timestamp = log.modified_at;
-            if (!acc[timestamp]) {
-                acc[timestamp] = {
-                    modified_by_name: log.modified_by_name,
-                    modified_at: log.modified_at,
-                    changes: []
-                };
-            }
-            acc[timestamp].changes.push(log);
-            return acc;
-        }, {});
-
-        const groupedLogs = Object.values(groupedByTimestamp);
-
-        const finalLogs = [];
-        for (let i = 0; i < groupedLogs.length; i++) {
-            const currentGroup = groupedLogs[i];
-            const previousGroup = (i < groupedLogs.length - 1) ? groupedLogs[i + 1] : null;
-            const timeDiff = formatTimeDifference(currentGroup.modified_at, previousGroup ? previousGroup.modified_at : null);
-            finalLogs.push({ ...currentGroup, timeDiff });
-        }
-
-        historyTbody.innerHTML = finalLogs.map(group => {
-            const fieldsChangedSummary = [...new Set(group.changes.map(c => escapeHTML(c.field_changed)))].join(', ');
-            const changesDataAttribute = escapeHTML(JSON.stringify(group.changes));
-
-            return `
-                <tr>
-                    <td>${escapeHTML(group.modified_by_name || 'Unknown User')}</td>
-                    <td style="text-align:center;">${formatReadableDate(group.modified_at)}</td>
-                    <td style="text-align:center; font-family: monospace; color: var(--text-color-muted);">${group.timeDiff}</td>
-                    <td style="text-align:center;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-color-muted); text-transform: capitalize;">${fieldsChangedSummary}</span>
-                            <button class="button button-secondary view-changes-btn" data-changes='${changesDataAttribute}' style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
-                                View Details
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function showGroupedDiff(changes) {
-        if (!changes || changes.length === 0) {
-            showToast('No changes to display.', 'info');
-            return;
-        }
-
-        const combinedDiffString = changes.map(change => {
-            const oldContent = change.old_value || '';
-            const newContent = change.new_value || '';
-            const fieldName = change.field_changed || 'Field';
-            return Diff.createTwoFilesPatch(
-                `${fieldName} (Before)`, 
-                `${fieldName} (After)`, 
-                oldContent, 
-                newContent, 
-                '', '', { context: 5 }
-            );
-        }).join('\n');
-
-        const diffHtml = Diff2Html.html(combinedDiffString, {
-            drawFileList: true,
-            matching: 'lines',
-            outputFormat: 'side-by-side'
-        });
-
-        document.getElementById('diffContent').innerHTML = diffHtml;
-        diffModal.style.display = 'flex';
-        setTimeout(() => diffModal.classList.remove('hidden'), 10);
-    }
-
-
-    async function showDiff(versionId) {
-        const { data: versionRecord, error: versionError } = await supabase.from('case_history').select('*').eq('id', versionId).single();
-        if (versionError || !versionRecord) {
-            showToast('Could not load version details.', 'error');
-            return;
-        }
-
-        const oldContent = versionRecord.old_value || '';
-        const newContent = versionRecord.new_value || '';
-
-        if (oldContent === newContent) {
-            showToast('No content changes to display for this version.', 'info');
-            return;
-        }
-        
-        const diffString = Diff.createTwoFilesPatch('Before', 'After', oldContent, newContent, '', '', { context: 5 });
-        const diffHtml = Diff2Html.html(diffString, {
-            drawFileList: false,
-            matching: 'lines',
-            outputFormat: 'side-by-side'
-        });
-
-        document.getElementById('diffContent').innerHTML = diffHtml;
-        diffModal.classList.remove('hidden');
     }
 
     const contentTemplates = {
@@ -3430,6 +3268,8 @@
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
         
+        closeAccessDeniedModalBtn.addEventListener('click', () => accessDeniedModalOverlay.classList.add('hidden'));
+
         [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
             insertHtmlModalOverlay.classList.add('hidden');
         }));
@@ -3448,22 +3288,16 @@
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+            if (e.target.closest('#goToAuditLogBtn')) {
+                if(isCurrentUserAdmin()) {
+                    window.location.href = 'audit.html';
+                } else {
+                    accessDeniedModalOverlay.classList.remove('hidden');
+                }
+            }
         });
         
         pageContentArea.addEventListener('click', async (e) => {
-            
-            const viewChangesBtn = e.target.closest('button.view-changes-btn');
-            if (viewChangesBtn && viewChangesBtn.dataset.changes) {
-                try {
-                    const changes = JSON.parse(viewChangesBtn.dataset.changes);
-                    showGroupedDiff(changes);
-                } catch (err) {
-                    console.error("Failed to parse changes data:", err);
-                    showToast('Could not display changes.', 'error');
-                }
-                return;
-            }
-
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
