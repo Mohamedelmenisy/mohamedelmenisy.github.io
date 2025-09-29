@@ -1,480 +1,483 @@
 <!DOCTYPE html>
-<html class="dark" dir="ltr" lang="en">
+<html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>InfiniBase - User Insights (Realtime)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>InfiniBase — User Activity Insights (Expanded)</title>
 
-    <!-- Icons & Charts -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- External libs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Tailwind is used for quick layout & styling in dev; you can replace with your design system -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
-    <style>
-        :root {
-            --primary: #6366f1;
-            --bg: #0f1724;
-            --card: #111827;
-            --muted: #9ca3af;
-            --border: #24303a;
-            --glass: rgba(255,255,255,0.03);
-            --success: #22c55e;
-            --danger: #ef4444;
-        }
-        html,body { height:100%; margin:0; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#d1d5db; }
-        a { color: inherit; text-decoration: none; }
-        .header { display:flex; align-items:center; justify-content:space-between; padding:18px 28px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:40; }
-        .brand { display:flex; gap:12px; align-items:center; font-weight:700; color:var(--primary); }
-        .brand svg { width:36px; height:36px; }
-        .main { max-width:1400px; margin:22px auto; padding:0 18px 80px; }
-        .page-title { font-size:22px; font-weight:800; color:var(--primary); margin:12px 0 20px; display:flex; align-items:center; gap:12px; }
-
-        /* Layout */
-        .grid-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-bottom:18px; }
-        .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:18px; }
-        .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-        .card h3 { margin:0 0 10px; font-size:15px; color:#f8fafc; }
-        .big-number { font-size:28px; font-weight:700; color:#fff; }
-
-        /* Filters */
-        .filters { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-        .input, select, button { background:var(--glass); border:1px solid var(--border); color:var(--muted); padding:8px 12px; border-radius:8px; font-size:13px; }
-        .input::placeholder { color:#7b8791; }
-        .btn-primary { background:var(--primary); color:white; border:1px solid rgba(0,0,0,0.08); cursor:pointer; }
-        .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); cursor:pointer; }
-
-        /* Table */
-        .table-wrapper { overflow:auto; max-height:520px; border-radius:8px; }
-        table { width:100%; border-collapse:collapse; min-width:940px; }
-        th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; color:#cbd5e1; font-size:13px; }
-        th { background:#0b1220; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.03em; }
-        tr:hover td { background: rgba(255,255,255,0.01); }
-
-        /* small */
-        .muted { color:var(--muted); font-size:13px; }
-        .badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-        .badge.success { background: rgba(34,197,94,0.12); color:var(--success); border:1px solid rgba(34,197,94,0.18); }
-        .badge.error { background: rgba(239,68,68,0.08); color:var(--danger); border:1px solid rgba(239,68,68,0.12); }
-
-        /* Spinner overlay */
-        .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.5); z-index:1000; visibility:hidden; opacity:0; transition:all .18s; }
-        .overlay.show { visibility:visible; opacity:1; }
-        .spinner { width:72px; height:72px; border-radius:50%; border:6px solid rgba(255,255,255,0.06); border-top-color:var(--primary); animation:spin 1s linear infinite; }
-        @keyframes spin { to { transform:rotate(360deg); } }
-
-        /* footer actions */
-        .actions { display:flex; gap:8px; align-items:center; }
-        .export-btn { display:inline-flex; gap:8px; align-items:center; padding:8px 12px; border-radius:8px; font-weight:600; background:transparent; color:var(--muted); border:1px solid var(--border); cursor:pointer; }
-        .small { font-size:12px; padding:6px 8px; border-radius:6px; }
-
-        /* responsive */
-        @media (max-width:980px) {
-            .grid-3 { grid-template-columns: repeat(2,1fr); }
-            .grid-2 { grid-template-columns: 1fr; }
-            .card { padding:12px; }
-        }
-        @media (max-width:640px) {
-            .grid-3 { grid-template-columns: 1fr; }
-            .filters { flex-direction:column; align-items:stretch; }
-            .table-wrapper { max-height: 400px; }
-        }
-    </style>
+  <style>
+    /* ============= Visual Design (expanded, commented) ============= */
+    :root{
+      --bg: #0f1724;
+      --card: #0b1220;
+      --muted: #9ca3af;
+      --primary: #6366f1;
+      --success: #16a34a;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.04);
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:#d1d5db;}
+    .container{max-width:1200px;margin:24px auto;padding:0 16px;}
+    h1{font-weight:800;color:var(--primary);margin-bottom:14px;font-size:22px;}
+    /* Cards */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+    /* Filters layout */
+    .filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;}
+    .input,select,button{background:var(--glass);border:1px solid var(--border);color:var(--muted);padding:8px 10px;border-radius:8px;font-size:13px;}
+    .btn-primary{background:var(--primary);color:white;border:1px solid rgba(0,0,0,0.08);}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+    /* Table */
+    .table-wrap{overflow:auto;border-radius:8px;}
+    table{width:100%;border-collapse:collapse;min-width:900px;}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:#cbd5e1;text-align:left;}
+    thead th{background:#071021;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;}
+    tr:hover td{background:rgba(255,255,255,0.01);}
+    /* small utilities */
+    .muted{color:var(--muted);font-size:13px;}
+    .badge{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+    .badge.success{background:rgba(34,197,94,0.12);color:var(--success);border:1px solid rgba(34,197,94,0.18);}
+    .badge.error{background:rgba(239,68,68,0.08);color:var(--danger);border:1px solid rgba(239,68,68,0.12);}
+    /* Spinner overlay */
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1000;visibility:hidden;opacity:0;transition:opacity .18s;}
+    .overlay.show{visibility:visible;opacity:1;}
+    .spinner{width:72px;height:72px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--primary);animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    /* Toast */
+    .toast{position:fixed;top:20px;right:20px;z-index:1100;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:white;box-shadow:0 8px 30px rgba(0,0,0,0.5);cursor:pointer;transform-origin:right top;transition:transform .18s ease,opacity .18s;}
+    .toast.hide{opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;}
+    .toast.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+    .toast .icon{font-size:18px;margin-right:6px;}
+    /* highlight */
+    .highlight{background:rgba(99,102,241,0.18) !important;transition:background 1s;}
+    /* responsive */
+    @media (max-width:980px){.grid-3{grid-template-columns:repeat(2,1fr);}.grid-2{grid-template-columns:1fr;}.card{padding:12px;}}
+    @media (max-width:640px){.grid-3{grid-template-columns:1fr;} .filters{flex-direction:column;align-items:stretch;} .table-wrap{max-height:400px;}}
+  </style>
 </head>
 <body>
-    <div class="header">
-        <div class="brand">
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#6366f1"/><text x="50%" y="54%" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">IB</text></svg>
-            <div>
-                <div style="font-weight:800;">InfiniBase</div>
-                <div class="muted" style="font-size:12px;">User Activity Insights (Realtime)</div>
-            </div>
+  <div class="container">
+    <!-- Header / Title -->
+    <h1>InfiniBase — User Activity Insights</h1>
+
+    <!-- Toast placeholder (hidden by default) -->
+    <div id="toast" class="toast hide" role="status" aria-live="polite"></div>
+
+    <!-- Spinner overlay while loading -->
+    <div id="overlay" class="overlay"><div class="spinner" aria-hidden="true"></div></div>
+
+    <!-- Filters card -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="filters" role="region" aria-label="filters">
+        <!-- Search input -->
+        <div style="flex:1;min-width:220px;">
+          <label class="muted" for="searchInput">Search (user / email / case / details)</label>
+          <input id="searchInput" class="input" placeholder="Search..." />
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-            <a href="app.html" class="btn-ghost small"><i class="fas fa-arrow-left"></i>&nbsp; Back</a>
-            <button id="exportCsvBtn" class="export-btn"><i class="fas fa-file-export"></i> Export CSV</button>
+
+        <!-- Action filter -->
+        <div>
+          <label class="muted" for="actionFilter">Action</label>
+          <select id="actionFilter" class="input">
+            <option value="">All actions</option>
+            <option value="viewed">Viewed</option>
+            <option value="updated">Updated</option>
+            <option value="created">Created</option>
+            <option value="deleted">Deleted</option>
+            <option value="positive_feedback">Positive Feedback</option>
+            <option value="negative_feedback">Negative Feedback</option>
+          </select>
         </div>
+
+        <!-- Time range -->
+        <div>
+          <label class="muted" for="timeRange">Time Range</label>
+          <select id="timeRange" class="input">
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </div>
+
+        <!-- Custom dates (hidden unless custom) -->
+        <div id="customDates" style="display:none;">
+          <label class="muted">Start</label>
+          <input id="startDate" type="date" class="input" />
+          <label class="muted" style="margin-left:6px;">End</label>
+          <input id="endDate" type="date" class="input" />
+        </div>
+
+        <!-- Controls -->
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="applyBtn" class="btn-primary input">Apply</button>
+          <button id="clearBtn" class="btn-ghost input">Clear</button>
+          <button id="exportBtn" class="input">Export CSV</button>
+        </div>
+      </div>
     </div>
 
-    <main class="main">
-        <div class="page-title"><i class="fas fa-chart-pie"></i> User Activity Insights</div>
+    <!-- Stats row -->
+    <div class="grid-3" style="margin-bottom:12px;">
+      <div class="card">
+        <h3 class="muted">Total Activities</h3>
+        <div style="font-size:22px;font-weight:700;" id="totalActivities">0</div>
+        <div class="muted" style="margin-top:8px;">Number of actions matching current filter</div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Helpful Feedback</h3>
+        <div style="font-size:22px;font-weight:700;" id="helpfulCount">0</div>
+        <div class="muted" style="margin-top:8px;">Helpful votes</div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Not Helpful</h3>
+        <div style="font-size:22px;font-weight:700;" id="notHelpfulCount">0</div>
+        <div class="muted" style="margin-top:8px;">Not helpful votes</div>
+      </div>
+    </div>
 
-        <!-- Stats -->
-        <section class="grid-3">
-            <div class="card">
-                <h3>Total Activities</h3>
-                <div class="big-number" id="totalActivities">0</div>
-                <div class="muted" style="margin-top:8px;">Number of actions recorded in the selected range</div>
-            </div>
-            <div class="card">
-                <h3>Feedback (Helpful)</h3>
-                <div class="big-number" id="helpfulCount">0</div>
-                <div class="muted" style="margin-top:8px;">Helpful votes on articles</div>
-            </div>
-            <div class="card">
-                <h3>Feedback (Not Helpful)</h3>
-                <div class="big-number" id="notHelpfulCount">0</div>
-                <div class="muted" style="margin-top:8px;">Not helpful votes</div>
-            </div>
-        </section>
+    <!-- Charts row -->
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <h3 class="muted">Feedback Distribution</h3>
+        <canvas id="feedbackChart" height="160" style="max-height:180px;"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="muted">Top Active Users</h3>
+        <canvas id="activeUsersChart" height="160" style="max-height:180px;"></canvas>
+      </div>
+    </div>
 
-        <!-- Charts -->
-        <section class="grid-2">
-            <div class="card">
-                <h3>Feedback Distribution</h3>
-                <canvas id="feedbackChart" height="160"></canvas>
-            </div>
-            <div class="card">
-                <h3>Top Active Users</h3>
-                <canvas id="topUsersChart" height="160"></canvas>
-            </div>
-        </section>
+    <!-- Activity table -->
+    <div class="card">
+      <h3 class="muted">Activity Feed</h3>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table role="table" aria-label="Activity feed">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Case</th>
+              <th>Field Changed / Action</th>
+              <th>Old / New / Details</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="activityBody">
+            <tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-        <!-- Filters + Table -->
-        <section class="card" style="margin-top:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <div>
-                    <div class="filters">
-                        <input id="searchInput" class="input" placeholder="Search by user name or case title" style="min-width:320px;" />
-                        <select id="actionFilter" class="input">
-                            <option value="">All actions</option>
-                            <option value="viewed">Viewed</option>
-                            <option value="commented">Commented</option>
-                            <option value="positive_feedback">Positive Feedback</option>
-                            <option value="negative_feedback">Negative Feedback</option>
-                            <option value="updated">Updated</option>
-                        </select>
+      <div style="display:flex;justify-content:center;margin-top:12px;">
+        <button id="loadMore" class="input">Load more</button>
+      </div>
+    </div>
+  </div>
 
-                        <select id="timeRange" class="input">
-                            <option value="all">All time</option>
-                            <option value="today">Today</option>
-                            <option value="7d">Last 7 days</option>
-                            <option value="30d">Last 30 days</option>
-                            <option value="custom">Custom range</option>
-                        </select>
+  <!-- ================= JS: logic, fetchers, realtime, patching, toasts ================= -->
+  <script type="module">
+    import { supabase } from './supabase.js';
 
-                        <input type="date" id="startDate" class="input" style="display:none;" />
-                        <input type="date" id="endDate" class="input" style="display:none;" />
+    // --------------------------- State ---------------------------
+    let dataStore = { activities: [] }; // master list
+    let filteredList = []; // filtered view
+    let pageSize = 25;
+    let currentPage = 1;
+    let feedbackStats = { helpful: 0, notHelpful: 0 };
+    let topUsers = [];
 
-                        <button id="applyFiltersBtn" class="btn-primary">Apply</button>
-                        <button id="clearFiltersBtn" class="btn-ghost">Clear</button>
-                    </div>
-                </div>
+    // DOM refs
+    const overlay = document.getElementById('overlay');
+    const toast = document.getElementById('toast');
+    const activityBody = document.getElementById('activityBody');
+    const totalActivitiesEl = document.getElementById('totalActivities');
+    const helpfulEl = document.getElementById('helpfulCount');
+    const notHelpfulEl = document.getElementById('notHelpfulCount');
+    const feedbackChartCtx = document.getElementById('feedbackChart').getContext('2d');
+    const topUsersChartCtx = document.getElementById('activeUsersChart').getContext('2d');
 
-                <div class="actions">
-                    <button id="refreshBtn" class="small btn-ghost"><i class="fas fa-sync-alt"></i>&nbsp; Refresh</button>
-                    <div class="muted" id="lastUpdated" style="font-size:13px;">Last updated: —</div>
-                </div>
-            </div>
+    // charts instances
+    let feedbackChart = null;
+    let topUsersChart = null;
 
-            <div class="table-wrapper">
-                <table id="activityTable">
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Email</th>
-                            <th>Action</th>
-                            <th>Case Title</th>
-                            <th>Details</th>
-                            <th>Activity Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="activityTableBody">
-                        <tr><td colspan="6" style="text-align:center; padding:40px 0;" class="muted">Loading activity...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+    // helpers for overlay
+    function showOverlay(show=true){
+      if(show) overlay.classList.add('show'); else overlay.classList.remove('show');
+    }
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                <div class="muted" id="rowsInfo">Showing 0 rows</div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <button id="prevPage" class="small btn-ghost">Prev</button>
-                    <button id="nextPage" class="small btn-ghost">Next</button>
-                </div>
-            </div>
-        </section>
-    </main>
+    // --------------------------- Fetch initial data from RPCs ---------------------------
+    async function fetchInitial(){
+      showOverlay(true);
+      try{
+        // Use RPCs we created earlier (they must exist in DB): get_user_activity_feed, get_feedback_stats, get_top_active_users
+        const [actRes, fbRes, tuRes] = await Promise.all([
+          supabase.rpc('get_user_activity_feed'),
+          supabase.rpc('get_feedback_stats'),
+          supabase.rpc('get_top_active_users', { limit_count: 10 })
+        ]);
 
-    <div id="overlay" class="overlay"><div class="spinner"></div></div>
+        if(actRes.error){
+          console.error('get_user_activity_feed error', actRes.error);
+          dataStore.activities = [];
+        } else dataStore.activities = actRes.data || [];
 
-    <script type="module">
-        import { supabase } from './supabase.js';
-
-        // State
-        let originalData = []; // full data from RPC
-        let filteredData = [];
-        let currentPage = 1;
-        const pageSize = 25;
-
-        let feedbackChart, topUsersChart;
-        let realtimeChannel;
-
-        // Utilities
-        function showOverlay(show=true) {
-            document.getElementById('overlay').classList.toggle('show', !!show);
+        // feedback
+        if(!fbRes.error) {
+          const fb = fbRes.data || [];
+          feedbackStats.helpful = fb.find(f=>f.rating_type==='Helpful')?.count || 0;
+          feedbackStats.notHelpful = fb.find(f=>f.rating_type==='Not Helpful')?.count || 0;
         }
 
-        function formatReadable(iso) {
-            if (!iso) return 'N/A';
-            try {
-                const d = new Date(iso);
-                return d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-            } catch (e) {
-                return iso;
+        // top users
+        if(!tuRes.error) topUsers = tuRes.data || [];
+
+        // After fetching, build UI
+        applyFiltersAndRender();
+        renderFeedbackChart();
+        renderTopUsersChart();
+      } catch(err){
+        console.error('fetchInitial error', err);
+      } finally {
+        showOverlay(false);
+      }
+    }
+
+    // --------------------------- Rendering functions ---------------------------
+    function renderFeedbackChart(){
+      const helpful = feedbackStats.helpful || 0;
+      const notHelpful = feedbackStats.notHelpful || 0;
+      helpfulEl.textContent = helpful;
+      notHelpfulEl.textContent = notHelpful;
+
+      if(feedbackChart) feedbackChart.destroy();
+      feedbackChart = new Chart(feedbackChartCtx, {
+        type: 'doughnut',
+        data: { labels: ['Helpful','Not Helpful'], datasets: [{ data: [helpful, notHelpful], backgroundColor:['#10B981','#EF4444'] }] },
+        options: { plugins:{legend:{position:'bottom',labels:{color:'#d1d5db'}}} }
+      });
+    }
+
+    function renderTopUsersChart(){
+      if(topUsersChart) topUsersChart.destroy();
+      const labels = (topUsers||[]).map(t=>t.user_name);
+      const values = (topUsers||[]).map(t=>t.activity_count);
+      topUsersChart = new Chart(topUsersChartCtx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label:'Activities', data: values, backgroundColor:'#6366f1' }] },
+        options: { scales:{ y:{beginAtZero:true, ticks:{color:'#d1d5db'}}, x:{ticks:{color:'#d1d5db'}} }, plugins:{legend:{display:false}} }
+      });
+    }
+
+    // render table with pagination & highlighting support
+    function renderTable(list){
+      activityBody.innerHTML = '';
+      if(!list || !list.length){
+        activityBody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">No activities found.</td></tr>';
+        totalActivitiesEl.textContent = 0;
+        return;
+      }
+
+      const end = Math.min(list.length, currentPage * pageSize);
+      for(let i=0;i<end;i++){
+        const row = list[i];
+        const rowId = `act-${i}`;
+        const details = (typeof row.details === 'object') ? JSON.stringify(row.details) : (row.details || '');
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.innerHTML = `
+          <td>${escapeHtml(row.user_name||'-')}</td>
+          <td>${escapeHtml(row.user_email||'-')}</td>
+          <td>${escapeHtml(row.item_title||'-')}</td>
+          <td>${escapeHtml(row.field_changed || row.action || '-')}</td>
+          <td style="white-space:pre-wrap;max-width:420px;">${escapeHtml(details)}</td>
+          <td>${escapeHtml(row.activity_time||row.timestamp||'-')}</td>
+        `;
+        activityBody.appendChild(tr);
+      }
+      totalActivitiesEl.textContent = list.length;
+    }
+
+    // escape helper
+    function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    // --------------------------- Filtering logic ---------------------------
+    function applyFiltersAndRender(){
+      const search = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+      const action = (document.getElementById('actionFilter').value||'').toLowerCase();
+      const range = (document.getElementById('timeRange').value||'all');
+      let start=null,end=null;
+      if(range==='today'){ const now=new Date(); start=new Date(now.getFullYear(),now.getMonth(),now.getDate()); end=new Date(start); end.setDate(end.getDate()+1); }
+      else if(range==='7d'){ end=new Date(); start=new Date(); start.setDate(start.getDate()-6); }
+      else if(range==='30d'){ end=new Date(); start=new Date(); start.setDate(start.getDate()-29); }
+      else if(range==='custom'){ const s=document.getElementById('startDate').value; const e=document.getElementById('endDate').value; start = s ? new Date(s+'T00:00:00') : null; end = e ? new Date(e+'T23:59:59') : null; }
+
+      // filter pipeline
+      filteredList = dataStore.activities.filter(item => {
+        // time filter
+        const at = item.activity_time || item.timestamp;
+        if(at && start && end){ const d=new Date(at); if(d < start || d > end) return false; }
+        // action filter
+        if(action && action.length && String((item.action||item.field_changed||'')).toLowerCase() !== action) return false;
+        // search filter
+        if(search && search.length){
+          const hay = (item.user_name||'') + '|' + (item.user_email||'') + '|' + (item.item_title||'') + '|' + JSON.stringify(item.details||{});
+          if(!hay.toLowerCase().includes(search)) return false;
+        }
+        return true;
+      });
+
+      currentPage = 1; // reset pagination to first page
+      renderTable(filteredList);
+      // update charts totals maybe filtered; for performance we keep overall charts in this version
+    }
+
+    // --------------------------- CSV Export ---------------------------
+    function exportCSV(list){
+      if(!list || !list.length){ alert('No data to export'); return; }
+      // headers
+      const headers = ['user_name','user_email','item_title','field_changed_or_action','details','activity_time'];
+      const rows = [headers.join(',')];
+      list.forEach(r => {
+        const details = typeof r.details === 'object' ? JSON.stringify(r.details) : (r.details||'');
+        const row = [r.user_name||'', r.user_email||'', r.item_title||'', r.field_changed||r.action||'', details, r.activity_time||r.timestamp||''];
+        // CSV escape - simple
+        const esc = row.map(c => '"' + String(c).replaceAll('"','""') + '"');
+        rows.push(esc.join(','));
+      });
+      const csvContent = rows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'infini_activities_export_' + (new Date().toISOString().slice(0,10)) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // --------------------------- Realtime: optimized patching ---------------------------
+    function setupRealtime(){
+      // subscribe to activity_log changes
+      const channel = supabase.channel('public:activity_log')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
+          // payload includes: eventType (INSERT/UPDATE/DELETE), new, old
+          // implement patch: apply change to dataStore.activities array in-memory
+          try{
+            const type = payload.eventType;
+            if(type === 'INSERT'){
+              // add to beginning (most recent first)
+              dataStore.activities.unshift(payload.new);
+              // show toast & highlight first row on render
+              showTypedToast(payload.new, 'insert');
+            } else if(type === 'UPDATE'){
+              const idx = dataStore.activities.findIndex(a => String(a.id) === String(payload.new.id));
+              if(idx !== -1) dataStore.activities[idx] = payload.new;
+              showTypedToast(payload.new, 'update');
+            } else if(type === 'DELETE'){
+              dataStore.activities = dataStore.activities.filter(a => String(a.id) !== String(payload.old.id));
+              showTypedToast(payload.old, 'delete');
             }
-        }
-
-        function csvEscape(v) {
-            if (v === null || v === undefined) return '';
-            const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
-                return '"' + s.replace(/"/g, '""') + '"';
-            }
-            return s;
-        }
-
-        // Fetchers (use existing RPC functions)
-        async function fetchAllData() {
-            showOverlay(true);
-            try {
-                const [activityRes, feedbackRes, topUsersRes] = await Promise.all([
-                    supabase.rpc('get_user_activity_feed'),
-                    supabase.rpc('get_feedback_stats'),
-                    supabase.rpc('get_top_active_users', { limit_count: 10 })
-                ]);
-
-                if (activityRes.error) {
-                    console.error('Activity fetch error', activityRes.error);
-                    alert('Failed to load activity feed. See console for details.');
-                    originalData = [];
-                } else {
-                    originalData = activityRes.data || [];
-                }
-
-                const feedback = (feedbackRes.error ? [] : (feedbackRes.data || []));
-                renderFeedbackStats(feedback);
-
-                const topUsers = (topUsersRes.error ? [] : (topUsersRes.data || []));
-                renderTopUsersChart(topUsers);
-
-                document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString('en-GB');
-            } finally {
-                showOverlay(false);
-            }
-        }
-
-        // Rendering
-        function renderFeedbackStats(data) {
-            const helpful = data.find(d => d.rating_type === 'Helpful')?.count || 0;
-            const notHelpful = data.find(d => d.rating_type === 'Not Helpful')?.count || 0;
-            document.getElementById('helpfulCount').textContent = helpful;
-            document.getElementById('notHelpfulCount').textContent = notHelpful;
-
-            // Chart
-            const ctx = document.getElementById('feedbackChart').getContext('2d');
-            if (feedbackChart) feedbackChart.destroy();
-            feedbackChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Helpful','Not Helpful'],
-                    datasets: [{ data: [helpful, notHelpful], backgroundColor: ['#16a34a','#ef4444'] }]
-                },
-                options: { plugins: { legend: { position: 'bottom', labels:{color:'#d1d5db'} } } }
-            });
-        }
-
-        function renderTopUsersChart(data) {
-            const ctx = document.getElementById('topUsersChart').getContext('2d');
-            if (topUsersChart) topUsersChart.destroy();
-            const labels = (data||[]).map(d=>d.user_name);
-            const values = (data||[]).map(d=>d.activity_count);
-            topUsersChart = new Chart(ctx, {
-                type:'bar',
-                data: { labels, datasets: [{ label:'Activities', data: values }] },
-                options: { scales: { y: { beginAtZero:true, ticks:{ color:'#d1d5db' } }, x: { ticks:{ color:'#d1d5db' } } }, plugins:{ legend:{ display:false } } }
-            });
-        }
-
-        function applyFiltersAndRender() {
-            const search = (document.getElementById('searchInput').value||'').trim().toLowerCase();
-            const action = document.getElementById('actionFilter').value;
-            const range = document.getElementById('timeRange').value;
-            let start = null, end = null;
-            if (range === 'today') {
-                const now = new Date();
-                start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                end = new Date(start); end.setDate(end.getDate()+1);
-            } else if (range === '7d') {
-                end = new Date(); start = new Date(); start.setDate(start.getDate()-6);
-            } else if (range === '30d') {
-                end = new Date(); start = new Date(); start.setDate(start.getDate()-29);
-            } else if (range === 'custom') {
-                const s = document.getElementById('startDate').value;
-                const e = document.getElementById('endDate').value;
-                start = s ? new Date(s + 'T00:00:00') : null;
-                end = e ? new Date(e + 'T23:59:59') : null;
-            } else {
-                // all
-                start = null; end = null;
-            }
-
-            filteredData = originalData.filter(row => {
-                // activity_time field (RPC returns as activity_time)
-                const at = row.activity_time || row.timestamp || row.activity_time;
-                if (!at) return false;
-                const dt = new Date(at);
-
-                if (start && dt < start) return false;
-                if (end && dt > end) return false;
-
-                if (action && String(row.action).toLowerCase() !== action.toLowerCase()) return false;
-
-                if (search) {
-                    const uname = (row.user_name||'').toString().toLowerCase();
-                    const email = (row.user_email||'').toString().toLowerCase();
-                    const title = (row.item_title||'').toString().toLowerCase();
-                    const details = JSON.stringify(row.details||'').toLowerCase();
-                    return uname.includes(search) || email.includes(search) || title.includes(search) || details.includes(search);
-                }
-                return true;
-            });
-
-            currentPage = 1;
-            renderTablePage();
-            document.getElementById('totalActivities').textContent = filteredData.length;
-            document.getElementById('rowsInfo').textContent = `Showing ${Math.min(filteredData.length, (currentPage-1)*pageSize+1)} - ${Math.min(filteredData.length, currentPage*pageSize)} of ${filteredData.length} rows`;
-        }
-
-        function renderTablePage() {
-            const tbody = document.getElementById('activityTableBody');
-            tbody.innerHTML = '';
-            if (!filteredData.length) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px 0;" class="muted">No activity found for selected filters.</td></tr>`;
-                document.getElementById('rowsInfo').textContent = 'Showing 0 rows';
-                document.getElementById('totalActivities').textContent = 0;
-                return;
-            }
-
-            const startIdx = (currentPage-1)*pageSize;
-            const page = filteredData.slice(startIdx, startIdx+pageSize);
-            for (const r of page) {
-                const details = (r.details && typeof r.details === 'object') ? JSON.stringify(r.details) : (r.details || '');
-                const html = `<tr>
-                    <td>${r.user_name || '-'}</td>
-                    <td>${r.user_email || '-'}</td>
-                    <td><span class="badge ${r.action==='positive_feedback' || r.action==='helpful' ? 'success':''} ${r.action==='negative_feedback' ? 'error':''}">${r.action || '-'}</span></td>
-                    <td>${r.item_title || '-'}</td>
-                    <td style="max-width:360px; white-space:pre-wrap;">${details}</td>
-                    <td>${formatReadable(r.activity_time || r.timestamp || r.activity_time)}</td>
-                </tr>`;
-                tbody.insertAdjacentHTML('beforeend', html);
-            }
-
-            const from = startIdx+1;
-            const to = Math.min(filteredData.length, startIdx+page.length);
-            document.getElementById('rowsInfo').textContent = `Showing ${from} - ${to} of ${filteredData.length} rows`;
-        }
-
-        // Export CSV
-        function exportCsv() {
-            if (!filteredData.length) {
-                alert('No data to export for the selected filters.');
-                return;
-            }
-            const headers = ['user_name','user_email','action','item_title','details','activity_time'];
-            const rows = [headers.join(',')];
-            for (const r of filteredData) {
-                const row = [
-                    csvEscape(r.user_name),
-                    csvEscape(r.user_email),
-                    csvEscape(r.action),
-                    csvEscape(r.item_title),
-                    csvEscape(r.details),
-                    csvEscape(r.activity_time || r.timestamp)
-                ];
-                rows.push(row.join(','));
-            }
-            const csv = rows.join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `infini_activity_${new Date().toISOString().slice(0,10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-        }
-
-        // Realtime subscription: on any change in activity_log or kb_feedback, refresh data
-        function setupRealtime() {
-            try {
-                // Supabase JS v2: channel API
-                realtimeChannel = supabase.channel('public:activity_log_kb_feedback')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
-                        console.log('Realtime event activity_log', payload);
-                        // simple strategy: refresh all data (keeps charts consistent)
-                        fetchAllData().then(() => applyFiltersAndRender());
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, payload => {
-                        console.log('Realtime event kb_feedback', payload);
-                        fetchAllData().then(() => applyFiltersAndRender());
-                    })
-                    .subscribe(status => {
-                        console.log('Realtime channel status', status);
-                    });
-            } catch (e) {
-                console.warn('Realtime setup failed - check supabase client version', e);
-            }
-
-            // cleanup on page unload
-            window.addEventListener('beforeunload', () => {
-                if (realtimeChannel && realtimeChannel.unsubscribe) {
-                    try { realtimeChannel.unsubscribe(); } catch(e){/*ignore*/ }
-                }
-            });
-        }
-
-        // Events
-        document.getElementById('timeRange').addEventListener('change', (e) => {
-            const v = e.target.value;
-            document.getElementById('startDate').style.display = (v==='custom') ? 'inline-block' : 'none';
-            document.getElementById('endDate').style.display = (v==='custom') ? 'inline-block' : 'none';
-        });
-
-        document.getElementById('applyFiltersBtn').addEventListener('click', () => { applyFiltersAndRender(); });
-        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('actionFilter').value = '';
-            document.getElementById('timeRange').value = 'all';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            document.getElementById('startDate').style.display = 'none';
-            document.getElementById('endDate').style.display = 'none';
-            filteredData = originalData.slice();
-            currentPage = 1;
-            renderTablePage();
-            document.getElementById('totalActivities').textContent = filteredData.length;
-        });
-
-        document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
-        document.getElementById('refreshBtn').addEventListener('click', () => fetchAllData().then(()=>applyFiltersAndRender()));
-
-        document.getElementById('prevPage').addEventListener('click', () => {
-            if (currentPage > 1) { currentPage--; renderTablePage(); }
-        });
-        document.getElementById('nextPage').addEventListener('click', () => {
-            if (currentPage * pageSize < filteredData.length) { currentPage++; renderTablePage(); }
-        });
-
-        // Init
-        (async function init() {
-            showOverlay(true);
-            await fetchAllData();
-            // initial filter: show last 7 days by default
-            document.getElementById('timeRange').value = '7d';
+            // After patching, reapply filters and render (keeps UI consistent)
             applyFiltersAndRender();
-            setupRealtime();
-            showOverlay(false);
-        })();
-    </script>
+          } catch(e){ console.error('Realtime patch error', e); }
+        })
+        .subscribe(status => {
+          // optional: status handling
+          console.log('activity_log realtime status', status);
+        });
+
+      // subscribe to feedback changes to refresh counts (lightweight)
+      const fbChannel = supabase.channel('public:kb_feedback')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, payload => {
+          // when feedback changes, re-call the small RPC to update counts (cheaper than refetch whole activities)
+          supabase.rpc('get_feedback_stats').then(({ data, error }) => {
+            if(!error && data){
+              feedbackStats.helpful = data.find(d=>d.rating_type==='Helpful')?.count || 0;
+              feedbackStats.notHelpful = data.find(d=>d.rating_type==='Not Helpful')?.count || 0;
+              renderFeedbackChart();
+            }
+          });
+        })
+        .subscribe();
+    }
+
+    // --------------------------- Toast helpers ---------------------------
+    let toastTimer = null;
+    function showTypedToast(row, type){
+      clearTimeout(toastTimer);
+      const colors = { insert: '#16a34a', update: '#2563eb', delete: '#ef4444' };
+      const icons = { insert: '✅', update: '✏️', delete: '🗑️' };
+      const actor = row.user_name || row.user_email || 'Unknown';
+      const title = row.item_title || row.slug || '—';
+      const action = row.action || row.field_changed || (type==='insert'?'created':(type==='delete'?'deleted':'updated'));
+      const ts = row.activity_time || row.timestamp || new Date().toISOString();
+      const shortTime = (new Date(ts)).toLocaleString();
+      const msg = `${icons[type] || 'ℹ️'} ${actor} ${action} "${title}" — ${shortTime}`;
+      toast.textContent = ''; // clear
+      toast.style.background = colors[type] || '#6366f1';
+      toast.innerHTML = `<span class="icon">${icons[type] || 'ℹ️'}</span><div style="line-height:1.05;">${escapeHtml(msg)}</div>`;
+      toast.classList.remove('hide'); toast.classList.add('show');
+      // clicking toast scrolls to the first row (we assume insert at index 0)
+      toast.onclick = () => {
+        try{
+          // find index of this item in filteredList if present
+          const idx = filteredList.findIndex(a => String(a.id) === String(row.id));
+          if(idx !== -1){
+            const el = document.getElementById('act-' + idx);
+            if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('highlight'); setTimeout(()=>el.classList.remove('highlight'),3500); }
+          } else {
+            // otherwise scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } catch(e){ console.error('toast click error', e); }
+        // hide toast after click
+        toast.classList.remove('show'); toast.classList.add('hide');
+      };
+      // auto hide after 4s
+      toastTimer = setTimeout(()=>{ toast.classList.remove('show'); toast.classList.add('hide'); }, 4000);
+    }
+
+    // --------------------------- Initialization & events ---------------------------
+    document.getElementById('timeRange').addEventListener('change', (e)=>{
+      document.getElementById('customDates').style.display = (e.target.value === 'custom') ? 'inline-flex' : 'none';
+    });
+    document.getElementById('applyBtn').addEventListener('click', ()=> applyFiltersAndRender());
+    document.getElementById('clearBtn').addEventListener('click', ()=>{
+      document.getElementById('searchInput').value = '';
+      document.getElementById('actionFilter').value = '';
+      document.getElementById('timeRange').value = 'all';
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      applyFiltersAndRender();
+    });
+    document.getElementById('exportBtn').addEventListener('click', ()=> exportCSV(filteredList));
+    document.getElementById('loadMore').addEventListener('click', ()=>{ currentPage++; renderTable(filteredList); });
+
+    // small UX: filter on enter in search
+    document.getElementById('searchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ applyFiltersAndRender(); } });
+
+    // --------------------------- Boot sequence ---------------------------
+    (async function boot(){
+      try{
+        showOverlay(true);
+        // 1) fetch initial snapshot from RPCs
+        await fetchInitial();
+        // 2) subscribe realtime (patching)
+        setupRealtime();
+      } finally {
+        showOverlay(false);
+      }
+    })();
+
+    // --------------------------- Utility: polyfills / nice helpers ---------------------------
+    // none heavy here; small helper to safely convert values
+    function safeDate(v){ try{return new Date(v);}catch(e){return null;} }
+  </script>
 </body>
 </html>
