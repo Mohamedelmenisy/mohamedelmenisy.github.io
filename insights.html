@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>InfiniBase - User Insights (Updated)</title>
+    <title>InfiniBase - User Insights (Realtime)</title>
 
     <!-- Icons & Charts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
@@ -85,7 +85,7 @@
             <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#6366f1"/><text x="50%" y="54%" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">IB</text></svg>
             <div>
                 <div style="font-weight:800;">InfiniBase</div>
-                <div class="muted" style="font-size:12px;">User Activity Insights</div>
+                <div class="muted" style="font-size:12px;">User Activity Insights (Realtime)</div>
             </div>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
@@ -205,6 +205,7 @@
         const pageSize = 25;
 
         let feedbackChart, topUsersChart;
+        let realtimeChannel;
 
         // Utilities
         function showOverlay(show=true) {
@@ -403,6 +404,35 @@
             URL.revokeObjectURL(url);
         }
 
+        // Realtime subscription: on any change in activity_log or kb_feedback, refresh data
+        function setupRealtime() {
+            try {
+                // Supabase JS v2: channel API
+                realtimeChannel = supabase.channel('public:activity_log_kb_feedback')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
+                        console.log('Realtime event activity_log', payload);
+                        // simple strategy: refresh all data (keeps charts consistent)
+                        fetchAllData().then(() => applyFiltersAndRender());
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, payload => {
+                        console.log('Realtime event kb_feedback', payload);
+                        fetchAllData().then(() => applyFiltersAndRender());
+                    })
+                    .subscribe(status => {
+                        console.log('Realtime channel status', status);
+                    });
+            } catch (e) {
+                console.warn('Realtime setup failed - check supabase client version', e);
+            }
+
+            // cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                if (realtimeChannel && realtimeChannel.unsubscribe) {
+                    try { realtimeChannel.unsubscribe(); } catch(e){/*ignore*/ }
+                }
+            });
+        }
+
         // Events
         document.getElementById('timeRange').addEventListener('change', (e) => {
             const v = e.target.value;
@@ -442,6 +472,7 @@
             // initial filter: show last 7 days by default
             document.getElementById('timeRange').value = '7d';
             applyFiltersAndRender();
+            setupRealtime();
             showOverlay(false);
         })();
     </script>
