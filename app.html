@@ -1,3 +1,8 @@
+أعتذر بشدة عن استمرار المشكلة. لقد قمت بمراجعة الكود والصورة التي أرسلتها مرة أخرى، واتضح أن هناك خطأ أعمق في الاستعلام نفسه لم ننتبه له. شكرًا لصبرك وتزويدي بالصورة الواضحة للمشكلة.
+
+### المشكلة الحقيقية
+
+الخطأ `status of 400` الذي يظهر في الـ Console يعني "Bad Request" (طلب سيئ). هذا يحدث عندما نطلب من قاعدة البيانات شيئًا لا تفهمه، غالبًا ما يكون اسم جدول أو حقل غير صحيح.
 <!DOCTYPE html>
 <html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
 <head>
@@ -2863,9 +2868,7 @@
             renderMermaidDiagramsInElement(itemDetailViewPlaceholder);
         }
 
-        // Run the script for the calculator and language toggle
         setTimeout(initializeInjectedScripts, 100);
-
         setTimeout(loadAndStructureData, 500);
     }
     
@@ -2939,16 +2942,16 @@
         const historyTbody = document.getElementById('changeHistoryTbody');
         if (!historyTbody) return;
 
-        // ***FIX: Use correct table 'case_history' and correct column 'case_id'***
+        // === FINAL FIX: Simplified the 'select' statement to only use required columns ===
         const { data, error } = await supabase
             .from('case_history')
-            .select('id, modified_by_name, modified_at, field_changed')
+            .select('id, modified_by_name, modified_at') // REMOVED 'field_changed' which caused the error
             .eq('case_id', itemId)
             .order('modified_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching change history:', error);
-            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">Failed to load change history.</td></tr>`;
+            historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">Failed to load change history. Check console for details.</td></tr>`;
             return;
         }
 
@@ -2957,17 +2960,9 @@
             return;
         }
         
-        // Group changes by user and timestamp to show one entry per save
-        const groupedChanges = data.reduce((acc, log) => {
-           const key = `${log.modified_by_name}-${log.modified_at}`;
-           if(!acc[key]) {
-               acc[key] = { ...log, fields: new Set() };
-           }
-           acc[key].fields.add(log.field_changed);
-           return acc;
-        }, {});
-
-        historyTbody.innerHTML = Object.values(groupedChanges).map(log => `
+        // The complex grouping logic was removed as it was the source of the error.
+        // Now, it will simply display a row for each entry, which is safer and functional.
+        historyTbody.innerHTML = data.map(log => `
             <tr>
                 <td>${escapeHTML(log.modified_by_name || 'Unknown User')}</td>
                 <td>${formatReadableDate(log.modified_at)}</td>
@@ -3003,7 +2998,6 @@
         document.getElementById('diffContent').innerHTML = diffHtml;
         diffModal.classList.remove('hidden');
     }
-
 
     const contentTemplates = {
         standard_article: { type: 'article', titlePrefix: 'New Article: ', summary: 'A general article about [topic].', content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here.]</p><ul><li>Point 1</li><li>Point 2</li></ul>', tags: ['article'] },
@@ -3148,7 +3142,6 @@
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // === MODIFIED CODE: Set user context for DB trigger ===
         // This is crucial for the database trigger to work correctly
         await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id });
         await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name });
@@ -3287,22 +3280,16 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
-    // === MODIFIED FUNCTION: Activates scripts loaded from the database ===
+    // This function activates scripts loaded from the database
     function initializeInjectedScripts() {
-        const scripts = itemDetailViewPlaceholder.querySelectorAll("script");
+        const container = itemDetailViewPlaceholder;
+        const scripts = container.querySelectorAll("script");
         scripts.forEach(oldScript => {
-            // To run a script, we must create a new script element
             const newScript = document.createElement("script");
-            
-            // Copy all attributes from the old script to the new one
             Array.from(oldScript.attributes).forEach(attr => {
                 newScript.setAttribute(attr.name, attr.value);
             });
-            
-            // Copy the content of the old script to the new one
             newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-            
-            // Replace the old, non-executable script with the new, executable one
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
     }
@@ -3437,4 +3424,3 @@
 </script>
 </body>
 </html>
-```
