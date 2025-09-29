@@ -3559,7 +3559,8 @@
     initializeApp();
 </script>
 
-<!-- Management Notes Section (Admins only) -->
+
+<!-- Management Notes Section (Admins only, using kb_comments) -->
 <div id="management-notes-section" class="bg-gray-800 border border-gray-700 rounded-xl p-6 m-6">
   <h2 class="text-xl font-bold text-white mb-4">Management Notes</h2>
   <div id="notesList" class="space-y-4"></div>
@@ -3572,28 +3573,56 @@
 <script type="module">
 import { supabase } from './supabase.js';
 
+// UUID of the special Management Notes case
+const MANAGEMENT_CASE_ID = '00000000-0000-0000-0000-000000000001'; // replace with actual UUID in your DB
+
 async function loadNotes() {
-  const { data, error } = await supabase.from('management_notes').select('*').order('created_at', { ascending: false });
-  if (!error) renderNotes(data);
+  const { data, error } = await supabase
+    .from('kb_comments')
+    .select('*')
+    .eq('item_id', MANAGEMENT_CASE_ID)
+    .is('parent_id', null)
+    .order('created_at', { ascending: false });
+  if (!error) renderNotes(data || []);
 }
 
-function renderNotes(notes) {
+async function loadReplies(noteId) {
+  const { data, error } = await supabase
+    .from('kb_comments')
+    .select('*')
+    .eq('parent_id', noteId)
+    .order('created_at', { ascending: true });
+  return error ? [] : data;
+}
+
+async function renderNotes(notes) {
   const container = document.getElementById('notesList');
   container.innerHTML = '';
-  notes.forEach(note => {
+  for (let note of notes) {
+    const replies = await loadReplies(note.id);
     const div = document.createElement('div');
     div.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700';
     div.innerHTML = `
       <div class="flex justify-between">
-        <span class="font-semibold text-indigo-400">${note.author_name}</span>
+        <span class="font-semibold text-indigo-400">${note.author_name || 'Unknown'}</span>
         <span class="text-sm text-gray-400">${new Date(note.created_at).toLocaleString()}</span>
       </div>
-      <p class="mt-2 text-gray-200">${note.content}</p>
+      <p class="mt-2 text-gray-200">${note.body}</p>
       <button class="text-sm text-indigo-400 mt-2 replyBtn" data-id="${note.id}">Reply</button>
-      <div id="replies-${note.id}" class="ml-4 mt-2 space-y-2"></div>
+      <div id="replies-${note.id}" class="ml-4 mt-2 space-y-2">
+        ${replies.map(r => `
+          <div class="p-2 bg-gray-800 rounded border border-gray-700">
+            <div class="flex justify-between">
+              <span class="font-semibold text-indigo-300">${r.author_name || 'Unknown'}</span>
+              <span class="text-xs text-gray-500">${new Date(r.created_at).toLocaleString()}</span>
+            </div>
+            <p class="text-gray-300">${r.body}</p>
+          </div>
+        `).join('')}
+      </div>
     `;
     container.appendChild(div);
-  });
+  }
   document.querySelectorAll('.replyBtn').forEach(btn => {
     btn.addEventListener('click', () => addReply(btn.dataset.id));
   });
@@ -3601,11 +3630,14 @@ function renderNotes(notes) {
 
 async function addNote() {
   const textarea = document.getElementById('newNote');
-  const content = textarea.value.trim();
-  if (!content) return;
+  const body = textarea.value.trim();
+  if (!body) return;
   const user = (await supabase.auth.getUser()).data.user;
-  await supabase.from('management_notes').insert([{
-    content,
+  await supabase.from('kb_comments').insert([{
+    item_id: MANAGEMENT_CASE_ID,
+    parent_id: null,
+    body,
+    author_id: user?.id || null,
     author_name: user?.email || 'Anonymous'
   }]);
   textarea.value = '';
@@ -3616,9 +3648,11 @@ async function addReply(noteId) {
   const reply = prompt('Enter your reply:');
   if (!reply) return;
   const user = (await supabase.auth.getUser()).data.user;
-  await supabase.from('management_replies').insert([{
-    note_id: noteId,
-    content: reply,
+  await supabase.from('kb_comments').insert([{
+    item_id: MANAGEMENT_CASE_ID,
+    parent_id: noteId,
+    body: reply,
+    author_id: user?.id || null,
     author_name: user?.email || 'Anonymous'
   }]);
   loadNotes();
