@@ -38,6 +38,7 @@
   </style>
 </head>
 <body>
+<div id="dashboard">
   <div class="container">
     <h1>InfiniBase — Audit Log (Realtime)</h1>
 
@@ -380,5 +381,37 @@
     })();
 
   </script>
+</div>
+
+<div id="restricted-card" class="hidden flex items-center justify-center h-screen bg-gray-900">
+  <div class="bg-gray-800 text-center p-10 rounded-2xl shadow-2xl max-w-md">
+    <div class="text-indigo-400 text-6xl mb-4">🔒</div>
+    <h2 class="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+    <p class="text-gray-400 mb-6">This page is available to administrators only.</p>
+    <a href="/" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg">Go Back Home</a>
+  </div>
+</div>
+
+
+<script type="module">
+import { supabase } from './supabase.js';
+
+async function checkAdminAccess() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!error && data && data.role !== 'admin') {
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('restricted-card').classList.remove('hidden');
+  }
+}
+checkAdminAccess();
+</script>
+
 </body>
 </html>
