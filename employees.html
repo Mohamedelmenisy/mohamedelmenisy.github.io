@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Employees Directory — Full</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9ca3af;--accent:#6366f1;}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:var(--bg);color:#e5e7eb;}
+    .container{max-width:1200px;margin:24px auto;padding:0 16px;}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,0.04);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
+    .muted{color:var(--muted);font-size:13px;}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+    .role-admin{background:rgba(99,102,241,0.12);color:#6366f1;border:1px solid rgba(99,102,241,0.14);}
+    .role-agent{background:rgba(16,185,129,0.08);color:#10b981;border:1px solid rgba(16,185,129,0.1);}
+    .role-manager{background:rgba(250,204,21,0.08);color:#f59e0b;border:1px solid rgba(250,204,21,0.12);}
+    .online{color:#34d399;font-weight:700;}
+    .offline{color:#9ca3af;}
+    .table-wrap{overflow:auto;border-radius:8px;}
+    table{width:100%;border-collapse:collapse;min-width:1000px;}
+    th,td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:#cbd5e1;text-align:left;}
+    thead th{background:#071021;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;}
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1000;visibility:hidden;opacity:0;transition:opacity .18s;}
+    .overlay.show{visibility:visible;opacity:1;}
+    .spinner{width:72px;height:72px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--accent);animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .toast{position:fixed;top:20px;right:20px;z-index:1100;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:white;box-shadow:0 8px 30px rgba(0,0,0,0.5);cursor:pointer;transform-origin:right top;transition:transform .18s ease,opacity .18s;}
+    .toast.hide{opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;}
+    .toast.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+    .highlight{background:rgba(99,102,241,0.12) !important;transition:background 1s;}
+    @media (max-width:980px){.filters{flex-direction:column;align-items:stretch;} table{min-width:900px;}}
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <h1 style="font-weight:800;color:var(--accent);margin:0 0 6px 0;">Employees Directory</h1>
+        <div class="muted">Live roster, roles, online status and last activity (Realtime)</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="exportCsv" class="card" style="cursor:pointer;">Export CSV</button>
+      </div>
+    </div>
+
+    <!-- Main card -->
+    <div id="dashboard" class="card">
+
+      <!-- Filters Row -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:end;" class="filters">
+
+        <div style="flex:1;min-width:240px;">
+          <label class="muted">Search</label>
+          <input id="search" class="input" type="text" placeholder="Search by name, email, or last activity" style="width:100%;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;" />
+        </div>
+
+        <div>
+          <label class="muted">Role</label>
+          <select id="roleFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="agent">Agent</option>
+            <option value="manager">Manager</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="muted">Status</label>
+          <select id="statusFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+            <option value="all">All</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="muted">Last Seen Range</label>
+          <select id="timeFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+            <option value="all">All time</option>
+            <option value="1d">Last 24 hours</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+          </select>
+        </div>
+
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <button id="clearFilters" class="card" style="cursor:pointer;">Clear</button>
+          <button id="applyFilters" class="card" style="cursor:pointer;">Apply</button>
+        </div>
+
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;" class="card">
+          <div class="muted">Total Employees</div>
+          <div id="totalCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+        </div>
+        <div style="flex:1;min-width:180px;" class="card">
+          <div class="muted">Online Now</div>
+          <div id="onlineCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+        </div>
+        <div style="flex:1;min-width:180px;" class="card">
+          <div class="muted">Admins</div>
+          <div id="adminCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table aria-label="Employees table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Seen</th>
+              <th>Last Activity</th>
+            </tr>
+          </thead>
+          <tbody id="employeesBody">
+            <tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">Loading employees...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:center;margin-top:12px;">
+        <button id="loadMore" class="card" style="cursor:pointer;">Load More</button>
+      </div>
+    </div>
+
+    <!-- Restricted card for non-admins -->
+    <div id="restricted-card" class="hidden card" style="margin-top:24px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;">
+      <div style="font-size:64px;color:#8b5cf6;margin-bottom:8px;">🔒</div>
+      <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0;color:#fff;">Access Restricted</h2>
+      <p class="muted">This page is available to administrators only.</p>
+      <div style="margin-top:12px;"><a href="/" class="card" style="padding:8px 16px;">Go Back Home</a></div>
+    </div>
+
+  </div>
+
+  <!-- overlay spinner & toast -->
+  <div id="overlay" class="overlay"><div class="spinner" aria-hidden="true"></div></div>
+  <div id="toast" class="toast hide"></div>
+
+<script type="module">
+import { supabase } from './supabase.js';
+
+/*
+  Employees Directory - Full version
+  Features:
+   - Admin-only guard (checks users.role === 'admin')
+   - Search / Role filter / Status filter / Last-seen time filter
+   - Export CSV of filtered view
+   - Realtime subscription to users table and to activity_log to update last_activity
+   - Online status based on last_seen within 2 minutes
+   - Pagination (Load More)
+   - Toast notifications for realtime events (user status changed/updated)
+   - Clean, defensive code with fallbacks
+*/
+
+// State
+let employees = [];        // in-memory list of users from `users` table
+let filtered = [];         // filtered view
+let pageSize = 25;
+let currentPage = 1;
+
+// DOM refs
+const employeesBody = document.getElementById('employeesBody');
+const totalCountEl = document.getElementById('totalCount');
+const onlineCountEl = document.getElementById('onlineCount');
+const adminCountEl = document.getElementById('adminCount');
+const overlay = document.getElementById('overlay');
+const toast = document.getElementById('toast');
+
+// Filters
+const searchInput = document.getElementById('search');
+const roleFilter = document.getElementById('roleFilter');
+const statusFilter = document.getElementById('statusFilter');
+const timeFilter = document.getElementById('timeFilter');
+const applyBtn = document.getElementById('applyFilters');
+const clearBtn = document.getElementById('clearFilters');
+const exportBtn = document.getElementById('exportCsv');
+const loadMoreBtn = document.getElementById('loadMore');
+
+// Utilities
+function showOverlay(show=true){ overlay.classList.toggle('show', !!show); }
+function showToast(msg, type='info', duration=3500){
+  const colors = { info:'#0ea5e9', success:'#10b981', warn:'#f59e0b', error:'#ef4444' };
+  toast.style.background = colors[type] || '#111827';
+  toast.innerHTML = `<div style="font-weight:700;margin-right:8px">${type==='success'?'✅':type==='warn'?'⚠️':'ℹ️'}</div><div>${msg}</div>`;
+  toast.classList.remove('hide'); toast.classList.add('show');
+  toast.onclick = ()=>{ toast.classList.remove('show'); toast.classList.add('hide'); };
+  setTimeout(()=>{ toast.classList.remove('show'); toast.classList.add('hide'); }, duration);
+}
+
+function formatDateTime(v){ if(!v) return '-'; try{ return new Date(v).toLocaleString(); }catch(e){ return v; } }
+function isOnline(lastSeen){ if(!lastSeen) return false; const diff = (Date.now() - new Date(lastSeen).getTime())/1000; return diff < 120; }
+function roleBadge(role){ role = (role||'').toLowerCase(); if(role==='admin') return `<span class="badge role-admin">Admin</span>`; if(role==='manager') return `<span class="badge role-manager">Manager</span>`; return `<span class="badge role-agent">Agent</span>`; }
+
+// Fetch employees and their last activity
+async function fetchEmployees(){ 
+  showOverlay(true);
+  try{
+    const { data, error } = await supabase.from('users').select('id, name, email, role, last_seen').order('name',{ascending:true});
+    if(error){ console.error('fetch users error', error); employees = []; return; }
+    // fetch last activity for each (batch using RPC or per-user queries; we will run per-user limited to 1 to keep it simple)
+    const enriched = await Promise.all(data.map(async u => {
+      // get last action from activity_log (if exists)
+      try{
+        const { data: act } = await supabase.from('activity_log').select('action, timestamp').eq('user_id', u.id).order('timestamp',{ascending:false}).limit(1).maybeSingle();
+        u.last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-';
+      }catch(e){ u.last_activity = '-'; }
+      return u;
+    }));
+
+    employees = enriched;
+    applyFilters(); // will render
+    updateStats();
+  }finally{ showOverlay(false); }
+}
+
+function updateStats(){
+  totalCountEl.textContent = employees.length;
+  onlineCountEl.textContent = employees.filter(e=>isOnline(e.last_seen)).length;
+  adminCountEl.textContent = employees.filter(e=> (e.role||'').toLowerCase() === 'admin').length;
+}
+
+// Render table with pagination
+function renderTable(list){
+  employeesBody.innerHTML = '';
+  const end = Math.min(list.length, currentPage * pageSize);
+  if(!list.length){ employeesBody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center;padding:18px 0;">No results</td></tr>`; return; }
+  for(let i=0;i<end;i++){
+    const u = list[i];
+    const tr = document.createElement('tr');
+    const online = isOnline(u.last_seen);
+    tr.innerHTML = `
+      <td>${escapeHtml(u.name||'-')}</td>
+      <td class="muted">${escapeHtml(u.email||'-')}</td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${online?'<span class="online">Online</span>':'<span class="offline">Offline</span>'}</td>
+      <td class="muted">${formatDateTime(u.last_seen)}</td>
+      <td class="muted">${escapeHtml(u.last_activity||'-')}</td>
+    `;
+    employeesBody.appendChild(tr);
+  }
+}
+
+// Basic escape
+function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+// Filtering pipeline
+function applyFilters(){
+  const q = (searchInput.value||'').toLowerCase().trim();
+  const role = (roleFilter.value||'all').toLowerCase();
+  const status = (statusFilter.value||'all').toLowerCase();
+  const timeRange = timeFilter.value;
+  let start=null;
+  if(timeRange==='1d'){ start = new Date(); start.setDate(start.getDate()-1); }
+  if(timeRange==='7d'){ start = new Date(); start.setDate(start.getDate()-7); }
+  if(timeRange==='30d'){ start = new Date(); start.setDate(start.getDate()-30); }
+
+  filtered = employees.filter(u => {
+    if(role !== 'all' && ((u.role||'').toLowerCase() !== role)) return false;
+    if(status !== 'all'){
+      const on = isOnline(u.last_seen);
+      if(status === 'online' && !on) return false;
+      if(status === 'offline' && on) return false;
+    }
+    if(start){ const ls = u.last_seen ? new Date(u.last_seen) : null; if(!ls || ls < start) return false; }
+    if(q){
+      const hay = `${u.name||''} ${u.email||''} ${u.last_activity||''}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  currentPage = 1;
+  renderTable(filtered);
+  updateStats();
+}
+
+// Export CSV of filtered view or all employees if not filtered
+function exportCSV(){
+  const list = filtered.length ? filtered : employees;
+  if(!list.length){ alert('No data to export'); return; }
+  const headers = ['name','email','role','status','last_seen','last_activity'];
+  const rows = [headers.join(',')];
+  for(const u of list){
+    const row = [
+      `"${(u.name||'').replaceAll('"','""')}"`,
+      `"${(u.email||'').replaceAll('"','""')}"`,
+      `"${(u.role||'').replaceAll('"','""')}"`,
+      `"${isOnline(u.last_seen)?'online':'offline'}"`,
+      `"${(u.last_seen||'')}"`,
+      `"${(u.last_activity||'')}"`
+    ];
+    rows.push(row.join(','));
+  }
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `employees_export_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+// Realtime patching for users table and activity_log updates
+function setupRealtime(){
+  // users changes
+  supabase.channel('users_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
+      try{
+        const t = payload.eventType;
+        if(t === 'INSERT'){
+          employees.unshift(payload.new);
+          showToast(`${payload.new.name || payload.new.email} added`, 'success');
+        } else if(t === 'UPDATE'){
+          const idx = employees.findIndex(x=>String(x.id)===String(payload.new.id));
+          if(idx > -1) employees[idx] = payload.new;
+          else employees.unshift(payload.new);
+          showToast(`${payload.new.name || payload.new.email} updated`, 'info');
+        } else if(t === 'DELETE'){
+          employees = employees.filter(x=>String(x.id)!==String(payload.old.id));
+          showToast(`${payload.old.name || payload.old.email} removed`, 'warn');
+        }
+        // When users change, refresh last_activity for changed user
+        // Quick call to refresh activities for affected user(s)
+        refreshLastActivityFor(payload.new?.id || payload.old?.id);
+        applyFilters();
+      }catch(e){ console.error('users realtime error', e); }
+    })
+    .subscribe();
+
+  // activity_log changes -> update last_activity for user
+  supabase.channel('activity_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
+      try{
+        const userId = payload.new ? payload.new.user_id : (payload.old ? payload.old.user_id : null);
+        if(userId) refreshLastActivityFor(userId);
+      }catch(e){ console.error('activity realtime error', e); }
+    })
+    .subscribe();
+}
+
+// Refresh last activity for a given user id
+async function refreshLastActivityFor(userId){
+  if(!userId) return;
+  try{
+    const { data: act } = await supabase.from('activity_log').select('action, timestamp').eq('user_id', userId).order('timestamp',{ascending:false}).limit(1).maybeSingle();
+    const idx = employees.findIndex(e=>String(e.id)===String(userId));
+    if(idx > -1){
+      employees[idx].last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-';
+      employees[idx].last_seen = employees[idx].last_seen || employees[idx].last_seen; // no change, but ensure property exists
+      applyFilters();
+    } else {
+      // If user not present, fetch fresh list (safe fallback)
+      fetchEmployees();
+    }
+  }catch(e){ console.error('refreshLastActivityFor error', e); }
+}
+
+// Admin guard: checks users table for role === 'admin'
+async function checkAdmin(){
+  try{
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if(userErr || !user){
+      // not signed in -> show restricted
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('restricted-card').style.display = 'block';
+      return false;
+    }
+    const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+    if(error || !data || data.role !== 'admin'){
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('restricted-card').style.display = 'block';
+      return false;
+    }
+    // admin -> proceed
+    document.getElementById('restricted-card').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    return true;
+  }catch(e){ console.error('checkAdmin error', e); return false; }
+}
+
+// Event listeners
+applyBtn.addEventListener('click', ()=> applyFilters());
+clearBtn.addEventListener('click', ()=>{ searchInput.value=''; roleFilter.value='all'; statusFilter.value='all'; timeFilter.value='all'; applyFilters(); });
+exportBtn.addEventListener('click', ()=> exportCSV());
+loadMoreBtn.addEventListener('click', ()=>{ currentPage++; renderTable(filtered); });
+
+// Boot
+(async function init(){
+  showOverlay(true);
+  const ok = await checkAdmin();
+  if(!ok){ showOverlay(false); return; }
+  await fetchEmployees();
+  setupRealtime();
+  showOverlay(false);
+})();
+
+</script>
+</body>
+</html>
