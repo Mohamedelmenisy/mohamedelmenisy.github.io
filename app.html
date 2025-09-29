@@ -1550,9 +1550,10 @@
         #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; text-align: right; }
         #viewHistorySection .action-badge { margin: 0 auto; }
 
-        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 35%; }
-        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 35%; }
-        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 30%; text-align: right; }
+        /* === MODIFIED CSS FOR CHANGE HISTORY TABLE === */
+        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 40%; text-align: left; }
+        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 30%; text-align: center; }
+        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 30%; text-align: center; }
 
 
         /* Styles for Diff2HTML Modal */
@@ -2839,7 +2840,7 @@
                     <h4><i class="fas fa-edit"></i> Change History</h4>
                     <div class="dashboard-table-wrapper" style="max-height: 250px;">
                         <table>
-                            <thead><tr><th>Modified By</th><th>Modification Date</th><th style="text-align:right;">Actions</th></tr></thead>
+                            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Actions</th></tr></thead>
                             <tbody id="changeHistoryTbody">
                                 <tr><td colspan="3" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
                             </tbody>
@@ -2938,7 +2939,7 @@
         const historyTbody = document.getElementById('changeHistoryTbody');
         if (!historyTbody) return;
 
-        // ***FIX: Changed table from 'version_history' to 'case_history'***
+        // ***FIX: Use correct table 'case_history' and correct column 'case_id'***
         const { data, error } = await supabase
             .from('case_history')
             .select('id, modified_by_name, modified_at, field_changed')
@@ -2970,7 +2971,7 @@
             <tr>
                 <td>${escapeHTML(log.modified_by_name || 'Unknown User')}</td>
                 <td>${formatReadableDate(log.modified_at)}</td>
-                <td style="text-align:right;">
+                <td>
                     <button class="button button-secondary" data-version-id="${log.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">View Changes</button>
                 </td>
             </tr>
@@ -2978,14 +2979,12 @@
     }
 
     async function showDiff(versionId) {
-        // ***FIX: Read from 'case_history' and adjust column names***
         const { data: versionRecord, error: versionError } = await supabase.from('case_history').select('*').eq('id', versionId).single();
         if (versionError || !versionRecord) {
             showToast('Could not load version details.', 'error');
             return;
         }
 
-        // The old value is stored directly in the record, no need for another fetch
         const oldContent = versionRecord.old_value || '';
         const newContent = versionRecord.new_value || '';
 
@@ -3148,14 +3147,14 @@
 
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // === MODIFIED CODE: Set user context for DB trigger ===
+        // This is crucial for the database trigger to work correctly
+        await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id });
+        await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name });
+
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
-
-        // Set user info for the DB trigger
-        await supabase.rpc('set_current_user_info', {
-            user_id: currentUser.id,
-            user_name: currentUser.name
-        });
 
         const itemData = {
             title_en: document.getElementById('contentTitle').value.trim(),
@@ -3288,118 +3287,24 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
+    // === MODIFIED FUNCTION: Activates scripts loaded from the database ===
     function initializeInjectedScripts() {
-        // --- Language Toggle ---
-        const toggleBtn = document.getElementById('lang-toggle-btn');
-        const enContent = document.getElementById('en-content');
-        const arContent = document.getElementById('ar-content');
-
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
-                const isArabicVisible = arContent && !arContent.classList.contains('hidden');
-                if (isArabicVisible) {
-                    if (arContent) arContent.classList.add('hidden');
-                    if (enContent) enContent.classList.remove('hidden');
-                    toggleBtn.innerHTML = '<i class="fas fa-language"></i> العربية';
-                } else {
-                    if (enContent) enContent.classList.add('hidden');
-                    if (arContent) arContent.classList.remove('hidden');
-                    toggleBtn.innerHTML = '<i class="fas fa-language"></i> English';
-                }
-            });
-        }
-
-        // --- Delay Calculator and Copy Logic ---
-        function setupCalculator(lang) {
-            const langSuffix = lang === 'ar' ? 'Ar' : 'En';
-            const estInput = document.getElementById(`estTimeInput${langSuffix}`);
-            const actInput = document.getElementById(`actTimeInput${langSuffix}`);
-            const orderTypeRadios = document.querySelectorAll(`input[name="orderType${langSuffix}"]`);
-            const recommendationBox = document.getElementById(`recommendationBox${langSuffix}`);
-            const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
-            const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
+        const scripts = itemDetailViewPlaceholder.querySelectorAll("script");
+        scripts.forEach(oldScript => {
+            // To run a script, we must create a new script element
+            const newScript = document.createElement("script");
             
-            if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
-
-            let currentRecommendationText = '';
-
-            const calculateDelay = () => {
-                const estTime = estInput.value;
-                const actTime = actInput.value;
-                if (!estTime || !actTime) {
-                    recommendationBox.classList.remove('show');
-                    return;
-                }
-
-                const orderType = document.querySelector(`input[name="orderType${langSuffix}"]:checked`).value;
-                const time1 = new Date(`1970-01-01T${estTime}:00`);
-                const time2 = new Date(`1970-01-01T${actTime}:00`);
-                const diffMins = Math.round((time2 - time1) / 60000);
-
-                let message = '';
-                let rawMessage = ''; // For clipboard
-                let boxClass = 'info';
-
-                if (diffMins < 0) {
-                    message = lang === 'en' ? '<strong>Error:</strong> Actual time cannot be before estimated time.' : '<strong>خطأ:</strong> الوقت الفعلي لا يمكن أن يكون قبل الوقت المتوقع.';
-                    boxClass = 'error';
-                    rawMessage = 'Error: Invalid time input.';
-                } else if (diffMins <= 15) {
-                    message = lang === 'en' ? `<strong>Delay: ${diffMins} mins.</strong><br>An apology is sufficient. No compensation required.` : `<strong>مدة التأخير: ${diffMins} دقيقة.</strong><br>يكتفى بالاعتذار للعميل. لا يتطلب تعويض.`;
-                    boxClass = 'info';
-                    rawMessage = `Delay of ${diffMins} mins. Apologized to customer. No compensation applied.`;
-                } else {
-                    boxClass = 'success';
-                    if (orderType === 'fast') {
-                        if (diffMins <= 30) {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with Delivery Fees only.' : '<strong>الإجراء:</strong> يتم تعويض العميل برسوم التوصيل فقط.';
-                            rawMessage = 'Action: Compensated with Delivery Fees only.';
-                        } else if (diffMins <= 45) {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with Delivery Fees + 25% of chef total.' : '<strong>الإجراء:</strong> يتم التعويض برسوم التوصيل + 25% من قيمة الطلب.';
-                            rawMessage = 'Action: Compensated with Delivery Fees + 25% of chef total.';
-                        } else if (diffMins <= 60) {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with Delivery Fees + 50% of chef total.' : '<strong>الإجراء:</strong> يتم التعويض برسوم التوصيل + 50% من قيمة الطلب.';
-                            rawMessage = 'Action: Compensated with Delivery Fees + 50% of chef total.';
-                        } else {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with the Full Order Amount.' : '<strong>الإجراء:</strong> يتم تعويض العميل بكامل قيمة الطلب.';
-                            rawMessage = 'Action: Compensated with the Full Order Amount.';
-                        }
-                    } else { // Scheduled
-                        if (diffMins <= 60) {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with 50% to 100% of the order total.' : '<strong>الإجراء:</strong> يتم التعويض بنسبة 50% إلى 100% من قيمة الطلب.';
-                            rawMessage = 'Action: Compensated with 50%-100% of order total.';
-                        } else {
-                            message = lang === 'en' ? '<strong>Action:</strong> Compensate with the Full Amount + 50 SAR credit.' : '<strong>الإجراء:</strong> يتم التعويض بكامل المبلغ + 50 ريال كرصيد.';
-                            rawMessage = 'Action: Compensated with Full Amount + 50 SAR credit.';
-                        }
-                    }
-                }
-
-                recommendationTextElem.innerHTML = message;
-                currentRecommendationText = rawMessage;
-                recommendationBox.className = 'recommendation-box';
-                recommendationBox.classList.add(boxClass, 'show');
-
-            };
-
-            [estInput, actInput, ...orderTypeRadios].forEach(el => {
-                el.addEventListener('change', calculateDelay);
-                el.addEventListener('input', calculateDelay);
+            // Copy all attributes from the old script to the new one
+            Array.from(oldScript.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
             });
-
-            copyBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(currentRecommendationText).then(() => {
-                    const originalIcon = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalIcon;
-                    }, 1500);
-                });
-            });
-        }
-        
-        setupCalculator('en');
-        setupCalculator('ar');
+            
+            // Copy the content of the old script to the new one
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+            
+            // Replace the old, non-executable script with the new, executable one
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
     }
 
     async function initializeApp() {
@@ -3532,3 +3437,4 @@
 </script>
 </body>
 </html>
+```
