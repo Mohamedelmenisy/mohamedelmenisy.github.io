@@ -36,7 +36,7 @@
         }
         .filters-card {
             background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg);
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;
             align-items: end; margin-bottom: 2rem;
         }
         .form-group { margin: 0; }
@@ -49,6 +49,7 @@
             background-color: var(--primary-color); color: var(--text-color-inverted); border: 1px solid transparent;
             padding: 0.625rem 1rem; border-radius: var(--border-radius); cursor: pointer; font-weight: 500;
             display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
+            justify-content: center;
         }
         .button:hover { background-color: var(--primary-color-hover); }
         .button-secondary { background-color: transparent; color: var(--text-color-muted); border-color: var(--border-color-darker); }
@@ -97,7 +98,7 @@
             <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='#6366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>
             <span>InfiniBase</span>
         </div>
-        <a href="app.html" class="button"><i class="fas fa-tachometer-alt"></i> Back to Dashboard</a>
+        <a href="app.html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
     </header>
 
     <main class="main-content">
@@ -105,7 +106,7 @@
 
         <div class="chart-container">
             <h3>Recent Activity (Last 7 Days)</h3>
-            <canvas id="activityChart" height="100"></canvas>
+            <canvas id="activityChart" height="120"></canvas>
         </div>
 
         <div class="filters-card">
@@ -121,7 +122,7 @@
                 <label for="filterDate">Filter by Date</label>
                 <input type="date" id="filterDate">
             </div>
-            <div style="display: flex; gap: 0.5rem;">
+            <div style="display: flex; gap: 1rem; grid-column: span 1 / auto;">
                 <button id="applyFiltersBtn" class="button" style="width: 100%;"><i class="fas fa-filter"></i> Apply</button>
                 <button id="clearFiltersBtn" class="button-secondary" style="width: 100%;"><i class="fas fa-times"></i> Clear</button>
             </div>
@@ -182,10 +183,11 @@
         }
 
         async function fetchAuditData() {
-            const { data, error } = await supabase.rpc('get_case_history_with_titles');
+            // UPDATED: Changed RPC call to the correct one from user's SQL
+            const { data, error } = await supabase.rpc('get_full_case_history');
             if (error) {
                 console.error("Error fetching audit data:", error);
-                document.getElementById('auditTableBody').innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to load data.</td></tr>`;
+                document.getElementById('auditTableBody').innerHTML = `<tr><td colspan="5" style="text-align: center; color: red; padding: 2rem;">Failed to load data. Please ensure the 'get_full_case_history' function exists in your database.</td></tr>`;
                 return;
             }
             originalData = data;
@@ -215,10 +217,21 @@
                         data: activityCounts,
                         backgroundColor: 'rgba(99, 102, 241, 0.7)',
                         borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderRadius: 5,
                     }]
                 },
-                options: { scales: { y: { beginAtZero: true, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }
+                options: { 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { beginAtZero: true, ticks: { color: 'white', stepSize: 1 } }, 
+                        x: { ticks: { color: 'white' } } 
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
             });
         }
 
@@ -239,7 +252,7 @@
                             data-old-value='${JSON.stringify(row.old_value || '')}'
                             data-new-value='${JSON.stringify(row.new_value || '')}'
                             data-field-name="${row.field_changed}">
-                            View Diff
+                            <i class="fas fa-exchange-alt"></i> View Diff
                         </button>
                     </td>
                 </tr>
@@ -270,10 +283,11 @@
 
         const diffModal = document.getElementById('diffModal');
         document.getElementById('auditTableBody').addEventListener('click', e => {
-            if (e.target.classList.contains('view-diff-btn')) {
-                const oldVal = JSON.parse(e.target.dataset.oldValue);
-                const newVal = JSON.parse(e.target.dataset.newValue);
-                const fieldName = e.target.dataset.fieldName;
+            const button = e.target.closest('.view-diff-btn');
+            if (button) {
+                const oldVal = JSON.parse(button.dataset.oldValue);
+                const newVal = JSON.parse(button.dataset.newValue);
+                const fieldName = button.dataset.fieldName;
 
                 const diffString = Diff.createTwoFilesPatch('Before', 'After', oldVal, newVal, '', '', { context: 5 });
                 const diffHtml = Diff2Html.html(diffString, {
@@ -287,6 +301,11 @@
         });
 
         document.getElementById('closeDiffModalBtn').addEventListener('click', () => diffModal.classList.add('hidden'));
+        diffModal.addEventListener('click', (e) => {
+            if (e.target === diffModal) {
+                 diffModal.classList.add('hidden');
+            }
+        });
 
         // Initial Load & Realtime Subscription
         (async () => {
