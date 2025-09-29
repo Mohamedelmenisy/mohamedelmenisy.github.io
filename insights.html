@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html class="dark" dir="ltr" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>InfiniBase - User Insights</title>
+    <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #6366f1; --primary-color-hover: #4f46e5; --text-color: #d1d5db;
+            --text-color-muted: #9ca3af; --text-color-inverted: #ffffff; --bg-color: #111827;
+            --bg-color-alt: #1f2937; --border-color: #374151; --border-color-darker: #4b5563;
+            --border-radius: 0.5rem; --border-radius-lg: 0.75rem;
+            --yes-color: #22c55e; --no-color: #ef4444; 
+        }
+        body {
+            font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; font-size: 16px;
+        }
+        .header {
+            background-color: var(--bg-color-alt); padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color); display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .header-brand {
+            font-size: 1.5rem; font-weight: 700; color: #F9FAFB; display: flex; align-items: center; gap: 0.75rem;
+        }
+        .main-content { padding: 2rem; max-width: 1600px; margin: 0 auto; }
+        .page-title {
+            font-size: 2rem; font-weight: 800; color: var(--primary-color);
+            margin: 0 0 1rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+        .chart-card {
+            background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-card h3 { margin-top: 0; margin-bottom: 1.5rem; }
+        .chart-card canvas { max-width: 100%; }
+
+        .filters-card {
+            background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;
+            align-items: end; margin-bottom: 2rem;
+        }
+        .form-group { margin: 0; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);
+        }
+        .button {
+            background-color: var(--primary-color); color: var(--text-color-inverted); border: 1px solid transparent;
+            padding: 0.625rem 1rem; border-radius: var(--border-radius); cursor: pointer; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; justify-content: center;
+        }
+        .button:hover { background-color: var(--primary-color-hover); }
+        .button-secondary { background-color: transparent; color: var(--text-color-muted); border-color: var(--border-color-darker); }
+        .button-secondary:hover { background-color: var(--border-color); color: var(--text-color); }
+        
+        .table-card { background-color: var(--bg-color-alt); border-radius: var(--border-radius-lg); overflow: hidden; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left;
+            white-space: nowrap;
+        }
+        th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--text-color-muted); background-color: #2a3142; }
+        tr:last-child td { border-bottom: none; }
+        td a { color: var(--primary-color); text-decoration: none; font-weight: 500; }
+        td a:hover { text-decoration: underline; }
+        .action-badge {
+            display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem;
+            font-weight: 500; text-transform: capitalize;
+        }
+        .action-badge.viewed { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .action-badge.commented { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .action-badge.positive_feedback { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .action-badge.negative_feedback { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-brand">
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='#6366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>
+            <span>InfiniBase</span>
+        </div>
+        <a href="app.html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title"><i class="fas fa-chart-pie"></i> User Activity Insights</h1>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Article Feedback</h3>
+                <canvas id="feedbackChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Top Active Users</h3>
+                <canvas id="topUsersChart"></canvas>
+            </div>
+        </div>
+
+        <div class="filters-card">
+            <div class="form-group">
+                <label for="filterUser">Filter by User (Name/Email)</label>
+                <input type="text" id="filterUser" placeholder="e.g., Mohamed Elmenisy">
+            </div>
+            <div class="form-group">
+                <label for="filterItem">Filter by Item Title</label>
+                <input type="text" id="filterItem" placeholder="e.g., Delayed Orders">
+            </div>
+             <div class="form-group">
+                <label for="filterAction">Filter by Action</label>
+                <select id="filterAction">
+                    <option value="">All Actions</option>
+                    <option value="viewed">Viewed</option>
+                    <option value="commented">Commented</option>
+                    <option value="positive_feedback">Positive Feedback</option>
+                    <option value="negative_feedback">Negative Feedback</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filterDate">Filter by Date</label>
+                <input type="date" id="filterDate">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button id="clearFiltersBtn" class="button-secondary" style="width: 100%;"><i class="fas fa-times"></i> Clear</button>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-wrapper">
+                <table id="activityTable">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Action</th>
+                            <th>Item Title</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTableBody">
+                        <tr><td colspan="5" style="text-align: center; padding: 2rem;">Loading Activity Feed...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { supabase } from './supabase.js';
+        
+        let originalData = [];
+        let feedbackChartInstance, topUsersChartInstance;
+
+        // AUTH CHECK
+        async function checkAuth() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const { data: profile, error } = await supabase.from('users').select('role, is_admin').eq('id', user.id).single();
+            if (error || (!profile.is_admin && profile.role !== 'admin')) {
+                alert('Access Denied: This page is for administrators only.');
+                window.location.href = 'app.html';
+            }
+        }
+
+        function formatReadableDate(isoString) {
+            if (!isoString) return 'N/A';
+            return new Date(isoString).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        }
+
+        async function fetchInsightsData() {
+            const [activity, feedback, topUsers] = await Promise.all([
+                supabase.rpc('get_user_activity_feed'),
+                supabase.rpc('get_feedback_stats'),
+                supabase.rpc('get_top_active_users', { limit_count: 5 })
+            ]);
+
+            if (activity.error) console.error("Error fetching activity:", activity.error);
+            if (feedback.error) console.error("Error fetching feedback:", feedback.error);
+            if (topUsers.error) console.error("Error fetching top users:", topUsers.error);
+
+            originalData = activity.data || [];
+            renderTable(originalData);
+            renderFeedbackChart(feedback.data || []);
+            renderTopUsersChart(topUsers.data || []);
+        }
+
+        function renderFeedbackChart(data) {
+            const ctx = document.getElementById('feedbackChart').getContext('2d');
+            const helpful = data.find(d => d.rating_type === 'Helpful')?.count || 0;
+            const notHelpful = data.find(d => d.rating_type === 'Not Helpful')?.count || 0;
+
+            const chartData = {
+                labels: ['Helpful', 'Not Helpful'],
+                datasets: [{
+                    label: 'Feedback',
+                    data: [helpful, notHelpful],
+                    backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                    borderColor: [ 'rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
+                    borderWidth: 1
+                }]
+            };
+
+            if (feedbackChartInstance) feedbackChartInstance.destroy();
+            feedbackChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top', labels: { color: 'white' } } }
+                }
+            });
+        }
+        
+        function renderTopUsersChart(data) {
+            const ctx = document.getElementById('topUsersChart').getContext('2d');
+             if (topUsersChartInstance) topUsersChartInstance.destroy();
+
+            topUsersChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(u => u.user_name),
+                    datasets: [{
+                        label: 'Total Activities',
+                        data: data.map(u => u.activity_count),
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { ticks: { color: 'white' } }, 
+                        x: { ticks: { color: 'white', stepSize: 1 } } 
+                    }
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('activityTableBody');
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem;">No activity found for the current filters.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = data.map(row => `
+                <tr>
+                    <td>${row.user_name || 'N/A'}</td>
+                    <td>${row.user_email || 'N/A'}</td>
+                    <td><span class="action-badge ${row.action.replace(/ /g, '_')}">${row.action}</span></td>
+                    <td><a href="app.html#cases/${row.item_slug}" target="_blank">${row.item_title || 'Unknown Item'}</a></td>
+                    <td>${formatReadableDate(row.timestamp)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const userFilter = document.getElementById('filterUser').value.toLowerCase();
+            const itemFilter = document.getElementById('filterItem').value.toLowerCase();
+            const actionFilter = document.getElementById('filterAction').value;
+            const dateFilter = document.getElementById('filterDate').value;
+
+            const filteredData = originalData.filter(row => {
+                const userMatch = !userFilter || 
+                    (row.user_name && row.user_name.toLowerCase().includes(userFilter)) ||
+                    (row.user_email && row.user_email.toLowerCase().includes(userFilter));
+                const itemMatch = !itemFilter || (row.item_title && row.item_title.toLowerCase().includes(itemFilter));
+                const actionMatch = !actionFilter || row.action === actionFilter;
+                const dateMatch = !dateFilter || row.timestamp.startsWith(dateFilter);
+                return userMatch && itemMatch && actionMatch && dateMatch;
+            });
+            renderTable(filteredData);
+        }
+        
+        document.getElementById('filterUser').addEventListener('input', applyFilters);
+        document.getElementById('filterItem').addEventListener('input', applyFilters);
+        document.getElementById('filterAction').addEventListener('change', applyFilters);
+        document.getElementById('filterDate').addEventListener('change', applyFilters);
+
+        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+            document.getElementById('filterUser').value = '';
+            document.getElementById('filterItem').value = '';
+            document.getElementById('filterAction').value = '';
+            document.getElementById('filterDate').value = '';
+            renderTable(originalData);
+        });
+
+        // Initial Load & Realtime Subscription
+        (async () => {
+            await checkAuth();
+            await fetchInsightsData();
+
+            supabase.channel('user-insights-realtime')
+              .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, payload => {
+                console.log('Realtime activity change received!', payload);
+                fetchInsightsData(); // Refetch all data for consistency
+              })
+              .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_feedback' }, payload => {
+                console.log('Realtime feedback change received!', payload);
+                fetchInsightsData();
+              })
+              .subscribe();
+        })();
+    </script>
+</body>
+</html>
