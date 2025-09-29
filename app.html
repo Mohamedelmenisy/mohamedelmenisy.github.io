@@ -1818,12 +1818,9 @@
         }
 
 
-#ar-content span[dir="ltr"] {
-  unicode-bidi: isolate;
-  direction: ltr;
-  display: inline-block;
-}
-
+/* ensure LTR fragments inside Arabic are isolated */
+#ar-content span[dir="ltr"] { unicode-bidi: isolate; direction: ltr; display:inline-block; }
+#ar-content .kb-card-title { flex-direction: row-reverse !important; } 
 </style>
 </head>
 <body id="pageBody">
@@ -3559,107 +3556,214 @@
     initializeApp();
 </script>
 
+<!-- Management Notes Section (uses kb_comments) -->
+<div id="management-notes-section" class="kb-card" style="margin-top:1.5rem;">
+  <div class="kb-card-title"><i class="fas fa-sticky-note"></i><h4>Management Notes</h4></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem;">
+    <input id="noteSearch" placeholder="Search notes..." style="flex:1;padding:0.5rem;border-radius:8px;background:#1F2937;border:1px solid #374151;color:#F9FAFB;">
+    <select id="noteAuthorFilter" style="padding:0.5rem;border-radius:8px;background:#1F2937;border:1px solid #374151;color:#F9FAFB;">
+      <option value="all">All authors</option>
+    </select>
+    <select id="noteDateFilter" style="padding:0.5rem;border-radius:8px;background:#1F2937;border:1px solid #374151;color:#F9FAFB;">
+      <option value="all">All time</option>
+      <option value="1d">Last 24 hours</option>
+      <option value="7d">Last 7 days</option>
+      <option value="30d">Last 30 days</option>
+    </select>
+    <button id="noteClear" style="padding:0.5rem;border-radius:8px;background:#374151;color:#F9FAFB;border:1px solid #4B5563;">Clear</button>
+  </div>
 
-<!-- Management Notes Section (Admins only, using kb_comments) -->
-<div id="management-notes-section" class="bg-gray-800 border border-gray-700 rounded-xl p-6 m-6">
-  <h2 class="text-xl font-bold text-white mb-4">Management Notes</h2>
-  <div id="notesList" class="space-y-4"></div>
-  <div class="mt-6">
-    <textarea id="newNote" placeholder="Write a note..." class="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-white"></textarea>
-    <button id="addNoteBtn" class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Add Note</button>
+  <div id="notesListContainer" style="display:flex;flex-direction:column;gap:12px;"></div>
+
+  <div style="margin-top:1rem;">
+    <textarea id="newNoteBody" rows="3" placeholder="Write a management note..." style="width:100%;padding:0.75rem;border-radius:8px;background:#111827;border:1px solid #374151;color:#F9FAFB;"></textarea>
+    <div style="margin-top:0.5rem;display:flex;gap:8px;">
+      <button id="addNoteBtn" class="lang-toggle-btn" style="background:#6366f1;color:white;">Add Note</button>
+      <button id="refreshNotesBtn" class="lang-toggle-btn" style="background:#374151;color:white;">Refresh</button>
+    </div>
   </div>
 </div>
 
+<!-- Management notes scripts -->
 <script type="module">
 import { supabase } from './supabase.js';
 
-// UUID of the special Management Notes case
-const MANAGEMENT_CASE_ID = '00000000-0000-0000-0000-000000000001'; // replace with actual UUID in your DB
+const MANAGEMENT_CASE_ID = '11111111-1111-1111-1111-111111111111'; // replace if you used different UUID
+const notesContainer = document.getElementById('notesListContainer');
+const noteSearch = document.getElementById('noteSearch');
+const noteAuthorFilter = document.getElementById('noteAuthorFilter');
+const noteDateFilter = document.getElementById('noteDateFilter');
+const noteClear = document.getElementById('noteClear');
+const addNoteBtn = document.getElementById('addNoteBtn');
+const newNoteBody = document.getElementById('newNoteBody');
+const refreshNotesBtn = document.getElementById('refreshNotesBtn');
 
-async function loadNotes() {
-  const { data, error } = await supabase
-    .from('kb_comments')
-    .select('*')
-    .eq('item_id', MANAGEMENT_CASE_ID)
-    .is('parent_id', null)
-    .order('created_at', { ascending: false });
-  if (!error) renderNotes(data || []);
+let allNotes = []; // all comments for this case
+let authorsSet = new Set();
+
+function showToast(text, ttl=3500){
+  const tc = document.getElementById('toast-container') || document.createElement('div');
+  if(!tc.id){ tc.id='toast-container'; tc.style.position='fixed'; tc.style.bottom='20px'; tc.style.right='20px'; tc.style.zIndex=10000; document.body.appendChild(tc);}
+  const t = document.createElement('div');
+  t.className = 'note-toast';
+  t.style.background='rgba(17,24,39,0.95)';
+  t.style.color='#fff';
+  t.style.padding='10px 14px';
+  t.style.marginTop='10px';
+  t.style.borderRadius='8px';
+  t.textContent = text;
+  tc.appendChild(t);
+  requestAnimationFrame(()=> t.style.opacity=1);
+  setTimeout(()=> { t.style.opacity=0; setTimeout(()=> t.remove(),400); }, ttl);
 }
 
-async function loadReplies(noteId) {
-  const { data, error } = await supabase
-    .from('kb_comments')
-    .select('*')
-    .eq('parent_id', noteId)
-    .order('created_at', { ascending: true });
-  return error ? [] : data;
+// load notes from kb_comments where item_id = MANAGEMENT_CASE_ID
+async function loadNotesFromDb(){
+  try{
+    const { data, error } = await supabase
+      .from('kb_comments')
+      .select('id, item_id, parent_id, author_id, author_name, body, created_at')
+      .eq('item_id', MANAGEMENT_CASE_ID)
+      .order('created_at', { ascending: true });
+    if(error) { console.error(error); return; }
+    allNotes = data || [];
+    populateAuthorFilter();
+    renderNotes();
+  }catch(e){ console.error(e); }
 }
 
-async function renderNotes(notes) {
-  const container = document.getElementById('notesList');
-  container.innerHTML = '';
-  for (let note of notes) {
-    const replies = await loadReplies(note.id);
-    const div = document.createElement('div');
-    div.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700';
-    div.innerHTML = `
-      <div class="flex justify-between">
-        <span class="font-semibold text-indigo-400">${note.author_name || 'Unknown'}</span>
-        <span class="text-sm text-gray-400">${new Date(note.created_at).toLocaleString()}</span>
-      </div>
-      <p class="mt-2 text-gray-200">${note.body}</p>
-      <button class="text-sm text-indigo-400 mt-2 replyBtn" data-id="${note.id}">Reply</button>
-      <div id="replies-${note.id}" class="ml-4 mt-2 space-y-2">
-        ${replies.map(r => `
-          <div class="p-2 bg-gray-800 rounded border border-gray-700">
-            <div class="flex justify-between">
-              <span class="font-semibold text-indigo-300">${r.author_name || 'Unknown'}</span>
-              <span class="text-xs text-gray-500">${new Date(r.created_at).toLocaleString()}</span>
-            </div>
-            <p class="text-gray-300">${r.body}</p>
-          </div>
-        `).join('')}
-      </div>
-    `;
-    container.appendChild(div);
-  }
-  document.querySelectorAll('.replyBtn').forEach(btn => {
-    btn.addEventListener('click', () => addReply(btn.dataset.id));
+function populateAuthorFilter(){
+  authorsSet.clear();
+  allNotes.forEach(n => { if(n.author_name) authorsSet.add(n.author_name); });
+  const sel = noteAuthorFilter;
+  sel.innerHTML = '<option value="all">All authors</option>';
+  Array.from(authorsSet).sort().forEach(a => {
+    const opt = document.createElement('option'); opt.value = a; opt.textContent = a; sel.appendChild(opt);
   });
 }
 
-async function addNote() {
-  const textarea = document.getElementById('newNote');
-  const body = textarea.value.trim();
-  if (!body) return;
+function filterNotes(){
+  const q = (noteSearch.value || '').toLowerCase().trim();
+  const author = noteAuthorFilter.value;
+  const time = noteDateFilter.value;
+  let start = null;
+  if(time === '1d'){ start = new Date(); start.setDate(start.getDate()-1); }
+  if(time === '7d'){ start = new Date(); start.setDate(start.getDate()-7); }
+  if(time === '30d'){ start = new Date(); start.setDate(start.getDate()-30); }
+
+  return allNotes.filter(n => {
+    if(n.parent_id) return true; // we'll filter replies when rendering parent only
+    if(author !== 'all' && n.author_name !== author) return false;
+    if(start){ const d = new Date(n.created_at); if(d < start) return false; }
+    if(q && !( (n.body||'').toLowerCase().includes(q) || (n.author_name||'').toLowerCase().includes(q) )) return false;
+    return true;
+  }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+function renderNotes(){
+  notesContainer.innerHTML = '';
+  const topNotes = filterNotes();
+  const repliesMap = {};
+  allNotes.forEach(n => { if(n.parent_id){ repliesMap[n.parent_id] = repliesMap[n.parent_id] || []; repliesMap[n.parent_id].push(n); }});
+  topNotes.forEach(note => {
+    const div = document.createElement('div');
+    div.className = 'note';
+    const authorBadge = '<span style="display:inline-block;padding:4px 8px;background:#374151;border-radius:999px;margin-left:8px;font-size:12px;">' + (note.author_name||'Unknown') + '</span>';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><strong style="color:#c7d2fe;">${escapeHtml(note.author_name||'Unknown')}</strong><div class="muted" style="font-size:12px;">${new Date(note.created_at).toLocaleString()}</div></div>
+        <div class="muted">${escapeHtml(note.author_id || '')}</div>
+      </div>
+      <div style="margin-top:8px;color:#e5e7eb;">${escapeHtml(note.body)}</div>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="reply-btn lang-toggle-btn" data-id="${note.id}" style="background:#4b5563;color:white;padding:6px 10px;border-radius:8px;">Reply</button>
+        <button class="copy-btn" data-body="${encodeURIComponent(note.body)}" style="background:#374151;color:white;padding:6px 10px;border-radius:8px;">Copy</button>
+      </div>
+      <div id="replies-${note.id}" style="margin-top:10px;"></div>
+    `;
+    notesContainer.appendChild(div);
+    // render replies
+    const replies = repliesMap[note.id] || [];
+    replies.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+    const rc = div.querySelector(`#replies-${note.id}`);
+    replies.forEach(r => {
+      const rdiv = document.createElement('div');
+      rdiv.className = 'reply';
+      rdiv.style.padding='8px';
+      rdiv.style.background='#0b1220';
+      rdiv.style.border='1px solid rgba(255,255,255,0.03)';
+      rdiv.innerHTML = `<div style="display:flex;justify-content:space-between;"><strong style="color:#a78bfa;">${escapeHtml(r.author_name||'Unknown')}</strong><div class="muted" style="font-size:12px;">${new Date(r.created_at).toLocaleString()}</div></div><div style="margin-top:6px;color:#e5e7eb;">${escapeHtml(r.body)}</div>`;
+      rc.appendChild(rdiv);
+    });
+  });
+  // attach events
+  document.querySelectorAll('.reply-btn').forEach(b => b.addEventListener('click', onReplyClicked));
+  document.querySelectorAll('.copy-btn').forEach(b => b.addEventListener('click', (e)=> { navigator.clipboard.writeText(decodeURIComponent(e.target.getAttribute('data-body'))); showToast('Copied'); }));
+}
+
+function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+async function onReplyClicked(e){
+  const id = e.currentTarget.getAttribute('data-id');
+  const reply = prompt('Enter your reply:');
+  if(!reply) return;
+  const user = (await supabase.auth.getUser()).data.user;
+  await supabase.from('kb_comments').insert([{
+    item_id: MANAGEMENT_CASE_ID,
+    parent_id: id,
+    author_id: user?.id || null,
+    author_name: user?.email || 'Unknown',
+    body: reply
+  }]);
+  showToast('Reply added');
+  await loadNotesFromDb();
+}
+
+// adding top-level note
+addNoteBtn.addEventListener('click', async ()=>{
+  const body = newNoteBody.value.trim();
+  if(!body) return;
   const user = (await supabase.auth.getUser()).data.user;
   await supabase.from('kb_comments').insert([{
     item_id: MANAGEMENT_CASE_ID,
     parent_id: null,
-    body,
     author_id: user?.id || null,
-    author_name: user?.email || 'Anonymous'
+    author_name: user?.email || 'Unknown',
+    body
   }]);
-  textarea.value = '';
-  loadNotes();
+  newNoteBody.value = '';
+  showToast('Note added');
+  await loadNotesFromDb();
+});
+
+noteSearch.addEventListener('input', ()=> renderNotes());
+noteAuthorFilter.addEventListener('change', ()=> renderNotes());
+noteDateFilter.addEventListener('change', ()=> renderNotes());
+noteClear.addEventListener('click', ()=>{ noteSearch.value=''; noteAuthorFilter.value='all'; noteDateFilter.value='all'; renderNotes(); });
+refreshNotesBtn.addEventListener('click', ()=> loadNotesFromDb());
+
+// Realtime subscription: smart refresh and classified toasts
+function setupRealtime(){
+  supabase.channel('notes_channel')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_comments' }, payload => {
+      const newRow = payload.new;
+      const oldRow = payload.old;
+      if((newRow && newRow.item_id === MANAGEMENT_CASE_ID) || (oldRow && oldRow.item_id === MANAGEMENT_CASE_ID)){
+        let label = 'Update in Notes';
+        if(payload.eventType === 'INSERT'){ label = newRow.parent_id ? `💬 Reply by ${newRow.author_name||'Unknown'}` : `📝 Note by ${newRow.author_name||'Unknown'}`; }
+        else if(payload.eventType === 'UPDATE'){ label = `✏️ Updated by ${newRow.author_name||'Unknown'}`; }
+        else if(payload.eventType === 'DELETE'){ label = oldRow.parent_id ? '❌ Reply deleted' : '❌ Note deleted'; }
+        showToast(label);
+        // smart update: fetch only affected note(s) or reload
+        loadNotesFromDb();
+      }
+    })
+    .subscribe();
 }
 
-async function addReply(noteId) {
-  const reply = prompt('Enter your reply:');
-  if (!reply) return;
-  const user = (await supabase.auth.getUser()).data.user;
-  await supabase.from('kb_comments').insert([{
-    item_id: MANAGEMENT_CASE_ID,
-    parent_id: noteId,
-    body: reply,
-    author_id: user?.id || null,
-    author_name: user?.email || 'Anonymous'
-  }]);
-  loadNotes();
-}
-
-document.getElementById('addNoteBtn').addEventListener('click', addNote);
-loadNotes();
+// initial load
+loadNotesFromDb();
+setupRealtime();
 </script>
 
 </body>
