@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Employees Directory — Full</title>
+  <title>Employees Directory — Final</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     :root{--bg:#0f1724;--card:#0b1220;--muted:#9ca3af;--accent:#6366f1;}
-    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:var(--bg);color:#e5e7eb;}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:#e5e7eb;}
     .container{max-width:1200px;margin:24px auto;padding:0 16px;}
     .card{background:var(--card);border:1px solid rgba(255,255,255,0.04);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
     .muted{color:var(--muted);font-size:13px;}
@@ -30,7 +30,21 @@
     .toast.hide{opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;}
     .toast.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
     .highlight{background:rgba(99,102,241,0.12) !important;transition:background 1s;}
-    @media (max-width:980px){.filters{flex-direction:column;align-items:stretch;} table{min-width:900px;}}
+    /* responsive: convert table to cards on small screens */
+    @media (max-width:640px){
+      table, thead, tbody, th, td, tr { display:block; }
+      thead { display:none; }
+      tr { margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:12px; }
+      td { padding:8px 0; }
+      td::before { font-weight:600; display:inline-block; width:110px; color:var(--muted); }
+      td:nth-of-type(1)::before{ content:"Name"; }
+      td:nth-of-type(2)::before{ content:"Email"; }
+      td:nth-of-type(3)::before{ content:"Role"; }
+      td:nth-of-type(4)::before{ content:"Status"; }
+      td:nth-of-type(5)::before{ content:"Last Seen"; }
+      td:nth-of-type(6)::before{ content:"Last Activity"; }
+    }
+    .small-btn{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;cursor:pointer;}
   </style>
 </head>
 <body>
@@ -40,27 +54,26 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div>
         <h1 style="font-weight:800;color:var(--accent);margin:0 0 6px 0;">Employees Directory</h1>
-        <div class="muted">Live roster, roles, online status and last activity (Realtime)</div>
+        <div class="muted">Live roster, role management, online status and activity — managed by admins.</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button id="exportCsv" class="card" style="cursor:pointer;">Export CSV</button>
+        <button id="exportCsv" class="card small-btn">Export CSV</button>
       </div>
     </div>
 
-    <!-- Main card -->
+    <!-- Dashboard card -->
     <div id="dashboard" class="card">
 
-      <!-- Filters Row -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:end;" class="filters">
-
-        <div style="flex:1;min-width:240px;">
+      <!-- Filters and actions -->
+      <div class="flex flex-wrap gap-4 mb-4 items-end">
+        <div style="flex:1;min-width:220px;">
           <label class="muted">Search</label>
-          <input id="search" class="input" type="text" placeholder="Search by name, email, or last activity" style="width:100%;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;" />
+          <input id="search" class="w-full p-2 rounded-md bg-gray-800" placeholder="Name, email, last activity..." />
         </div>
 
         <div>
           <label class="muted">Role</label>
-          <select id="roleFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+          <select id="roleFilter" class="p-2 rounded-md bg-gray-800">
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
             <option value="agent">Agent</option>
@@ -70,7 +83,7 @@
 
         <div>
           <label class="muted">Status</label>
-          <select id="statusFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+          <select id="statusFilter" class="p-2 rounded-md bg-gray-800">
             <option value="all">All</option>
             <option value="online">Online</option>
             <option value="offline">Offline</option>
@@ -78,8 +91,8 @@
         </div>
 
         <div>
-          <label class="muted">Last Seen Range</label>
-          <select id="timeFilter" style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);color:#e5e7eb;">
+          <label class="muted">Last Seen</label>
+          <select id="timeFilter" class="p-2 rounded-md bg-gray-800">
             <option value="all">All time</option>
             <option value="1d">Last 24 hours</option>
             <option value="7d">Last 7 days</option>
@@ -88,30 +101,40 @@
         </div>
 
         <div style="margin-left:auto;display:flex;gap:8px;">
-          <button id="clearFilters" class="card" style="cursor:pointer;">Clear</button>
-          <button id="applyFilters" class="card" style="cursor:pointer;">Apply</button>
+          <button id="clearFilters" class="small-btn">Clear</button>
+          <button id="applyFilters" class="small-btn">Apply</button>
         </div>
-
       </div>
 
-      <!-- Stats row -->
-      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:180px;" class="card">
+      <!-- Stats and charts -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="card">
           <div class="muted">Total Employees</div>
-          <div id="totalCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+          <div id="totalCount" class="font-bold text-lg mt-1">0</div>
         </div>
-        <div style="flex:1;min-width:180px;" class="card">
+        <div class="card">
           <div class="muted">Online Now</div>
-          <div id="onlineCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+          <div id="onlineCount" class="font-bold text-lg mt-1">0</div>
         </div>
-        <div style="flex:1;min-width:180px;" class="card">
+        <div class="card">
           <div class="muted">Admins</div>
-          <div id="adminCount" style="font-weight:700;font-size:20px;margin-top:6px;">0</div>
+          <div id="adminCount" class="font-bold text-lg mt-1">0</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="card">
+          <div class="muted">Roles Distribution</div>
+          <canvas id="rolesChart" height="120"></canvas>
+        </div>
+        <div class="card">
+          <div class="muted">Active (last 7 days)</div>
+          <canvas id="activeChart" height="120"></canvas>
         </div>
       </div>
 
       <!-- Table -->
-      <div class="table-wrap">
+      <div class="table-wrap card">
         <table aria-label="Employees table">
           <thead>
             <tr>
@@ -121,16 +144,17 @@
               <th>Status</th>
               <th>Last Seen</th>
               <th>Last Activity</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="employeesBody">
-            <tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">Loading employees...</td></tr>
+            <tr><td colspan="7" class="muted" style="text-align:center;padding:20px 0;">Loading employees...</td></tr>
           </tbody>
         </table>
       </div>
 
       <div style="display:flex;justify-content:center;margin-top:12px;">
-        <button id="loadMore" class="card" style="cursor:pointer;">Load More</button>
+        <button id="loadMore" class="small-btn">Load More</button>
       </div>
     </div>
 
@@ -139,7 +163,7 @@
       <div style="font-size:64px;color:#8b5cf6;margin-bottom:8px;">🔒</div>
       <h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0;color:#fff;">Access Restricted</h2>
       <p class="muted">This page is available to administrators only.</p>
-      <div style="margin-top:12px;"><a href="/" class="card" style="padding:8px 16px;">Go Back Home</a></div>
+      <div style="margin-top:12px;"><a href="/" class="card small-btn" style="padding:8px 16px;">Go Back Home</a></div>
     </div>
 
   </div>
@@ -152,23 +176,24 @@
 import { supabase } from './supabase.js';
 
 /*
-  Employees Directory - Full version
-  Features:
-   - Admin-only guard (checks users.role === 'admin')
-   - Search / Role filter / Status filter / Last-seen time filter
-   - Export CSV of filtered view
-   - Realtime subscription to users table and to activity_log to update last_activity
-   - Online status based on last_seen within 2 minutes
-   - Pagination (Load More)
-   - Toast notifications for realtime events (user status changed/updated)
-   - Clean, defensive code with fallbacks
+ Final Employees Directory
+ Features added:
+ - Admin-only guard
+ - Auto-update last_seen: on load, heartbeat, user activity (mousemove, click, keydown)
+ - Role management UI (action button to change role) visible to admins
+ - Realtime subscriptions for 'users' and 'activity_log'
+ - Filters: search, role, status, last-seen time range
+ - Charts: roles distribution & active users timeline (simple last-7-days count)
+ - Responsive: cards on mobile
+ - Export CSV, pagination, toasts, spinner
 */
 
 // State
-let employees = [];        // in-memory list of users from `users` table
-let filtered = [];         // filtered view
+let employees = [];
+let filtered = [];
 let pageSize = 25;
 let currentPage = 1;
+let isAdmin = false;
 
 // DOM refs
 const employeesBody = document.getElementById('employeesBody');
@@ -177,6 +202,11 @@ const onlineCountEl = document.getElementById('onlineCount');
 const adminCountEl = document.getElementById('adminCount');
 const overlay = document.getElementById('overlay');
 const toast = document.getElementById('toast');
+const rolesChartCtx = document.getElementById('rolesChart').getContext('2d');
+const activeChartCtx = document.getElementById('activeChart').getContext('2d');
+
+let rolesChart = null;
+let activeChart = null;
 
 // Filters
 const searchInput = document.getElementById('search');
@@ -198,48 +228,78 @@ function showToast(msg, type='info', duration=3500){
   toast.onclick = ()=>{ toast.classList.remove('show'); toast.classList.add('hide'); };
   setTimeout(()=>{ toast.classList.remove('show'); toast.classList.add('hide'); }, duration);
 }
-
+function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 function formatDateTime(v){ if(!v) return '-'; try{ return new Date(v).toLocaleString(); }catch(e){ return v; } }
 function isOnline(lastSeen){ if(!lastSeen) return false; const diff = (Date.now() - new Date(lastSeen).getTime())/1000; return diff < 120; }
 function roleBadge(role){ role = (role||'').toLowerCase(); if(role==='admin') return `<span class="badge role-admin">Admin</span>`; if(role==='manager') return `<span class="badge role-manager">Manager</span>`; return `<span class="badge role-agent">Agent</span>`; }
 
-// Fetch employees and their last activity
-async function fetchEmployees(){ 
+// Fetch users and last activity (optimized-ish)
+async function fetchEmployees(){
   showOverlay(true);
   try{
     const { data, error } = await supabase.from('users').select('id, name, email, role, last_seen').order('name',{ascending:true});
     if(error){ console.error('fetch users error', error); employees = []; return; }
-    // fetch last activity for each (batch using RPC or per-user queries; we will run per-user limited to 1 to keep it simple)
-    const enriched = await Promise.all(data.map(async u => {
-      // get last action from activity_log (if exists)
-      try{
-        const { data: act } = await supabase.from('activity_log').select('action, timestamp').eq('user_id', u.id).order('timestamp',{ascending:false}).limit(1).maybeSingle();
-        u.last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-';
-      }catch(e){ u.last_activity = '-'; }
-      return u;
-    }));
-
+    // fetch last activity per user using join-like approach: gather user ids and do one query
+    const ids = data.map(d => d.id);
+    let activities = [];
+    if(ids.length){
+      const { data: acts } = await supabase.from('activity_log').select('user_id, action, timestamp').in('user_id', ids).order('timestamp',{ascending:false});
+      activities = acts || [];
+    }
+    // compress latest activity per user
+    const lastMap = {};
+    for(const a of activities){
+      if(!lastMap[a.user_id]) lastMap[a.user_id] = a;
+    }
+    const enriched = data.map(u => {
+      const last = lastMap[u.id];
+      return { ...u, last_activity: last ? `${last.action} @ ${formatDateTime(last.timestamp)}` : '-' };
+    });
     employees = enriched;
-    applyFilters(); // will render
+    applyFilters();
     updateStats();
+    updateCharts();
   }finally{ showOverlay(false); }
 }
 
+// Stats & Charts
 function updateStats(){
   totalCountEl.textContent = employees.length;
   onlineCountEl.textContent = employees.filter(e=>isOnline(e.last_seen)).length;
   adminCountEl.textContent = employees.filter(e=> (e.role||'').toLowerCase() === 'admin').length;
 }
 
-// Render table with pagination
+function updateCharts(){
+  // roles distribution
+  const counts = { admin:0, manager:0, agent:0, other:0 };
+  for(const u of employees){ const r = (u.role||'').toLowerCase(); if(counts[r] !== undefined) counts[r]++; else counts.other++; }
+  const labels = ['Admin','Manager','Agent','Other'];
+  const values = [counts.admin, counts.manager, counts.agent, counts.other];
+  if(rolesChart) rolesChart.destroy();
+  rolesChart = new Chart(rolesChartCtx, { type:'doughnut', data:{ labels, datasets:[{ data: values }] }, options:{ plugins:{legend:{position:'bottom'}} } });
+
+  // active chart: count unique users with activity in last 7 days per day
+  const days = [];
+  for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const dayCounts = days.map(day => {
+    return employees.filter(u => {
+      if(!u.last_activity || u.last_activity === '-') return false;
+      return u.last_activity.includes(day);
+    }).length;
+  });
+  if(activeChart) activeChart.destroy();
+  activeChart = new Chart(activeChartCtx, { type:'line', data:{ labels: days, datasets:[{ label:'Active users', data: dayCounts, fill:false, borderColor:'#6366f1' }] }, options:{ scales:{ y:{ beginAtZero:true } } } });
+}
+
+// Render table (pagination)
 function renderTable(list){
   employeesBody.innerHTML = '';
   const end = Math.min(list.length, currentPage * pageSize);
-  if(!list.length){ employeesBody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center;padding:18px 0;">No results</td></tr>`; return; }
+  if(!list.length){ employeesBody.innerHTML = `<tr><td colspan="7" class="muted" style="text-align:center;padding:18px 0;">No results</td></tr>`; return; }
   for(let i=0;i<end;i++){
     const u = list[i];
-    const tr = document.createElement('tr');
     const online = isOnline(u.last_seen);
+    const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${escapeHtml(u.name||'-')}</td>
       <td class="muted">${escapeHtml(u.email||'-')}</td>
@@ -247,13 +307,16 @@ function renderTable(list){
       <td>${online?'<span class="online">Online</span>':'<span class="offline">Offline</span>'}</td>
       <td class="muted">${formatDateTime(u.last_seen)}</td>
       <td class="muted">${escapeHtml(u.last_activity||'-')}</td>
+      <td>${isAdmin ? `<select data-id="${u.id}" class="small-btn role-select"><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select>` : '-'}</td>
     `;
     employeesBody.appendChild(tr);
+    // set select current value
+    if(isAdmin){
+      const sel = employeesBody.querySelector(`select[data-id="${u.id}"]`);
+      if(sel) sel.value = u.role || 'agent';
+    }
   }
 }
-
-// Basic escape
-function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
 // Filtering pipeline
 function applyFilters(){
@@ -283,9 +346,10 @@ function applyFilters(){
   currentPage = 1;
   renderTable(filtered);
   updateStats();
+  updateCharts();
 }
 
-// Export CSV of filtered view or all employees if not filtered
+// Export CSV
 function exportCSV(){
   const list = filtered.length ? filtered : employees;
   if(!list.length){ alert('No data to export'); return; }
@@ -308,95 +372,107 @@ function exportCSV(){
   const a = document.createElement('a'); a.href = url; a.download = `employees_export_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
-// Realtime patching for users table and activity_log updates
+// Realtime subscriptions and patching
 function setupRealtime(){
-  // users changes
   supabase.channel('users_changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
       try{
         const t = payload.eventType;
-        if(t === 'INSERT'){
-          employees.unshift(payload.new);
-          showToast(`${payload.new.name || payload.new.email} added`, 'success');
-        } else if(t === 'UPDATE'){
-          const idx = employees.findIndex(x=>String(x.id)===String(payload.new.id));
-          if(idx > -1) employees[idx] = payload.new;
-          else employees.unshift(payload.new);
-          showToast(`${payload.new.name || payload.new.email} updated`, 'info');
-        } else if(t === 'DELETE'){
-          employees = employees.filter(x=>String(x.id)!==String(payload.old.id));
-          showToast(`${payload.old.name || payload.old.email} removed`, 'warn');
-        }
-        // When users change, refresh last_activity for changed user
-        // Quick call to refresh activities for affected user(s)
+        if(t === 'INSERT'){ employees.unshift(payload.new); showToast(`${payload.new.name||payload.new.email} added`, 'success'); }
+        else if(t === 'UPDATE'){ const idx = employees.findIndex(x=>String(x.id)===String(payload.new.id)); if(idx>-1) employees[idx]=payload.new; else employees.unshift(payload.new); showToast(`${payload.new.name||payload.new.email} updated`, 'info'); }
+        else if(t === 'DELETE'){ employees = employees.filter(x=>String(x.id)!==String(payload.old.id)); showToast(`${payload.old.name||payload.old.email} removed`, 'warn'); }
+        // refresh activity for affected user
         refreshLastActivityFor(payload.new?.id || payload.old?.id);
         applyFilters();
       }catch(e){ console.error('users realtime error', e); }
-    })
-    .subscribe();
+    }).subscribe();
 
-  // activity_log changes -> update last_activity for user
   supabase.channel('activity_changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
       try{
         const userId = payload.new ? payload.new.user_id : (payload.old ? payload.old.user_id : null);
         if(userId) refreshLastActivityFor(userId);
       }catch(e){ console.error('activity realtime error', e); }
-    })
-    .subscribe();
+    }).subscribe();
 }
 
-// Refresh last activity for a given user id
+// Refresh last activity for a user
 async function refreshLastActivityFor(userId){
   if(!userId) return;
   try{
     const { data: act } = await supabase.from('activity_log').select('action, timestamp').eq('user_id', userId).order('timestamp',{ascending:false}).limit(1).maybeSingle();
     const idx = employees.findIndex(e=>String(e.id)===String(userId));
-    if(idx > -1){
-      employees[idx].last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-';
-      employees[idx].last_seen = employees[idx].last_seen || employees[idx].last_seen; // no change, but ensure property exists
-      applyFilters();
-    } else {
-      // If user not present, fetch fresh list (safe fallback)
-      fetchEmployees();
-    }
+    if(idx>-1){ employees[idx].last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-'; applyFilters(); }
   }catch(e){ console.error('refreshLastActivityFor error', e); }
 }
 
-// Admin guard: checks users table for role === 'admin'
+// Update last_seen in DB for current user
+let heartbeatTimer = null;
+async function updateLastSeen(userId){
+  if(!userId) return;
+  try{
+    await supabase.from('users').update({ last_seen: new Date().toISOString() }).eq('id', userId);
+  }catch(e){ console.error('updateLastSeen error', e); }
+}
+
+// Role management: change role via UI (admin only)
+async function changeUserRole(userId, newRole){
+  try{
+    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
+    if(error){ showToast('Role update failed','error'); console.error(error); return; }
+    showToast('Role updated','success');
+    // optimistic update locally
+    const idx = employees.findIndex(e=>String(e.id)===String(userId)); if(idx>-1){ employees[idx].role = newRole; applyFilters(); updateCharts(); }
+  }catch(e){ console.error('changeUserRole err', e); }
+}
+
+// Admin guard
 async function checkAdmin(){
   try{
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if(userErr || !user){
-      // not signed in -> show restricted
-      document.getElementById('dashboard').style.display = 'none';
-      document.getElementById('restricted-card').style.display = 'block';
-      return false;
-    }
-    const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-    if(error || !data || data.role !== 'admin'){
-      document.getElementById('dashboard').style.display = 'none';
-      document.getElementById('restricted-card').style.display = 'block';
-      return false;
-    }
-    // admin -> proceed
-    document.getElementById('restricted-card').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    return true;
-  }catch(e){ console.error('checkAdmin error', e); return false; }
+    if(userErr || !user){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
+    const { data, error } = await supabase.from('users').select('role,id').eq('id', user.id).single();
+    if(error || !data || data.role !== 'admin'){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
+    isAdmin = true;
+    document.getElementById('restricted-card').style.display = 'none'; document.getElementById('dashboard').style.display = 'block';
+    // start heartbeat and activity listeners to update last_seen
+    updateLastSeen(data.id); // initial ping
+    document.addEventListener('mousemove', () => resetHeartbeat(data.id));
+    document.addEventListener('keydown', () => resetHeartbeat(data.id));
+    document.addEventListener('click', () => resetHeartbeat(data.id));
+    heartbeatTimer = setInterval(()=> updateLastSeen(data.id), 60000); // every 60s
+    return data.id;
+  }catch(e){ console.error('checkAdmin error', e); return null; }
 }
 
-// Event listeners
+function resetHeartbeat(userId){
+  updateLastSeen(userId);
+  if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = setInterval(()=> updateLastSeen(userId), 60000); }
+}
+
+// Attach role select change handlers (delegated)
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.matches && e.target.matches('.role-select')){
+    const userId = e.target.getAttribute('data-id');
+    const newRole = e.target.value;
+    if(confirm(`Change role for this user to "${newRole}"?`)) changeUserRole(userId, newRole);
+    else { // revert to previous role display by re-rendering
+      applyFilters();
+    }
+  }
+});
+
+// UI events
 applyBtn.addEventListener('click', ()=> applyFilters());
 clearBtn.addEventListener('click', ()=>{ searchInput.value=''; roleFilter.value='all'; statusFilter.value='all'; timeFilter.value='all'; applyFilters(); });
 exportBtn.addEventListener('click', ()=> exportCSV());
 loadMoreBtn.addEventListener('click', ()=>{ currentPage++; renderTable(filtered); });
 
-// Boot
+// Boot sequence
 (async function init(){
   showOverlay(true);
-  const ok = await checkAdmin();
-  if(!ok){ showOverlay(false); return; }
+  const adminId = await checkAdmin();
+  if(!adminId){ showOverlay(false); return; }
   await fetchEmployees();
   setupRealtime();
   showOverlay(false);
