@@ -2938,19 +2938,15 @@
         if (!historyTbody) return;
     
         // =================================================================
-        // ===== START OF FIX / بداية الإصلاح =================================
+        // ===== START OF CORRECTED CODE / بداية الكود المصحح =================
         // =================================================================
-        // This query now correctly targets the 'case_history' table and its columns
-        // as confirmed by your screenshots.
-        // هذا الاستعلام يستهدف الآن بشكل صحيح جدول "case_history" وأعمدته
-        // كما هو موضح في الصور التي أرسلتها
         const { data, error } = await supabase
-            .from('case_history') // CORRECTED TABLE NAME / اسم الجدول الصحيح
-            .select('id, modified_by_name, modified_at') 
-            .eq('case_id', itemId) // CORRECTED FOREIGN KEY COLUMN / عمود الربط الصحيح
+            .from('case_history') // اسم الجدول الصحيح
+            .select('id, modified_by_name, modified_at, field_changed, old_value, new_value') // طلب الأعمدة بالأسماء الصحيحة
+            .eq('case_id', itemId) // الربط بالـ ID الخاص بالمقال
             .order('modified_at', { ascending: false });
         // ===============================================================
-        // ===== END OF FIX / نهاية الإصلاح =================================
+        // ===== END OF CORRECTED CODE / نهاية الكود المصحح ===================
         // ===============================================================
     
         if (error) {
@@ -2964,16 +2960,81 @@
             return;
         }
         
-        historyTbody.innerHTML = data.map(log => `
-            <tr>
-                <td>${escapeHTML(log.modified_by_name || 'Unknown User')}</td>
-                <td>${formatReadableDate(log.modified_at)}</td>
-                <td>
-                    <button class="button button-secondary" data-version-id="${log.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">View Changes</button>
-                </td>
-            </tr>
-        `).join('');
+        // تجميع التغييرات التي حدثت في نفس الوقت
+        const groupedByTimestamp = data.reduce((acc, log) => {
+            const timestamp = log.modified_at;
+            if (!acc[timestamp]) {
+acc[timestamp] = {
+                    modified_by_name: log.modified_by_name,
+                    modified_at: log.modified_at,
+                    // إنشاء مصفوفة لتخزين كل التغييرات التي حدثت في هذا الوقت
+                    changes: []
+                };
+            }
+            // إضافة تفاصيل التغيير الحالي إلى مصفوفة التغييرات الخاصة بهذا الوقت
+            acc[timestamp].changes.push(log);
+            return acc;
+        }, {});
+
+        // تحويل الكائن المجمع إلى مصفوفة لعرضها
+        const groupedLogs = Object.values(groupedByTimestamp);
+
+        historyTbody.innerHTML = groupedLogs.map(group => {
+            // عرض ملخص للحقول التي تم تغييرها
+            const fieldsChangedSummary = group.changes.map(c => escapeHTML(c.field_changed)).join(', ');
+            
+            // تخزين بيانات التغييرات الكاملة في زر "عرض التفاصيل"
+            const changesDataAttribute = escapeHTML(JSON.stringify(group.changes));
+
+            return `
+                <tr>
+                    <td>${escapeHTML(group.modified_by_name || 'Unknown User')}</td>
+                    <td style="text-align:center;">${formatReadableDate(group.modified_at)}</td>
+                    <td style="text-align:center;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-color-muted);">${fieldsChangedSummary}</span>
+                            <button class="button button-secondary view-changes-btn" data-changes='${changesDataAttribute}' style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
+                                View Details
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
+
+    // دالة جديدة لعرض التغييرات المجمعة في نافذة الفرق
+    function showGroupedDiff(changes) {
+        if (!changes || changes.length === 0) {
+            showToast('No changes to display.', 'info');
+            return;
+        }
+
+        // إنشاء سلسلة فروقات (diff string) مجمعة من كل التغييرات
+        const combinedDiffString = changes.map(change => {
+            const oldContent = change.old_value || '';
+            const newContent = change.new_value || '';
+            const fieldName = change.field_changed || 'Field';
+            // إنشاء "باتش" لكل حقل على حدة
+            return Diff.createTwoFilesPatch(
+                `${fieldName} (Before)`, 
+                `${fieldName} (After)`, 
+                oldContent, 
+                newContent, 
+                '', '', { context: 5 }
+            );
+        }).join('\n'); // دمج كل الباتشات في سلسلة واحدة
+
+        const diffHtml = Diff2Html.html(combinedDiffString, {
+            drawFileList: true, // عرض اسم كل حقل تم تغييره
+            matching: 'lines',
+            outputFormat: 'side-by-side'
+        });
+
+        document.getElementById('diffContent').innerHTML = diffHtml;
+        diffModal.classList.remove('hidden');
+    }
+
 
     async function showDiff(versionId) {
         const { data: versionRecord, error: versionError } = await supabase.from('case_history').select('*').eq('id', versionId).single();
@@ -3340,10 +3401,15 @@
         
         pageContentArea.addEventListener('click', async (e) => {
             
-            const viewChangesBtn = e.target.closest('button[data-version-id]');
-            if (viewChangesBtn) {
-                const versionId = viewChangesBtn.dataset.versionId;
-                showDiff(versionId);
+            const viewChangesBtn = e.target.closest('button.view-changes-btn');
+            if (viewChangesBtn && viewChangesBtn.dataset.changes) {
+                try {
+                    const changes = JSON.parse(viewChangesBtn.dataset.changes);
+                    showGroupedDiff(changes);
+                } catch (err) {
+                    console.error("Failed to parse changes data:", err);
+                    showToast('Could not display changes.', 'error');
+                }
                 return;
             }
 
