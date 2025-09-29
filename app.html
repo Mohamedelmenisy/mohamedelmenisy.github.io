@@ -1086,18 +1086,29 @@
             direction: rtl;
         }
         
-        #ar-content p, #ar-content li, #ar-content span.action {
+        .kb-content #ar-content p, 
+        .kb-content #ar-content li, 
+        .kb-content #ar-content span.action {
             font-size: 1.05rem !important;
             line-height: 1.8 !important;
         }
-        #ar-content h4 {
+        .kb-content #ar-content h4 {
             font-size: 1.3rem !important;
         }
-        #ar-content h5 {
+        .kb-content #ar-content h5 {
             font-size: 1.15rem !important;
         }
 
-        #ar-content, #ar-content div, #ar-content p, #ar-content h4, #ar-content h5, #ar-content li, #ar-content label, #ar-content span, #ar-content .visual-guide summary, #ar-content .note-box {
+        .kb-content #ar-content, 
+        .kb-content #ar-content div, 
+        .kb-content #ar-content p, 
+        .kb-content #ar-content h4, 
+        .kb-content #ar-content h5, 
+        .kb-content #ar-content li, 
+        .kb-content #ar-content label, 
+        .kb-content #ar-content span, 
+        .kb-content #ar-content .visual-guide summary, 
+        .kb-content #ar-content .note-box {
             text-align: right !important;
         }
 
@@ -1114,7 +1125,7 @@
         .kb-content #ar-content .recommendation-box {
             border-right-width: 4px;
             border-right-style: solid;
-            border-left: 0;
+            border-left-width: 0;
         }
 
         .kb-content #ar-content .note-box-info { border-right-color: #3b82f6; }
@@ -2811,14 +2822,21 @@
         
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
+        
+        // IMPORTANT CHANGE: Do not wrap the content in a card if it contains a full-width kb-container
+        const hasCustomContainer = itemData.content_en && itemData.content_en.includes('class="kb-container"');
 
-        detailHTML += `<div class="card">
-            <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div>
-            <p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>
-            ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-            <hr class="title-content-divider">${lastUpdatedHTML}
-            <div class="kb-content">${itemData.content_en || '<p>No detailed content available.</p>'}</div>
-        </div>`;
+        if (hasCustomContainer) {
+             detailHTML += `<div class="kb-content">${itemData.content_en || '<p>No detailed content available.</p>'}</div>`;
+        } else {
+            detailHTML += `<div class="card">
+                <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div>
+                <p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>
+                ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <hr class="title-content-divider">${lastUpdatedHTML}
+                <div class="kb-content">${itemData.content_en || '<p>No detailed content available.</p>'}</div>
+            </div>`;
+        }
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
         if (childItems.length > 0) {
