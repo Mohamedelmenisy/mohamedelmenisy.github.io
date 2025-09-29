@@ -2581,13 +2581,15 @@
             <div class="cards-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
                  <div class="dashboard-info-card">
                     <h3>🔥 Most Used Articles</h3>
-                    <ul id="mostUsedList"></ul>
+                    <ul id="mostUsedList"><li><a href="#employees" class="tab-link block px-4 py-2 hover:bg-gray-700">Employees</a></li>
+</ul>
                 </div>
                 <div class="dashboard-quicklink-card">
                      <h3>💡 Quick Actions</h3>
                      <ul>
                         <li><a href="#" id="addNewArticleLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                     </ul>
+                     <li><a href="#employees" class="tab-link block px-4 py-2 hover:bg-gray-700">Employees</a></li>
+</ul>
                 </div>
             </div>
 
@@ -2936,7 +2938,8 @@
                 <ul class="child-items-list">${childItems.map(child => {
                      const childSection = findItem(child.id);
                      return `<li><a href="#${childSection?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title_en)}</a></li>`
-                    }).join('')}</ul>
+                    }).join('')}<li><a href="#employees" class="tab-link block px-4 py-2 hover:bg-gray-700">Employees</a></li>
+</ul>
             </div>`;
         }
 
@@ -3075,7 +3078,8 @@
     }
 
     const contentTemplates = {
-        standard_article: { type: 'article', titlePrefix: 'New Article: ', summary: 'A general article about [topic].', content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here.]</p><ul><li>Point 1</li><li>Point 2</li></ul>', tags: ['article'] },
+        standard_article: { type: 'article', titlePrefix: 'New Article: ', summary: 'A general article about [topic].', content: '<h2>Introduction</h2><p>[Provide a brief introduction to the topic.]</p><h2>Main Content</h2><p>[Elaborate on the main points here.]</p><ul><li>Point 1</li><li>Point 2</li><li><a href="#employees" class="tab-link block px-4 py-2 hover:bg-gray-700">Employees</a></li>
+</ul>', tags: ['article'] },
         troubleshooting_guide: { type: 'case', titlePrefix: 'Case: Troubleshooting ', summary: 'A step-by-step guide to resolve [issue].', content: '<h3>Issue Description</h3><p>[Clearly describe the problem.]</p><h3>Resolution Steps</h3><ol><li><strong>Step 1:</strong> [Action to take]</li></ol>', tags: ['troubleshooting', 'guide', 'case'] },
         policy_document: { type: 'policy', titlePrefix: 'Policy: ', summary: 'Official policy regarding [subject matter].', content: '<h1>[Policy Title]</h1><p><strong>Version:</strong> 1.0</p><h2>1. Purpose</h2><p>[State the purpose of this policy.]</p>', tags: ['policy', 'official'] },
         blank: { type: 'article', titlePrefix: '', summary: '', content: '<p><br></p>', tags: [] }
@@ -3764,6 +3768,167 @@ function setupRealtime(){
 // initial load
 loadNotesFromDb();
 setupRealtime();
+</script>
+
+
+<!-- Employees Directory Section -->
+<div id="employees" class="tab-content hidden p-6">
+  <h2 class="text-2xl font-bold mb-4">Employees Directory</h2>
+
+  <!-- Search & Filters -->
+  <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+    <input id="searchInput" type="text" placeholder="Search by name or email" class="px-3 py-2 rounded bg-gray-800 border border-gray-700 focus:outline-none flex-1">
+    <select id="roleFilter" class="px-3 py-2 rounded bg-gray-800 border border-gray-700">
+      <option value="">All Roles</option>
+      <option value="Admin">Admin</option>
+      <option value="Agent">Agent</option>
+      <option value="Support">Support</option>
+    </select>
+    <button id="exportBtn" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700">Export CSV</button>
+  </div>
+
+  <!-- Counters -->
+  <div class="mb-4">
+    <span id="totalEmployees" class="mr-6 text-gray-300"></span>
+    <span id="onlineEmployees" class="text-green-400"></span>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-gray-800 border border-gray-700 rounded-lg">
+      <thead>
+        <tr class="bg-gray-700 text-gray-200">
+          <th class="px-4 py-2 text-left">Name</th>
+          <th class="px-4 py-2 text-left">Email</th>
+          <th class="px-4 py-2 text-left">Role</th>
+          <th class="px-4 py-2 text-left">Status</th>
+          <th class="px-4 py-2 text-left">Last Active</th>
+        </tr>
+      </thead>
+      <tbody id="employeesTable" class="divide-y divide-gray-700"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Admin Only Modal -->
+<div id="adminModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+  <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
+    <h2 class="text-xl font-bold mb-4">Access Restricted</h2>
+    <p class="mb-4">This page is available for <span class="text-indigo-400 font-semibold">Admins Only</span>.</p>
+    <button onclick="document.getElementById('adminModal').classList.add('hidden')" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700">Close</button>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from './supabase.js';
+
+const employeesTable = document.getElementById('employeesTable');
+const searchInput = document.getElementById('searchInput');
+const roleFilter = document.getElementById('roleFilter');
+const exportBtn = document.getElementById('exportBtn');
+const adminModal = document.getElementById('adminModal');
+const totalEmployees = document.getElementById('totalEmployees');
+const onlineEmployees = document.getElementById('onlineEmployees');
+
+const MANAGEMENT_ROLE = 'Admin';
+
+async function checkAccess() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    adminModal.classList.remove('hidden');
+    return false;
+  }
+  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+  if (!profile || profile.role !== MANAGEMENT_ROLE) {
+    adminModal.classList.remove('hidden');
+    return false;
+  }
+  return true;
+}
+
+async function fetchEmployees() {
+  let { data, error } = await supabase.from('users').select('id, name, email, role, last_active');
+  if (error) {
+    console.error('Error fetching employees:', error);
+    return [];
+  }
+  return data || [];
+}
+
+function renderEmployees(employees) {
+  const searchVal = searchInput.value.toLowerCase();
+  const roleVal = roleFilter.value;
+
+  const filtered = employees.filter(emp => {
+    const matchesSearch = emp.name?.toLowerCase().includes(searchVal) || emp.email?.toLowerCase().includes(searchVal);
+    const matchesRole = roleVal ? emp.role === roleVal : true;
+    return matchesSearch && matchesRole;
+  });
+
+  const onlineCount = filtered.filter(emp => {
+    const lastActive = emp.last_active ? new Date(emp.last_active) : null;
+    return lastActive && ((Date.now() - lastActive.getTime()) / 60000 < 2);
+  }).length;
+
+  totalEmployees.innerText = `Total Employees: ${filtered.length}`;
+  onlineEmployees.innerText = `Online Now: ${onlineCount}`;
+
+  employeesTable.innerHTML = filtered.map(emp => {
+    const lastActive = emp.last_active ? new Date(emp.last_active) : null;
+    const isOnline = lastActive && ((Date.now() - lastActive.getTime()) / 60000 < 2);
+    return `
+      <tr>
+        <td class="px-4 py-2">${emp.name || '-'}</td>
+        <td class="px-4 py-2">${emp.email || '-'}</td>
+        <td class="px-4 py-2"><span class="px-2 py-1 rounded bg-gray-700">${emp.role || '-'}</span></td>
+        <td class="px-4 py-2">${isOnline ? '<span class="text-green-400 font-semibold">Online</span>' : '<span class="text-gray-400">Offline</span>'}</td>
+        <td class="px-4 py-2">${lastActive ? lastActive.toLocaleString() : '-'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadEmployees() {
+  const employees = await fetchEmployees();
+  renderEmployees(employees);
+}
+
+// Export CSV
+exportBtn.addEventListener('click', async () => {
+  const employees = await fetchEmployees();
+  const rows = [
+    ['Name','Email','Role','Status','Last Active'],
+    ...employees.map(emp => [
+      emp.name || '',
+      emp.email || '',
+      emp.role || '',
+      emp.last_active || ''
+    ])
+  ];
+  const csvContent = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'employees.csv';
+  link.click();
+});
+
+// Filters
+searchInput.addEventListener('input', loadEmployees);
+roleFilter.addEventListener('change', loadEmployees);
+
+// Realtime subscription
+supabase.channel('realtime-employees')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
+    loadEmployees();
+  })
+  .subscribe();
+
+// Init
+(async () => {
+  const allowed = await checkAccess();
+  if (allowed) loadEmployees();
+})();
 </script>
 
 </body>
