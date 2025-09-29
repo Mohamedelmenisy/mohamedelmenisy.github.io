@@ -30,13 +30,14 @@
         .main-content { padding: 2rem; max-width: 1600px; margin: 0 auto; }
         .page-title {
             font-size: 2rem; font-weight: 800; color: var(--primary-color);
-            margin: 0 0 1rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;
+            margin: 0 0 2rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;
         }
         .charts-grid {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 350px 1fr;
             gap: 2rem;
             margin-bottom: 2rem;
+            align-items: stretch;
         }
         @media (max-width: 900px) {
             .charts-grid { grid-template-columns: 1fr; }
@@ -47,30 +48,44 @@
             border-radius: var(--border-radius-lg);
             display: flex;
             flex-direction: column;
+        }
+        .chart-card h3 { margin-top: 0; margin-bottom: 1.5rem; text-align: center; }
+        .chart-wrapper {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
             align-items: center;
             justify-content: center;
         }
-        .chart-card h3 { margin-top: 0; margin-bottom: 1.5rem; }
-        .chart-card canvas { max-width: 100%; }
+        .chart-card canvas { max-width: 100%; max-height: 100%; }
 
         .filters-card {
             background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg);
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;
-            align-items: end; margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: flex-end; 
+            margin-bottom: 2rem;
         }
-        .form-group { margin: 0; }
+        .form-group { margin: 0; flex-grow: 1; min-width: 200px; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
         .form-group input, .form-group select {
             width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker);
             border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);
         }
+        .filter-buttons {
+            display: flex;
+            gap: 0.75rem;
+            padding-bottom: 1px; /* Align with inputs */
+        }
+
         .button {
             background-color: var(--primary-color); color: var(--text-color-inverted); border: 1px solid transparent;
             padding: 0.625rem 1rem; border-radius: var(--border-radius); cursor: pointer; font-weight: 500;
             display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; justify-content: center;
         }
         .button:hover { background-color: var(--primary-color-hover); }
-        .button-secondary { background-color: transparent; color: var(--text-color-muted); border-color: var(--border-color-darker); }
+        .button-secondary { background-color: var(--bg-color-alt); color: var(--text-color-muted); border-color: var(--border-color-darker); }
         .button-secondary:hover { background-color: var(--border-color); color: var(--text-color); }
         
         .table-card { background-color: var(--bg-color-alt); border-radius: var(--border-radius-lg); overflow: hidden; }
@@ -97,7 +112,7 @@
 <body>
     <header class="header">
         <div class="header-brand">
-            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='#6366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='#6366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" alt="InfiniBase Logo"></svg>
             <span>InfiniBase</span>
         </div>
         <a href="app.html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
@@ -109,11 +124,15 @@
         <div class="charts-grid">
             <div class="chart-card">
                 <h3>Article Feedback</h3>
-                <canvas id="feedbackChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="feedbackChart"></canvas>
+                </div>
             </div>
             <div class="chart-card">
                 <h3>Top Active Users</h3>
-                <canvas id="topUsersChart"></canvas>
+                 <div class="chart-wrapper">
+                    <canvas id="topUsersChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -140,8 +159,8 @@
                 <label for="filterDate">Filter by Date</label>
                 <input type="date" id="filterDate">
             </div>
-            <div style="display: flex; gap: 1rem;">
-                <button id="clearFiltersBtn" class="button-secondary" style="width: 100%;"><i class="fas fa-times"></i> Clear</button>
+            <div class="filter-buttons">
+                <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
             </div>
         </div>
 
@@ -171,7 +190,6 @@
         let originalData = [];
         let feedbackChartInstance, topUsersChartInstance;
 
-        // AUTH CHECK
         async function checkAuth() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -212,31 +230,34 @@
             const helpful = data.find(d => d.rating_type === 'Helpful')?.count || 0;
             const notHelpful = data.find(d => d.rating_type === 'Not Helpful')?.count || 0;
 
-            const chartData = {
-                labels: ['Helpful', 'Not Helpful'],
-                datasets: [{
-                    label: 'Feedback',
-                    data: [helpful, notHelpful],
-                    backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(239, 68, 68, 0.7)'],
-                    borderColor: [ 'rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
-                    borderWidth: 1
-                }]
-            };
-
             if (feedbackChartInstance) feedbackChartInstance.destroy();
             feedbackChartInstance = new Chart(ctx, {
                 type: 'doughnut',
-                data: chartData,
+                data: {
+                    labels: ['Helpful', 'Not Helpful'],
+                    datasets: [{
+                        data: [helpful, notHelpful],
+                        backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                        borderColor: [ 'rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
+                        borderWidth: 1
+                    }]
+                },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'top', labels: { color: 'white' } } }
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { color: 'white', boxWidth: 15, padding: 20 } 
+                        } 
+                    }
                 }
             });
         }
         
         function renderTopUsersChart(data) {
             const ctx = document.getElementById('topUsersChart').getContext('2d');
-             if (topUsersChartInstance) topUsersChartInstance.destroy();
+            if (topUsersChartInstance) topUsersChartInstance.destroy();
 
             topUsersChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -247,16 +268,25 @@
                         data: data.map(u => u.activity_count),
                         backgroundColor: 'rgba(99, 102, 241, 0.7)',
                         borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderRadius: 4
                     }]
                 },
                 options: {
-                    indexAxis: 'y',
+                    indexAxis: 'y', // Makes it a horizontal bar chart
                     responsive: true,
-                    plugins: { legend: { display: false } },
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => ` Total Activities: ${context.raw}`
+                            }
+                        }
+                    },
                     scales: { 
                         y: { ticks: { color: 'white' } }, 
-                        x: { ticks: { color: 'white', stepSize: 1 } } 
+                        x: { ticks: { color: 'white', precision: 0 } } // Ensures integer ticks
                     }
                 }
             });
