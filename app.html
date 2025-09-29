@@ -19,9 +19,7 @@
 <script src="https://cdn.jsdelivr.net/npm/spotlight.js/dist/js/spotlight.min.js" defer></script>
 <!-- Diff2HTML for Version History -->
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
-<!-- JSDiff for creating diffs -->
-<script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
 <style>
         :root {
             /* Permanent Dark Theme Variables */
@@ -422,9 +420,8 @@
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.2s ease-out;
-            pointer-events: none;
         }
-        .modal-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
+        .modal-overlay:not(.hidden) { opacity: 1; }
         .modal-content {
             background-color: var(--bg-color-modal);
             padding: 1.5rem;
@@ -1153,11 +1150,608 @@
         }
         /* ========== END OF MERGED STYLES ========== */
 
+
         .hidden { display: none !important; }
+
+        .chart-container {
+            position: relative;
+            padding: 1rem;
+            border-radius: var(--border-radius-lg);
+            background-color: var(--bg-color-alt);
+            height: 320px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .chart-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .chart-container h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            width: 100%;
+        }
+        .mermaid-diagram-card {
+            background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+        }
+        .mermaid-diagram-card h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        .mermaid-diagram-container {
+            overflow-x: auto;
+            padding: 10px;
+            background-color: var(--bg-color-alt);
+            border-radius: var(--border-radius);
+        }
+        .mermaid-diagram-container svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            min-height: 350px;
+            height: auto;
+        }
+        .mermaid-diagram-container text {
+            fill: var(--text-color) !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 14px !important;
+        }
+        .mermaid-diagram-container .edgeLabel,
+        .mermaid-diagram-container .label,
+        .mermaid-diagram-container .messageText {
+            color: var(--text-color) !important;
+            fill: var(--text-color) !important;
+        }
+        .mermaid-diagram-container .actor { stroke: var(--text-color-muted) !important; fill: var(--bg-color-alt) !important; }
+        .mermaid-diagram-container rect,
+        .mermaid-diagram-container polygon,
+        .mermaid-diagram-container ellipse,
+        .mermaid-diagram-container circle {
+            stroke: var(--primary-color) !important;
+            fill: var(--bg-color-alt) !important;
+        }
+        .mermaid-diagram-container .cluster rect {
+             fill: var(--bg-color) !important;
+             stroke: var(--border-color-darker) !important;
+        }
+        .mermaid-diagram-container .arrowheadPath {
+            fill: var(--primary-color) !important;
+        }
+        .mermaid-diagram-container .edgePaths path {
+            stroke: var(--primary-color) !important;
+        }
+
+
+        #itemDetailViewPlaceholder .item-title-area {
+            display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+        }
+        #itemDetailViewPlaceholder .item-title-area i.fa-title-icon {
+            font-size: 2rem; color: var(--primary-color);
+        }
+        #itemDetailViewPlaceholder .item-title-area h2 { font-size: 1.8rem; margin:0; }
+        #itemDetailViewPlaceholder .item-summary { color: var(--text-color-subtle); margin-bottom: 1rem; font-style: italic; }
+        #itemDetailViewPlaceholder hr.title-content-divider {
+             margin: 1.5rem 0; border-color: var(--border-color);
+        }
+        .last-updated-info {
+            color: var(--yes-color);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        #itemDetailViewPlaceholder .kb-content ul { list-style-type: disc; }
+        #itemDetailViewPlaceholder .child-items-list { list-style-type: none; padding-left: 0; }
+        #itemDetailViewPlaceholder .child-items-list li { margin-bottom: 0.5rem; }
+        #itemDetailViewPlaceholder .child-items-list a { color: var(--primary-color); text-decoration: none; }
+        #itemDetailViewPlaceholder .child-items-list a:hover { text-decoration: underline; }
+        .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        
+        .item-feedback-section { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); background-color: var(--bg-color); }
+        .item-feedback-section h4 { font-size: 1.125rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; }
+        .rating-prompt { display:flex; align-items:center; gap:1rem; margin-bottom: 1rem; }
+        .rating-prompt > span { font-weight: 500; }
+        .rating-buttons button { background: none; border: 1px solid var(--border-color); color: var(--text-color-muted); padding: 0.5rem 0.75rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s; }
+        .rating-buttons button:hover { border-color: var(--rating-color); color: var(--rating-color); background-color: rgba(251, 191, 36, 0.1); }
+        .rating-buttons button.active.yes { border-color: var(--yes-color); color: var(--yes-color); background-color: rgba(34, 197, 94, 0.1); }
+        .rating-buttons button.active.no { border-color: var(--no-color); color: var(--no-color); background-color: rgba(239, 68, 68, 0.1); }
+        .rating-buttons button i { margin-right: 0.5rem; }
+        .read-stats { font-size: 0.875rem; color: var(--text-color-muted); margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+        #negativeFeedbackForm { margin-top: 1rem; }
+        
+        .comments-section { margin-top: 2rem; }
+        .comments-section h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .comment-post-area {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .comment-post-area img { width: 36px; height: 36px; border-radius: 50%; margin-top: 5px;}
+        .comment-input-wrapper { flex-grow: 1; }
+        .comment-input-wrapper textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color-darker);
+            border-radius: var(--border-radius);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .comment-post-actions { text-align: right; margin-top: 0.5rem; }
+        
+        .comment-display-area { margin-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem; }
+        .comment { display: flex; gap: 0.75rem; align-items: flex-start; }
+        .comment img { width: 32px; height: 32px; border-radius: 50%; }
+        .comment-content {
+            flex-grow: 1;
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.75rem 1rem;
+        }
+        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+        .comment-author { font-weight: 600; color: var(--text-color); font-size: 0.9rem; }
+        .comment-timestamp { color: var(--text-color-muted); font-size: 0.75rem; }
+        .comment-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-color-subtle);
+            white-space: pre-wrap;
+        }
+        .comment-actions { margin-top: 0.5rem; }
+        .comment-actions button {
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+        }
+        .comment-actions button:hover { color: var(--primary-color); }
+
+        /* Dashboard Styles */
+        .dashboard-filter-bar {
+            background-color: var(--bg-color-alt);
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius-lg);
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+        }
+        .dashboard-filter-bar .form-group {
+            margin-bottom: 0;
+            flex-grow: 1;
+            min-width: 180px;
+        }
+        .dashboard-filter-bar input {
+            padding: 0.5rem 0.75rem;
+        }
+        .dashboard-filter-bar .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .dashboard-filter-bar .date-input-container {
+            position: relative;
+        }
+        .dashboard-filter-bar .date-input-container .date-picker-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color-muted);
+            pointer-events: none;
+        }
+        .dashboard-filter-bar .date-input-container input[type="date"] {
+            padding-right: 2.5rem; /* Make space for the icon */
+        }
+        .dashboard-filter-bar .date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: auto;
+            height: auto;
+            color: transparent;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .dashboard-stat-card {
+            background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+        .dashboard-stat-card i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+        .dashboard-stat-card .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        .dashboard-stat-card .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-color-muted);
+        }
+        .dashboard-quicklink-card, .dashboard-info-card {
+             background-color: var(--bg-color-alt);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+        }
+         .dashboard-quicklink-card h3, .dashboard-info-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        .dashboard-quicklink-card ul, .dashboard-info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .dashboard-quicklink-card ul li a, .dashboard-info-card ul li a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+         .dashboard-quicklink-card ul li a:hover, .dashboard-info-card ul li a:hover {
+            text-decoration: underline;
+        }
+         .dashboard-info-card ul li {
+            font-size: 0.9rem;
+            color: var(--text-color-subtle);
+            padding: 0.3rem 0;
+         }
+         .dashboard-info-card ul li strong {
+            color: var(--text-color);
+         }
+         .dashboard-info-card ul li .meta {
+            font-size: 0.75rem;
+            display: block;
+            color: var(--text-color-muted);
+         }
+        .viewer-dashboard-message .card {
+            text-align: center;
+            padding: 40px 20px;
+            min-height: auto;
+        }
+        .viewer-dashboard-message .card i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        .viewer-dashboard-message .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+        .viewer-dashboard-message .card p {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+            margin-bottom: 0;
+        }
+        .viewer-dashboard-message .card p.subtle-note {
+             font-size: 0.9rem;
+             margin-top: 1rem;
+        }
+
+        .dashboard-table-card {
+            background-color: var(--bg-color-alt);
+            padding: 0;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--card-shadow);
+            grid-column: 1 / -1;
+            overflow: hidden;
+        }
+        .dashboard-table-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .dashboard-table-wrapper {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .dashboard-table-card table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .dashboard-table-card th, .dashboard-table-card td {
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        .dashboard-table-card th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-color-muted);
+            background-color: var(--bg-color);
+        }
+        .dashboard-table-card tr:last-child td {
+            border-bottom: none;
+        }
+        .dashboard-table-card td {
+            font-size: 0.9rem;
+            color: var(--text-color-subtle);
+        }
+        .dashboard-table-card td .user-name-cell {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        .dashboard-table-card td .email-cell {
+            font-size: 0.85rem;
+        }
+        .dashboard-table-card .action-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        .dashboard-table-card .action-badge.view,
+        .dashboard-table-card .action-badge.viewed { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .dashboard-table-card .action-badge.comment,
+        .dashboard-table-card .action-badge.commented { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .dashboard-table-card .action-badge.create,
+        .dashboard-table-card .action-badge.created { background-color: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .dashboard-table-card .action-badge.edit,
+        .dashboard-table-card .action-badge.updated { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .dashboard-table-card .action-badge.positive_feedback { background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .dashboard-table-card .action-badge.negative_feedback { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+        
+        .dashboard-table-card td a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .dashboard-table-card td a:hover {
+            text-decoration: underline;
+        }
+        
+        #viewHistorySection table, #changeHistorySection table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #viewHistorySection th, #viewHistorySection td, #changeHistorySection th, #changeHistorySection td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: normal;
+            word-break: break-word;
+            text-align: left;
+        }
+        #viewHistorySection th, #changeHistorySection th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-color-muted);
+            background-color: var(--bg-color);
+        }
+        #viewHistorySection th:nth-child(1), #viewHistorySection td:nth-child(1) { width: 40%; }
+        #viewHistorySection th:nth-child(2), #viewHistorySection td:nth-child(2) { width: 25%; text-align: center;}
+        #viewHistorySection th:nth-child(3), #viewHistorySection td:nth-child(3) { width: 35%; text-align: right; }
+        #viewHistorySection .action-badge { margin: 0 auto; }
+
+        /* === MODIFIED CSS FOR CHANGE HISTORY TABLE === */
+        #changeHistorySection th:nth-child(1), #changeHistorySection td:nth-child(1) { width: 25%; } /* Modified By */
+        #changeHistorySection th:nth-child(2), #changeHistorySection td:nth-child(2) { width: 25%; text-align: center; } /* Modification Date */
+        #changeHistorySection th:nth-child(3), #changeHistorySection td:nth-child(3) { width: 20%; text-align: center; } /* Time Since Last Change */
+        #changeHistorySection th:nth-child(4), #changeHistorySection td:nth-child(4) { width: 30%; text-align: center; } /* Actions */
+
+
+        /* Styles for Diff2HTML Modal */
+        #diffModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #diffModal .diff-modal-content {
+            background: #2a3142;
+            color: #d1d5db;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        #diffModal .diff-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        #diffModal .diff-modal-header h3 {
+             margin: 0;
+             font-size: 1.25rem;
+        }
+        #diffModal .close-diff-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-color-muted);
+            cursor: pointer;
+        }
+        #diffModal .diff-modal-body {
+            flex-grow: 1;
+            overflow: auto;
+            background-color: #1f2937;
+            border-radius: var(--border-radius);
+            padding: 0.5rem;
+        }
+        /* Diff2HTML Theme Adjustments */
+        .d2h-file-header { display: none; }
+        .d2h-wrapper { text-align: left; }
+        .d2h-code-line {
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .d2h-code-side-linenumber {
+            background-color: #1f2937;
+            border-color: #374151;
+            color: #9ca3af;
+        }
+        .d2h-code-line-ctn {
+            background-color: #2a3142;
+        }
+        .d2h-ins { background-color: rgba(34, 197, 94, 0.15); border-color: #22c55e; }
+        .d2h-del { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
+
+
+        @media print {
+            body, .container-fluid {
+                margin: 0;
+                padding: 0;
+                background-color: white !important;
+                color: black !important;
+                font-size: 12pt;
+            }
+            .sidebar, .content-header, .sidebar-footer, footer,
+            .mobile-sidebar-toggle, #toastContainer,
+            .item-actions-bar .button:not(#printItemBtn):not(#downloadPdfItemBtn),
+            .item-actions-bar button[id*="edit"], .item-actions-bar button[id*="delete"], .item-actions-bar button[id*="share"],
+            .item-feedback-section, .comments-section,
+            .modal-overlay,
+            .copy-script-btn, .copyable-script-box .copy-btn,
+            .dashboard-overview-container,
+            .search-container, .user-profile,
+            #openAddContentBtnInSection,
+            .card-hover-details,
+            .card-actions,
+            .updated-badge, .last-updated-info
+            {
+                display: none !important;
+            }
+
+            .content-wrapper {
+                margin-left: 0 !important;
+                padding: 1cm !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+            #pageContentArea { padding: 0 !important; }
+            
+            #itemDetailViewPlaceholder, #standardSectionContentPlaceholder {
+                display: block !important;
+            }
+            .card, .mermaid-diagram-card, .compensation-box, .content-section-box, .copyable-script-box {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                margin-bottom: 0.5cm !important;
+                background-color: white !important;
+                page-break-inside: avoid;
+            }
+            
+            .card *, .mermaid-diagram-card *, .compensation-box *, .content-section-box *, .copyable-script-box * {
+                color: black !important;
+                background-color: transparent !important;
+            }
+             h1, h2, h3, h4, h5, h6 { color: black !important; }
+
+            .kb-content a {
+                color: #0066cc !important;
+                text-decoration: underline !important;
+            }
+            .kb-content a[href^="http"]::after,
+            .kb-content a[href^="https"]::after {
+                content: " (" attr(href) ")";
+                font-size: 0.8em;
+                color: #555 !important;
+                word-break: break-all;
+            }
+            .kb-content a[href^="#"]::after {
+                content: "";
+            }
+
+            .mermaid-diagram-container { background-color: white !important; }
+            .mermaid-diagram-container svg {
+                background-color: white !important;
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            .mermaid-diagram-container text,
+            .mermaid-diagram-container .edgeLabel,
+            .mermaid-diagram-container .label,
+            .mermaid-diagram-container .messageText {
+                fill: black !important;
+                font-family: 'Arial', sans-serif !important;
+            }
+            .mermaid-diagram-container .actor {
+                stroke: #333 !important;
+                fill: white !important;
+            }
+            .mermaid-diagram-container rect,
+            .mermaid-diagram-container polygon,
+            .mermaid-diagram-container ellipse,
+            .mermaid-diagram-container circle {
+                stroke: #333 !important;
+                fill: #f0f0f0 !important;
+            }
+            .mermaid-diagram-container .cluster rect {
+                fill: #e8e8e8 !important;
+                stroke: #aaa !important;
+            }
+            .mermaid-diagram-container .arrowheadPath {
+                fill: #333 !important;
+            }
+            .mermaid-diagram-container .edgePaths path {
+                stroke: #333 !important;
+            }
+            pre.mermaid {
+                background-color: #f8f8f8 !important;
+                border: 1px solid #ddd !important;
+                padding: 8px !important;
+            }
+        }
+
 </style>
 </head>
 <body>
-
 <div class="modal-overlay hidden" id="addContentModalOverlay">
 <div class="modal-content">
 <div class="modal-header">
@@ -1342,35 +1936,16 @@
         </div>
     </div>
 </div>
-
-<!-- NEW: Access Denied Modal -->
-<div class="modal-overlay hidden" id="accessDeniedModalOverlay">
-    <div class="modal-content" style="max-width: 28rem; text-align: center;">
-        <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 0.5rem;">
-            <h2 style="color: var(--primary-color);"><i class="fas fa-user-shield"></i> Access Restricted</h2>
-        </div>
-        <div class="modal-body" style="padding-bottom: 1.5rem;">
-            <p>This feature is available for administrators only.</p>
-        </div>
-        <div class="modal-actions no-border" style="justify-content: center;">
-            <button class="button" id="closeAccessDeniedModalBtn">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODIFIED: Change History & Diff Viewer Modal -->
+<!-- Diff Viewer Modal -->
 <div id="diffModal" class="modal-overlay hidden">
-  <div class="modal-content">
-    <div class="modal-header">
-        <h3 id="diffModalTitle"><i class="fas fa-history"></i> Change History</h3>
-        <button class="close-button" id="closeDiffModalBtn">×</button>
+  <div class="diff-modal-content">
+    <div class="diff-modal-header">
+        <h3>Viewing Changes</h3>
+        <button class="close-diff-modal" id="closeDiffModalBtn">×</button>
     </div>
-    <div class="modal-body" id="diffModalBody">
-        <!-- Content will be dynamically rendered here -->
-    </div>
+    <div class="diff-modal-body" id="diffContent"></div>
   </div>
 </div>
-
 <div class="container-fluid">
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
@@ -1627,10 +2202,6 @@
     const htmlTextarea = document.getElementById('htmlTextarea');
     const diffModal = document.getElementById('diffModal');
     const closeDiffModalBtn = document.getElementById('closeDiffModalBtn');
-    const diffModalTitle = document.getElementById('diffModalTitle');
-    const diffModalBody = document.getElementById('diffModalBody');
-    const accessDeniedModalOverlay = document.getElementById('accessDeniedModalOverlay');
-    const closeAccessDeniedModalBtn = document.getElementById('closeAccessDeniedModalBtn');
     
     function isCurrentUserAdmin() {
         if (!currentUser) return false;
@@ -1934,7 +2505,7 @@
                      <h3>💡 Quick Links</h3>
                      <ul>
                         <li><a href="#" id="addNewArticleLink"><i class="fas fa-plus-circle fa-fw"></i> Add New Content</a></li>
-                        <li><a href="audit.html" id="auditLogLink"><i class="fas fa-history fa-fw"></i> View Audit Log</a></li>
+                        <li><a href="#" id="browseTemplatesLink"><i class="fas fa-file-alt fa-fw"></i> Browse Templates</a></li>
                      </ul>
                 </div>
             </div>
@@ -1994,13 +2565,6 @@
             </li>`
         }).join('') : '<li>No data yet.</li>';
 
-        document.getElementById('auditLogLink').addEventListener('click', function(e) {
-            if (!isCurrentUserAdmin()) {
-                e.preventDefault();
-                accessDeniedModalOverlay.classList.remove('hidden');
-            }
-        });
-
         const handleQuickAdd = (e) => {
             e.preventDefault();
             const firstSectionId = kbSystemData.sections[0]?.id;
@@ -2011,6 +2575,7 @@
             }
         };
         document.getElementById('addNewArticleLink').addEventListener('click', handleQuickAdd);
+        document.getElementById('browseTemplatesLink').addEventListener('click', handleQuickAdd);
 
         document.getElementById('applyFiltersBtn').addEventListener('click', applyDashboardFilters);
         document.getElementById('filterUserName').addEventListener('input', applyDashboardFilters);
@@ -2023,6 +2588,7 @@
             document.getElementById('filterDate').value = '';
             renderDashboardTables(originalDashboardData);
         });
+
         
         renderDashboardTables(originalDashboardData);
 
@@ -2249,7 +2815,6 @@
 
         if (isCurrentUserAdmin()) {
              detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
-             detailHTML += `<button id="viewChangesBtn" class="button-secondary"><i class="fas fa-history"></i> View Change History</button>`;
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         
@@ -2258,6 +2823,7 @@
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
         
+        // IMPORTANT CHANGE: Do not wrap the content in a card if it contains a full-width kb-container
         const hasCustomContainer = itemData.content_en && itemData.content_en.includes('class="kb-container"');
 
         if (hasCustomContainer) {
@@ -2324,11 +2890,29 @@
                 </div>
             </div>`;
         
+        if (isCurrentUserAdmin()) {
+            detailHTML += `
+                <div class="comments-section" id="changeHistorySection" style="margin-top: 1rem;">
+                    <h4><i class="fas fa-edit"></i> Change History</h4>
+                    <div class="dashboard-table-wrapper" style="max-height: 250px;">
+                        <table>
+                            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Time Since Last Change</th><th>Actions</th></tr></thead>
+                            <tbody id="changeHistoryTbody">
+                                <tr><td colspan="4" style="text-align:center; padding: 1rem;">Loading change history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
         itemDetailViewPlaceholder.innerHTML = detailHTML;
         
         setTimeout(() => {
             renderComments(itemData.id);
             displayViewHistory(itemData.id);
+            if (isCurrentUserAdmin()) {
+                displayChangeHistory(itemData.id);
+            }
         }, 300);
 
         if (itemDetailViewPlaceholder.querySelector('pre.mermaid')) {
@@ -2405,28 +2989,27 @@
         `).join('');
     }
 
-    async function displayChangeHistoryModal(itemId) {
-        diffModalTitle.innerHTML = `<i class="fas fa-history"></i> Change History`;
-        diffModalBody.innerHTML = `<p style="text-align:center; padding: 2rem;">Loading history...</p>`;
-        diffModal.classList.remove('hidden');
-
+    async function displayChangeHistory(itemId) {
+        const historyTbody = document.getElementById('changeHistoryTbody');
+        if (!historyTbody) return;
+    
         const { data, error } = await supabase
             .from('case_history')
-            .select('*')
+            .select('id, modified_by_name, modified_at, field_changed, old_value, new_value')
             .eq('case_id', itemId)
             .order('modified_at', { ascending: false });
-
-        if (error || !data) {
-            diffModalBody.innerHTML = `<p style="text-align:center; color:red;">Failed to load change history.</p>`;
-            console.error(error);
+    
+        if (error) {
+            console.error('Error fetching change history:', error);
+            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Failed to load change history. Check console.</td></tr>`;
             return;
         }
-
+    
         if (data.length === 0) {
-            diffModalBody.innerHTML = `<p style="text-align:center; padding: 2rem;">No modifications have been recorded for this item.</p>`;
+            historyTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
             return;
         }
-
+        
         const groupedByTimestamp = data.reduce((acc, log) => {
             const timestamp = log.modified_at;
             if (!acc[timestamp]) {
@@ -2440,7 +3023,7 @@
             return acc;
         }, {});
 
-        const groupedLogs = Object.values(groupedByTimestamp).sort((a,b) => new Date(b.modified_at) - new Date(a.modified_at));
+        const groupedLogs = Object.values(groupedByTimestamp);
 
         const finalLogs = [];
         for (let i = 0; i < groupedLogs.length; i++) {
@@ -2449,58 +3032,44 @@
             const timeDiff = formatTimeDifference(currentGroup.modified_at, previousGroup ? previousGroup.modified_at : null);
             finalLogs.push({ ...currentGroup, timeDiff });
         }
-        
-        let tableHTML = `<div class="history-table-wrapper"><table>
-            <thead><tr><th>Modified By</th><th>Modification Date</th><th>Time Since Last Change</th><th>Actions</th></tr></thead>
-            <tbody>`;
-        
-        finalLogs.forEach((group, index) => {
-            const fieldsChanged = [...new Set(group.changes.map(c => c.field_changed))].join(', ');
+
+        historyTbody.innerHTML = finalLogs.map(group => {
+            const fieldsChangedSummary = [...new Set(group.changes.map(c => escapeHTML(c.field_changed)))].join(', ');
             const changesDataAttribute = escapeHTML(JSON.stringify(group.changes));
-            tableHTML += `
+
+            return `
                 <tr>
-                    <td>${escapeHTML(group.modified_by_name || 'System')}</td>
-                    <td>${formatReadableDate(group.modified_at)}</td>
-                    <td>${group.timeDiff}</td>
-                    <td>
-                        <div style="display:flex; flex-direction:column; gap: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-color-muted);">${escapeHTML(fieldsChanged)}</span>
-                            <button class="button button-secondary view-details-btn" data-changes='${changesDataAttribute}' data-timestamp="${group.modified_at}">
+                    <td>${escapeHTML(group.modified_by_name || 'Unknown User')}</td>
+                    <td style="text-align:center;">${formatReadableDate(group.modified_at)}</td>
+                    <td style="text-align:center; font-family: monospace; color: var(--text-color-muted);">${group.timeDiff}</td>
+                    <td style="text-align:center;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-color-muted); text-transform: capitalize;">${fieldsChangedSummary}</span>
+                            <button class="button button-secondary view-changes-btn" data-changes='${changesDataAttribute}' style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
                                 View Details
                             </button>
                         </div>
                     </td>
-                </tr>`;
-        });
-        tableHTML += `</tbody></table></div>`;
-        diffModalBody.innerHTML = tableHTML;
+                </tr>
+            `;
+        }).join('');
     }
 
-    function showGroupedDiff(changes, timestamp) {
+    function showGroupedDiff(changes) {
         if (!changes || changes.length === 0) {
             showToast('No changes to display.', 'info');
             return;
         }
-        
-        const readableDate = formatReadableDate(timestamp);
-        diffModalTitle.innerHTML = `<button class="button-secondary" id="backToHistoryBtn" style="margin-right: 1rem;"><i class="fas fa-arrow-left"></i> Back</button> Changes from: ${readableDate}`;
 
         const combinedDiffString = changes.map(change => {
             const oldContent = change.old_value || '';
             const newContent = change.new_value || '';
             const fieldName = change.field_changed || 'Field';
-
-            if (fieldName.includes('content') && (oldContent.length > 50000 || newContent.length > 50000)) {
-                return Diff.createTwoFilesPatch(
-                    `${fieldName} (Before)`, `${fieldName} (After)`, 
-                    'Content too large to display diff.', 'Content too large to display diff.', 
-                    '', '', { context: 0 }
-                );
-            }
-            
             return Diff.createTwoFilesPatch(
-                `${fieldName} (Before)`, `${fieldName} (After)`, 
-                oldContent, newContent, 
+                `${fieldName} (Before)`, 
+                `${fieldName} (After)`, 
+                oldContent, 
+                newContent, 
                 '', '', { context: 5 }
             );
         }).join('\n');
@@ -2511,7 +3080,36 @@
             outputFormat: 'side-by-side'
         });
 
-        diffModalBody.innerHTML = `<div class="diff-view-container">${diffHtml}</div>`;
+        document.getElementById('diffContent').innerHTML = diffHtml;
+        diffModal.style.display = 'flex';
+        setTimeout(() => diffModal.classList.remove('hidden'), 10);
+    }
+
+
+    async function showDiff(versionId) {
+        const { data: versionRecord, error: versionError } = await supabase.from('case_history').select('*').eq('id', versionId).single();
+        if (versionError || !versionRecord) {
+            showToast('Could not load version details.', 'error');
+            return;
+        }
+
+        const oldContent = versionRecord.old_value || '';
+        const newContent = versionRecord.new_value || '';
+
+        if (oldContent === newContent) {
+            showToast('No content changes to display for this version.', 'info');
+            return;
+        }
+        
+        const diffString = Diff.createTwoFilesPatch('Before', 'After', oldContent, newContent, '', '', { context: 5 });
+        const diffHtml = Diff2Html.html(diffString, {
+            drawFileList: false,
+            matching: 'lines',
+            outputFormat: 'side-by-side'
+        });
+
+        document.getElementById('diffContent').innerHTML = diffHtml;
+        diffModal.classList.remove('hidden');
     }
 
     const contentTemplates = {
@@ -2843,19 +3441,9 @@
             insertHtmlModalOverlay.classList.add('hidden');
         });
 
-        closeDiffModalBtn.addEventListener('click', () => diffModal.classList.add('hidden'));
-        closeAccessDeniedModalBtn.addEventListener('click', () => accessDeniedModalOverlay.classList.add('hidden'));
-
-        diffModal.addEventListener('click', e => {
-            const viewBtn = e.target.closest('.view-details-btn');
-            if (viewBtn) {
-                const changes = JSON.parse(viewBtn.dataset.changes);
-                const timestamp = viewBtn.dataset.timestamp;
-                showGroupedDiff(changes, timestamp);
-            }
-            if (e.target.id === 'backToHistoryBtn') {
-                if(currentOpenItem) displayChangeHistoryModal(currentOpenItem.itemId);
-            }
+        closeDiffModalBtn.addEventListener('click', () => {
+            diffModal.style.display = 'none';
+            diffModal.classList.add('hidden');
         });
 
         document.addEventListener('click', e => {
@@ -2863,8 +3451,16 @@
         });
         
         pageContentArea.addEventListener('click', async (e) => {
-            if (e.target.id === 'viewChangesBtn') {
-                if(currentOpenItem) displayChangeHistoryModal(currentOpenItem.itemId);
+            
+            const viewChangesBtn = e.target.closest('button.view-changes-btn');
+            if (viewChangesBtn && viewChangesBtn.dataset.changes) {
+                try {
+                    const changes = JSON.parse(viewChangesBtn.dataset.changes);
+                    showGroupedDiff(changes);
+                } catch (err) {
+                    console.error("Failed to parse changes data:", err);
+                    showToast('Could not display changes.', 'error');
+                }
                 return;
             }
 
