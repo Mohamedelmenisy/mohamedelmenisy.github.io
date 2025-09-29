@@ -383,6 +383,7 @@
   </script>
 </div>
 
+<!-- Admin access restricted card -->
 <div id="restricted-card" class="hidden flex items-center justify-center h-screen bg-gray-900">
   <div class="bg-gray-800 text-center p-10 rounded-2xl shadow-2xl max-w-md">
     <div class="text-indigo-400 text-6xl mb-4">🔒</div>
@@ -393,24 +394,38 @@
 </div>
 
 
+<!-- Admin check script -->
 <script type="module">
 import { supabase } from './supabase.js';
 
 async function checkAdminAccess() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  const { data, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!error && data && data.role !== 'admin') {
-    document.getElementById('dashboard').classList.add('hidden');
-    document.getElementById('restricted-card').classList.remove('hidden');
+  try {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      // show restricted if not logged in
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('restricted-card').classList.remove('hidden');
+      return;
+    }
+    const { data, error } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (error || !data || data.role !== 'admin') {
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('restricted-card').classList.remove('hidden');
+    } else {
+      // admin: ensure dashboard visible (in case hidden)
+      document.getElementById('restricted-card').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+    }
+  } catch (e) {
+    console.error('admin check failed', e);
   }
 }
-checkAdminAccess();
+
+document.addEventListener('DOMContentLoaded', checkAdminAccess);
 </script>
 
 </body>
