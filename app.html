@@ -2936,27 +2936,27 @@
     async function displayChangeHistory(itemId) {
         const historyTbody = document.getElementById('changeHistoryTbody');
         if (!historyTbody) return;
-
-        // === FINAL FIX: Simplified the 'select' statement to only use required columns ===
+    
+        // === THE FINAL FIX IS HERE ===
+        // The query now correctly targets the 'case_history' table as confirmed by your screenshot.
+        // It also only selects columns that are guaranteed to exist.
         const { data, error } = await supabase
-            .from('case_history')
-            .select('id, modified_by_name, modified_at') // REMOVED 'field_changed' which caused the error
-            .eq('case_id', itemId)
+            .from('case_history') // CORRECT TABLE
+            .select('id, modified_by_name, modified_at') // CORRECT and SAFE columns
+            .eq('case_id', itemId) // CORRECT foreign key column
             .order('modified_at', { ascending: false });
-
+    
         if (error) {
             console.error('Error fetching change history:', error);
             historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:red;">Failed to load change history. Check console for details.</td></tr>`;
             return;
         }
-
+    
         if (data.length === 0) {
             historyTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No modifications have been recorded for this item yet.</td></tr>`;
             return;
         }
         
-        // The complex grouping logic was removed as it was the source of the error.
-        // Now, it will simply display a row for each entry, which is safer and functional.
         historyTbody.innerHTML = data.map(log => `
             <tr>
                 <td>${escapeHTML(log.modified_by_name || 'Unknown User')}</td>
@@ -3137,7 +3137,6 @@
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // This is crucial for the database trigger to work correctly
         await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id });
         await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name });
 
@@ -3275,7 +3274,6 @@
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
-    // This function activates scripts loaded from the database
     function initializeInjectedScripts() {
         const container = itemDetailViewPlaceholder;
         const scripts = container.querySelectorAll("script");
