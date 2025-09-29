@@ -1,324 +1,384 @@
 <!DOCTYPE html>
-<html class="dark" dir="ltr" lang="en">
+<html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>InfiniBase - Audit Log</title>
-    <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary-color: #6366f1; --primary-color-hover: #4f46e5; --text-color: #d1d5db;
-            --text-color-muted: #9ca3af; --text-color-inverted: #ffffff; --bg-color: #111827;
-            --bg-color-alt: #1f2937; --border-color: #374151; --border-color-darker: #4b5563;
-            --border-radius: 0.5rem; --border-radius-lg: 0.75rem;
-        }
-        body {
-            font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            margin: 0; font-size: 16px;
-        }
-        .header {
-            background-color: var(--bg-color-alt); padding: 1rem 2rem;
-            border-bottom: 1px solid var(--border-color); display: flex;
-            justify-content: space-between; align-items: center;
-        }
-        .header-brand {
-            font-size: 1.5rem; font-weight: 700; color: #F9FAFB; display: flex; align-items: center; gap: 0.75rem;
-        }
-        .main-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-        .page-title {
-            font-size: 2rem; font-weight: 800; color: var(--primary-color);
-            margin: 0 0 1rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;
-        }
-        .filters-card {
-            background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg);
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;
-            align-items: end; margin-bottom: 2rem;
-        }
-        .form-group { margin: 0; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
-        .form-group input {
-            width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker);
-            border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color);
-        }
-        .button {
-            background-color: var(--primary-color); color: var(--text-color-inverted); border: 1px solid transparent;
-            padding: 0.625rem 1rem; border-radius: var(--border-radius); cursor: pointer; font-weight: 500;
-            display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
-            justify-content: center;
-        }
-        .button:hover { background-color: var(--primary-color-hover); }
-        .button-secondary { background-color: transparent; color: var(--text-color-muted); border-color: var(--border-color-darker); }
-        .button-secondary:hover { background-color: var(--border-color); color: var(--text-color); }
-        .table-card { background-color: var(--bg-color-alt); border-radius: var(--border-radius-lg); overflow: hidden; }
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td {
-            padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left;
-            white-space: nowrap;
-        }
-        th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--text-color-muted); background-color: #2a3142; }
-        tr:last-child td { border-bottom: none; }
-        td a { color: var(--primary-color); text-decoration: none; font-weight: 500; }
-        td a:hover { text-decoration: underline; }
-        
-        .modal-overlay {
-            position: fixed; inset: 0; background-color: rgba(0,0,0,0.8); display: flex;
-            align-items: center; justify-content: center; z-index: 1000; opacity: 0;
-            transition: opacity 0.2s; pointer-events: none;
-        }
-        .modal-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            background: #1f2937; color: #d1d5db; width: 90%; max-width: 1200px;
-            height: 90vh; border-radius: var(--border-radius-lg); display: flex; flex-direction: column;
-            transform: scale(0.95); opacity: 0; transition: transform 0.2s, opacity 0.2s;
-        }
-        .modal-overlay:not(.hidden) .modal-content { transform: scale(1); opacity: 1; }
-        .modal-header { padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
-        .modal-header h3 { margin: 0; font-size: 1.25rem; }
-        .modal-header .close-button { background: none; border: none; font-size: 1.5rem; color: var(--text-color-muted); cursor: pointer; }
-        .modal-body { flex-grow: 1; overflow: auto; padding: 0.5rem; background-color: var(--bg-color); }
-        .d2h-file-header { display: none; }
-        .d2h-wrapper { text-align: left; }
-        .d2h-code-line { font-family: monospace; }
-        .d2h-ins { background-color: rgba(34, 197, 94, 0.15); }
-        .d2h-del { background-color: rgba(239, 68, 68, 0.15); }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>InfiniBase — Audit Log (Realtime, Full)</title>
 
-        .chart-container { background-color: var(--bg-color-alt); padding: 1.5rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; }
-        .chart-container h3 { margin-top: 0; text-align: center; }
-    </style>
+  <!-- External libs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9ca3af; --primary:#6366f1;
+      --border:rgba(255,255,255,0.04);
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:#d1d5db;}
+    .container{max-width:1200px;margin:24px auto;padding:0 16px;}
+    h1{font-weight:800;color:var(--primary);margin-bottom:14px;font-size:22px;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
+    .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:end;}
+    .input,select,button{background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--muted);padding:8px 10px;border-radius:8px;font-size:13px;}
+    .btn-primary{background:var(--primary);color:white;border:1px solid rgba(0,0,0,0.08);}
+    .table-wrap{overflow:auto;border-radius:8px;}
+    table{width:100%;border-collapse:collapse;min-width:1000px;}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:#cbd5e1;text-align:left;}
+    thead th{background:#071021;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;}
+    .muted{color:var(--muted);font-size:13px;}
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1000;visibility:hidden;opacity:0;transition:opacity .18s;}
+    .overlay.show{visibility:visible;opacity:1;}
+    .spinner{width:72px;height:72px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--primary);animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .toast{position:fixed;top:20px;right:20px;z-index:1100;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:white;box-shadow:0 8px 30px rgba(0,0,0,0.5);cursor:pointer;transform-origin:right top;transition:transform .18s ease,opacity .18s;}
+    .toast.hide{opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;}
+    .toast.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+    .highlight{background:rgba(99,102,241,0.18) !important;transition:background 1s;}
+    @media (max-width:980px){ .filters{flex-direction:column;align-items:stretch;} table{min-width:900px;} }
+  </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-brand">
-            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><rect width='32' height='32' rx='4' fill='#6366f1'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'>IB</text></svg>
-            <span>InfiniBase</span>
-        </div>
-        <a href="app.html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
-    </header>
+  <div class="container">
+    <h1>InfiniBase — Audit Log (Realtime)</h1>
 
-    <main class="main-content">
-        <h1 class="page-title"><i class="fas fa-history"></i> Change History Audit Log</h1>
+    <!-- Toast -->
+    <div id="toast" class="toast hide" role="status" aria-live="polite"></div>
 
-        <div class="chart-container">
-            <h3>Recent Activity (Last 7 Days)</h3>
-            <canvas id="activityChart" height="120"></canvas>
+    <!-- Overlay spinner -->
+    <div id="overlay" class="overlay"><div class="spinner" aria-hidden="true"></div></div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="filters" role="region" aria-label="filters">
+        <div style="flex:1;min-width:220px;">
+          <label class="muted" for="searchInput">Search (case title / slug / user / field)</label>
+          <input id="searchInput" class="input" placeholder="Search..." />
+        </div>
+        <div>
+          <label class="muted" for="fieldFilter">Field</label>
+          <select id="fieldFilter" class="input">
+            <option value="">All fields</option>
+            <option value="status">status</option>
+            <option value="assigned_to">assigned_to</option>
+            <option value="priority">priority</option>
+            <option value="title">title</option>
+          </select>
+        </div>
+        <div>
+          <label class="muted" for="userFilter">User</label>
+          <input id="userFilter" class="input" placeholder="User name or email" />
+        </div>
+        <div>
+          <label class="muted" for="timeRange">Time Range</label>
+          <select id="timeRange" class="input">
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div id="customDates" style="display:none;">
+          <label class="muted">Start</label>
+          <input id="startDate" type="date" class="input" />
+          <label class="muted">End</label>
+          <input id="endDate" type="date" class="input" />
         </div>
 
-        <div class="filters-card">
-            <div class="form-group">
-                <label for="filterUser">Filter by User</label>
-                <input type="text" id="filterUser" placeholder="e.g., Mohamed Elmenisy">
-            </div>
-            <div class="form-group">
-                <label for="filterItem">Filter by Item Title</label>
-                <input type="text" id="filterItem" placeholder="e.g., Delayed Orders">
-            </div>
-            <div class="form-group">
-                <label for="filterDate">Filter by Date</label>
-                <input type="date" id="filterDate">
-            </div>
-            <div style="display: flex; gap: 1rem; grid-column: span 1 / auto;">
-                <button id="applyFiltersBtn" class="button" style="width: 100%;"><i class="fas fa-filter"></i> Apply</button>
-                <button id="clearFiltersBtn" class="button-secondary" style="width: 100%;"><i class="fas fa-times"></i> Clear</button>
-            </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="applyBtn" class="btn-primary input">Apply</button>
+          <button id="clearBtn" class="input">Clear</button>
+          <button id="exportBtn" class="input">Export CSV</button>
         </div>
-
-        <div class="table-card">
-            <div class="table-wrapper">
-                <table id="auditTable">
-                    <thead>
-                        <tr>
-                            <th>Case Title</th>
-                            <th>Field Changed</th>
-                            <th>Modified By</th>
-                            <th>Timestamp</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="auditTableBody">
-                        <tr><td colspan="5" style="text-align: center; padding: 2rem;">Loading Data...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    <div id="diffModal" class="modal-overlay hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="diffModalTitle">Viewing Changes</h3>
-            <button class="close-button" id="closeDiffModalBtn">×</button>
-        </div>
-        <div class="modal-body" id="diffContent"></div>
       </div>
     </div>
 
-    <script type="module">
-        import { supabase } from './supabase.js';
-        let originalData = [];
-        let activityChartInstance;
+    <!-- Charts + Stats -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;">
+          <h3 class="muted">Top Changed Fields</h3>
+          <canvas id="fieldsChart" height="120"></canvas>
+        </div>
+        <div style="flex:1;min-width:220px;">
+          <h3 class="muted">Top Editors</h3>
+          <canvas id="editorsChart" height="120"></canvas>
+        </div>
+        <div style="width:220px;">
+          <h3 class="muted">Total Changes</h3>
+          <div id="totalChanges" style="font-size:24px;font-weight:700;">0</div>
+        </div>
+      </div>
+    </div>
 
-        // AUTH CHECK
-        async function checkAuth() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                window.location.href = 'login.html';
-                return;
-            }
-            const { data: profile, error } = await supabase.from('users').select('role, is_admin').eq('id', user.id).single();
-            if (error || (!profile.is_admin && profile.role !== 'admin')) {
-                alert('Access Denied: This page is for administrators only.');
-                window.location.href = 'app.html';
-            }
+    <!-- Audit table -->
+    <div class="card">
+      <h3 class="muted">Audit Trail</h3>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table role="table" aria-label="Audit trail">
+          <thead>
+            <tr>
+              <th>Case</th>
+              <th>Field</th>
+              <th>Old Value</th>
+              <th>New Value</th>
+              <th>Modified At</th>
+              <th>Modified By</th>
+            </tr>
+          </thead>
+          <tbody id="auditBody">
+            <tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:12px;">
+        <button id="loadMore" class="input">Load more</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    // ---------------- state ----------------
+    let auditStore = []; // master list of audit rows (most recent first)
+    let filtered = [];
+    let pageSize = 25;
+    let currentPage = 1;
+
+    // charts state
+    let fieldsChart = null;
+    let editorsChart = null;
+
+    // dom refs
+    const overlay = document.getElementById('overlay');
+    const toast = document.getElementById('toast');
+    const auditBody = document.getElementById('auditBody');
+    const totalChangesEl = document.getElementById('totalChanges');
+    const fieldsChartCtx = document.getElementById('fieldsChart').getContext('2d');
+    const editorsChartCtx = document.getElementById('editorsChart').getContext('2d');
+
+    // helpers
+    function showOverlay(show=true){ overlay.classList.toggle('show', !!show); }
+    function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    function formatTime(ts){ if(!ts) return '-'; try{ return new Date(ts).toLocaleString(); }catch(e){return ts;} }
+
+    // ---------------- fetch initial data ----------------
+    async function fetchInitial(){
+      showOverlay(true);
+      try{
+        // RPC: get_full_case_history() should return the audit rows (id, case_id, case_title, slug, field_changed, old_value, new_value, modified_at, modified_by_name)
+        const { data, error } = await supabase.rpc('get_full_case_history');
+        if(error){ console.error('get_full_case_history error', error); auditStore = []; }
+        else auditStore = data || [];
+
+        // Build charts from initial snapshot (counts)
+        buildChartsFromStore();
+        applyFiltersAndRender();
+      } finally {
+        showOverlay(false);
+      }
+    }
+
+    // ---------------- rendering ----------------
+    function renderTable(list){
+      auditBody.innerHTML = '';
+      if(!list || !list.length){
+        auditBody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">No records</td></tr>';
+        totalChangesEl.textContent = 0;
+        return;
+      }
+      const end = Math.min(list.length, currentPage * pageSize);
+      for(let i=0;i<end;i++){
+        const r = list[i];
+        const rowId = `row-${i}`;
+        const oldVal = typeof r.old_value === 'object' ? JSON.stringify(r.old_value) : (r.old_value || '');
+        const newVal = typeof r.new_value === 'object' ? JSON.stringify(r.new_value) : (r.new_value || '');
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.innerHTML = `
+          <td>${escapeHtml(r.case_title || r.slug || '-')}</td>
+          <td>${escapeHtml(r.field_changed || '-')}</td>
+          <td style="white-space:pre-wrap;max-width:300px">${escapeHtml(oldVal)}</td>
+          <td style="white-space:pre-wrap;max-width:300px">${escapeHtml(newVal)}</td>
+          <td>${escapeHtml(formatTime(r.modified_at))}</td>
+          <td>${escapeHtml(r.modified_by_name)}</td>
+        `;
+        auditBody.appendChild(tr);
+      }
+      totalChangesEl.textContent = list.length;
+    }
+
+    // ---------------- filters ----------------
+    function applyFiltersAndRender(){
+      const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const field = (document.getElementById('fieldFilter').value || '').toLowerCase();
+      const user = (document.getElementById('userFilter').value || '').toLowerCase();
+      const range = (document.getElementById('timeRange').value || 'all');
+      let start=null,end=null;
+      if(range==='today'){ const now = new Date(); start=new Date(now.getFullYear(),now.getMonth(),now.getDate()); end=new Date(start); end.setDate(end.getDate()+1); }
+      else if(range==='7d'){ end=new Date(); start=new Date(); start.setDate(start.getDate()-6); }
+      else if(range==='30d'){ end=new Date(); start=new Date(); start.setDate(start.getDate()-29); }
+      else if(range==='custom'){ const s=document.getElementById('startDate').value; const e=document.getElementById('endDate').value; start = s ? new Date(s+'T00:00:00') : null; end = e ? new Date(e+'T23:59:59') : null; }
+
+      filtered = auditStore.filter(r => {
+        // time filter
+        if(start && end){
+          const d = new Date(r.modified_at);
+          if(d < start || d > end) return false;
         }
-
-        function formatReadableDate(isoString) {
-            if (!isoString) return 'N/A';
-            return new Date(isoString).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        // field filter
+        if(field && field.length && String(r.field_changed||'').toLowerCase() !== field) return false;
+        // user filter
+        if(user && user.length){
+          const uname = (r.modified_by_name||'').toLowerCase();
+          if(!uname.includes(user)) return false;
         }
+        // search filter across case title, slug, old/new values
+        if(search && search.length){
+          const hay = (r.case_title||'') + '|' + (r.slug||'') + '|' + JSON.stringify(r.old_value||'') + '|' + JSON.stringify(r.new_value||'');
+          if(!hay.toLowerCase().includes(search)) return false;
+        }
+        return true;
+      });
 
-        async function fetchAuditData() {
-            // UPDATED: Changed RPC call to the correct one from user's SQL
-            const { data, error } = await supabase.rpc('get_full_case_history');
-            if (error) {
-                console.error("Error fetching audit data:", error);
-                document.getElementById('auditTableBody').innerHTML = `<tr><td colspan="5" style="text-align: center; color: red; padding: 2rem;">Failed to load data. Please ensure the 'get_full_case_history' function exists in your database.</td></tr>`;
-                return;
+      currentPage = 1;
+      renderTable(filtered);
+    }
+
+    // ---------------- charts ----------------
+    function buildChartsFromStore(){
+      // Top changed fields
+      const fieldCounts = {};
+      const editorCounts = {};
+      for(const r of auditStore){
+        const f = r.field_changed || 'unknown';
+        fieldCounts[f] = (fieldCounts[f] || 0) + 1;
+        const u = r.modified_by_name || 'unknown';
+        editorCounts[u] = (editorCounts[u] || 0) + 1;
+      }
+      const fieldLabels = Object.keys(fieldCounts).sort((a,b)=>fieldCounts[b]-fieldCounts[a]).slice(0,8);
+      const fieldValues = fieldLabels.map(l=>fieldCounts[l]);
+      const editorLabels = Object.keys(editorCounts).sort((a,b)=>editorCounts[b]-editorCounts[a]).slice(0,8);
+      const editorValues = editorLabels.map(l=>editorCounts[l]);
+
+      // render fields chart
+      if(fieldsChart) fieldsChart.destroy();
+      fieldsChart = new Chart(fieldsChartCtx, {
+        type: 'bar',
+        data: { labels: fieldLabels, datasets: [{ label:'Changes', data: fieldValues, backgroundColor:'#10b981' }] },
+        options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+      });
+
+      // render editors chart
+      if(editorsChart) editorsChart.destroy();
+      editorsChart = new Chart(editorsChartCtx, {
+        type: 'bar',
+        data: { labels: editorLabels, datasets: [{ label:'Edits', data: editorValues, backgroundColor:'#6366f1' }] },
+        options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+      });
+    }
+
+    // ---------------- CSV export ----------------
+    function exportCSV(list){
+      if(!list || !list.length){ alert('No data to export'); return; }
+      const headers = ['case_title','slug','field_changed','old_value','new_value','modified_at','modified_by_name'];
+      const rows = [headers.join(',')];
+      for(const r of list){
+        const oldVal = typeof r.old_value === 'object' ? JSON.stringify(r.old_value).replaceAll('"','""') : String(r.old_value||'').replaceAll('"','""');
+        const newVal = typeof r.new_value === 'object' ? JSON.stringify(r.new_value).replaceAll('"','""') : String(r.new_value||'').replaceAll('"','""');
+        const row = [`"${(r.case_title||'').replaceAll('"','""')}"`,`"${(r.slug||'').replaceAll('"','""')}"`,`"${(r.field_changed||'').replaceAll('"','""')}"`,`"${oldVal}"`,`"${newVal}"`,`"${r.modified_at}"`,`"${(r.modified_by_name||'').replaceAll('"','""')}"`];
+        rows.push(row.join(','));
+      }
+      const csv = rows.join('\\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'audit_export_' + new Date().toISOString().slice(0,10) + '.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // ---------------- realtime patching ----------------
+    function setupRealtime(){
+      // channel for case_history (table name in your DB might be 'case_history' or similar)
+      supabase.channel('public:case_history_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'case_history' }, payload => {
+          try{
+            const t = payload.eventType;
+            if(t === 'INSERT'){
+              auditStore.unshift(payload.new);
+              showTypedToast(payload.new, 'insert');
+            } else if(t === 'UPDATE'){
+              const idx = auditStore.findIndex(x => String(x.id) === String(payload.new.id));
+              if(idx > -1) auditStore[idx] = payload.new;
+              showTypedToast(payload.new, 'update');
+            } else if(t === 'DELETE'){
+              auditStore = auditStore.filter(x => String(x.id) !== String(payload.old.id));
+              showTypedToast(payload.old, 'delete');
             }
-            originalData = data;
-            renderTable(data);
-            renderChart(data);
+            // update charts and UI
+            buildChartsFromStore();
+            applyFiltersAndRender();
+          } catch(e){ console.error('realtime patch error', e); }
+        })
+        .subscribe();
+    }
+
+    // ---------------- toast ----------------
+    let toastTimer = null;
+    function showTypedToast(row, type){
+      clearTimeout(toastTimer);
+      const colors = { insert:'#16a34a', update:'#2563eb', delete:'#ef4444' };
+      const icons = { insert:'✅', update:'✏️', delete:'🗑️' };
+      const actor = row.modified_by_name || 'Unknown';
+      const title = row.case_title || row.slug || '-';
+      const f = row.field_changed || '-';
+      const time = formatTime(row.modified_at || row.activity_time);
+      const msg = `${icons[type] || 'ℹ️'} ${actor} ${type === 'insert' ? 'created' : (type==='delete'?'deleted':'updated')} "${title}" (${f}) — ${time}`;
+      toast.style.background = colors[type] || '#6366f1';
+      toast.innerHTML = `<span style="font-size:18px;margin-right:6px;">${icons[type] || 'ℹ️'}</span><div style="line-height:1.05;">${escapeHtml(msg)}</div>`;
+      toast.classList.remove('hide'); toast.classList.add('show');
+      // click behavior: try to find the row in filtered list and highlight it
+      toast.onclick = () => {
+        const idx = filtered.findIndex(x => String(x.id) === String(row.id));
+        if(idx > -1){
+          const el = document.getElementById('row-' + idx);
+          if(el){ el.scrollIntoView({ behavior:'smooth', block:'center' }); el.classList.add('highlight'); setTimeout(()=>el.classList.remove('highlight'),3500); }
+        } else {
+          window.scrollTo({ top:0, behavior:'smooth' });
         }
+        toast.classList.remove('show'); toast.classList.add('hide');
+      };
+      toastTimer = setTimeout(()=>{ toast.classList.remove('show'); toast.classList.add('hide'); }, 4500);
+    }
 
-        function renderChart(data) {
-            const ctx = document.getElementById('activityChart').getContext('2d');
-            const labels = [...Array(7)].map((_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                return d.toISOString().split('T')[0];
-            }).reverse();
+    // ---------------- UI events ----------------
+    document.getElementById('timeRange').addEventListener('change', (e)=>{
+      document.getElementById('customDates').style.display = (e.target.value === 'custom') ? 'inline-flex' : 'none';
+    });
+    document.getElementById('applyBtn').addEventListener('click', ()=> applyFiltersAndRender());
+    document.getElementById('clearBtn').addEventListener('click', ()=>{
+      document.getElementById('searchInput').value = '';
+      document.getElementById('fieldFilter').value = '';
+      document.getElementById('userFilter').value = '';
+      document.getElementById('timeRange').value = 'all';
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      applyFiltersAndRender();
+    });
+    document.getElementById('exportBtn').addEventListener('click', ()=> exportCSV(filtered));
+    document.getElementById('loadMore').addEventListener('click', ()=>{ currentPage++; renderTable(filtered); });
 
-            const activityCounts = labels.map(label => {
-                return data.filter(d => d.modified_at.startsWith(label)).length;
-            });
-            
-            if (activityChartInstance) activityChartInstance.destroy();
-            activityChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels.map(l => new Date(l).toLocaleDateString('en-US', {weekday: 'short'})),
-                    datasets: [{
-                        label: 'Number of Edits',
-                        data: activityCounts,
-                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                        borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 1,
-                        borderRadius: 5,
-                    }]
-                },
-                options: { 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { 
-                        y: { beginAtZero: true, ticks: { color: 'white', stepSize: 1 } }, 
-                        x: { ticks: { color: 'white' } } 
-                    },
-                    plugins: {
-                        legend: { display: false }
-                    }
-                }
-            });
-        }
+    // quick search enter key trigger
+    document.getElementById('searchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') applyFiltersAndRender(); });
 
-        function renderTable(data) {
-            const tableBody = document.getElementById('auditTableBody');
-            if (data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem;">No records found for the current filters.</td></tr>`;
-                return;
-            }
-            tableBody.innerHTML = data.map(row => `
-                <tr>
-                    <td><a href="app.html#cases/${row.slug}" target="_blank">${row.case_title || 'Unknown Item'}</a></td>
-                    <td>${row.field_changed}</td>
-                    <td>${row.modified_by_name || 'System'}</td>
-                    <td>${formatReadableDate(row.modified_at)}</td>
-                    <td>
-                        <button class="button-secondary view-diff-btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;"
-                            data-old-value='${JSON.stringify(row.old_value || '')}'
-                            data-new-value='${JSON.stringify(row.new_value || '')}'
-                            data-field-name="${row.field_changed}">
-                            <i class="fas fa-exchange-alt"></i> View Diff
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
+    // ---------------- boot ----------------
+    (async function boot(){
+      showOverlay(true);
+      await fetchInitial();
+      setupRealtime();
+      showOverlay(false);
+    })();
 
-        function applyFilters() {
-            const userFilter = document.getElementById('filterUser').value.toLowerCase();
-            const itemFilter = document.getElementById('filterItem').value.toLowerCase();
-            const dateFilter = document.getElementById('filterDate').value;
-
-            const filteredData = originalData.filter(row => {
-                const userMatch = !userFilter || (row.modified_by_name && row.modified_by_name.toLowerCase().includes(userFilter));
-                const itemMatch = !itemFilter || (row.case_title && row.case_title.toLowerCase().includes(itemFilter));
-                const dateMatch = !dateFilter || row.modified_at.startsWith(dateFilter);
-                return userMatch && itemMatch && dateMatch;
-            });
-            renderTable(filteredData);
-        }
-
-        document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
-        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-            document.getElementById('filterUser').value = '';
-            document.getElementById('filterItem').value = '';
-            document.getElementById('filterDate').value = '';
-            renderTable(originalData);
-        });
-
-        const diffModal = document.getElementById('diffModal');
-        document.getElementById('auditTableBody').addEventListener('click', e => {
-            const button = e.target.closest('.view-diff-btn');
-            if (button) {
-                const oldVal = JSON.parse(button.dataset.oldValue);
-                const newVal = JSON.parse(button.dataset.newValue);
-                const fieldName = button.dataset.fieldName;
-
-                const diffString = Diff.createTwoFilesPatch('Before', 'After', oldVal, newVal, '', '', { context: 5 });
-                const diffHtml = Diff2Html.html(diffString, {
-                    drawFileList: false, matching: 'lines', outputFormat: 'side-by-side'
-                });
-
-                document.getElementById('diffModalTitle').innerText = `Changes to "${fieldName}"`;
-                document.getElementById('diffContent').innerHTML = diffHtml;
-                diffModal.classList.remove('hidden');
-            }
-        });
-
-        document.getElementById('closeDiffModalBtn').addEventListener('click', () => diffModal.classList.add('hidden'));
-        diffModal.addEventListener('click', (e) => {
-            if (e.target === diffModal) {
-                 diffModal.classList.add('hidden');
-            }
-        });
-
-        // Initial Load & Realtime Subscription
-        (async () => {
-            await checkAuth();
-            await fetchAuditData();
-
-            supabase.channel('public:case_history')
-              .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'case_history' }, payload => {
-                console.log('Realtime change received!', payload);
-                fetchAuditData(); // Refetch all data to ensure consistency and order
-              })
-              .subscribe();
-        })();
-    </script>
+  </script>
 </body>
 </html>
