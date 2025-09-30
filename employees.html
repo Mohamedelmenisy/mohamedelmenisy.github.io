@@ -6,6 +6,7 @@
     <title>Employees Directory - InfiniBase</title>
     <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #6366f1;
@@ -18,158 +19,222 @@
             --border-radius: 0.5rem;
             --border-radius-lg: 0.75rem;
             --status-online: #22c55e;
-            --status-offline: #ef4444;
+            --status-offline: #9ca3af;
+            --header-height: 70px;
         }
         html, body {
-            height: 100%;
-            margin: 0;
+            height: 100%; margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-color); color: var(--text-color);
             font-size: 16px;
         }
         .hidden { display: none !important; }
 
-        /* --- Layout --- */
         .page-wrapper {
             padding: 1.5rem 2rem;
+            padding-top: calc(var(--header-height) + 1.5rem);
         }
         .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
+            position: fixed; top: 0; left: 0; right: 0;
+            height: var(--header-height);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 2rem; background-color: rgba(31, 41, 55, 0.8);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(8px); z-index: 100;
         }
+        .header-title { display: flex; align-items: center; gap: 1rem; }
+        .header-title .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
         .header-title h1 {
-            font-size: 2rem; /* Bigger font for title */
-            font-weight: 800;
-            margin: 0 0 0.25rem 0;
-            color: white;
+            font-size: 1.75rem; font-weight: 700; color: white; margin: 0;
         }
-        .header-title p {
-            font-size: 1rem;
-            color: var(--text-color-muted);
-            margin: 0;
-        }
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-        }
+        .header-actions { display: flex; gap: 1rem; }
 
-        /* --- Buttons --- */
         .button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.25rem;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: background-color 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
+            background-color: var(--primary-color); color: white; border: none;
+            padding: 0.75rem 1.25rem; border-radius: var(--border-radius);
+            cursor: pointer; font-size: 1rem; font-weight: 600;
+            transition: all 0.2s; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 0.5rem;
         }
-        .button:hover { background-color: var(--primary-color-hover); }
+        .button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
         .button-secondary {
-            background-color: var(--bg-color-alt);
-            color: var(--text-color);
+            background-color: var(--bg-color-alt); color: var(--text-color);
             border: 1px solid var(--border-color);
         }
         .button-secondary:hover { background-color: var(--border-color); }
+        .button-danger { background-color: #ef4444; }
+        .button-danger:hover { background-color: #dc2626; }
         
-        /* --- Card & Table --- */
         .card {
             background-color: var(--bg-color-alt);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            padding: 1.5rem; margin-bottom: 1.5rem;
             overflow: hidden;
         }
-        .table-container { overflow-x: auto; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
+        .stat-card {
+            background-color: var(--bg-color-alt);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            background-color: var(--bg-color);
+            padding: 0.75rem;
+            border-radius: 50%;
+        }
+        .stat-info .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+        }
+        .stat-info .label {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+        }
+
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .search-filter-box {
+            display: flex;
+            gap: 1rem;
+        }
+        .search-filter-box input, .search-filter-box select {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
         th, td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            text-align: left;
-            font-size: 0.95rem; /* Slightly larger table font */
-            vertical-align: middle;
+            padding: 1rem; border-bottom: 1px solid var(--border-color);
+            text-align: left; font-size: 1rem; vertical-align: middle;
         }
         thead th {
-            background-color: var(--bg-color);
-            color: var(--text-color-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            background-color: var(--bg-color); color: var(--text-color-muted);
+            font-size: 0.8rem; text-transform: uppercase;
         }
         tr:last-child td { border-bottom: none; }
         tr:hover { background-color: #2a3546; }
 
-        /* --- Table Content Styles --- */
         .user-info { display: flex; align-items: center; gap: 1rem; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; }
         .user-name { font-weight: 600; color: white; }
-        .user-email { font-size: 0.85rem; color: var(--text-color-muted); }
-        .role-badge { padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: 500; text-transform: capitalize; }
-        .role-badge.admin { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .user-email { font-size: 0.9rem; color: var(--text-color-muted); }
+        .role-badge { padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
+        .role-badge.admin { background-color: rgba(167, 139, 250, 0.2); color: #c4b5fd; }
         .role-badge.editor { background-color: rgba(251, 191, 36, 0.2); color: #fcd34d; }
         .role-badge.viewer { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; }
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .status-dot.online { background-color: var(--status-online); }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .status-dot.online { background-color: var(--status-online); box-shadow: 0 0 8px var(--status-online); }
         .status-dot.offline { background-color: var(--status-offline); }
         
-        /* --- Access Restricted Card --- */
-        .access-restricted-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            height: 100vh;
-            width: 100%;
+        .actions-cell button { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.5rem; color: var(--text-color-muted); transition: color 0.2s; }
+        .actions-cell button:hover { color: var(--primary-color); }
+        .actions-cell button.delete:hover { color: var(--status-offline); }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem; z-index: 1000; opacity: 0; transition: opacity 0.2s ease-out;
+            visibility: hidden;
         }
-        .access-restricted-card .card {
-            max-width: 450px;
-            padding: 3rem;
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: var(--bg-color-alt); padding: 1.5rem;
+            border-radius: var(--border-radius-lg); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;
+            transform: scale(0.95); transition: transform 0.2s ease-out;
         }
-        .access-restricted-card .icon {
-            font-size: 4rem;
-            color: var(--primary-color);
-            margin-bottom: 1.5rem;
-        }
-        .access-restricted-card h2 {
-            font-size: 1.75rem;
-            margin-bottom: 0.5rem;
-            color: white;
-        }
-        .access-restricted-card p {
-            color: var(--text-color-muted);
-            margin-bottom: 2rem;
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+        .modal-header .close-button { background: none; border: none; font-size: 1.5rem; color: var(--text-color-muted); cursor: pointer; }
+        .modal-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 0.75rem;
+            border: 1px solid var(--border-color); border-radius: var(--border-radius);
+            background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
         }
     </style>
 </head>
 <body>
 
-<!-- Main dashboard content, hidden by default -->
-<div id="dashboard" class="hidden">
+<div id="dashboard" style="visibility: hidden;">
+    <header class="page-header">
+        <div class="header-title">
+            <i class="fas fa-users logo-icon"></i>
+            <h1>Employees Directory</h1>
+        </div>
+        <div class="header-actions">
+            <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </header>
+
     <div class="page-wrapper">
-        <header class="page-header">
-            <div class="header-title">
-                <h1>Employees Directory</h1>
-                <p>Live roster, role management, and activity — managed by admins.</p>
+        <div class="stats-container">
+            <div class="stat-card">
+                <i class="fas fa-users-cog"></i>
+                <div class="stat-info">
+                    <div class="value" id="total-employees">0</div>
+                    <div class="label">Total Employees</div>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-                <button id="exportCsvBtn" class="button"><i class="fas fa-file-csv"></i> Export CSV</button>
+            <div class="stat-card">
+                <i class="fas fa-user-check" style="color: var(--status-online);"></i>
+                <div class="stat-info">
+                    <div class="value" id="online-employees">0</div>
+                    <div class="label">Online</div>
+                </div>
             </div>
-        </header>
+            <div class="stat-card">
+                <i class="fas fa-user-shield" style="color: #c4b5fd;"></i>
+                <div class="stat-info">
+                    <div class="value" id="admin-count">0</div>
+                    <div class="label">Admins</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-controls">
+            <div class="search-filter-box">
+                <input type="text" id="searchInput" placeholder="Search by name or email...">
+                <select id="roleFilter">
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="viewer">Viewer</option>
+                </select>
+            </div>
+            <div>
+                <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+                <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
+            </div>
+        </div>
 
         <div class="card">
             <div class="table-container">
@@ -180,24 +245,77 @@
                             <th>Role</th>
                             <th>Status</th>
                             <th>Last Seen</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="employeesTableBody">
-                        <!-- Rows will be injected by JavaScript -->
-                    </tbody>
+                    <tbody id="employeesTableBody"></tbody>
                 </table>
+            </div>
+        </div>
+         <div class="card">
+             <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Role Distribution</h3>
+            <div style="position: relative; height: 300px; max-width: 400px; margin: auto;">
+                 <canvas id="rolesChart"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Admin access restricted card, visible by default -->
-<div id="restricted-card" class="access-restricted-card">
-    <div class="card">
-        <div class="icon">🔒</div>
+<!-- Access Restricted Modal -->
+<div id="restricted-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align: center;">
+        <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
         <h2>Access Restricted</h2>
-        <p>This page is available for administrators only.</p>
+        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
         <a href="app.html" class="button">Go Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- Add/Edit Employee Modal -->
+<div id="employee-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Add New Employee</h2>
+            <button class="close-button" data-close-modal>&times;</button>
+        </div>
+        <form id="employee-form">
+            <input type="hidden" id="employee-id">
+            <div class="form-group">
+                <label for="employee-name">Full Name</label>
+                <input type="text" id="employee-name" required>
+            </div>
+            <div class="form-group">
+                <label for="employee-email">Email</label>
+                <input type="email" id="employee-email" required>
+            </div>
+            <div class="form-group">
+                <label for="employee-role">Role</label>
+                <select id="employee-role" required>
+                    <option value="viewer">Viewer</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+             <div class="form-group">
+                <label for="employee-password">Password (leave blank to not change)</label>
+                <input type="password" id="employee-password" autocomplete="new-password">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="button button-secondary" data-close-modal>Cancel</button>
+                <button type="submit" class="button">Save Employee</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 28rem; text-align: center;">
+         <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle"></i></div>
+        <h2>Confirm Deletion</h2>
+        <p id="delete-confirm-message" style="margin-bottom: 1.5rem; font-size: 1.1rem;"></p>
+        <div class="modal-actions" style="justify-content: center;">
+            <button type="button" class="button button-secondary" data-close-modal>Cancel</button>
+            <button type="button" id="confirm-delete-btn" class="button button-danger">Confirm Delete</button>
+        </div>
     </div>
 </div>
 
@@ -205,26 +323,32 @@
 <script type="module">
     import { supabase } from './supabase.js';
 
-    // --- Main Logic ---
+    let allEmployees = [];
+    let rolesChart = null;
+
+    // DOM Elements
+    const employeeModal = document.getElementById('employee-modal');
+    const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    
     async function fetchEmployees() {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('name', { ascending: true });
-        
-        if (error) {
-            console.error("Error fetching employees:", error);
-            return [];
-        }
+        const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
+        if (error) { console.error("Error fetching employees:", error); return []; }
         return data;
     }
 
     function renderEmployees(employees) {
         const tableBody = document.getElementById('employeesTableBody');
         if (!tableBody) return;
+        
+        // Update Stats
+        document.getElementById('total-employees').textContent = employees.length;
+        // This is a placeholder for online status
+        const onlineCount = employees.filter(e => e.status === 'ONLINE').length;
+        document.getElementById('online-employees').textContent = onlineCount;
+        document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
 
         if (employees.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`;
             return;
         }
 
@@ -232,11 +356,11 @@
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             const lastSeen = emp.last_sign_in_at ? new Date(emp.last_sign_in_at).toLocaleString() : 'Never';
             
-            // Dummy online status logic
-            const isOnline = Math.random() > 0.5;
+            // Real status logic would require presence tracking
+            const isOnline = emp.status === 'ONLINE'; 
 
             return `
-                <tr>
+                <tr data-user-id="${emp.id}">
                     <td>
                         <div class="user-info">
                             <div class="user-avatar">${initials}</div>
@@ -246,9 +370,7 @@
                             </div>
                         </div>
                     </td>
-                    <td>
-                        <span class="role-badge ${emp.role}">${emp.role}</span>
-                    </td>
+                    <td><span class="role-badge ${emp.role}">${emp.role}</span></td>
                     <td>
                         <div class="status-indicator">
                             <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
@@ -256,52 +378,209 @@
                         </div>
                     </td>
                     <td>${lastSeen}</td>
+                    <td class="actions-cell">
+                        <button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button>
+                    </td>
                 </tr>
             `;
         }).join('');
     }
+
+    function renderRolesChart(employees) {
+        const ctx = document.getElementById('rolesChart').getContext('2d');
+        const roleCounts = employees.reduce((acc, emp) => {
+            acc[emp.role] = (acc[emp.role] || 0) + 1;
+            return acc;
+        }, {});
+        
+        if (rolesChart) rolesChart.destroy();
+        
+        rolesChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(roleCounts),
+                datasets: [{
+                    data: Object.values(roleCounts),
+                    backgroundColor: ['#c4b5fd', '#93c5fd', '#fcd34d'],
+                    borderColor: var(--bg-color-alt),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: var(--text-color), font: { size: 14 } }
+                    }
+                }
+            }
+        });
+    }
+
+    function applyFilters() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const roleFilter = document.getElementById('roleFilter').value;
+
+        const filtered = allEmployees.filter(emp => {
+            const matchesSearch = (emp.name || '').toLowerCase().includes(searchTerm) || (emp.email || '').toLowerCase().includes(searchTerm);
+            const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
+            return matchesSearch && matchesRole;
+        });
+        renderEmployees(filtered);
+    }
     
-    // --- Admin Access Check ---
+    function exportCSV() {
+        const headers = ['Name', 'Email', 'Role', 'Status', 'Last Seen'];
+        let csvContent = headers.join(',') + '\r\n';
+        
+        allEmployees.forEach(emp => {
+            const isOnline = emp.status === 'ONLINE';
+            const row = [
+                emp.name || 'No Name',
+                emp.email,
+                emp.role,
+                isOnline ? 'Online' : 'Offline',
+                emp.last_sign_in_at ? new Date(emp.last_sign_in_at).toLocaleString() : 'Never'
+            ].map(val => `"${String(val).replace(/"/g, '""')}"`);
+            csvContent += row.join(',') + '\r\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'employees_export.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    // Modal Handling
+    function setupModals() {
+        document.querySelectorAll('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.modal-overlay').classList.remove('show');
+            });
+        });
+
+        document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+            document.getElementById('modal-title').textContent = 'Add New Employee';
+            document.getElementById('employee-form').reset();
+            document.getElementById('employee-id').value = '';
+            employeeModal.classList.add('show');
+        });
+
+        document.getElementById('employeesTableBody').addEventListener('click', (e) => {
+            const editBtn = e.target.closest('button.edit');
+            const deleteBtn = e.target.closest('button.delete');
+            const userId = e.target.closest('tr')?.dataset.userId;
+            
+            if (!userId) return;
+            const employee = allEmployees.find(emp => emp.id === userId);
+            if (!employee) return;
+
+            if (editBtn) {
+                document.getElementById('modal-title').textContent = 'Edit Employee';
+                document.getElementById('employee-id').value = employee.id;
+                document.getElementById('employee-name').value = employee.name;
+                document.getElementById('employee-email').value = employee.email;
+                document.getElementById('employee-role').value = employee.role;
+                document.getElementById('employee-password').value = '';
+                employeeModal.classList.add('show');
+            }
+            if (deleteBtn) {
+                document.getElementById('delete-confirm-message').textContent = `Are you sure you want to delete ${employee.name}? This action cannot be undone.`;
+                document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
+                deleteConfirmModal.classList.add('show');
+            }
+        });
+
+        document.getElementById('employee-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('employee-id').value;
+            const email = document.getElementById('employee-email').value;
+            const password = document.getElementById('employee-password').value;
+            const userData = {
+                name: document.getElementById('employee-name').value,
+                role: document.getElementById('employee-role').value
+            };
+
+            let result = {};
+            if (id) { // Editing existing user
+                const { data, error } = await supabase.from('users').update({ ...userData }).eq('id', id).select().single();
+                if(error) result.error = error; else result.data = data;
+                // Update password if provided
+                if (password && !error) {
+                    const { error: passwordError } = await supabase.auth.admin.updateUserById(id, { password: password });
+                    if(passwordError) result.error = passwordError;
+                }
+            } else { // Creating new user
+                const { data, error } = await supabase.auth.admin.createUser({
+                    email: email,
+                    password: password,
+                    email_confirm: true,
+                    user_metadata: userData,
+                });
+                if(error) result.error = error; else result.data = data.user;
+            }
+            
+            if (result.error) {
+                alert(`Error: ${result.error.message}`);
+            } else {
+                employeeModal.classList.remove('show');
+            }
+        });
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', async (e) => {
+            const userId = e.currentTarget.dataset.userId;
+            const { error } = await supabase.auth.admin.deleteUser(userId);
+            if (error) {
+                alert(`Error deleting user: ${error.message}`);
+            } else {
+                deleteConfirmModal.classList.remove('show');
+            }
+        });
+    }
+
     async function checkAdminAccess() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                // Not logged in, show restricted card
-                document.getElementById('dashboard').classList.add('hidden');
-                document.getElementById('restricted-card').classList.remove('hidden');
+                document.getElementById('restricted-modal').classList.add('show');
                 return;
             }
-            // Logged in, check role from 'users' table
-            const { data, error } = await supabase
-                .from('users')
-                .select('role')
-                .eq('id', user.id)
-                .single();
-
+            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
             if (error || !data || data.role !== 'admin') {
-                // Not an admin, show restricted card
-                document.getElementById('dashboard').classList.add('hidden');
-                document.getElementById('restricted-card').classList.remove('hidden');
+                document.getElementById('restricted-modal').classList.add('show');
             } else {
-                // Is an admin, show dashboard and load data
-                document.getElementById('restricted-card').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
+                document.getElementById('dashboard').style.visibility = 'visible';
+                allEmployees = await fetchEmployees();
+                renderEmployees(allEmployees);
+                renderRolesChart(allEmployees);
+                setupModals();
                 
-                // Boot the application
-                const employees = await fetchEmployees();
-                renderEmployees(employees);
+                // Realtime Subscription
+                supabase.channel('public:users')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async (payload) => {
+                        allEmployees = await fetchEmployees();
+                        applyFilters();
+                        renderRolesChart(allEmployees);
+                    })
+                    .subscribe();
             }
         } catch (e) {
             console.error("Admin check failed:", e);
-            document.getElementById('dashboard').classList.add('hidden');
-            document.getElementById('restricted-card').classList.remove('hidden');
+            document.getElementById('restricted-modal').classList.add('show');
         }
     }
 
-    // --- Initial Load ---
-    document.addEventListener('DOMContentLoaded', checkAdminAccess);
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAdminAccess();
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('roleFilter').addEventListener('change', applyFilters);
+        document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+    });
 
 </script>
-
 </body>
 </html>
