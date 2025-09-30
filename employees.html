@@ -262,7 +262,7 @@ function roleBadge(role){ role = (role||'').toLowerCase(); if(role==='admin') re
 async function fetchEmployees(){
   showOverlay(true);
   try{
-    const { data, error } = await supabase.from('users').select('id, name, email, role, last_seen').order('name',{ascending:true});
+    const { data, error } = await supabase.from('employees').select('id, name, email, role, last_seen').order('name',{ascending:true});
     if(error){ console.error('fetch users error', error); employees = []; return; }
     // fetch last activity per user using join-like approach: gather user ids and do one query
     const ids = data.map(d => d.id);
@@ -399,8 +399,8 @@ function exportCSV(){
 
 // Realtime subscriptions and patching
 function setupRealtime(){
-  supabase.channel('users_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
+  supabase.channel('employees_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, payload => {
       try{
         const t = payload.eventType;
         if(t === 'INSERT'){ employees.unshift(payload.new); showToast(`${payload.new.name||payload.new.email} added`, 'success'); }
@@ -436,14 +436,14 @@ let heartbeatTimer = null;
 async function updateLastSeen(userId){
   if(!userId) return;
   try{
-    await supabase.from('users').update({ last_seen: new Date().toISOString() }).eq('id', userId);
+    await supabase.from('employees').update({ last_seen: new Date().toISOString() }).eq('id', userId);
   }catch(e){ console.error('updateLastSeen error', e); }
 }
 
 // Role management: change role via UI (admin only)
 async function changeUserRole(userId, newRole){
   try{
-    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
+    const { error } = await supabase.from('employees').update({ role: newRole }).eq('id', userId);
     if(error){ showToast('Role update failed','error'); console.error(error); return; }
     showToast('Role updated','success');
     // optimistic update locally
@@ -456,7 +456,7 @@ async function checkAdmin(){
   try{
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if(userErr || !user){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
-    const { data, error } = await supabase.from('users').select('role,id').eq('id', user.id).single();
+    const { data, error } = await supabase.from('employees').select('role,id').eq('id', user.id).single();
     if(error || !data || data.role !== 'admin'){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
     isAdmin = true;
     document.getElementById('restricted-card').style.display = 'none'; document.getElementById('dashboard').style.display = 'block';
