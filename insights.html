@@ -1,123 +1,277 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>User Activity Insights (Final Expanded)</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<style>
-    /* Highlight animation for realtime rows */
-    .highlight { 
-      background-color: rgba(59,130,246,0.3) !important; 
-      transition: background-color 1s ease; 
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Activity Insights</title>
+  <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+  <style>
+    :root {
+      --primary-color: #6366f1;
+      --primary-color-hover: #4f46e5;
+      --text-color: #d1d5db;
+      --text-color-muted: #9ca3af;
+      --bg-color: #111827;
+      --bg-color-alt: #1f2937;
+      --border-color: #374151;
+      --border-radius: 0.5rem;
+      --border-radius-lg: 0.75rem;
     }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 16px;
+    }
+    .page-wrapper {
+      padding: 1.5rem 2rem;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .page-header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0;
+    }
+     .button, button {
+        background-color: var(--primary-color);
+        color: white;
+        border: 1px solid transparent;
+        padding: 0.625rem 1rem;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: background-color 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .button:hover, button:hover { background-color: var(--primary-color-hover); }
+    .button-secondary {
+        background-color: var(--bg-color-alt);
+        color: var(--text-color-muted);
+        border-color: var(--border-color);
+    }
+    .button-secondary:hover { background-color: #374151; color: var(--text-color); }
+    
+    .card {
+      background-color: var(--bg-color-alt);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        align-items: flex-end;
+    }
+    .filters .form-group {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    .filters .form-group label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-color-muted);
+        margin-bottom: 0.5rem;
+    }
+    .filters input, .filters select {
+        width: 100%;
+        padding: 0.625rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
+    .filters .search-group { flex-basis: 300px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+    .stat-card {
+        text-align: center;
+    }
+    .stat-card h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-color-muted);
+        margin-bottom: 0.75rem;
+    }
+    .stat-card .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    .stat-card .stat-value.helpful { color: #22c55e; }
+    .stat-card .stat-value.not-helpful { color: #ef4444; }
+    
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+    th, td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    thead th {
+      background-color: #111827;
+      color: var(--text-color-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .highlight { background-color: rgba(59,130,246,0.3) !important; transition: background-color 1s ease; }
+
+    .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .spinner { width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
+    @keyframes spin{ to{transform:rotate(360deg);} }
+    
+    .toast{ position:fixed; top:20px; right:20px; padding:12px 16px; border-radius: var(--border-radius); color:white; z-index:1100; display:flex; align-items:center; gap:10px; cursor:pointer; opacity:0; transform:translateY(-10px); transition: all .2s; }
+    .toast.show { opacity:1; transform:translateY(0); }
+
+    .hidden { display: none !important; }
+    .access-restricted-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; width: 100%; }
+    .access-restricted-card .card { max-width: 450px; padding: 3rem; }
+    .access-restricted-card .icon { font-size: 4rem; color: var(--primary-color); margin-bottom: 1.5rem; }
+    .access-restricted-card h2 { font-size: 1.75rem; margin-bottom: 0.5rem; color: white; }
+    .access-restricted-card p { color: var(--text-color-muted); margin-bottom: 2rem; }
   </style>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/><style>body { font-family: 'Inter', sans-serif; }</style></head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col"><header class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800 sticky top-0 z-50"><div class="flex items-center gap-3"><img alt="Logo" class="h-8" src="/assets/logo.png"/><h1 class="text-xl font-semibold">User Insights</h1></div><div class="flex items-center gap-4"><a class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium" href="app.html">← Back to Dashboard</a><button class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium">Export CSV</button></div></header>
-<div class="container mx-auto p-6">
-<!-- Page Title -->
-<h1 class="text-2xl font-bold mb-6">User Activity Insights</h1>
-<!-- Toast Notification -->
-<div class="hidden fixed top-4 right-4 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center space-x-2 cursor-pointer" id="toast"></div>
-<!-- Spinner Overlay -->
-<div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="spinner">
-<div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+</head>
+<body>
+
+<!-- Main dashboard content, hidden by default -->
+<div id="dashboard" class="hidden">
+  <div class="page-wrapper">
+    <div class="page-header">
+      <h1><i class="fas fa-chart-pie" style="color: var(--primary-color); margin-right: 1rem;"></i>User Activity Insights</h1>
+      <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Spinner Overlay -->
+    <div id="spinner" class="spinner-overlay hidden"><div class="spinner"></div></div>
+
+    <!-- FILTERS -->
+    <div class="card filters">
+      <div class="form-group">
+        <label for="timeFilter">Time Range</label>
+        <select id="timeFilter">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="actionFilter">Action</label>
+        <select id="actionFilter">
+          <option value="all">All</option>
+          <option value="viewed">Viewed</option>
+          <option value="updated">Updated</option>
+          <option value="deleted">Deleted</option>
+        </select>
+      </div>
+      <div class="form-group search-group">
+        <label for="searchInput">Search by User, Email, or Case</label>
+        <input id="searchInput" type="text" placeholder="..." />
+      </div>
+      <button id="exportBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+    </div>
+
+    <!-- STATS CARDS -->
+    <div class="card stats-grid">
+      <div class="stat-card">
+        <h2>Total Activities</h2>
+        <p id="totalActivities" class="stat-value">0</p>
+      </div>
+      <div class="stat-card">
+        <h2>Helpful Feedback</h2>
+        <p id="helpfulCount" class="stat-value helpful">0</p>
+      </div>
+      <div class="stat-card">
+        <h2>Not Helpful Feedback</h2>
+        <p id="notHelpfulCount" class="stat-value not-helpful">0</p>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="stats-grid">
+      <div class="card">
+        <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:1.5rem;">Feedback Distribution</h2>
+        <canvas id="feedbackChart" height="250"></canvas>
+      </div>
+      <div class="card">
+        <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:0.5rem;">Top Active Users</h2>
+        <p style="font-size:0.9rem; color:var(--text-color-muted); margin-top:0; margin-bottom:1.5rem;">Based on total number of activities logged.</p>
+        <canvas id="activeUsersChart" height="250"></canvas>
+      </div>
+    </div>
+
+    <!-- ACTIVITY FEED TABLE -->
+    <div class="card">
+      <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:1rem;">Recent Activities</h2>
+      <div class="table-wrap">
+        <table aria-label="Recent Activities">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Case</th>
+              <th>Action</th>
+              <th>Details</th>
+              <th>Activity Time</th>
+            </tr>
+          </thead>
+          <tbody id="activityTable"></tbody>
+        </table>
+      </div>
+      <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+        <button id="loadMoreBtn" class="button-secondary">Load More</button>
+      </div>
+    </div>
+  </div>
 </div>
-<!-- ================= FILTERS ================= -->
-<div class="bg-gray-800 p-4 rounded-2xl shadow mb-6 flex flex-wrap gap-4 items-end">
-<!-- Time Filter -->
-<div>
-<label class="block text-sm">Time Range</label>
-<select class="bg-gray-700 rounded px-2 py-1" id="timeFilter">
-<option value="all">All</option>
-<option value="today">Today</option>
-<option value="7d">Last 7 days</option>
-<option value="30d">Last 30 days</option>
-</select>
+
+<!-- Admin access restricted card, visible by default -->
+<div id="restricted-card" class="access-restricted-card">
+    <div class="card">
+        <div class="icon">🔒</div>
+        <h2>Access Restricted</h2>
+        <p>This page is available to administrators only.</p>
+        <a href="app.html" class="button">Go Back to Dashboard</a>
+    </div>
 </div>
-<!-- Action Filter -->
-<div>
-<label class="block text-sm">Action</label>
-<select class="bg-gray-700 rounded px-2 py-1" id="actionFilter">
-<option value="all">All</option>
-<option value="viewed">Viewed</option>
-<option value="updated">Updated</option>
-<option value="deleted">Deleted</option>
-</select>
-</div>
-<!-- Search -->
-<div class="flex-1">
-<label class="block text-sm">Search</label>
-<input class="w-full bg-gray-700 rounded px-2 py-1" id="searchInput" placeholder="User, Email, Case..." type="text"/>
-</div>
-<!-- Export Button -->
-<button class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded" id="exportBtn">
-        Export CSV
-      </button>
-</div>
-<!-- ================= STATS CARDS ================= -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-<!-- Total Activities -->
-<div class="bg-gray-800 p-4 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-2">Total Activities</h2>
-<p class="text-3xl font-bold" id="totalActivities">0</p>
-</div>
-<!-- Helpful Feedback -->
-<div class="bg-gray-800 p-4 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-2">Helpful Feedback</h2>
-<p class="text-3xl font-bold" id="helpfulCount">0</p>
-</div>
-<!-- Not Helpful Feedback -->
-<div class="bg-gray-800 p-4 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-2">Not Helpful Feedback</h2>
-<p class="text-3xl font-bold" id="notHelpfulCount">0</p>
-</div>
-</div>
-<!-- ================= CHARTS ================= -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-<!-- Feedback Chart -->
-<div class="bg-gray-800 p-6 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-4">Feedback Distribution</h2>
-<canvas id="feedbackChart"></canvas>
-</div>
-<!-- Active Users Chart -->
-<div class="bg-gray-800 p-6 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-4">Top Active Users</h2>
-<canvas id="activeUsersChart"></canvas>
-</div>
-</div>
-<!-- ================= ACTIVITY FEED ================= -->
-<div class="bg-gray-800 p-6 rounded-2xl shadow">
-<h2 class="text-lg font-semibold mb-4">Recent Activities</h2>
-<!-- Activity Table -->
-<div class="overflow-x-auto">
-<table class="min-w-full text-sm">
-<thead class="bg-gray-700">
-<tr>
-<th class="px-4 py-2 text-left">User</th>
-<th class="px-4 py-2 text-left">Email</th>
-<th class="px-4 py-2 text-left">Case</th>
-<th class="px-4 py-2 text-left">Action</th>
-<th class="px-4 py-2 text-left">Details</th>
-<th class="px-4 py-2 text-left">Activity Time</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-gray-700" id="activityTable"></tbody>
-</table>
-</div>
-<!-- Load More Button -->
-<div class="flex justify-center mt-4">
-<button class="bg-gray-700 px-3 py-1 rounded" id="loadMoreBtn">Load More</button>
-</div>
-</div>
-</div>
-<!-- ================= JAVASCRIPT ================= -->
-<script type="module">
+
+
+  <script type="module">
     import { supabase } from './supabase.js';
 
-    // ---------------- Variables ----------------
     let activities = [];
     let feedbackStats = { helpful: 0, notHelpful: 0 };
     let topUsers = [];
@@ -133,15 +287,14 @@
 
     let feedbackChart, activeUsersChart;
 
-    // ---------------- Helpers ----------------
     function showSpinner(show) { spinner.classList.toggle('hidden', !show); }
 
     function showToast(message, type, rowId) {
-      const colors = { insert: 'bg-green-600', update: 'bg-blue-600', delete: 'bg-red-600' };
+      const colors = { insert: '#16a34a', update: '#2563eb', delete: '#ef4444' };
       const icons = { insert: '✅', update: '✏️', delete: '🗑️' };
-      toast.className = `fixed top-4 right-4 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center space-x-2 cursor-pointer ${colors[type] || 'bg-indigo-600'}`;
-      toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
-      toast.classList.remove('hidden');
+      toast.style.backgroundColor = colors[type] || '#6366f1';
+      toast.innerHTML = `<span style="font-size: 1.1rem;">${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+      toast.classList.add('show');
       toast.onclick = () => {
         if (rowId) {
           const row = document.getElementById(rowId);
@@ -151,200 +304,182 @@
             setTimeout(() => row.classList.remove('highlight'), 3000);
           }
         }
-        toast.classList.add('hidden');
+        toast.classList.remove('show');
       };
-      setTimeout(() => toast.classList.add('hidden'), 4000);
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+    
+    function createChart(ctx, type, labels, data, dataLabels, backgroundColors) {
+        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+
+        const chartOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: legendColor, font: { family: 'Inter', size: 14 }}}},
+            scales: { y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor }, grid: { color: gridColor } } }
+        };
+
+        if(type === 'doughnut') {
+            delete chartOptions.scales;
+        }
+
+        return new Chart(ctx, {
+            type,
+            data: { labels, datasets: [{ label: dataLabels, data, backgroundColor: backgroundColors }] },
+            options: chartOptions
+        });
     }
 
     function renderActivities(filtered) {
-      table.innerHTML = '';
       const start = 0;
       const end = currentPage * pageSize;
-      filtered.slice(start, end).forEach((act, idx) => {
-        const rowId = `row-${idx}`;
-        const row = `<tr id="${rowId}">
-          <td class='px-4 py-2'>${act.user_name}</td>
-          <td class='px-4 py-2'>${act.user_email}</td>
-          <td class='px-4 py-2'>${act.item_title || '-'}</td>
-          <td class='px-4 py-2'>${act.action}</td>
-          <td class='px-4 py-2'>${JSON.stringify(act.details)}</td>
-          <td class='px-4 py-2'>${act.activity_time}</td>
-        </tr>`;
-        table.insertAdjacentHTML('beforeend', row);
-      });
+      const paginated = filtered.slice(start, end);
+      
+      table.innerHTML = paginated.map((act, idx) => {
+          const rowId = `row-${idx}`;
+          return `<tr id="${rowId}">
+            <td class='px-4 py-2'>${act.user_name}</td>
+            <td class='px-4 py-2'>${act.user_email}</td>
+            <td class='px-4 py-2'>${act.item_title || '-'}</td>
+            <td class='px-4 py-2'>${act.action}</td>
+            <td class='px-4 py-2'>${JSON.stringify(act.details)}</td>
+            <td class='px-4 py-2'>${new Date(act.activity_time).toLocaleString()}</td>
+          </tr>`;
+      }).join('');
+      
       totalActivitiesEl.textContent = filtered.length;
+      document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
     }
 
     function renderFeedback() {
       helpfulCountEl.textContent = feedbackStats.helpful;
       notHelpfulCountEl.textContent = feedbackStats.notHelpful;
       if (feedbackChart) feedbackChart.destroy();
-      feedbackChart = new Chart(document.getElementById('feedbackChart'), {
-        type: 'doughnut',
-        data: {
-          labels: ['Helpful', 'Not Helpful'],
-          datasets: [{ 
-            data: [feedbackStats.helpful, feedbackStats.notHelpful], 
-            backgroundColor: ['#10B981', '#EF4444'] 
-          }]
-        }
-      });
+      feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut', ['Helpful', 'Not Helpful'], [feedbackStats.helpful, feedbackStats.notHelpful], 'Feedback', ['#10B981', '#EF4444']);
     }
 
     function renderTopUsers() {
       if (activeUsersChart) activeUsersChart.destroy();
-      activeUsersChart = new Chart(document.getElementById('activeUsersChart'), {
-        type: 'bar',
-        data: {
-          labels: topUsers.map(u => u.user_name),
-          datasets: [{ 
-            label: 'Activities', 
-            data: topUsers.map(u => u.activity_count), 
-            backgroundColor: '#6366F1' 
-          }]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
-      });
+      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', topUsers.map(u => u.user_name), topUsers.map(u => u.activity_count), 'Activities', '#6366F1');
     }
 
-    function filterActivities() {
-      const timeFilter = document.getElementById('timeFilter').value;
-      const actionFilter = document.getElementById('actionFilter').value;
-      const search = document.getElementById('searchInput').value.toLowerCase();
-      let filtered = [...activities];
-      const now = new Date();
+    function filterAndRender() {
+        const timeFilter = document.getElementById('timeFilter').value;
+        const actionFilter = document.getElementById('actionFilter').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        let filtered = [...activities];
+        const now = new Date();
 
-      // Filter by time
-      if (timeFilter !== 'all') {
-        filtered = filtered.filter(a => {
-          const ts = new Date(a.activity_time);
-          if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
-          if (timeFilter === '7d') return (now - ts) / (1000*60*60*24) <= 7;
-          if (timeFilter === '30d') return (now - ts) / (1000*60*60*24) <= 30;
-          return true;
-        });
-      }
-
-      // Filter by action
-      if (actionFilter !== 'all') filtered = filtered.filter(a => a.action === actionFilter);
-
-      // Search filter
-      if (search) {
-        filtered = filtered.filter(a =>
-          a.user_name.toLowerCase().includes(search) ||
-          a.user_email.toLowerCase().includes(search) ||
-          (a.item_title || '').toLowerCase().includes(search) ||
-          JSON.stringify(a.details).toLowerCase().includes(search)
-        );
-      }
-
-      return filtered;
+        if (timeFilter !== 'all') {
+            filtered = filtered.filter(a => {
+                const ts = new Date(a.activity_time);
+                if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
+                if (timeFilter === '7d') return (now - ts) / (1000*60*60*24) <= 7;
+                if (timeFilter === '30d') return (now - ts) / (1000*60*60*24) <= 30;
+                return true;
+            });
+        }
+        if (actionFilter !== 'all') filtered = filtered.filter(a => a.action === actionFilter);
+        if (search) {
+            filtered = filtered.filter(a =>
+                (a.user_name || '').toLowerCase().includes(search) ||
+                (a.user_email || '').toLowerCase().includes(search) ||
+                (a.item_title || '').toLowerCase().includes(search)
+            );
+        }
+        
+        currentPage = 1;
+        renderActivities(filtered);
+        return filtered;
     }
 
     function exportCSV(data) {
-      const headers = ['User','Email','Case','Action','Details','Activity Time'];
-      const rows = data.map(a => [a.user_name,a.user_email,a.item_title||'-',a.action,JSON.stringify(a.details),a.activity_time]);
-      let csv = headers.join(',') + '\n';
-      rows.forEach(r => { csv += r.join(',') + '\n'; });
-      const blob = new Blob([csv], {type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'activities.csv'; a.click();
-      URL.revokeObjectURL(url);
+        const headers = ['User','Email','Case','Action','Details','Activity Time'];
+        let csv = headers.join(',') + '\n';
+        data.forEach(a => {
+            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details), a.activity_time];
+            csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'activities_insights.csv'; a.click();
+        URL.revokeObjectURL(url);
     }
 
     async function initData() {
       showSpinner(true);
-      const { data: acts } = await supabase.rpc('get_user_activity_feed');
-      const { data: fb } = await supabase.rpc('get_feedback_stats');
-      const { data: tu } = await supabase.rpc('get_top_active_users', { limit_count: 5 });
-
-      activities = acts || [];
+      const [actsRes, fbRes, tuRes] = await Promise.all([
+          supabase.rpc('get_user_activity_feed'),
+          supabase.rpc('get_feedback_stats'),
+          supabase.rpc('get_top_active_users', { limit_count: 5 })
+      ]);
+      
+      activities = actsRes.data || [];
       feedbackStats = { 
-        helpful: fb?.find(f => f.rating_type === 'Helpful')?.count || 0, 
-        notHelpful: fb?.find(f => f.rating_type === 'Not Helpful')?.count || 0 
+        helpful: fbRes.data?.find(f => f.rating_type === 'Helpful')?.count || 0, 
+        notHelpful: fbRes.data?.find(f => f.rating_type === 'Not Helpful')?.count || 0 
       };
-      topUsers = tu || [];
+      topUsers = tuRes.data || [];
 
-      renderActivities(filterActivities());
+      filterAndRender();
       renderFeedback();
       renderTopUsers();
       showSpinner(false);
     }
 
-    // ---------------- Event Listeners ----------------
-    document.getElementById('timeFilter').onchange = () => renderActivities(filterActivities());
-    document.getElementById('actionFilter').onchange = () => renderActivities(filterActivities());
-    document.getElementById('searchInput').oninput = () => renderActivities(filterActivities());
-    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; renderActivities(filterActivities()); };
-    document.getElementById('exportBtn').onclick = () => exportCSV(filterActivities());
+    // Event Listeners
+    ['timeFilter', 'actionFilter', 'searchInput'].forEach(id => {
+        document.getElementById(id).addEventListener('input', filterAndRender);
+    });
+    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
+    document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
 
-    // ---------------- Realtime Subscriptions ----------------
-    supabase.channel('activity_log_changes').on(
-      'postgres_changes',
-      {event:'*',schema:'public',table:'activity_log'},
-      payload => {
-        if(payload.eventType==='INSERT'){ 
-          activities.unshift(payload.new); 
-          showToast(`${payload.new.user_name} ${payload.new.action} ${payload.new.item_title}`,'insert','row-0'); 
+    // Realtime Subscriptions
+    supabase.channel('activity_log_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
+        if (payload.eventType === 'INSERT') { 
+            activities.unshift(payload.new); 
+            showToast(`${payload.new.user_name} ${payload.new.action} ${payload.new.item_title || ''}`, 'insert', 'row-0'); 
         }
-        else if(payload.eventType==='UPDATE'){ 
-          const idx=activities.findIndex(a=>a.id===payload.new.id); 
-          if(idx>-1) activities[idx]=payload.new; 
-          showToast(`${payload.new.user_name} updated ${payload.new.item_title}`,'update',`row-${idx}`); 
+        filterAndRender();
+      }).subscribe();
+
+    supabase.channel('feedback_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, async () => {
+        const {data:fb} = await supabase.rpc('get_feedback_stats');
+        feedbackStats = { 
+            helpful: fb?.find(f => f.rating_type === 'Helpful')?.count || 0, 
+            notHelpful: fb?.find(f => f.rating_type === 'Not Helpful')?.count || 0 
+        };
+        renderFeedback();
+    }).subscribe();
+
+    // Admin Access Check & App Boot
+    async function checkAdminAccess() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          document.getElementById('dashboard').classList.add('hidden');
+          document.getElementById('restricted-card').classList.remove('hidden');
+          return;
         }
-        else if(payload.eventType==='DELETE'){ 
-          activities=activities.filter(a=>a.id!==payload.old.id); 
-          showToast(`${payload.old.user_name} deleted ${payload.old.item_title}`,'delete'); 
+        const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (error || !data || data.role !== 'admin') {
+          document.getElementById('dashboard').classList.add('hidden');
+          document.getElementById('restricted-card').classList.remove('hidden');
+        } else {
+          document.getElementById('restricted-card').classList.add('hidden');
+          document.getElementById('dashboard').classList.remove('hidden');
+          initData(); // Boot app only for admins
         }
-        renderActivities(filterActivities());
+      } catch (e) {
+        console.error('Admin check failed', e);
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('restricted-card').classList.remove('hidden');
       }
-    ).subscribe();
-
-    supabase.channel('feedback_changes').on(
-      'postgres_changes',
-      {event:'*',schema:'public',table:'kb_feedback'},
-      ()=>{
-        supabase.rpc('get_feedback_stats').then(({data:fb})=>{
-          feedbackStats={ 
-            helpful: fb?.find(f => f.rating_type==='Helpful')?.count||0, 
-            notHelpful: fb?.find(f => f.rating_type==='Not Helpful')?.count||0 
-          };
-          renderFeedback();
-        });
-      }
-    ).subscribe();
-
-    // ---------------- Init ----------------
-    initData();
+    }
+    
+    document.addEventListener('DOMContentLoaded', checkAdminAccess);
   </script>
-
-<div class="hidden flex items-center justify-center h-screen bg-gray-900" id="restricted-card">
-<div class="bg-gray-800 text-center p-10 rounded-2xl shadow-2xl max-w-md">
-<div class="text-indigo-400 text-6xl mb-4">🔒</div>
-<h2 class="text-2xl font-bold text-white mb-2">Access Restricted</h2>
-<p class="text-gray-400 mb-6">This page is available to administrators only.</p>
-<a class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg" href="/">Go Back Home</a>
-</div>
-</div>
-<script type="module">
-import { supabase } from './supabase.js';
-
-async function checkAdminAccess() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  const { data, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!error && data && data.role !== 'admin') {
-    document.getElementById('dashboard').classList.add('hidden');
-    document.getElementById('restricted-card').classList.remove('hidden');
-  }
-}
-checkAdminAccess();
-</script>
 </body>
 </html>
