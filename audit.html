@@ -1,15 +1,14 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>InfiniBase — Audit Log (Realtime, Full)</title>
-
-  <!-- External libs -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>InfiniBase — Audit Log (Realtime, Full)</title>
+<!-- External libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<style>
     :root{
       --bg:#0f1724; --card:#0b1220; --muted:#9ca3af; --primary:#6366f1;
       --border:rgba(255,255,255,0.04);
@@ -36,109 +35,102 @@
     .highlight{background:rgba(99,102,241,0.18) !important;transition:background 1s;}
     @media (max-width:980px){ .filters{flex-direction:column;align-items:stretch;} table{min-width:900px;} }
   </style>
-</head>
-<body>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/><style>body { font-family: 'Inter', sans-serif; }</style></head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col"><header class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800 sticky top-0 z-50"><div class="flex items-center gap-3"><img alt="Logo" class="h-8" src="/assets/logo.png"/><h1 class="text-xl font-semibold">Audit Logs</h1></div><div class="flex items-center gap-4"><a class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium" href="app.html">← Back to Dashboard</a><button class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium">Export CSV</button></div></header>
 <div id="dashboard">
-  <div class="container">
-    <h1>InfiniBase — Audit Log (Realtime)</h1>
-
-    <!-- Toast -->
-    <div id="toast" class="toast hide" role="status" aria-live="polite"></div>
-
-    <!-- Overlay spinner -->
-    <div id="overlay" class="overlay"><div class="spinner" aria-hidden="true"></div></div>
-
-    <!-- Filters -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="filters" role="region" aria-label="filters">
-        <div style="flex:1;min-width:220px;">
-          <label class="muted" for="searchInput">Search (case title / slug / user / field)</label>
-          <input id="searchInput" class="input" placeholder="Search..." />
-        </div>
-        <div>
-          <label class="muted" for="fieldFilter">Field</label>
-          <select id="fieldFilter" class="input">
-            <option value="">All fields</option>
-            <option value="status">status</option>
-            <option value="assigned_to">assigned_to</option>
-            <option value="priority">priority</option>
-            <option value="title">title</option>
-          </select>
-        </div>
-        <div>
-          <label class="muted" for="userFilter">User</label>
-          <input id="userFilter" class="input" placeholder="User name or email" />
-        </div>
-        <div>
-          <label class="muted" for="timeRange">Time Range</label>
-          <select id="timeRange" class="input">
-            <option value="all">All time</option>
-            <option value="today">Today</option>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-        <div id="customDates" style="display:none;">
-          <label class="muted">Start</label>
-          <input id="startDate" type="date" class="input" />
-          <label class="muted">End</label>
-          <input id="endDate" type="date" class="input" />
-        </div>
-
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button id="applyBtn" class="btn-primary input">Apply</button>
-          <button id="clearBtn" class="input">Clear</button>
-          <button id="exportBtn" class="input">Export CSV</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Charts + Stats -->
-    <div class="card" style="margin-bottom:16px;">
-      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-        <div style="flex:1;min-width:220px;">
-          <h3 class="muted">Top Changed Fields</h3>
-          <canvas id="fieldsChart" height="120"></canvas>
-        </div>
-        <div style="flex:1;min-width:220px;">
-          <h3 class="muted">Top Editors</h3>
-          <canvas id="editorsChart" height="120"></canvas>
-        </div>
-        <div style="width:220px;">
-          <h3 class="muted">Total Changes</h3>
-          <div id="totalChanges" style="font-size:24px;font-weight:700;">0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Audit table -->
-    <div class="card">
-      <h3 class="muted">Audit Trail</h3>
-      <div class="table-wrap" style="margin-top:12px;">
-        <table role="table" aria-label="Audit trail">
-          <thead>
-            <tr>
-              <th>Case</th>
-              <th>Field</th>
-              <th>Old Value</th>
-              <th>New Value</th>
-              <th>Modified At</th>
-              <th>Modified By</th>
-            </tr>
-          </thead>
-          <tbody id="auditBody">
-            <tr><td colspan="6" class="muted" style="text-align:center;padding:20px 0;">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="display:flex;justify-content:center;margin-top:12px;">
-        <button id="loadMore" class="input">Load more</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
+<div class="container">
+<h1>InfiniBase — Audit Log (Realtime)</h1>
+<!-- Toast -->
+<div aria-live="polite" class="toast hide" id="toast" role="status"></div>
+<!-- Overlay spinner -->
+<div class="overlay" id="overlay"><div aria-hidden="true" class="spinner"></div></div>
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+<div aria-label="filters" class="filters" role="region">
+<div style="flex:1;min-width:220px;">
+<label class="muted" for="searchInput">Search (case title / slug / user / field)</label>
+<input class="input" id="searchInput" placeholder="Search..."/>
+</div>
+<div>
+<label class="muted" for="fieldFilter">Field</label>
+<select class="input" id="fieldFilter">
+<option value="">All fields</option>
+<option value="status">status</option>
+<option value="assigned_to">assigned_to</option>
+<option value="priority">priority</option>
+<option value="title">title</option>
+</select>
+</div>
+<div>
+<label class="muted" for="userFilter">User</label>
+<input class="input" id="userFilter" placeholder="User name or email"/>
+</div>
+<div>
+<label class="muted" for="timeRange">Time Range</label>
+<select class="input" id="timeRange">
+<option value="all">All time</option>
+<option value="today">Today</option>
+<option value="7d">Last 7 days</option>
+<option value="30d">Last 30 days</option>
+<option value="custom">Custom</option>
+</select>
+</div>
+<div id="customDates" style="display:none;">
+<label class="muted">Start</label>
+<input class="input" id="startDate" type="date"/>
+<label class="muted">End</label>
+<input class="input" id="endDate" type="date"/>
+</div>
+<div style="display:flex;gap:8px;align-items:center;">
+<button class="btn-primary input" id="applyBtn">Apply</button>
+<button class="input" id="clearBtn">Clear</button>
+<button class="input" id="exportBtn">Export CSV</button>
+</div>
+</div>
+</div>
+<!-- Charts + Stats -->
+<div class="card" style="margin-bottom:16px;">
+<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+<div style="flex:1;min-width:220px;">
+<h3 class="muted">Top Changed Fields</h3>
+<canvas height="120" id="fieldsChart"></canvas>
+</div>
+<div style="flex:1;min-width:220px;">
+<h3 class="muted">Top Editors</h3>
+<canvas height="120" id="editorsChart"></canvas>
+</div>
+<div style="width:220px;">
+<h3 class="muted">Total Changes</h3>
+<div id="totalChanges" style="font-size:24px;font-weight:700;">0</div>
+</div>
+</div>
+</div>
+<!-- Audit table -->
+<div class="card">
+<h3 class="muted">Audit Trail</h3>
+<div class="table-wrap" style="margin-top:12px;">
+<table aria-label="Audit trail" role="table">
+<thead>
+<tr>
+<th>Case</th>
+<th>Field</th>
+<th>Old Value</th>
+<th>New Value</th>
+<th>Modified At</th>
+<th>Modified By</th>
+</tr>
+</thead>
+<tbody id="auditBody">
+<tr><td class="muted" colspan="6" style="text-align:center;padding:20px 0;">Loading...</td></tr>
+</tbody>
+</table>
+</div>
+<div style="display:flex;justify-content:center;margin-top:12px;">
+<button class="input" id="loadMore">Load more</button>
+</div>
+</div>
+</div>
+<script type="module">
     import { supabase } from './supabase.js';
 
     // ---------------- state ----------------
@@ -382,18 +374,15 @@
 
   </script>
 </div>
-
 <!-- Admin access restricted card -->
-<div id="restricted-card" class="hidden flex items-center justify-center h-screen bg-gray-900">
-  <div class="bg-gray-800 text-center p-10 rounded-2xl shadow-2xl max-w-md">
-    <div class="text-indigo-400 text-6xl mb-4">🔒</div>
-    <h2 class="text-2xl font-bold text-white mb-2">Access Restricted</h2>
-    <p class="text-gray-400 mb-6">This page is available to administrators only.</p>
-    <a href="/" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg">Go Back Home</a>
-  </div>
+<div class="hidden flex items-center justify-center h-screen bg-gray-900" id="restricted-card">
+<div class="bg-gray-800 text-center p-10 rounded-2xl shadow-2xl max-w-md">
+<div class="text-indigo-400 text-6xl mb-4">🔒</div>
+<h2 class="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+<p class="text-gray-400 mb-6">This page is available to administrators only.</p>
+<a class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg" href="/">Go Back Home</a>
 </div>
-
-
+</div>
 <!-- Admin check script -->
 <script type="module">
 import { supabase } from './supabase.js';
@@ -427,6 +416,5 @@ async function checkAdminAccess() {
 
 document.addEventListener('DOMContentLoaded', checkAdminAccess);
 </script>
-
 </body>
 </html>
