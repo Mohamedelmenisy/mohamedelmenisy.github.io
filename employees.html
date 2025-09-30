@@ -351,8 +351,13 @@
 
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            // **MODIFIED:** Use the new last_seen column
-            const lastSeen = emp.last_seen ? new Date(emp.last_seen).toLocaleString() : 'Never';
+            
+            // ========================= START: MODIFIED CODE =========================
+            // Convert the UTC timestamp from the database to the specified timezone.
+            const lastSeen = emp.last_seen
+                ? new Date(emp.last_seen).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+                : 'Never';
+            // ========================== END: MODIFIED CODE ==========================
             
             const isOnline = emp.status === 'ONLINE'; 
 
@@ -446,7 +451,7 @@
                 emp.email,
                 emp.role,
                 isOnline ? 'Online' : 'Offline',
-                emp.last_seen ? new Date(emp.last_seen).toLocaleString() : 'Never'
+                emp.last_seen ? new Date(emp.last_seen).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : 'Never'
             ].map(val => `"${String(val).replace(/"/g, '""')}"`);
             csvContent += row.join(',') + '\r\n';
         });
@@ -544,7 +549,6 @@
         });
     }
 
-    // **MODIFIED:** Initialize Presence Tracking
     async function initPresence(user) {
         const channel = supabase.channel('presence:employees', {
             config: { presence: { key: user.id } }
@@ -564,7 +568,6 @@
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
                 await channel.track({ user_id: user.id, email: user.email });
-                // Update last_seen for the current user upon successful tracking
                 const { error } = await supabase
                     .from('users')
                     .update({ last_seen: new Date().toISOString() })
@@ -593,7 +596,6 @@
                 renderRolesChart(allEmployees);
                 setupModals();
                 
-                // **MODIFIED:** Initialize presence tracking for the admin user
                 await initPresence(user);
 
                 supabase.channel('public:users')
