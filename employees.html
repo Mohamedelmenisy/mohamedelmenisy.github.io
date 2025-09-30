@@ -326,7 +326,6 @@
     let allEmployees = [];
     let rolesChart = null;
 
-    // DOM Elements
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
@@ -352,7 +351,8 @@
 
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            const lastSeen = emp.last_sign_in_at ? new Date(emp.last_sign_in_at).toLocaleString() : 'Never';
+            // **MODIFIED:** Use the new last_seen column
+            const lastSeen = emp.last_seen ? new Date(emp.last_seen).toLocaleString() : 'Never';
             
             const isOnline = emp.status === 'ONLINE'; 
 
@@ -446,7 +446,7 @@
                 emp.email,
                 emp.role,
                 isOnline ? 'Online' : 'Offline',
-                emp.last_sign_in_at ? new Date(emp.last_sign_in_at).toLocaleString() : 'Never'
+                emp.last_seen ? new Date(emp.last_seen).toLocaleString() : 'Never'
             ].map(val => `"${String(val).replace(/"/g, '""')}"`);
             csvContent += row.join(',') + '\r\n';
         });
@@ -544,7 +544,7 @@
         });
     }
 
-    // NEW: Initialize Presence Tracking
+    // **MODIFIED:** Initialize Presence Tracking
     async function initPresence(user) {
         const channel = supabase.channel('presence:employees', {
             config: { presence: { key: user.id } }
@@ -552,9 +552,8 @@
 
         channel.on('presence', { event: 'sync' }, () => {
             const state = channel.presenceState();
-            console.log("Presence state:", state);
-
             const onlineIds = Object.keys(state);
+
             allEmployees = allEmployees.map(emp => ({
                 ...emp,
                 status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE'
@@ -565,6 +564,14 @@
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
                 await channel.track({ user_id: user.id, email: user.email });
+                // Update last_seen for the current user upon successful tracking
+                const { error } = await supabase
+                    .from('users')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('id', user.id);
+                if (error) {
+                    console.error('Error updating last_seen:', error.message);
+                }
             }
         });
     }
@@ -586,14 +593,13 @@
                 renderRolesChart(allEmployees);
                 setupModals();
                 
-                // Initialize presence tracking for the admin user
+                // **MODIFIED:** Initialize presence tracking for the admin user
                 await initPresence(user);
 
-                // Realtime Subscription for database changes
                 supabase.channel('public:users')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async (payload) => {
                         allEmployees = await fetchEmployees();
-                        applyFilters(); // Re-apply filters which will also update presence status implicitly
+                        applyFilters();
                         renderRolesChart(allEmployees);
                     })
                     .subscribe();
