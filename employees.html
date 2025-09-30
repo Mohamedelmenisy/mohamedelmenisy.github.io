@@ -290,8 +290,8 @@
   async function fetchEmployees(){
     showOverlay(true);
     try{
-      const { data, error } = await supabase.from('users').select('id,name,email,role,last_seen').order('name',{ascending:true});
-      if(error){ console.error('fetch users', error); employees = []; showToast('Failed to load users','warn'); return; }
+      const { data, error } = await supabase.from('employees').select('id,name,email,role,last_seen').order('name',{ascending:true});
+      if(error){ console.error('fetch employees', error); employees = []; showToast('Failed to load employees','warn'); return; }
       const ids = data.map(d=>d.id);
       let acts = [];
       if(ids.length){
@@ -438,7 +438,7 @@
     try{
       // channel for users
       supabase.channel('employees_channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload=>{
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, payload=>{
           const t = payload.eventType;
           if(t === 'INSERT'){ employees.unshift(payload.new); showToast(`${payload.new.name || payload.new.email} added`,'success'); }
           else if(t === 'UPDATE'){ const idx = employees.findIndex(x=>String(x.id)===String(payload.new.id)); if(idx>-1) employees[idx] = {...employees[idx], ...payload.new}; else employees.unshift(payload.new); showToast(`${payload.new.name || payload.new.email} updated`,'info'); }
@@ -473,7 +473,7 @@
   async function updateLastSeen(userId){
     if(!userId) return;
     try{
-      await supabase.from('users').update({ last_seen: new Date().toISOString() }).eq('id', userId);
+      await supabase.from('employees').update({ last_seen: new Date().toISOString() }).eq('id', userId);
     }catch(e){ console.error('updateLastSeen', e); }
   }
   function resetHeartbeat(userId){
@@ -485,7 +485,7 @@
   // change role (admin only)
   async function changeUserRole(userId, newRole){
     try{
-      const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
+      const { error } = await supabase.from('employees').update({ role: newRole }).eq('id', userId);
       if(error){ showToast('Role update failed','warn'); console.error(error); return; }
       const idx = employees.findIndex(e=>String(e.id)===String(userId));
       if(idx>-1){ employees[idx].role = newRole; applyFilters(); updateCharts(); }
@@ -504,7 +504,7 @@
         showOverlay(false);
         return null;
       }
-      const { data, error } = await supabase.from('users').select('role,id').eq('id', user.id).single();
+      const { data, error } = await supabase.from('employees').select('role,id').eq('id', user.id).single();
       if(error || !data || data.role !== 'admin'){ // not admin
         document.querySelector('.card').style.display = 'none';
         restrictedCard.style.display = 'flex';
