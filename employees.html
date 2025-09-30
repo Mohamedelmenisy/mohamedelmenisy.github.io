@@ -1,522 +1,307 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Employees Directory - IB Dashboard</title>
-<link href="favicon.png" rel="icon" type="image/png"/>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
-<script src="supabase.js" type="module"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><style>body { font-family: 'Inter', sans-serif; font-size: 16px; }</style></head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
-<!DOCTYPE html>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees Directory - InfiniBase</title>
+    <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-color-hover: #4f46e5;
+            --text-color: #d1d5db;
+            --text-color-muted: #9ca3af;
+            --bg-color: #111827;
+            --bg-color-alt: #1f2937;
+            --border-color: #374151;
+            --border-radius: 0.5rem;
+            --border-radius-lg: 0.75rem;
+            --status-online: #22c55e;
+            --status-offline: #ef4444;
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+        .hidden { display: none !important; }
 
-<html lang="en">
-<head>
-<link href="favicon.png" rel="icon">
-<meta charset="utf-8">
-<meta content="width=device-width,initial-scale=1" name="viewport">
-<title>Employees Directory — Final</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<style>
-    :root{--bg:#0f1724;--card:#0b1220;--muted:#9ca3af;--accent:#6366f1;}
-    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:#e5e7eb;}
-    .container{max-width:1200px;margin:24px auto;padding:0 16px;}
-    .card{background:var(--card);border:1px solid rgba(255,255,255,0.04);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
-    .muted{color:var(--muted);font-size:13px;}
-    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;}
-    .role-admin{background:rgba(99,102,241,0.12);color:#6366f1;border:1px solid rgba(99,102,241,0.14);}
-    .role-agent{background:rgba(16,185,129,0.08);color:#10b981;border:1px solid rgba(16,185,129,0.1);}
-    .role-manager{background:rgba(250,204,21,0.08);color:#f59e0b;border:1px solid rgba(250,204,21,0.12);}
-    .online{color:#34d399;font-weight:700;}
-    .offline{color:#9ca3af;}
-    .table-wrap{overflow:auto;border-radius:8px;}
-    table{width:100%;border-collapse:collapse;min-width:1000px;}
-    th,td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:#cbd5e1;text-align:left;}
-    thead th{background:#071021;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.03em;}
-    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1000;visibility:hidden;opacity:0;transition:opacity .18s;}
-    .overlay.show{visibility:visible;opacity:1;}
-    .spinner{width:72px;height:72px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--accent);animation:spin 1s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    .toast{position:fixed;top:20px;right:20px;z-index:1100;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:white;box-shadow:0 8px 30px rgba(0,0,0,0.5);cursor:pointer;transform-origin:right top;transition:transform .18s ease,opacity .18s;}
-    .toast.hide{opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;}
-    .toast.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
-    .highlight{background:rgba(99,102,241,0.12) !important;transition:background 1s;}
-    /* responsive: convert table to cards on small screens */
-    @media (max-width:640px){
-      table, thead, tbody, th, td, tr { display:block; }
-      thead { display:none; }
-      tr { margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:12px; }
-      td { padding:8px 0; }
-      td::before { font-weight:600; display:inline-block; width:110px; color:var(--muted); }
-      td:nth-of-type(1)::before{ content:"Name"; }
-      td:nth-of-type(2)::before{ content:"Email"; }
-      td:nth-of-type(3)::before{ content:"Role"; }
-      td:nth-of-type(4)::before{ content:"Status"; }
-      td:nth-of-type(5)::before{ content:"Last Seen"; }
-      td:nth-of-type(6)::before{ content:"Last Activity"; }
-    }
-    .small-btn{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;cursor:pointer;}
-  </style>
-</meta></meta></link></head>
-<body class="bg-gray-900 text-gray-100">
-<header class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800 sticky top-0 z-50"><div class="flex items-center gap-3"><img alt="Logo" class="h-8" src="/assets/logo.png"/><h1 class="text-xl font-semibold">Employees Directory</h1></div><div class="flex items-center gap-4"><a class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium" href="app.html">← Back to Dashboard</a><button class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium">Export CSV</button></div></header>
-<div class="container">
-<!-- Header -->
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-<div>
-<h1 style="font-weight:800;color:var(--accent);margin:0 0 6px 0;">Employees Directory</h1>
-<div class="muted">Live roster, role management, online status and activity — managed by admins.</div>
+        /* --- Layout --- */
+        .page-wrapper {
+            padding: 1.5rem 2rem;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .header-title h1 {
+            font-size: 2rem; /* Bigger font for title */
+            font-weight: 800;
+            margin: 0 0 0.25rem 0;
+            color: white;
+        }
+        .header-title p {
+            font-size: 1rem;
+            color: var(--text-color-muted);
+            margin: 0;
+        }
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* --- Buttons --- */
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .button:hover { background-color: var(--primary-color-hover); }
+        .button-secondary {
+            background-color: var(--bg-color-alt);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .button-secondary:hover { background-color: var(--border-color); }
+        
+        /* --- Card & Table --- */
+        .card {
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .table-container { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            font-size: 0.95rem; /* Slightly larger table font */
+            vertical-align: middle;
+        }
+        thead th {
+            background-color: var(--bg-color);
+            color: var(--text-color-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #2a3546; }
+
+        /* --- Table Content Styles --- */
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+        .user-name { font-weight: 600; color: white; }
+        .user-email { font-size: 0.85rem; color: var(--text-color-muted); }
+        .role-badge { padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: 500; text-transform: capitalize; }
+        .role-badge.admin { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .role-badge.editor { background-color: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+        .role-badge.viewer { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .status-dot.online { background-color: var(--status-online); }
+        .status-dot.offline { background-color: var(--status-offline); }
+        
+        /* --- Access Restricted Card --- */
+        .access-restricted-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100vh;
+            width: 100%;
+        }
+        .access-restricted-card .card {
+            max-width: 450px;
+            padding: 3rem;
+        }
+        .access-restricted-card .icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+        .access-restricted-card h2 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        .access-restricted-card p {
+            color: var(--text-color-muted);
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Main dashboard content, hidden by default -->
+<div id="dashboard" class="hidden">
+    <div class="page-wrapper">
+        <header class="page-header">
+            <div class="header-title">
+                <h1>Employees Directory</h1>
+                <p>Live roster, role management, and activity — managed by admins.</p>
+            </div>
+            <div class="header-actions">
+                <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <button id="exportCsvBtn" class="button"><i class="fas fa-file-csv"></i> Export CSV</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody">
+                        <!-- Rows will be injected by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-<div style="display:flex;gap:8px;align-items:center;">
-<button class="card small-btn" id="exportCsv">Export CSV</button>
+
+<!-- Admin access restricted card, visible by default -->
+<div id="restricted-card" class="access-restricted-card">
+    <div class="card">
+        <div class="icon">🔒</div>
+        <h2>Access Restricted</h2>
+        <p>This page is available for administrators only.</p>
+        <a href="app.html" class="button">Go Back to Dashboard</a>
+    </div>
 </div>
-</div>
-<!-- Dashboard card -->
-<div class="card" id="dashboard">
-<!-- Filters and actions -->
-<div class="flex flex-wrap gap-4 mb-4 items-end">
-<div style="flex:1;min-width:220px;">
-<label class="muted">Search</label>
-<input class="w-full p-2 rounded-md bg-gray-800" id="search" placeholder="Name, email, last activity..."/>
-</div>
-<div>
-<label class="muted">Role</label>
-<select class="p-2 rounded-md bg-gray-800" id="roleFilter">
-<option value="all">All Roles</option>
-<option value="admin">Admin</option>
-<option value="agent">Agent</option>
-<option value="manager">Manager</option>
-</select>
-</div>
-<div>
-<label class="muted">Status</label>
-<select class="p-2 rounded-md bg-gray-800" id="statusFilter">
-<option value="all">All</option>
-<option value="online">Online</option>
-<option value="offline">Offline</option>
-</select>
-</div>
-<div>
-<label class="muted">Last Seen</label>
-<select class="p-2 rounded-md bg-gray-800" id="timeFilter">
-<option value="all">All time</option>
-<option value="1d">Last 24 hours</option>
-<option value="7d">Last 7 days</option>
-<option value="30d">Last 30 days</option>
-</select>
-</div>
-<div style="margin-left:auto;display:flex;gap:8px;">
-<button class="small-btn" id="clearFilters">Clear</button>
-<button class="small-btn" id="applyFilters">Apply</button>
-</div>
-</div>
-<!-- Stats and charts -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-<div class="card">
-<div class="muted">Total Employees</div>
-<div class="font-bold text-lg mt-1" id="totalCount">0</div>
-</div>
-<div class="card">
-<div class="muted">Online Now</div>
-<div class="font-bold text-lg mt-1" id="onlineCount">0</div>
-</div>
-<div class="card">
-<div class="muted">Admins</div>
-<div class="font-bold text-lg mt-1" id="adminCount">0</div>
-</div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-<div class="card">
-<div class="muted">Roles Distribution</div>
-<canvas height="120" id="rolesChart"></canvas>
-</div>
-<div class="card">
-<div class="muted">Active (last 7 days)</div>
-<canvas height="120" id="activeChart"></canvas>
-</div>
-</div>
-<!-- Table -->
-<div class="table-wrap card">
-<table aria-label="Employees table">
-<thead>
-<tr>
-<th>Name</th>
-<th>Email</th>
-<th>Role</th>
-<th>Status</th>
-<th>Last Seen</th>
-<th>Last Activity</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody id="employeesBody">
-<tr><td class="muted" colspan="7" style="text-align:center;padding:20px 0;">Loading employees...</td></tr>
-</tbody>
-</table>
-</div>
-<div style="display:flex;justify-content:center;margin-top:12px;">
-<button class="small-btn" id="loadMore">Load More</button>
-</div>
-</div>
-<!-- Restricted card for non-admins -->
-<div class="hidden card" id="restricted-card" style="margin-top:24px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;">
-<div style="font-size:64px;color:#8b5cf6;margin-bottom:8px;">🔒</div>
-<h2 style="font-size:20px;font-weight:800;margin:0 0 8px 0;color:#fff;">Access Restricted</h2>
-<p class="muted">This page is available to administrators only.</p>
-<div style="margin-top:12px;"><a class="card small-btn" href="/" style="padding:8px 16px;">Go Back Home</a></div>
-</div>
-</div>
-<!-- overlay spinner & toast -->
-<div class="overlay" id="overlay"><div aria-hidden="true" class="spinner"></div></div>
-<div class="toast hide" id="toast"></div>
+
+
 <script type="module">
-import { supabase } from './supabase.js';
+    import { supabase } from './supabase.js';
 
-/*
- Final Employees Directory
- Features added:
- - Admin-only guard
- - Auto-update last_seen: on load, heartbeat, user activity (mousemove, click, keydown)
- - Role management UI (action button to change role) visible to admins
- - Realtime subscriptions for 'users' and 'activity_log'
- - Filters: search, role, status, last-seen time range
- - Charts: roles distribution & active users timeline (simple last-7-days count)
- - Responsive: cards on mobile
- - Export CSV, pagination, toasts, spinner
-*/
-
-// State
-let employees = [];
-let filtered = [];
-let pageSize = 25;
-let currentPage = 1;
-let isAdmin = false;
-
-// DOM refs
-const employeesBody = document.getElementById('employeesBody');
-const totalCountEl = document.getElementById('totalCount');
-const onlineCountEl = document.getElementById('onlineCount');
-const adminCountEl = document.getElementById('adminCount');
-const overlay = document.getElementById('overlay');
-const toast = document.getElementById('toast');
-const rolesChartCtx = document.getElementById('rolesChart').getContext('2d');
-const activeChartCtx = document.getElementById('activeChart').getContext('2d');
-
-let rolesChart = null;
-let activeChart = null;
-
-// Filters
-const searchInput = document.getElementById('search');
-const roleFilter = document.getElementById('roleFilter');
-const statusFilter = document.getElementById('statusFilter');
-const timeFilter = document.getElementById('timeFilter');
-const applyBtn = document.getElementById('applyFilters');
-const clearBtn = document.getElementById('clearFilters');
-const exportBtn = document.getElementById('exportCsv');
-const loadMoreBtn = document.getElementById('loadMore');
-
-// Utilities
-function showOverlay(show=true){ overlay.classList.toggle('show', !!show); }
-function showToast(msg, type='info', duration=3500){
-  const colors = { info:'#0ea5e9', success:'#10b981', warn:'#f59e0b', error:'#ef4444' };
-  toast.style.background = colors[type] || '#111827';
-  toast.innerHTML = `<div style="font-weight:700;margin-right:8px">${type==='success'?'✅':type==='warn'?'⚠️':'ℹ️'}</div><div>${msg}</div>`;
-  toast.classList.remove('hide'); toast.classList.add('show');
-  toast.onclick = ()=>{ toast.classList.remove('show'); toast.classList.add('hide'); };
-  setTimeout(()=>{ toast.classList.remove('show'); toast.classList.add('hide'); }, duration);
-}
-function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function formatDateTime(v){ if(!v) return '-'; try{ return new Date(v).toLocaleString(); }catch(e){ return v; } }
-function isOnline(lastSeen){ if(!lastSeen) return false; const diff = (Date.now() - new Date(lastSeen).getTime())/1000; return diff < 120; }
-function roleBadge(role){ role = (role||'').toLowerCase(); if(role==='admin') return `<span class="badge role-admin">Admin</span>`; if(role==='manager') return `<span class="badge role-manager">Manager</span>`; return `<span class="badge role-agent">Agent</span>`; }
-
-// Fetch users and last activity (optimized-ish)
-async function fetchEmployees(){
-  showOverlay(true);
-  try{
-    const { data, error } = await supabase.from('employees').select('id, name, email, role, last_seen').order('name',{ascending:true});
-    if(error){ console.error('fetch users error', error); employees = []; return; }
-    // fetch last activity per user using join-like approach: gather user ids and do one query
-    const ids = data.map(d => d.id);
-    let activities = [];
-    if(ids.length){
-      const { data: acts } = await supabase.from('activity_log').select('user_id, action, timestamp').in('user_id', ids).order('timestamp',{ascending:false});
-      activities = acts || [];
+    // --- Main Logic ---
+    async function fetchEmployees() {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('name', { ascending: true });
+        
+        if (error) {
+            console.error("Error fetching employees:", error);
+            return [];
+        }
+        return data;
     }
-    // compress latest activity per user
-    const lastMap = {};
-    for(const a of activities){
-      if(!lastMap[a.user_id]) lastMap[a.user_id] = a;
+
+    function renderEmployees(employees) {
+        const tableBody = document.getElementById('employeesTableBody');
+        if (!tableBody) return;
+
+        if (employees.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = employees.map(emp => {
+            const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const lastSeen = emp.last_sign_in_at ? new Date(emp.last_sign_in_at).toLocaleString() : 'Never';
+            
+            // Dummy online status logic
+            const isOnline = Math.random() > 0.5;
+
+            return `
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="user-avatar">${initials}</div>
+                            <div>
+                                <div class="user-name">${emp.name || 'No Name'}</div>
+                                <div class="user-email">${emp.email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="role-badge ${emp.role}">${emp.role}</span>
+                    </td>
+                    <td>
+                        <div class="status-indicator">
+                            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                            <span>${isOnline ? 'Online' : 'Offline'}</span>
+                        </div>
+                    </td>
+                    <td>${lastSeen}</td>
+                </tr>
+            `;
+        }).join('');
     }
-    const enriched = data.map(u => {
-      const last = lastMap[u.id];
-      return { ...u, last_activity: last ? `${last.action} @ ${formatDateTime(last.timestamp)}` : '-' };
-    });
-    employees = enriched;
-    applyFilters();
-    updateStats();
-    updateCharts();
-  }finally{ showOverlay(false); }
-}
+    
+    // --- Admin Access Check ---
+    async function checkAdminAccess() {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                // Not logged in, show restricted card
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('restricted-card').classList.remove('hidden');
+                return;
+            }
+            // Logged in, check role from 'users' table
+            const { data, error } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', user.id)
+                .single();
 
-// Stats & Charts
-function updateStats(){
-  totalCountEl.textContent = employees.length;
-  onlineCountEl.textContent = employees.filter(e=>isOnline(e.last_seen)).length;
-  adminCountEl.textContent = employees.filter(e=> (e.role||'').toLowerCase() === 'admin').length;
-}
-
-function updateCharts(){
-  // roles distribution
-  const counts = { admin:0, manager:0, agent:0, other:0 };
-  for(const u of employees){ const r = (u.role||'').toLowerCase(); if(counts[r] !== undefined) counts[r]++; else counts.other++; }
-  const labels = ['Admin','Manager','Agent','Other'];
-  const values = [counts.admin, counts.manager, counts.agent, counts.other];
-  if(rolesChart) rolesChart.destroy();
-  rolesChart = new Chart(rolesChartCtx, { type:'doughnut', data:{ labels, datasets:[{ data: values }] }, options:{ plugins:{legend:{position:'bottom'}} } });
-
-  // active chart: count unique users with activity in last 7 days per day
-  const days = [];
-  for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
-  const dayCounts = days.map(day => {
-    return employees.filter(u => {
-      if(!u.last_activity || u.last_activity === '-') return false;
-      return u.last_activity.includes(day);
-    }).length;
-  });
-  if(activeChart) activeChart.destroy();
-  activeChart = new Chart(activeChartCtx, { type:'line', data:{ labels: days, datasets:[{ label:'Active users', data: dayCounts, fill:false, borderColor:'#6366f1' }] }, options:{ scales:{ y:{ beginAtZero:true } } } });
-}
-
-// Render table (pagination)
-function renderTable(list){
-  employeesBody.innerHTML = '';
-  const end = Math.min(list.length, currentPage * pageSize);
-  if(!list.length){ employeesBody.innerHTML = `<tr><td colspan="7" class="muted" style="text-align:center;padding:18px 0;">No results</td></tr>`; return; }
-  for(let i=0;i<end;i++){
-    const u = list[i];
-    const online = isOnline(u.last_seen);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${escapeHtml(u.name||'-')}</td>
-      <td class="muted">${escapeHtml(u.email||'-')}</td>
-      <td>${roleBadge(u.role)}</td>
-      <td>${online?'<span class="online">Online</span>':'<span class="offline">Offline</span>'}</td>
-      <td class="muted">${formatDateTime(u.last_seen)}</td>
-      <td class="muted">${escapeHtml(u.last_activity||'-')}</td>
-      <td>${isAdmin ? `<select data-id="${u.id}" class="small-btn role-select"><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select>` : '-'}</td>
-    `;
-    employeesBody.appendChild(tr);
-    // set select current value
-    if(isAdmin){
-      const sel = employeesBody.querySelector(`select[data-id="${u.id}"]`);
-      if(sel) sel.value = u.role || 'agent';
+            if (error || !data || data.role !== 'admin') {
+                // Not an admin, show restricted card
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('restricted-card').classList.remove('hidden');
+            } else {
+                // Is an admin, show dashboard and load data
+                document.getElementById('restricted-card').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                
+                // Boot the application
+                const employees = await fetchEmployees();
+                renderEmployees(employees);
+            }
+        } catch (e) {
+            console.error("Admin check failed:", e);
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('restricted-card').classList.remove('hidden');
+        }
     }
-  }
-}
 
-// Filtering pipeline
-function applyFilters(){
-  const q = (searchInput.value||'').toLowerCase().trim();
-  const role = (roleFilter.value||'all').toLowerCase();
-  const status = (statusFilter.value||'all').toLowerCase();
-  const timeRange = timeFilter.value;
-  let start=null;
-  if(timeRange==='1d'){ start = new Date(); start.setDate(start.getDate()-1); }
-  if(timeRange==='7d'){ start = new Date(); start.setDate(start.getDate()-7); }
-  if(timeRange==='30d'){ start = new Date(); start.setDate(start.getDate()-30); }
-
-  filtered = employees.filter(u => {
-    if(role !== 'all' && ((u.role||'').toLowerCase() !== role)) return false;
-    if(status !== 'all'){
-      const on = isOnline(u.last_seen);
-      if(status === 'online' && !on) return false;
-      if(status === 'offline' && on) return false;
-    }
-    if(start){ const ls = u.last_seen ? new Date(u.last_seen) : null; if(!ls || ls < start) return false; }
-    if(q){
-      const hay = `${u.name||''} ${u.email||''} ${u.last_activity||''}`.toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
-    return true;
-  });
-  currentPage = 1;
-  renderTable(filtered);
-  updateStats();
-  updateCharts();
-}
-
-// Export CSV
-function exportCSV(){
-  const list = filtered.length ? filtered : employees;
-  if(!list.length){ alert('No data to export'); return; }
-  const headers = ['name','email','role','status','last_seen','last_activity'];
-  const rows = [headers.join(',')];
-  for(const u of list){
-    const row = [
-      `"${(u.name||'').replaceAll('"','""')}"`,
-      `"${(u.email||'').replaceAll('"','""')}"`,
-      `"${(u.role||'').replaceAll('"','""')}"`,
-      `"${isOnline(u.last_seen)?'online':'offline'}"`,
-      `"${(u.last_seen||'')}"`,
-      `"${(u.last_activity||'')}"`
-    ];
-    rows.push(row.join(','));
-  }
-  const csv = rows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `employees_export_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
-}
-
-// Realtime subscriptions and patching
-function setupRealtime(){
-  supabase.channel('employees_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, payload => {
-      try{
-        const t = payload.eventType;
-        if(t === 'INSERT'){ employees.unshift(payload.new); showToast(`${payload.new.name||payload.new.email} added`, 'success'); }
-        else if(t === 'UPDATE'){ const idx = employees.findIndex(x=>String(x.id)===String(payload.new.id)); if(idx>-1) employees[idx]=payload.new; else employees.unshift(payload.new); showToast(`${payload.new.name||payload.new.email} updated`, 'info'); }
-        else if(t === 'DELETE'){ employees = employees.filter(x=>String(x.id)!==String(payload.old.id)); showToast(`${payload.old.name||payload.old.email} removed`, 'warn'); }
-        // refresh activity for affected user
-        refreshLastActivityFor(payload.new?.id || payload.old?.id);
-        applyFilters();
-      }catch(e){ console.error('users realtime error', e); }
-    }).subscribe();
-
-  supabase.channel('activity_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, payload => {
-      try{
-        const userId = payload.new ? payload.new.user_id : (payload.old ? payload.old.user_id : null);
-        if(userId) refreshLastActivityFor(userId);
-      }catch(e){ console.error('activity realtime error', e); }
-    }).subscribe();
-}
-
-// Refresh last activity for a user
-async function refreshLastActivityFor(userId){
-  if(!userId) return;
-  try{
-    const { data: act } = await supabase.from('activity_log').select('action, timestamp').eq('user_id', userId).order('timestamp',{ascending:false}).limit(1).maybeSingle();
-    const idx = employees.findIndex(e=>String(e.id)===String(userId));
-    if(idx>-1){ employees[idx].last_activity = act ? `${act.action} @ ${formatDateTime(act.timestamp)}` : '-'; applyFilters(); }
-  }catch(e){ console.error('refreshLastActivityFor error', e); }
-}
-
-// Update last_seen in DB for current user
-let heartbeatTimer = null;
-async function updateLastSeen(userId){
-  if(!userId) return;
-  try{
-    await supabase.from('employees').update({ last_seen: new Date().toISOString() }).eq('id', userId);
-  }catch(e){ console.error('updateLastSeen error', e); }
-}
-
-// Role management: change role via UI (admin only)
-async function changeUserRole(userId, newRole){
-  try{
-    const { error } = await supabase.from('employees').update({ role: newRole }).eq('id', userId);
-    if(error){ showToast('Role update failed','error'); console.error(error); return; }
-    showToast('Role updated','success');
-    // optimistic update locally
-    const idx = employees.findIndex(e=>String(e.id)===String(userId)); if(idx>-1){ employees[idx].role = newRole; applyFilters(); updateCharts(); }
-  }catch(e){ console.error('changeUserRole err', e); }
-}
-
-// Admin guard
-async function checkAdmin(){
-  try{
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if(userErr || !user){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
-    const { data, error } = await supabase.from('employees').select('role,id').eq('id', user.id).single();
-    if(error || !data || data.role !== 'admin'){ document.getElementById('dashboard').style.display = 'none'; document.getElementById('restricted-card').style.display = 'block'; return null; }
-    isAdmin = true;
-    document.getElementById('restricted-card').style.display = 'none'; document.getElementById('dashboard').style.display = 'block';
-    // start heartbeat and activity listeners to update last_seen
-    updateLastSeen(data.id); // initial ping
-    document.addEventListener('mousemove', () => resetHeartbeat(data.id));
-    document.addEventListener('keydown', () => resetHeartbeat(data.id));
-    document.addEventListener('click', () => resetHeartbeat(data.id));
-    heartbeatTimer = setInterval(()=> updateLastSeen(data.id), 60000); // every 60s
-    return data.id;
-  }catch(e){ console.error('checkAdmin error', e); return null; }
-}
-
-function resetHeartbeat(userId){
-  updateLastSeen(userId);
-  if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = setInterval(()=> updateLastSeen(userId), 60000); }
-}
-
-// Attach role select change handlers (delegated)
-document.addEventListener('change', (e)=>{
-  if(e.target && e.target.matches && e.target.matches('.role-select')){
-    const userId = e.target.getAttribute('data-id');
-    const newRole = e.target.value;
-    if(confirm(`Change role for this user to "${newRole}"?`)) changeUserRole(userId, newRole);
-    else { // revert to previous role display by re-rendering
-      applyFilters();
-    }
-  }
-});
-
-// UI events
-applyBtn.addEventListener('click', ()=> applyFilters());
-clearBtn.addEventListener('click', ()=>{ searchInput.value=''; roleFilter.value='all'; statusFilter.value='all'; timeFilter.value='all'; applyFilters(); });
-exportBtn.addEventListener('click', ()=> exportCSV());
-loadMoreBtn.addEventListener('click', ()=>{ currentPage++; renderTable(filtered); });
-
-// Boot sequence
-(async function init(){
-  showOverlay(true);
-  const adminId = await checkAdmin();
-  if(!adminId){ showOverlay(false); return; }
-  await fetchEmployees();
-  setupRealtime();
-  showOverlay(false);
-})();
+    // --- Initial Load ---
+    document.addEventListener('DOMContentLoaded', checkAdminAccess);
 
 </script>
+
 </body>
-</html>
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-const supabase = createClient('https://YOUR_PROJECT.supabase.co', 'YOUR_ANON_KEY');
-
-async function checkRole() {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    window.location.href = 'app.html';
-    return;
-  }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  const mainContent = document.querySelector('main');
-  const header = document.querySelector('header');
-  const restrictedCard = document.getElementById('restrictedCard');
-
-  if (profile && profile.role === 'admin') {
-    mainContent.classList.remove('hidden');
-    header.classList.remove('hidden');
-    restrictedCard.classList.add('hidden');
-  } else {
-    mainContent.classList.add('hidden');
-    header.classList.add('hidden');
-    restrictedCard.classList.remove('hidden');
-  }
-}
-
-checkRole();
-</script></body>
 </html>
