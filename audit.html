@@ -292,14 +292,21 @@
     
     function showOverlay(show = true) { overlay.classList.toggle('show', show); }
     function escapeHtml(s) { return s === null || s === undefined ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function formatTime(ts) { return !ts ? '-' : new Date(ts).toLocaleString(); }
+    function formatTime(ts) { return !ts ? '-' : new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }); }
     
     async function fetchInitial() {
       showOverlay(true);
       try {
+        // =========================================================================
+        // >>>>>>>>>>>> تعديل مهم: الاعتماد على RPC Function <<<<<<<<<<<<<<<
+        // =========================================================================
         const { data, error } = await supabase.rpc('get_full_case_history');
-        if (error) { console.error('get_full_case_history error', error); auditStore = []; }
-        else { auditStore = data || []; }
+        if (error) { 
+            console.error('get_full_case_history error', error); 
+            auditStore = []; 
+        } else { 
+            auditStore = data || []; 
+        }
         
         buildChartsFromStore();
         applyFiltersAndRender();
@@ -321,12 +328,12 @@
       if (currentPage === 1) auditBody.innerHTML = '';
       
       list.slice(start, end).forEach((r, i) => {
-        const oldVal = typeof r.old_value === 'object' ? JSON.stringify(r.old_value) : (r.old_value || '');
-        const newVal = typeof r.new_value === 'object' ? JSON.stringify(r.new_value) : (r.new_value || '');
+        const oldVal = typeof r.old_value === 'object' ? JSON.stringify(r.old_value, null, 2) : (r.old_value || '');
+        const newVal = typeof r.new_value === 'object' ? JSON.stringify(r.new_value, null, 2) : (r.new_value || '');
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${escapeHtml(r.case_title || r.slug || '-')}</td>
-          <td>${escapeHtml(r.field_changed || '-')}</td>
+          <td><code style="background: #111827; padding: 2px 6px; border-radius: 4px;">${escapeHtml(r.field_changed || '-')}</code></td>
           <td style="white-space:pre-wrap; max-width:300px; word-break:break-word;">${escapeHtml(oldVal)}</td>
           <td style="white-space:pre-wrap; max-width:300px; word-break:break-word;">${escapeHtml(newVal)}</td>
           <td>${formatTime(r.modified_at)}</td>
@@ -433,21 +440,12 @@
     }
 
     function setupRealtime() {
-      supabase.channel('public:case_history_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'case_history' }, payload => {
-          if (payload.eventType === 'INSERT') {
-            auditStore.unshift(payload.new);
-            showToastNotification(payload.new, 'insert');
-          } else if (payload.eventType === 'UPDATE') {
-            const idx = auditStore.findIndex(x => x.id === payload.new.id);
-            if (idx > -1) auditStore[idx] = payload.new;
-            showToastNotification(payload.new, 'update');
-          } else if (payload.eventType === 'DELETE') {
-            auditStore = auditStore.filter(x => x.id !== payload.old.id);
-            showToastNotification(payload.old, 'delete');
-          }
-          buildChartsFromStore();
-          applyFiltersAndRender();
+      supabase.channel('public:case_history') // Listen to the correct table
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'case_history' }, async payload => {
+          // A change happened, the simplest way is to just refetch all data
+          // This avoids complex state management and ensures data consistency
+          showToastNotification(payload.new || payload.old, payload.eventType.toLowerCase());
+          await fetchInitial();
         })
         .subscribe();
     }
