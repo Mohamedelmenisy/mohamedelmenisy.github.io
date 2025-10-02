@@ -113,51 +113,24 @@
   </style>
 
 <style>
-.stat-card {
-    padding: 10px 15px !important;
-    font-size: 14px !important;
-    margin: 8px !important;
-    border-radius: 12px !important;
+.recent-activities table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
 }
-.stat-card h2 {
-    font-size: 20px !important;
+.recent-activities th, .recent-activities td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
 }
-.stat-card p {
-    font-size: 12px !important;
+.recent-activities tr:hover {
+  background-color: #f1f5f9;
 }
-.table td, .table th {
-    font-size: 14px !important;
-    padding: 8px !important;
-}
-.status-viewed {
-    color: green;
-    font-weight: bold;
-}
-.status-feedback {
-    color: #007bff;
-    font-weight: bold;
-}
+.recent-activities .action-viewed { color: blue; font-weight: bold; }
+.recent-activities .action-updated { color: orange; font-weight: bold; }
+.recent-activities .action-deleted { color: red; font-weight: bold; }
 </style>
 
-<style>
-
-/* Assistant UI tweaks */
-.filters .form-group { flex: 0 1 220px; min-width: 160px; }
-.filters .search-group { flex-basis: 320px; min-width: 220px; }
-.filters input, .filters select { padding: 0.6rem; font-size: 0.95rem; }
-.stat-card .stat-value { font-size: 3.6rem !important; line-height: 1; margin: 0.2rem 0; }
-.action-badge { padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; display:inline-block; font-weight:600; }
-.action-badge.viewed { background: rgba(59,130,246,0.08); color: #3b82f6; border:1px solid rgba(59,130,246,0.12); }
-.action-badge.updated { background: rgba(249,115,22,0.06); color:#fb923c; border:1px solid rgba(249,115,22,0.12); }
-.action-badge.deleted { background: rgba(239,68,68,0.06); color:#ef4444; border:1px solid rgba(239,68,68,0.12); }
-.action-badge.positive { background: rgba(16,185,129,0.06); color:#10b981; border:1px solid rgba(16,185,129,0.12); }
-.action-badge.negative { background: rgba(239,68,68,0.06); color:#ef4444; border:1px solid rgba(239,68,68,0.12); }
-tbody tr { transition: background-color .12s, transform .12s, font-weight .12s; }
-tbody tr:hover { background-color: #26313f; font-weight: 600; }
-.page-wrapper { margin-bottom: 90px; }
-.page-footer { position: fixed; left:0; right:0; bottom:0; background: rgba(17,24,39,0.95); border-top: 1px solid rgba(60,65,75,0.6); color: #9aa3b2; padding: 10px 16px; text-align:center; z-index:90; }
-
-</style>
 </head>
 <body>
 
@@ -249,8 +222,7 @@ tbody tr:hover { background-color: #26313f; font-weight: 600; }
         </table>
       </div>
       <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-        <button id="prevPage" class="button-secondary">Previous</button>
-    <button id='nextPage' class='button'>Next</button>
+        <button id="loadMoreBtn" class="button-secondary">Load More</button>
       </div>
     </div>
   </div>
@@ -331,46 +303,26 @@ tbody tr:hover { background-color: #26313f; font-weight: 600; }
         });
     }
 
-    
-function renderActivities(filtered) {
-  // page-based pagination
-  const start = (currentPage - 1) * pageSize;
-  const end = start + pageSize;
-  const paginated = filtered.slice(start, end);
+    function renderActivities(filtered) {
+      const end = currentPage * pageSize;
+      const paginated = filtered.slice(0, end);
 
-  table.innerHTML = paginated.map((act) => {
-      const caseTitle = act.item_title || act.case_title || act.case_title_en || act.title_en || '-';
-      const actionKey = (act.action || '').toString().toLowerCase();
-      let actionHtml = '';
-      if (actionKey.includes('view')) actionHtml = `<span class="action-badge viewed">Viewed</span>`;
-      else if (actionKey.includes('update')) actionHtml = `<span class="action-badge updated">Updated</span>`;
-      else if (actionKey.includes('delete')) actionHtml = `<span class="action-badge deleted">Deleted</span>`;
-      else if (actionKey.includes('positive') || actionKey.includes('helpful')) actionHtml = `<span class="action-badge positive">Helpful</span>`;
-      else if (actionKey.includes('negative') || actionKey.includes('not helpful')) actionHtml = `<span class="action-badge negative">Not Helpful</span>`;
-      else actionHtml = `<span class="action-badge">${escapeHtml(act.action || '-')}</span>`;
+      table.innerHTML = paginated.map((act) => {
+          return `<tr>
+            <td>${escapeHtml(act.user_name) || 'N/A'}</td>
+            <td>${escapeHtml(act.user_email) || 'N/A'}</td>
+            <td>${escapeHtml(act.item_title) || '-'}</td>
+            <td>${escapeHtml(act.action) || '-'}</td>
+            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
+            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
+          </tr>`;
+      }).join('');
 
-      const detailsStr = act.details ? escapeHtml(formatDetails(act.details)) : '-';
-      const timeStr = act.activity_time ? new Date(act.activity_time).toLocaleString('en-US', { timeZone: 'Africa/Cairo', hour12: true }) : '-';
+      totalActivitiesEl.textContent = filtered.length;
+      document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
+    }
 
-      return `<tr>
-        <td>${escapeHtml(act.user_name) || 'N/A'}</td>
-        <td>${escapeHtml(act.user_email) || 'N/A'}</td>
-        <td>${escapeHtml(caseTitle)}</td>
-        <td>${actionHtml}</td>
-        <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title='${detailsStr}'>${detailsStr}</td>
-        <td>${timeStr}</td>
-      </tr>`;
-  }).join('');
-
-  totalActivitiesEl.textContent = filtered.length || 0;
-  window.lastFiltered = filtered;
-
-  const totalPages = Math.max(1, Math.ceil((filtered.length || 0) / pageSize));
-  document.getElementById('prevPage').style.display = (currentPage > 1) ? 'inline-flex' : 'none';
-  document.getElementById('nextPage').style.display = (currentPage < totalPages) ? 'inline-flex' : 'none';
-}
-
-function formatDetails(details) {
+    function formatDetails(details) {
       // If details is string or object, provide readable summary
       if (!details) return '';
       if (typeof details === 'string') return details;
@@ -501,18 +453,7 @@ function formatDetails(details) {
     document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
     document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
 
-    async 
-// pagination controls wiring (added)
-try {
-  document.getElementById('prevPage').addEventListener('click', () => { if (currentPage>1) { currentPage--; filterAndRender(); } });
-  document.getElementById('nextPage').addEventListener('click', () => {
-    const totalPages = Math.max(1, Math.ceil((window.lastFiltered?.length || 0) / pageSize));
-    if (currentPage < totalPages) { currentPage++; filterAndRender(); }
-  });
-  document.getElementById('exportBtn').onclick = () => exportCSV(window.lastFiltered?.length ? window.lastFiltered : []);
-} catch(e) { /* ignore missing nodes while editing */ }
-
-function checkAdminAccess() {
+    async function checkAdminAccess() {
       try {
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         const user = userData?.user;
@@ -546,28 +487,39 @@ function checkAdminAccess() {
   </script>
 
 <script>
-function formatActivityRow(row) {
-    if (row.action === "viewed") {
-        row.action = "<span class='status-viewed'>Viewed</span>";
-        row.details = "Case Viewed";
-    } else if (row.action === "positive_feedback") {
-        row.action = "<span class='status-feedback'>Positive Feedback</span>";
-        row.details = "Marked as Helpful";
-    } else if (row.action === "negative_feedback") {
-        row.action = "<span class='status-feedback' style='color:red;'>Negative Feedback</span>";
-        row.details = "Marked as Not Helpful";
-    }
-    // إخفاء الإدمنز
-    if (row.role && row.role === "admin") {
-        return null;
-    }
-    // تحويل الوقت لـ 12 ساعة
-    let date = new Date(row.activity_time);
-    row.activity_time = date.toLocaleString("en-US", { hour12: true });
-    return row;
+function formatDateTime(dateStr) {
+  const date = new Date(dateStr);
+  return date.toLocaleString('en-US', {
+    hour12: true,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
 }
 </script>
 
-<footer class="page-footer">© 2025 InfiniBase. All rights reserved. — Activity & Audit insights</footer>
+
+<div class="pagination-controls" style="margin-top: 10px; text-align: center;">
+  <button onclick="prevPage()" style="margin-right: 10px;">Previous</button>
+  <button onclick="nextPage()">Next</button>
+</div>
+<script>
+let currentPage = 1;
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    loadActivities(currentPage);
+  }
+}
+function nextPage() {
+  currentPage++;
+  loadActivities(currentPage);
+}
+</script>
+
+
+<footer class="page-footer" style="margin-top:40px;padding:15px;text-align:center;background:#f8f9fa;color:#555;border-top:1px solid #ddd;">
+  © 2025 Knowledge Base - All rights reserved
+</footer>
+
 </body>
 </html>
