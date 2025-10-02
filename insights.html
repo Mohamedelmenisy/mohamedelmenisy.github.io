@@ -56,12 +56,10 @@
         background-color: var(--bg-color-alt); color: var(--text-color); border-color: var(--border-color);
     }
     .button-secondary:hover { background-color: var(--border-color); color: white; }
-    
     .card {
       background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
       border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
     }
-    
     .filters { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end; }
     .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; }
     .filters .form-group label {
@@ -74,7 +72,6 @@
         color: var(--text-color); font-size: 1rem;
     }
     .filters .search-group { flex-basis: 350px; }
-
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -88,12 +85,10 @@
     .stat-card .stat-value { font-size: 3rem; font-weight: 800; }
     .stat-card .stat-value.helpful { color: #22c55e; }
     .stat-card .stat-value.not-helpful { color: #ef4444; }
-    
     .chart-wrapper {
         position: relative;
         height: 350px;
     }
-
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 800px; }
     th, td {
@@ -105,14 +100,11 @@
       text-transform: uppercase; letter-spacing: 0.05em;
     }
     tbody tr:hover { background-color: #2a3546; }
-    
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
     .spinner { width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
     @keyframes spin{ to{transform:rotate(360deg);} }
-    
     .toast{ position:fixed; top:20px; right:20px; padding:12px 16px; border-radius: var(--border-radius); color:white; z-index:1100; display:flex; align-items:center; gap:10px; cursor:pointer; opacity:0; transform:translateY(-10px); transition: all .2s; }
     .toast.show { opacity:1; transform:translateY(0); }
-
     .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; width: 100%; }
     .access-restricted-container .card { max-width: 450px; padding: 3rem; }
     .access-restricted-container .icon { font-size: 4rem; color: var(--primary-color); margin-bottom: 1.5rem; }
@@ -156,7 +148,7 @@
       </div>
       <div class="form-group search-group">
         <label for="searchInput">Search by User, Email, or Case</label>
-        <input id="searchInput" type="text" placeholder="..." />
+        <input id="searchInput" type="text" placeholder="Type name, email or case..." />
       </div>
       <button id="exportBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
     </div>
@@ -233,7 +225,7 @@
     let feedbackStats = { helpful: 0, notHelpful: 0 };
     let topUsers = [];
     let currentPage = 1;
-    const pageSize = 25;
+    const pageSize = 10;
 
     const table = document.getElementById('activityTable');
     const totalActivitiesEl = document.getElementById('totalActivities');
@@ -242,25 +234,32 @@
     const toast = document.getElementById('toast');
     const spinner = document.getElementById('spinner');
 
-    let feedbackChart, activeUsersChart;
+    let feedbackChart = null, activeUsersChart = null;
 
     function showSpinner(show) { spinner.style.display = show ? 'flex' : 'none'; }
 
-    function createChart(ctx, type, labels, data, dataLabels, backgroundColors) {
+    function showToast(message, timeout = 3000) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), timeout);
+    }
+
+    function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
         const chartOptions = {
             responsive: true, maintainAspectRatio: false,
-            plugins: { 
-                legend: { 
+            plugins: {
+                legend: {
                     labels: { color: legendColor, font: { family: 'Inter', size: 14 } }
-                }
+                },
+                tooltip: { mode: 'index', intersect: false }
             },
-            scales: { 
-                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor, drawBorder: false } }, 
-                x: { ticks: { color: ticksColor }, grid: { display: false } } 
+            scales: {
+                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor, drawBorder: false } },
+                x: { ticks: { color: ticksColor }, grid: { display: false } }
             }
         };
 
@@ -270,7 +269,16 @@
 
         return new Chart(ctx, {
             type,
-            data: { labels, datasets: [{ label: dataLabels, data, backgroundColor: backgroundColors, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), borderWidth: 2 }] },
+            data: {
+              labels,
+              datasets: [{
+                label: dataLabel || '',
+                data,
+                backgroundColor: Array.isArray(backgroundColors) ? backgroundColors : [backgroundColors],
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+                borderWidth: 2
+              }]
+            },
             options: chartOptions
         });
     }
@@ -278,59 +286,78 @@
     function renderActivities(filtered) {
       const end = currentPage * pageSize;
       const paginated = filtered.slice(0, end);
-      
-      table.innerHTML = paginated.map((act, idx) => {
+
+      table.innerHTML = paginated.map((act) => {
           return `<tr>
-            <td>${act.user_name || 'N/A'}</td>
-            <td>${act.user_email || 'N/A'}</td>
-            <td>${act.item_title || '-'}</td>
-            <td>${act.action}</td>
-            <td>${act.details ? JSON.stringify(act.details) : '-'}</td>
-            <td>${new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })}</td>
+            <td>${escapeHtml(act.user_name) || 'N/A'}</td>
+            <td>${escapeHtml(act.user_email) || 'N/A'}</td>
+            <td>${escapeHtml(act.item_title) || '-'}</td>
+            <td>${escapeHtml(act.action) || '-'}</td>
+            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
+            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
           </tr>`;
       }).join('');
-      
+
       totalActivitiesEl.textContent = filtered.length;
       document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
+    }
+
+    function formatDetails(details) {
+      // If details is string or object, provide readable summary
+      if (!details) return '';
+      if (typeof details === 'string') return details;
+      try { return JSON.stringify(details); } catch (e) { return String(details); }
     }
 
     function renderFeedback() {
       helpfulCountEl.textContent = feedbackStats.helpful;
       notHelpfulCountEl.textContent = feedbackStats.notHelpful;
       if (feedbackChart) feedbackChart.destroy();
-      feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut', ['Helpful', 'Not Helpful'], [feedbackStats.helpful, feedbackStats.notHelpful], 'Feedback', ['#10B981', '#EF4444']);
+      feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut',
+        ['Helpful', 'Not Helpful'],
+        [feedbackStats.helpful, feedbackStats.notHelpful],
+        'Feedback',
+        ['#10B981', '#EF4444']
+      );
     }
 
     function renderTopUsers() {
       if (activeUsersChart) activeUsersChart.destroy();
-      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', topUsers.map(u => u.user_name), topUsers.map(u => u.activity_count), 'Activities', '#6366F1');
+      const labels = topUsers.map(u => u.user_name || 'Unknown');
+      const data = topUsers.map(u => u.activity_count || 0);
+      const colors = data.map(_ => '#6366F1');
+      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', colors);
     }
 
     function filterAndRender() {
         const timeFilter = document.getElementById('timeFilter').value;
         const actionFilter = document.getElementById('actionFilter').value;
-        const search = document.getElementById('searchInput').value.toLowerCase();
+        const search = document.getElementById('searchInput').value.trim().toLowerCase();
         let filtered = [...activities];
         const now = new Date();
 
         if (timeFilter !== 'all') {
             filtered = filtered.filter(a => {
                 const ts = new Date(a.activity_time);
+                if (isNaN(ts)) return false;
                 if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
                 if (timeFilter === '7d') return (now - ts) / (1000*60*60*24) <= 7;
                 if (timeFilter === '30d') return (now - ts) / (1000*60*60*24) <= 30;
                 return true;
             });
         }
-        if (actionFilter !== 'all') filtered = filtered.filter(a => a.action === actionFilter);
+        if (actionFilter !== 'all') {
+            const wanted = actionFilter.toLowerCase();
+            filtered = filtered.filter(a => (a.action || '').toLowerCase() === wanted);
+        }
         if (search) {
             filtered = filtered.filter(a =>
-                (a.user_name || '').toLowerCase().includes(search) ||
-                (a.user_email || '').toLowerCase().includes(search) ||
-                (a.item_title || '').toLowerCase().includes(search)
+                ((a.user_name || '').toLowerCase().includes(search)) ||
+                ((a.user_email || '').toLowerCase().includes(search)) ||
+                ((a.item_title || '').toLowerCase().includes(search))
             );
         }
-        
+
         currentPage = 1;
         renderActivities(filtered);
         return filtered;
@@ -340,7 +367,7 @@
         const headers = ['User','Email','Case','Action','Details','Activity Time'];
         let csv = headers.join(',') + '\n';
         data.forEach(a => {
-            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details), a.activity_time];
+            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details || ''), a.activity_time];
             csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -352,34 +379,64 @@
 
     async function initData() {
       showSpinner(true);
-      const [actsRes, fbRes, tuRes] = await Promise.all([
-          supabase.rpc('get_user_activity_feed'),
-          supabase.rpc('get_feedback_stats'),
-          supabase.rpc('get_top_active_users', { limit_count: 5 })
-      ]);
-      
-      activities = actsRes.data || [];
-      feedbackStats = { 
-        helpful: fbRes.data?.find(f => f.rating_type === 'Helpful')?.count || 0, 
-        notHelpful: fbRes.data?.find(f => f.rating_type === 'Not Helpful')?.count || 0 
-      };
-      topUsers = tuRes.data || [];
+      try {
+        const [actsRes, fbRes, tuRes] = await Promise.all([
+            supabase.rpc('get_user_activity_feed'),
+            supabase.rpc('get_feedback_stats'),
+            supabase.rpc('get_top_active_users', { limit_count: 5 })
+        ]);
 
-      filterAndRender();
-      renderFeedback();
-      renderTopUsers();
-      showSpinner(false);
+        if (actsRes.error) {
+          console.error('activity feed RPC error', actsRes.error);
+          activities = [];
+          showToast('Failed to load activities.');
+        } else {
+          activities = Array.isArray(actsRes.data) ? actsRes.data : (actsRes.data || []);
+        }
+
+        if (fbRes.error) {
+          console.error('feedback stats RPC error', fbRes.error);
+          feedbackStats = { helpful: 0, notHelpful: 0 };
+        } else {
+          const fbData = fbRes.data || [];
+          feedbackStats = {
+            helpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'helpful')?.count) || 0,
+            notHelpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'not helpful')?.count) || 0
+          };
+        }
+
+        if (tuRes.error) {
+          console.error('top users RPC error', tuRes.error);
+          topUsers = [];
+        } else {
+          topUsers = Array.isArray(tuRes.data) ? tuRes.data : (tuRes.data || []);
+        }
+
+        // default sorting: most recent first
+        activities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
+
+        filterAndRender();
+        renderFeedback();
+        renderTopUsers();
+      } catch (e) {
+        console.error('initData error', e);
+        showToast('Error loading insights.');
+      } finally {
+        showSpinner(false);
+      }
     }
 
     ['timeFilter', 'actionFilter', 'searchInput'].forEach(id => {
-        document.getElementById(id).addEventListener('input', filterAndRender);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', filterAndRender);
     });
     document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
     document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
 
     async function checkAdminAccess() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        const user = userData?.user;
         if (!user) {
           document.getElementById('restricted-card').style.display = 'flex';
           return;
@@ -396,7 +453,16 @@
         document.getElementById('restricted-card').style.display = 'flex';
       }
     }
-    
+
+    function escapeHtml(unsafe) {
+      if (unsafe === null || unsafe === undefined) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
     document.addEventListener('DOMContentLoaded', checkAdminAccess);
   </script>
 </body>
