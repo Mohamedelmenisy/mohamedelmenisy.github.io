@@ -72,6 +72,13 @@
             padding: 1.5rem; margin-bottom: 1.5rem;
             overflow: hidden;
         }
+        .card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem 0;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
 
         .stats-container {
             display: grid;
@@ -93,6 +100,11 @@
             background-color: var(--bg-color);
             padding: 0.75rem;
             border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .stat-info .value {
             font-size: 2rem;
@@ -102,6 +114,23 @@
         .stat-info .label {
             font-size: 1rem;
             color: var(--text-color-muted);
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 350px;
+            }
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            max-width: 400px;
+            margin: auto;
         }
 
         .table-controls {
@@ -135,8 +164,8 @@
             background-color: var(--bg-color); color: var(--text-color-muted);
             font-size: 0.8rem; text-transform: uppercase;
         }
+        tbody tr:hover { background-color: #2a3546; }
         tr:last-child td { border-bottom: none; }
-        tr:hover { background-color: #2a3546; }
 
         .user-info { display: flex; align-items: center; gap: 1rem; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; }
@@ -220,42 +249,48 @@
                 </div>
             </div>
         </div>
-        
-        <div class="table-controls">
-            <div class="search-filter-box">
-                <input type="text" id="searchInput" placeholder="Search by name or email...">
-                <select id="roleFilter">
-                    <option value="all">All Roles</option>
-                    <option value="admin">Admin</option>
-                    <option value="viewer">Viewer</option>
-                </select>
-            </div>
-            <div>
-                <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
-                <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
-            </div>
-        </div>
 
-        <div class="card">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Last Seen</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employeesTableBody"></tbody>
-                </table>
+        <div class="dashboard-grid">
+            <div class="main-content">
+                <div class="table-controls">
+                    <div class="search-filter-box">
+                        <input type="text" id="searchInput" placeholder="Search by name or email...">
+                        <select id="roleFilter">
+                            <option value="all">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
+                    </div>
+                </div>
+        
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Last Seen (Africa/Cairo)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
-         <div class="card">
-             <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Role Distribution</h3>
-            <div style="position: relative; height: 300px; max-width: 400px; margin: auto;">
-                 <canvas id="rolesChart"></canvas>
+            <div class="sidebar-content">
+                 <div class="card">
+                     <h3>Role Distribution</h3>
+                    <div class="chart-wrapper">
+                         <canvas id="rolesChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -352,12 +387,13 @@
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
-            // ========================= START: MODIFIED CODE =========================
-            // Convert the UTC timestamp from the database to the specified timezone.
             const lastSeen = emp.last_seen
-                ? new Date(emp.last_seen).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+                ? new Date(emp.last_seen).toLocaleString('en-GB', { 
+                    timeZone: 'Africa/Cairo',
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                })
                 : 'Never';
-            // ========================== END: MODIFIED CODE ==========================
             
             const isOnline = emp.status === 'ONLINE'; 
 
@@ -405,11 +441,12 @@
         rolesChart = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: Object.keys(roleCounts),
+                labels: Object.keys(roleCounts).map(role => role.charAt(0).toUpperCase() + role.slice(1)),
                 datasets: [{
                     data: Object.values(roleCounts),
                     backgroundColor: ['#c4b5fd', '#93c5fd', '#fcd34d'],
                     borderColor: borderColorValue,
+                    borderWidth: 2,
                 }]
             },
             options: {
@@ -420,7 +457,7 @@
                         position: 'top',
                         labels: { 
                             color: textColorValue,
-                            font: { size: 14 } 
+                            font: { size: 14, family: 'Inter, sans-serif' } 
                         }
                     }
                 }
