@@ -1,12 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InfiniBase - User Activity Insights</title>
+  <title>InfiniBase - رؤى نشاط المستخدم</title>
+  
+  <!-- Favicon -->
   <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+  
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+  
+  <!-- Main Styles -->
   <style>
     :root {
       --primary-color: #6366f1;
@@ -18,129 +24,124 @@
       --border-color: #374151;
       --border-radius: 0.5rem;
       --border-radius-lg: 0.75rem;
-      --header-height: 70px;
+      --header-height: 65px;
     }
     html, body {
       height: 100%; margin: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color); color: var(--text-color);
-      font-size: 16px;
+      font-size: 15px; /* Base font size */
     }
     .page-wrapper {
-      padding: 1.5rem 2rem;
-      padding-top: calc(var(--header-height) + 1.5rem);
+      padding: 1.25rem 1.5rem;
+      padding-top: calc(var(--header-height) + 1.25rem);
     }
     .page-header {
         position: fixed; top: 0; left: 0; right: 0;
         height: var(--header-height);
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0 2rem;
+        padding: 0 1.5rem;
         background-color: rgba(31, 41, 55, 0.8);
         border-bottom: 1px solid var(--border-color);
         backdrop-filter: blur(8px); z-index: 100;
     }
-    .page-header .header-title { display: flex; align-items: center; gap: 1rem; }
-    .page-header .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
-    .page-header h1 {
-      font-size: 1.75rem; font-weight: 700; color: white; margin: 0;
-    }
+    .page-header .header-title { display: flex; align-items: center; gap: 0.8rem; }
+    .page-header .logo-icon { font-size: 1.6rem; color: var(--primary-color); }
+    .page-header h1 { font-size: 1.5rem; font-weight: 600; color: white; margin: 0; }
+    
     .button, button {
         background-color: var(--primary-color); color: white; border: 1px solid transparent;
-        padding: 0.75rem 1.25rem; border-radius: var(--border-radius);
-        cursor: pointer; font-size: 1rem; font-weight: 600;
+        padding: 0.65rem 1.1rem; border-radius: var(--border-radius);
+        cursor: pointer; font-size: 0.9rem; font-weight: 500;
         transition: all 0.2s; text-decoration: none;
         display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     .button:hover, button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
-    .button-secondary {
-        background-color: var(--bg-color-alt); color: var(--text-color); border-color: var(--border-color);
-    }
+    .button-secondary { background-color: var(--bg-color-alt); color: var(--text-color); border-color: var(--border-color); }
     .button-secondary:hover { background-color: var(--border-color); color: white; }
+    
     .card {
       background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
-      border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
+      border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.25rem;
     }
-    .filters { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end; }
+    .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
     .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; }
     .filters .form-group label {
-        font-size: 0.9rem; font-weight: 500;
-        color: var(--text-color-muted); margin-bottom: 0.5rem;
+        font-size: 0.85rem; font-weight: 500;
+        color: var(--text-color-muted); margin-bottom: 0.4rem;
     }
     .filters input, .filters select {
-        width: 100%; padding: 0.75rem; border: 1px solid var(--border-color);
+        width: 100%; padding: 0.7rem; border: 1px solid var(--border-color);
         border-radius: var(--border-radius); background-color: var(--bg-color);
-        color: var(--text-color); font-size: 1rem;
+        color: var(--text-color); font-size: 0.9rem;
     }
     .filters .search-group { flex-basis: 350px; }
+
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1.25rem;
     }
-    .stat-card { text-align: center; padding: 1rem; }
+    .stat-card { text-align: center; padding: 0.5rem; }
     .stat-card h2 {
-        font-size: 1.2rem; font-weight: 600;
-        color: var(--text-color-muted); margin-bottom: 0.75rem;
+        font-size: 1rem; font-weight: 500;
+        color: var(--text-color-muted); margin-bottom: 0.5rem;
     }
-    .stat-card .stat-value { font-size: 3rem; font-weight: 800; }
+    .stat-card .stat-value { font-size: 2.5rem; font-weight: 700; }
     .stat-card .stat-value.helpful { color: #22c55e; }
     .stat-card .stat-value.not-helpful { color: #ef4444; }
-    .chart-wrapper {
-        position: relative;
-        height: 350px;
-    }
+
+    .chart-wrapper { position: relative; height: 300px; }
+
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
     th, td {
-      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);
-      font-size: 1rem; text-align: left;
+      padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem; text-align: right; /* RTL support */
     }
     thead th {
-      background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem;
+      background-color: #111827; color: var(--text-color-muted); font-size: 0.75rem;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
     tbody tr:hover { background-color: #2a3546; }
+
+    /* Dynamic Action Styles */
+    .action-badge {
+        display: inline-block;
+        padding: 0.25em 0.7em;
+        border-radius: 0.3rem;
+        font-weight: 600;
+        text-transform: capitalize;
+        font-size: 0.8rem;
+    }
+    .action-viewer { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .action-updated { background-color: rgba(249, 115, 22, 0.2); color: #fb923c; }
+    .action-deleted { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
-    .spinner { width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
+    .spinner { width:50px; height:50px; border-radius:50%; border:4px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
     @keyframes spin{ to{transform:rotate(360deg);} }
-    .toast{ position:fixed; top:20px; right:20px; padding:12px 16px; border-radius: var(--border-radius); color:white; z-index:1100; display:flex; align-items:center; gap:10px; cursor:pointer; opacity:0; transform:translateY(-10px); transition: all .2s; }
+    
+    .toast{ position:fixed; top:20px; right:20px; padding:12px 16px; border-radius: var(--border-radius); color:white; background-color: #ef4444; z-index:1100; display:flex; align-items:center; gap:10px; cursor:pointer; opacity:0; transform:translateY(-10px); transition: all .3s; }
     .toast.show { opacity:1; transform:translateY(0); }
+    
     .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; width: 100%; }
     .access-restricted-container .card { max-width: 450px; padding: 3rem; }
     .access-restricted-container .icon { font-size: 4rem; color: var(--primary-color); margin-bottom: 1.5rem; }
     .access-restricted-container h2 { font-size: 1.75rem; margin-bottom: 0.5rem; color: white; }
     .access-restricted-container p { color: var(--text-color-muted); margin-bottom: 2rem; }
   </style>
-
-<style>
-.recent-activities table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.recent-activities th, .recent-activities td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-.recent-activities tr:hover {
-  background-color: #f1f5f9;
-}
-.recent-activities .action-viewed { color: blue; font-weight: bold; }
-.recent-activities .action-updated { color: orange; font-weight: bold; }
-.recent-activities .action-deleted { color: red; font-weight: bold; }
-</style>
-
 </head>
 <body>
 
+<!-- Main dashboard view, hidden by default -->
 <div id="dashboard" style="visibility: hidden;">
   <header class="page-header">
     <div class="header-title">
         <i class="fas fa-chart-pie logo-icon"></i>
-        <h1>User Activity Insights</h1>
+        <h1>رؤى نشاط المستخدم</h1>
     </div>
-    <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> العودة للوحة التحكم</a>
   </header>
   
   <div class="page-wrapper">
@@ -149,55 +150,53 @@
 
     <div class="card filters">
       <div class="form-group">
-        <label for="timeFilter">Time Range</label>
+        <label for="timeFilter">النطاق الزمني</label>
         <select id="timeFilter">
-          <option value="all">All Time</option>
-          <option value="today">Today</option>
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
+          <option value="all">كل الأوقات</option>
+          <option value="today">اليوم</option>
+          <option value="7d">آخر 7 أيام</option>
+          <option value="30d">آخر 30 يوم</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="actionFilter">Action</label>
-        <select id="actionFilter">
-          <option value="all">All</option>
-          <option value="viewed">Viewed</option>
-          <option value="updated">Updated</option>
-          <option value="deleted">Deleted</option>
+        <label for="roleFilter">نوع المستخدم</label>
+        <select id="roleFilter">
+          <option value="all">الكل</option>
+          <option value="admin">مدير</option>
+          <option value="agent">موظف</option>
         </select>
       </div>
       <div class="form-group search-group">
-        <label for="searchInput">Search by User, Email, or Case</label>
-        <input id="searchInput" type="text" placeholder="Type name, email or case..." />
+        <label for="searchInput">بحث بالاسم، البريد، أو الحالة</label>
+        <input id="searchInput" type="text" placeholder="اكتب للبحث..." />
       </div>
-      <button id="exportBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+      <button id="exportBtn" class="button-secondary"><i class="fas fa-file-csv"></i> تصدير CSV</button>
     </div>
 
     <div class="card stats-grid">
       <div class="stat-card">
-        <h2>Total Activities</h2>
+        <h2>إجمالي الأنشطة</h2>
         <p id="totalActivities" class="stat-value">0</p>
       </div>
       <div class="stat-card">
-        <h2>Helpful Feedback</h2>
+        <h2>تقييم مفيد</h2>
         <p id="helpfulCount" class="stat-value helpful">0</p>
       </div>
       <div class="stat-card">
-        <h2>Not Helpful Feedback</h2>
+        <h2>تقييم غير مفيد</h2>
         <p id="notHelpfulCount" class="stat-value not-helpful">0</p>
       </div>
     </div>
 
     <div class="stats-grid">
       <div class="card">
-        <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:1.5rem;">Feedback Distribution</h2>
+        <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1.5rem;">توزيع التقييمات</h2>
         <div class="chart-wrapper">
             <canvas id="feedbackChart"></canvas>
         </div>
       </div>
       <div class="card">
-        <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:0.5rem;">Top Active Users</h2>
-        <p style="font-size:0.9rem; color:var(--text-color-muted); margin-top:0; margin-bottom:1.5rem;">Based on total number of activities logged.</p>
+        <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1.5rem;">أكثر المستخدمين نشاطًا</h2>
         <div class="chart-wrapper">
             <canvas id="activeUsersChart"></canvas>
         </div>
@@ -205,49 +204,58 @@
     </div>
 
     <div class="card">
-      <h2 style="font-size:1.25rem; font-weight:600; margin-bottom:1rem;">Recent Activities</h2>
+      <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1rem;">أحدث الأنشطة</h2>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Case</th>
-              <th>Action</th>
-              <th>Details</th>
-              <th>Activity Time</th>
+              <th>المستخدم</th>
+              <th>البريد الإلكتروني</th>
+              <th>الحالة/المقالة</th>
+              <th>القسم</th>
+              <th>الإجراء</th>
+              <th>وقت النشاط</th>
             </tr>
           </thead>
           <tbody id="activityTable"></tbody>
         </table>
       </div>
       <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-        <button id="loadMoreBtn" class="button-secondary">Load More</button>
+        <button id="loadMoreBtn" class="button-secondary">تحميل المزيد</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Access restricted view -->
 <div id="restricted-card" class="access-restricted-container">
     <div class="card">
         <div class="icon">🔒</div>
-        <h2>Access Restricted</h2>
-        <p>This page is available to administrators only.</p>
-        <a href="app.html" class="button">Go Back to Dashboard</a>
+        <h2>الوصول مقيد</h2>
+        <p>هذه الصفحة متاحة للمديرين فقط.</p>
+        <a href="app.html" class="button">العودة إلى لوحة التحكم</a>
     </div>
 </div>
 
+<!-- Footer -->
+<footer class="mt-auto p-6 text-center" style="color: var(--text-color-muted); font-size: 0.85rem;">
+  <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy.</span>
+</footer>
+
 
   <script type="module">
+    // Make sure you have a supabase.js file that exports the supabase client
     import { supabase } from './supabase.js';
 
-    let activities = [];
+    let allActivities = []; // Holds all data fetched from the server
+    let filteredActivities = []; // Holds the currently filtered data
+    
     let feedbackStats = { helpful: 0, notHelpful: 0 };
     let topUsers = [];
     let currentPage = 1;
-    const pageSize = 10;
+    const pageSize = 15; // Number of items per page
 
-    const table = document.getElementById('activityTable');
+    const tableBody = document.getElementById('activityTable');
     const totalActivitiesEl = document.getElementById('totalActivities');
     const helpfulCountEl = document.getElementById('helpfulCount');
     const notHelpfulCountEl = document.getElementById('notHelpfulCount');
@@ -258,10 +266,11 @@
 
     function showSpinner(show) { spinner.style.display = show ? 'flex' : 'none'; }
 
-    function showToast(message, timeout = 3000) {
+    function showToast(message, isError = true) {
       toast.textContent = message;
+      toast.style.backgroundColor = isError ? '#ef4444' : '#22c55e';
       toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), timeout);
+      setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
     function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
@@ -272,9 +281,7 @@
         const chartOptions = {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    labels: { color: legendColor, font: { family: 'Inter', size: 14 } }
-                },
+                legend: { labels: { color: legendColor, font: { family: 'Inter', size: 12 } } },
                 tooltip: { mode: 'index', intersect: false }
             },
             scales: {
@@ -282,51 +289,35 @@
                 x: { ticks: { color: ticksColor }, grid: { display: false } }
             }
         };
+        if(type === 'doughnut') delete chartOptions.scales;
 
-        if(type === 'doughnut') {
-            delete chartOptions.scales;
-        }
-
-        return new Chart(ctx, {
-            type,
-            data: {
-              labels,
-              datasets: [{
-                label: dataLabel || '',
-                data,
-                backgroundColor: Array.isArray(backgroundColors) ? backgroundColors : [backgroundColors],
-                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-                borderWidth: 2
-              }]
-            },
-            options: chartOptions
-        });
+        return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors, borderColor: 'transparent' }] }, options: chartOptions });
     }
 
-    function renderActivities(filtered) {
-      const end = currentPage * pageSize;
-      const paginated = filtered.slice(0, end);
+    function getActionClass(action) {
+        const actionLower = (action || 'viewer').toLowerCase();
+        if (actionLower === 'updated') return 'action-updated';
+        if (actionLower === 'deleted') return 'action-deleted';
+        return 'action-viewer'; // Default for 'viewer' or others
+    }
 
-      table.innerHTML = paginated.map((act) => {
+    function renderActivities() {
+      const end = currentPage * pageSize;
+      const paginated = filteredActivities.slice(0, end);
+
+      tableBody.innerHTML = paginated.map((act) => {
           return `<tr>
             <td>${escapeHtml(act.user_name) || 'N/A'}</td>
             <td>${escapeHtml(act.user_email) || 'N/A'}</td>
-            <td>${escapeHtml(act.item_title) || '-'}</td>
-            <td>${escapeHtml(act.action) || '-'}</td>
-            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
-            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
+            <td>${escapeHtml(act.case_title) || '-'}</td>
+            <td>${escapeHtml(act.section) || '-'}</td>
+            <td><span class="action-badge ${getActionClass(act.action)}">${escapeHtml(act.action)}</span></td>
+            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}</td>
           </tr>`;
       }).join('');
 
-      totalActivitiesEl.textContent = filtered.length;
-      document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
-    }
-
-    function formatDetails(details) {
-      // If details is string or object, provide readable summary
-      if (!details) return '';
-      if (typeof details === 'string') return details;
-      try { return JSON.stringify(details); } catch (e) { return String(details); }
+      totalActivitiesEl.textContent = filteredActivities.length;
+      document.getElementById('loadMoreBtn').style.display = end < filteredActivities.length ? 'inline-flex' : 'none';
     }
 
     function renderFeedback() {
@@ -334,7 +325,7 @@
       notHelpfulCountEl.textContent = feedbackStats.notHelpful;
       if (feedbackChart) feedbackChart.destroy();
       feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut',
-        ['Helpful', 'Not Helpful'],
+        ['مفيد', 'غير مفيد'],
         [feedbackStats.helpful, feedbackStats.notHelpful],
         'Feedback',
         ['#10B981', '#EF4444']
@@ -345,118 +336,96 @@
       if (activeUsersChart) activeUsersChart.destroy();
       const labels = topUsers.map(u => u.user_name || 'Unknown');
       const data = topUsers.map(u => u.activity_count || 0);
-      const colors = data.map(_ => '#6366F1');
-      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', colors);
+      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', '#6366F1');
     }
 
-    function filterAndRender() {
+    function applyFilters() {
         const timeFilter = document.getElementById('timeFilter').value;
-        const actionFilter = document.getElementById('actionFilter').value;
+        const roleFilter = document.getElementById('roleFilter').value;
         const search = document.getElementById('searchInput').value.trim().toLowerCase();
-        let filtered = [...activities];
-        const now = new Date();
+        
+        filteredActivities = allActivities.filter(a => {
+            const now = new Date();
+            const ts = new Date(a.activity_time);
 
-        if (timeFilter !== 'all') {
-            filtered = filtered.filter(a => {
-                const ts = new Date(a.activity_time);
-                if (isNaN(ts)) return false;
-                if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
-                if (timeFilter === '7d') return (now - ts) / (1000*60*60*24) <= 7;
-                if (timeFilter === '30d') return (now - ts) / (1000*60*60*24) <= 30;
-                return true;
-            });
-        }
-        if (actionFilter !== 'all') {
-            const wanted = actionFilter.toLowerCase();
-            filtered = filtered.filter(a => (a.action || '').toLowerCase() === wanted);
-        }
-        if (search) {
-            filtered = filtered.filter(a =>
-                ((a.user_name || '').toLowerCase().includes(search)) ||
-                ((a.user_email || '').toLowerCase().includes(search)) ||
-                ((a.item_title || '').toLowerCase().includes(search))
-            );
-        }
+            // Time filter
+            let timeMatch = true;
+            if (timeFilter !== 'all') {
+                if (isNaN(ts)) { timeMatch = false; }
+                else if (timeFilter === 'today') { timeMatch = ts.toDateString() === now.toDateString(); }
+                else if (timeFilter === '7d') { timeMatch = (now - ts) / (1000*60*60*24) <= 7; }
+                else if (timeFilter === '30d') { timeMatch = (now - ts) / (1000*60*60*24) <= 30; }
+            }
 
-        currentPage = 1;
-        renderActivities(filtered);
-        return filtered;
+            // Role filter
+            const roleMatch = (roleFilter === 'all') || (a.role || '').toLowerCase() === roleFilter;
+
+            // Search filter
+            const searchMatch = !search ||
+                (a.user_name || '').toLowerCase().includes(search) ||
+                (a.user_email || '').toLowerCase().includes(search) ||
+                (a.case_title || '').toLowerCase().includes(search);
+
+            return timeMatch && roleMatch && searchMatch;
+        });
+
+        currentPage = 1; // Reset page on new filter
+        renderActivities();
     }
 
-    function exportCSV(data) {
-        const headers = ['User','Email','Case','Action','Details','Activity Time'];
+    function exportCSV() {
+        const headers = ['User','Email','Case','Section','Action','Activity Time'];
         let csv = headers.join(',') + '\n';
-        data.forEach(a => {
-            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details || ''), a.activity_time];
+        filteredActivities.forEach(a => {
+            const row = [a.user_name, a.user_email, a.case_title, a.section, a.action, a.activity_time];
             csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'activities_insights.csv'; a.click();
+        a.href = url; a.download = 'user_activities.csv'; a.click();
         URL.revokeObjectURL(url);
     }
 
     async function initData() {
       showSpinner(true);
       try {
+        // Since the function now gets all data, we don't need params here
         const [actsRes, fbRes, tuRes] = await Promise.all([
             supabase.rpc('get_user_activity_feed'),
             supabase.rpc('get_feedback_stats'),
             supabase.rpc('get_top_active_users', { limit_count: 5 })
         ]);
 
-        if (actsRes.error) {
-          console.error('activity feed RPC error', actsRes.error);
-          activities = [];
-          showToast('Failed to load activities.');
-        } else {
-          activities = Array.isArray(actsRes.data) ? actsRes.data : (actsRes.data || []);
+        if (actsRes.error) throw new Error(actsRes.error.message);
+        allActivities = Array.isArray(actsRes.data) ? actsRes.data : [];
+        allActivities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
+        
+        if (fbRes.data) {
+          const fbData = fbRes.data;
+          feedbackStats.helpful = fbData.find(f => f.rating_type === 'helpful')?.count || 0;
+          feedbackStats.notHelpful = fbData.find(f => f.rating_type === 'not helpful')?.count || 0;
         }
 
-        if (fbRes.error) {
-          console.error('feedback stats RPC error', fbRes.error);
-          feedbackStats = { helpful: 0, notHelpful: 0 };
-        } else {
-          const fbData = fbRes.data || [];
-          feedbackStats = {
-            helpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'helpful')?.count) || 0,
-            notHelpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'not helpful')?.count) || 0
-          };
+        if (tuRes.data) {
+          topUsers = tuRes.data;
         }
 
-        if (tuRes.error) {
-          console.error('top users RPC error', tuRes.error);
-          topUsers = [];
-        } else {
-          topUsers = Array.isArray(tuRes.data) ? tuRes.data : (tuRes.data || []);
-        }
-
-        // default sorting: most recent first
-        activities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
-
-        filterAndRender();
+        applyFilters(); // Apply default filters and render
         renderFeedback();
         renderTopUsers();
+
       } catch (e) {
-        console.error('initData error', e);
-        showToast('Error loading insights.');
+        console.error('Error loading initial data:', e);
+        showToast('فشل تحميل البيانات. الرجاء المحاولة مرة أخرى.');
       } finally {
         showSpinner(false);
       }
     }
 
-    ['timeFilter', 'actionFilter', 'searchInput'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', filterAndRender);
-    });
-    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
-    document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
-
     async function checkAdminAccess() {
       try {
-        const { data: userData, error: userErr } = await supabase.auth.getUser();
-        const user = userData?.user;
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           document.getElementById('restricted-card').style.display = 'flex';
           return;
@@ -469,57 +438,26 @@
           initData();
         }
       } catch (e) {
-        console.error('Admin check failed', e);
+        console.error('Admin check failed:', e);
         document.getElementById('restricted-card').style.display = 'flex';
       }
     }
 
     function escapeHtml(unsafe) {
       if (unsafe === null || unsafe === undefined) return '';
-      return String(unsafe)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+      return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
+    // Event Listeners
+    ['timeFilter', 'roleFilter', 'searchInput'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
+    });
+    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; renderActivities(); };
+    document.getElementById('exportBtn').onclick = exportCSV;
+
+    // Start the application
     document.addEventListener('DOMContentLoaded', checkAdminAccess);
   </script>
-
-<script>
-function formatDateTime(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleString('en-US', {
-    hour12: true,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  });
-}
-</script>
-
-
-<div class="pagination-controls" style="margin-top: 10px; text-align: center;">
-  <button onclick="prevPage()" style="margin-right: 10px;">Previous</button>
-  <button onclick="nextPage()">Next</button>
-</div>
-<script>
-let currentPage = 1;
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    loadActivities(currentPage);
-  }
-}
-function nextPage() {
-  currentPage++;
-  loadActivities(currentPage);
-}
-</script>
-
-
-<footer class="page-footer" style="margin-top:40px;padding:15px;text-align:center;background:#f8f9fa;color:#555;border-top:1px solid #ddd;">
-  © 2025 Knowledge Base - All rights reserved
-</footer>
 
 </body>
 </html>
