@@ -52,16 +52,17 @@
         display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     .button:hover, button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
+    .button:disabled { background-color: #374151; cursor: not-allowed; transform: none; }
     .button-secondary {
         background-color: var(--bg-color-alt); color: var(--text-color); border-color: var(--border-color);
     }
-    .button-secondary:hover { background-color: var(--border-color); color: white; }
+    .button-secondary:hover:not(:disabled) { background-color: var(--border-color); color: white; }
     .card {
       background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
       border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
     }
     .filters { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end; }
-    .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; }
+    .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; min-width: 150px; }
     .filters .form-group label {
         font-size: 0.9rem; font-weight: 500;
         color: var(--text-color-muted); margin-bottom: 0.5rem;
@@ -71,7 +72,7 @@
         border-radius: var(--border-radius); background-color: var(--bg-color);
         color: var(--text-color); font-size: 1rem;
     }
-    .filters .search-group { flex-basis: 350px; }
+    .filters .search-group { flex-grow: 2; flex-basis: 300px; }
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -82,7 +83,7 @@
         font-size: 1.2rem; font-weight: 600;
         color: var(--text-color-muted); margin-bottom: 0.75rem;
     }
-    .stat-card .stat-value { font-size: 3rem; font-weight: 800; }
+    .stat-card .stat-value { font-size: 3.5rem; font-weight: 800; } /* Font size increased */
     .stat-card .stat-value.helpful { color: #22c55e; }
     .stat-card .stat-value.not-helpful { color: #ef4444; }
     .chart-wrapper {
@@ -90,16 +91,26 @@
         height: 350px;
     }
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
     th, td {
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);
-      font-size: 1rem; text-align: left;
+      font-size: 1.05rem; /* Font size increased */
+      text-align: left;
     }
     thead th {
       background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
-    tbody tr:hover { background-color: #2a3546; }
+    tbody tr:hover { background-color: #2a3e59; } /* Hover effect improved */
+    .action-viewer { color: #38bdf8; font-weight: bold; } /* Light blue for viewer action */
+    
+    .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+    .page-footer {
+        margin-top: 40px; padding: 20px; text-align: center; color: var(--text-color-muted);
+        border-top: 1px solid var(--border-color);
+        font-size: 0.9rem;
+    }
+    
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
     .spinner { width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
     @keyframes spin{ to{transform:rotate(360deg);} }
@@ -111,26 +122,6 @@
     .access-restricted-container h2 { font-size: 1.75rem; margin-bottom: 0.5rem; color: white; }
     .access-restricted-container p { color: var(--text-color-muted); margin-bottom: 2rem; }
   </style>
-
-<style>
-.recent-activities table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.recent-activities th, .recent-activities td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-.recent-activities tr:hover {
-  background-color: #f1f5f9;
-}
-.recent-activities .action-viewed { color: blue; font-weight: bold; }
-.recent-activities .action-updated { color: orange; font-weight: bold; }
-.recent-activities .action-deleted { color: red; font-weight: bold; }
-</style>
-
 </head>
 <body>
 
@@ -155,15 +146,6 @@
           <option value="today">Today</option>
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="actionFilter">Action</label>
-        <select id="actionFilter">
-          <option value="all">All</option>
-          <option value="viewed">Viewed</option>
-          <option value="updated">Updated</option>
-          <option value="deleted">Deleted</option>
         </select>
       </div>
       <div class="form-group search-group">
@@ -213,19 +195,26 @@
               <th>User</th>
               <th>Email</th>
               <th>Case</th>
+              <th>Section</th>
               <th>Action</th>
-              <th>Details</th>
               <th>Activity Time</th>
             </tr>
           </thead>
           <tbody id="activityTable"></tbody>
         </table>
       </div>
-      <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-        <button id="loadMoreBtn" class="button-secondary">Load More</button>
+      <div class="pagination-controls">
+        <button id="prevPageBtn" class="button-secondary">Previous</button>
+        <span id="pageInfo"></span>
+        <button id="nextPageBtn" class="button-secondary">Next</button>
       </div>
     </div>
   </div>
+    
+  <footer class="page-footer">
+    <p>© 2025 InfiniBase · Elmenisy. All rights reserved.</p>
+  </footer>
+
 </div>
 
 <div id="restricted-card" class="access-restricted-container">
@@ -241,7 +230,8 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    let activities = [];
+    let allActivities = [];
+    let filteredActivities = [];
     let feedbackStats = { helpful: 0, notHelpful: 0 };
     let topUsers = [];
     let currentPage = 1;
@@ -253,6 +243,11 @@
     const notHelpfulCountEl = document.getElementById('notHelpfulCount');
     const toast = document.getElementById('toast');
     const spinner = document.getElementById('spinner');
+    
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const pageInfoEl = document.getElementById('pageInfo');
+
 
     let feedbackChart = null, activeUsersChart = null;
 
@@ -303,27 +298,33 @@
         });
     }
 
-    function renderActivities(filtered) {
-      const end = currentPage * pageSize;
-      const paginated = filtered.slice(0, end);
+    function renderActivities() {
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const paginated = filteredActivities.slice(start, end);
 
       table.innerHTML = paginated.map((act) => {
           return `<tr>
             <td>${escapeHtml(act.user_name) || 'N/A'}</td>
             <td>${escapeHtml(act.user_email) || 'N/A'}</td>
-            <td>${escapeHtml(act.item_title) || '-'}</td>
-            <td>${escapeHtml(act.action) || '-'}</td>
-            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
-            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
+            <td>${escapeHtml(act.item_title) || 'Untitled'}</td>
+            <td>${escapeHtml(act.section_name) || 'N/A'}</td>
+            <td class="action-viewer">viewer</td>
+            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-US', { hour12: true, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
           </tr>`;
       }).join('');
-
-      totalActivitiesEl.textContent = filtered.length;
-      document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
+      
+      updatePagination();
+    }
+    
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredActivities.length / pageSize);
+        pageInfoEl.textContent = `Page ${currentPage} of ${totalPages || 1}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage >= totalPages;
     }
 
     function formatDetails(details) {
-      // If details is string or object, provide readable summary
       if (!details) return '';
       if (typeof details === 'string') return details;
       try { return JSON.stringify(details); } catch (e) { return String(details); }
@@ -349,15 +350,14 @@
       activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', colors);
     }
 
-    function filterAndRender() {
+    function applyFilters() {
         const timeFilter = document.getElementById('timeFilter').value;
-        const actionFilter = document.getElementById('actionFilter').value;
         const search = document.getElementById('searchInput').value.trim().toLowerCase();
-        let filtered = [...activities];
+        let tempFiltered = [...allActivities];
         const now = new Date();
 
         if (timeFilter !== 'all') {
-            filtered = filtered.filter(a => {
+            tempFiltered = tempFiltered.filter(a => {
                 const ts = new Date(a.activity_time);
                 if (isNaN(ts)) return false;
                 if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
@@ -366,28 +366,35 @@
                 return true;
             });
         }
-        if (actionFilter !== 'all') {
-            const wanted = actionFilter.toLowerCase();
-            filtered = filtered.filter(a => (a.action || '').toLowerCase() === wanted);
-        }
+        
         if (search) {
-            filtered = filtered.filter(a =>
+            tempFiltered = tempFiltered.filter(a =>
                 ((a.user_name || '').toLowerCase().includes(search)) ||
                 ((a.user_email || '').toLowerCase().includes(search)) ||
                 ((a.item_title || '').toLowerCase().includes(search))
             );
         }
-
+        
+        filteredActivities = tempFiltered;
+        totalActivitiesEl.textContent = filteredActivities.length;
         currentPage = 1;
-        renderActivities(filtered);
-        return filtered;
+        renderActivities();
     }
 
-    function exportCSV(data) {
-        const headers = ['User','Email','Case','Action','Details','Activity Time'];
+    function exportCSV() {
+        // Use the currently filtered data for export
+        const dataToExport = filteredActivities;
+        const headers = ['User','Email','Case','Section','Action','Activity Time'];
         let csv = headers.join(',') + '\n';
-        data.forEach(a => {
-            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details || ''), a.activity_time];
+        dataToExport.forEach(a => {
+            const row = [
+                a.user_name,
+                a.user_email,
+                a.item_title || 'Untitled',
+                a.section_name || 'N/A',
+                'viewer', // Fixed action
+                a.activity_time
+            ];
             csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -396,22 +403,38 @@
         a.href = url; a.download = 'activities_insights.csv'; a.click();
         URL.revokeObjectURL(url);
     }
+    
+    // Function to get unique activities (most recent for each user-case combo)
+    function getUniqueActivities(activities) {
+        const unique = {};
+        activities.forEach(act => {
+            const key = `${act.user_email}-${act.item_id}`;
+            if (!unique[key] || new Date(act.activity_time) > new Date(unique[key].activity_time)) {
+                unique[key] = act;
+            }
+        });
+        return Object.values(unique);
+    }
+
 
     async function initData() {
       showSpinner(true);
       try {
         const [actsRes, fbRes, tuRes] = await Promise.all([
-            supabase.rpc('get_user_activity_feed'),
+            supabase.rpc('get_user_activity_feed_with_section'), // Assuming a new RPC function
             supabase.rpc('get_feedback_stats'),
             supabase.rpc('get_top_active_users', { limit_count: 5 })
         ]);
 
         if (actsRes.error) {
           console.error('activity feed RPC error', actsRes.error);
-          activities = [];
+          allActivities = [];
           showToast('Failed to load activities.');
         } else {
-          activities = Array.isArray(actsRes.data) ? actsRes.data : (actsRes.data || []);
+          const rawActivities = Array.isArray(actsRes.data) ? actsRes.data : (actsRes.data || []);
+          // Filter for unique activities, keeping only the latest one per user/case
+          const uniqueActs = getUniqueActivities(rawActivities);
+          allActivities = uniqueActs.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
         }
 
         if (fbRes.error) {
@@ -432,10 +455,7 @@
           topUsers = Array.isArray(tuRes.data) ? tuRes.data : (tuRes.data || []);
         }
 
-        // default sorting: most recent first
-        activities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
-
-        filterAndRender();
+        applyFilters();
         renderFeedback();
         renderTopUsers();
       } catch (e) {
@@ -446,12 +466,16 @@
       }
     }
 
-    ['timeFilter', 'actionFilter', 'searchInput'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', filterAndRender);
+    ['timeFilter', 'searchInput'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyFilters);
     });
-    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
-    document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
+    
+    prevPageBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderActivities(); } };
+    nextPageBtn.onclick = () => { 
+        const totalPages = Math.ceil(filteredActivities.length / pageSize);
+        if(currentPage < totalPages) { currentPage++; renderActivities(); }
+    };
+    document.getElementById('exportBtn').onclick = exportCSV;
 
     async function checkAdminAccess() {
       try {
@@ -485,48 +509,5 @@
 
     document.addEventListener('DOMContentLoaded', checkAdminAccess);
   </script>
-
-<script>
-function formatDateTime(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleString('en-US', {
-    hour12: true,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  });
-}
-</script>
-
-
-<div class="pagination-controls" style="margin-top: 10px; text-align: center;">
-  <button onclick="prevPage()" style="margin-right: 10px;">Previous</button>
-  <button onclick="nextPage()">Next</button>
-</div>
-<script>
-let currentPage = 1;
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    loadActivities(currentPage);
-  }
-}
-function nextPage() {
-  currentPage++;
-  loadActivities(currentPage);
-}
-</script>
-
-
-<footer class="page-footer" style="margin-top:40px;padding:15px;text-align:center;background:#f8f9fa;color:#555;border-top:1px solid #ddd;">
-  © 2025 Knowledge Base - All rights reserved
-</footer>
-
-
-<!-- ✅ Added Footer -->
-<footer style="margin-top:40px; text-align:center; padding:15px; background:#f8f9fa; border-top:1px solid #ddd; font-size:14px; color:#555;">
-  © 2025 Knowledge Base Insights | All rights reserved.
-</footer>
-
 </body>
-
 </html>
