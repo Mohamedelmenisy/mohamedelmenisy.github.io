@@ -139,6 +139,25 @@
 }
 </style>
 
+<style>
+
+/* Assistant UI tweaks */
+.filters .form-group { flex: 0 1 220px; min-width: 160px; }
+.filters .search-group { flex-basis: 320px; min-width: 220px; }
+.filters input, .filters select { padding: 0.6rem; font-size: 0.95rem; }
+.stat-card .stat-value { font-size: 3.6rem !important; line-height: 1; margin: 0.2rem 0; }
+.action-badge { padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; display:inline-block; font-weight:600; }
+.action-badge.viewed { background: rgba(59,130,246,0.08); color: #3b82f6; border:1px solid rgba(59,130,246,0.12); }
+.action-badge.updated { background: rgba(249,115,22,0.06); color:#fb923c; border:1px solid rgba(249,115,22,0.12); }
+.action-badge.deleted { background: rgba(239,68,68,0.06); color:#ef4444; border:1px solid rgba(239,68,68,0.12); }
+.action-badge.positive { background: rgba(16,185,129,0.06); color:#10b981; border:1px solid rgba(16,185,129,0.12); }
+.action-badge.negative { background: rgba(239,68,68,0.06); color:#ef4444; border:1px solid rgba(239,68,68,0.12); }
+tbody tr { transition: background-color .12s, transform .12s, font-weight .12s; }
+tbody tr:hover { background-color: #26313f; font-weight: 600; }
+.page-wrapper { margin-bottom: 90px; }
+.page-footer { position: fixed; left:0; right:0; bottom:0; background: rgba(17,24,39,0.95); border-top: 1px solid rgba(60,65,75,0.6); color: #9aa3b2; padding: 10px 16px; text-align:center; z-index:90; }
+
+</style>
 </head>
 <body>
 
@@ -230,8 +249,8 @@
         </table>
       </div>
       <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-        <button id="loadMoreBtn" class="button-secondary">Previous</button>
-    <button id='nextPage'>Next</button>
+        <button id="prevPage" class="button-secondary">Previous</button>
+    <button id='nextPage' class='button'>Next</button>
       </div>
     </div>
   </div>
@@ -312,26 +331,46 @@
         });
     }
 
-    function renderActivities(filtered) {
-      const end = currentPage * pageSize;
-      const paginated = filtered.slice(0, end);
+    
+function renderActivities(filtered) {
+  // page-based pagination
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const paginated = filtered.slice(start, end);
 
-      table.innerHTML = paginated.map((act) => {
-          return `<tr>
-            <td>${escapeHtml(act.user_name) || 'N/A'}</td>
-            <td>${escapeHtml(act.user_email) || 'N/A'}</td>
-            <td>${escapeHtml(act.item_title) || '-'}</td>
-            <td>${escapeHtml(act.action) || '-'}</td>
-            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
-            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
-          </tr>`;
-      }).join('');
+  table.innerHTML = paginated.map((act) => {
+      const caseTitle = act.item_title || act.case_title || act.case_title_en || act.title_en || '-';
+      const actionKey = (act.action || '').toString().toLowerCase();
+      let actionHtml = '';
+      if (actionKey.includes('view')) actionHtml = `<span class="action-badge viewed">Viewed</span>`;
+      else if (actionKey.includes('update')) actionHtml = `<span class="action-badge updated">Updated</span>`;
+      else if (actionKey.includes('delete')) actionHtml = `<span class="action-badge deleted">Deleted</span>`;
+      else if (actionKey.includes('positive') || actionKey.includes('helpful')) actionHtml = `<span class="action-badge positive">Helpful</span>`;
+      else if (actionKey.includes('negative') || actionKey.includes('not helpful')) actionHtml = `<span class="action-badge negative">Not Helpful</span>`;
+      else actionHtml = `<span class="action-badge">${escapeHtml(act.action || '-')}</span>`;
 
-      totalActivitiesEl.textContent = filtered.length;
-      document.getElementById('loadMoreBtn').style.display = end < filtered.length ? 'inline-flex' : 'none';
-    }
+      const detailsStr = act.details ? escapeHtml(formatDetails(act.details)) : '-';
+      const timeStr = act.activity_time ? new Date(act.activity_time).toLocaleString('en-US', { timeZone: 'Africa/Cairo', hour12: true }) : '-';
 
-    function formatDetails(details) {
+      return `<tr>
+        <td>${escapeHtml(act.user_name) || 'N/A'}</td>
+        <td>${escapeHtml(act.user_email) || 'N/A'}</td>
+        <td>${escapeHtml(caseTitle)}</td>
+        <td>${actionHtml}</td>
+        <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title='${detailsStr}'>${detailsStr}</td>
+        <td>${timeStr}</td>
+      </tr>`;
+  }).join('');
+
+  totalActivitiesEl.textContent = filtered.length || 0;
+  window.lastFiltered = filtered;
+
+  const totalPages = Math.max(1, Math.ceil((filtered.length || 0) / pageSize));
+  document.getElementById('prevPage').style.display = (currentPage > 1) ? 'inline-flex' : 'none';
+  document.getElementById('nextPage').style.display = (currentPage < totalPages) ? 'inline-flex' : 'none';
+}
+
+function formatDetails(details) {
       // If details is string or object, provide readable summary
       if (!details) return '';
       if (typeof details === 'string') return details;
@@ -462,7 +501,18 @@
     document.getElementById('loadMoreBtn').onclick = () => { currentPage++; filterAndRender(); };
     document.getElementById('exportBtn').onclick = () => exportCSV(filterAndRender());
 
-    async function checkAdminAccess() {
+    async 
+// pagination controls wiring (added)
+try {
+  document.getElementById('prevPage').addEventListener('click', () => { if (currentPage>1) { currentPage--; filterAndRender(); } });
+  document.getElementById('nextPage').addEventListener('click', () => {
+    const totalPages = Math.max(1, Math.ceil((window.lastFiltered?.length || 0) / pageSize));
+    if (currentPage < totalPages) { currentPage++; filterAndRender(); }
+  });
+  document.getElementById('exportBtn').onclick = () => exportCSV(window.lastFiltered?.length ? window.lastFiltered : []);
+} catch(e) { /* ignore missing nodes while editing */ }
+
+function checkAdminAccess() {
       try {
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         const user = userData?.user;
@@ -518,5 +568,6 @@ function formatActivityRow(row) {
 }
 </script>
 
+<footer class="page-footer">© 2025 InfiniBase. All rights reserved. — Activity & Audit insights</footer>
 </body>
 </html>
