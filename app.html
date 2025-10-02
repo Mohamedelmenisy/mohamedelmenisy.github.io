@@ -2077,11 +2077,8 @@
         }
         const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
         if (error) {
-            // This is the key change: if we fail to get a profile (e.g., due to RLS),
-            // we create a fallback object but we DON'T assume the role.
-            // The main app logic will handle this.
-            console.warn('Could not fetch user profile from public.users. This is expected if RLS is active and there is no policy. Using auth data as fallback.', error.message);
-            return { id: user.id, email: user.email, role: 'viewer', name: user.email }; // Default to 'viewer'
+            console.error('Error fetching user profile:', error);
+            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
         }
         return profile;
     }
@@ -2141,25 +2138,31 @@
         return { error };
     }
 
-    // =========================================================================
-    // >>>>>>>>>>>> تعديل مهم: تفعيل تسجيل النشاط <<<<<<<<<<<<<<<
-    // =========================================================================
-    async function logActivity(user, itemId, itemType, itemTitle, action, details = {}) {
+    async function logActivity(user, itemId, itemType, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
             return;
         }
 
+        let typeToLog = itemType;
+
+        if (!typeToLog) {
+            const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
+            if (fetchError || !item) {
+                console.error(`Could not fetch item type for logging activity (ItemID: ${itemId}).`, fetchError);
+                typeToLog = 'unknown'; // Fallback
+            } else {
+                typeToLog = item.type;
+            }
+        }
+        
         const { error } = await supabase.from('activity_log').insert([{
             user_id: user.id,
             user_name: user.name,
-            user_email: user.email, // Log the email
             item_id: itemId,
-            item_type: itemType,
-            item_title: itemTitle, // Log the title
+            item_type: typeToLog,
             action: action,
             details: details,
-            activity_time: new Date().toISOString()
         }]);
         if (error) {
             console.error('Error logging activity:', error);
@@ -2176,17 +2179,17 @@
     }
 
     async function fetchDashboardTableData() {
-        // We use the RPC functions which are more robust against RLS issues for non-admins
         const { data: users, error: usersError } = await supabase.from('users').select('id, name, email');
         if(usersError) console.error("Could not fetch users for email mapping:", usersError);
 
         const [activity, insights] = await Promise.all([
-            supabase.rpc('get_user_activity_feed'), // Use RPC for activity
-            fetchInsights() // This might need an RPC function if it has complex joins
+            supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
+            fetchInsights()
         ]);
         
         const activityLogWithEmail = (activity.data || []).map(log => {
-             return { ...log, user_email: log.user_email || null };
+            const user = (users || []).find(u => u.id === log.user_id);
+            return { ...log, user_email: user?.email || null };
         });
 
         return {
@@ -2271,8 +2274,7 @@
     
     function isCurrentUserAdmin() {
         if (!currentUser) return false;
-        // The check is now simple and direct
-        return currentUser.role === 'admin';
+        return currentUser.role === 'admin' || currentUser.is_admin === true;
     }
 
     function escapeHTML(str) {
@@ -2512,8 +2514,10 @@
         pageBody.classList.remove('item-view-active');
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
-        
-        // This is the main logic change for the dashboard
+        if (isCurrentUserAdmin()) {
+            updateAdminToolbar('dashboard');
+        }
+
         if (!isCurrentUserAdmin()) {
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
@@ -2521,14 +2525,11 @@
                         <i class="fas fa-columns"></i>
                         <h2>Welcome to the Knowledge Base</h2>
                         <p>Use the sidebar to navigate through different sections and find the information you need.</p>
-                        <p class="subtle-note">Admin dashboard is available for administrators only.</p>
                     </div>
                 </div>`;
             return;
         }
-        
-        // Admin dashboard logic starts here
-        updateAdminToolbar('dashboard');
+
         originalDashboardData = await fetchDashboardTableData();
         
         const allItems = kbSystemData.sections.flatMap(s => s.items || []);
@@ -2838,10 +2839,7 @@
             return;
         }
 
-        // =========================================================================
-        // >>>>>>>>>>>> تفعيل تسجيل النشاط هنا <<<<<<<<<<<<<<<
-        // =========================================================================
-        await logActivity(currentUser, itemData.id, itemData.type, itemData.title_en, 'viewed');
+        await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title_en, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
@@ -3154,8 +3152,8 @@
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // This is the manual way to set the user for the trigger when using the app UI
-        await supabase.rpc('set_config', { key: 'app.manual_user_id', value: currentUser.id, is_local: true });
+        await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id, is_local: true });
+        await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
         const sectionId = addContentForm.dataset.sectionId;
         const editingId = editingItemIdInput.value;
@@ -3171,13 +3169,15 @@
             url: document.getElementById('contentUrl').value.trim() || null,
             sub_category_id: sectionId,
             parent_id: document.getElementById('parentItem').value || null,
-            // The trigger will now handle last_modified, last_modified_by, etc.
+            last_modified: new Date().toISOString(),
+            author_id: currentUser.id,
         };
 
         if (editingId) {
             itemData.id = editingId;
             const originalItem = findItem(editingId);
             if(originalItem) {
+                // Preserve Arabic content if it exists
                 itemData.title_ar = originalItem.title_ar;
                 itemData.description_ar = originalItem.description_ar;
                 itemData.content_ar = originalItem.content_ar;
@@ -3195,16 +3195,23 @@
             showToast(`Failed to save content: ${error.message}`, 'error');
             return;
         }
+
+        if(!editingId) {
+            await logActivity(currentUser, savedItem.id, savedItem.type, 'created');
+        } else {
+             await logActivity(currentUser, savedItem.id, savedItem.type, 'updated');
+        }
         
         showToast(`Content '${savedItem.title_en}' saved successfully!`, 'success');
         closeAddContentModal();
-        await loadAndStructureData();
+        await loadAndStructureData(); // Full reload to get all fresh data
         
+        // Navigate to the newly created/edited item
         const itemFull = findItem(savedItem.id);
         if (itemFull) {
             window.location.hash = `#${itemFull.sectionSlug}/${itemFull.slug}`;
         } else {
-            handleNavigation();
+            handleNavigation(); // Fallback to refresh current view
         }
     });
 
@@ -3224,9 +3231,6 @@
 
     confirmDeleteItemBtn.addEventListener('click', async () => {
         const itemId = confirmDeleteItemBtn.dataset.itemId;
-        // Set the user context for the trigger
-        await supabase.rpc('set_config', { key: 'app.manual_user_id', value: currentUser.id, is_local: true });
-        
         const { error } = await supabase.from('cases').delete().eq('id', itemId);
         
         if (error) {
@@ -3238,7 +3242,7 @@
         deleteConfirmModalOverlay.classList.add('hidden');
         
         const currentHash = window.location.hash;
-        if(currentHash.includes(itemId)) {
+        if(currentHash.includes(itemId)) { // crude check, slug would be better
              window.location.hash = `#home`;
         } else {
             await loadAndStructureData();
@@ -3307,9 +3311,7 @@
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
     }
-    // =========================================================================
-    // >>>>>>>>>>>> تعديل مهم: إصلاح مشكلة لوحة التحكم <<<<<<<<<<<<<<<
-    // =========================================================================
+
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
         if (!currentUser) {
@@ -3360,6 +3362,7 @@
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
             
+            // Handle admin link access
             if (e.target.closest('.admin-toolbar a')) {
                 const link = e.target.closest('.admin-toolbar a');
                 if (!isCurrentUserAdmin()) {
@@ -3378,7 +3381,7 @@
             if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
                 const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
                 if (!error) {
-                    await logActivity(currentUser, itemData.id, itemData.type, itemData.title_en, 'positive_feedback');
+                    await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
                     document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
                     showToast('Feedback received!', 'success');
                 } else showToast('Failed to submit feedback.', 'error');
@@ -3403,8 +3406,8 @@
                 if (error) { showToast('Failed to post note.', 'error'); return; }
 
                 await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
+                // Let realtime handle the update
                 commentTextEl.value = '';
-                // Realtime will handle the update
             }
 
             if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
