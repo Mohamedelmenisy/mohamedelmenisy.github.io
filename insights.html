@@ -35,6 +35,7 @@
     .page-wrapper {
       padding: 1.25rem 1.5rem;
       padding-top: calc(var(--header-height) + 1.25rem);
+      padding-bottom: 2rem; /* Added padding to avoid footer overlap */
     }
     .page-header {
         position: fixed; top: 0; left: 0; right: 0;
@@ -168,9 +169,11 @@
       </div>
       <div class="form-group search-group">
         <label for="searchInput">Search by Name, Email, or Case</label>
-        <input id="searchInput" type="text" placeholder="Type to search..." />
+        <!-- MODIFICATION: Added autocomplete="off" -->
+        <input id="searchInput" type="text" placeholder="Type to search..." autocomplete="off" />
       </div>
-      <button id="exportBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+      <!-- MODIFICATION: Added margin-left to the button -->
+      <button id="exportBtn" class="button-secondary" style="margin-left: 0.5rem;"><i class="fas fa-file-csv"></i> Export CSV</button>
     </div>
 
     <div class="card stats-grid">
@@ -238,7 +241,7 @@
 </div>
 
 <!-- Footer -->
-<footer class="mt-auto p-6 text-center" style="color: var(--text-color-muted); font-size: 0.85rem;">
+<footer style="padding: 1.5rem; text-align: center; color: var(--text-color-muted); font-size: 0.85rem;">
   <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase.Elmenisy.</span>
 </footer>
 
@@ -289,7 +292,20 @@
                 x: { ticks: { color: ticksColor }, grid: { display: false } }
             }
         };
-        if(type === 'doughnut') delete chartOptions.scales;
+        // For doughnut charts, we don't need scales.
+        if(type === 'doughnut') {
+            delete chartOptions.scales;
+            // Also, prevent the chart from rendering if there's no data.
+            if (data.every(item => item === 0)) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                // Optionally, display a message
+                ctx.font = "16px 'Inter'";
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+                ctx.textAlign = "center";
+                ctx.fillText("No feedback data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return null;
+            }
+        }
 
         return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors, borderColor: 'transparent' }] }, options: chartOptions });
     }
@@ -324,7 +340,9 @@
       helpfulCountEl.textContent = feedbackStats.helpful;
       notHelpfulCountEl.textContent = feedbackStats.notHelpful;
       if (feedbackChart) feedbackChart.destroy();
-      feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut',
+      
+      const ctx = document.getElementById('feedbackChart').getContext('2d');
+      feedbackChart = createChart(ctx, 'doughnut',
         ['Helpful', 'Not Helpful'],
         [feedbackStats.helpful, feedbackStats.notHelpful],
         'Feedback',
@@ -336,7 +354,8 @@
       if (activeUsersChart) activeUsersChart.destroy();
       const labels = topUsers.map(u => u.user_name || 'Unknown');
       const data = topUsers.map(u => u.activity_count || 0);
-      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', '#6366F1');
+      const ctx = document.getElementById('activeUsersChart').getContext('2d');
+      activeUsersChart = createChart(ctx, 'bar', labels, data, 'Activities', '#6366F1');
     }
 
     function applyFilters() {
@@ -390,7 +409,6 @@
     async function initData() {
       showSpinner(true);
       try {
-        // Since the function now gets all data, we don't need params here
         const [actsRes, fbRes, tuRes] = await Promise.all([
             supabase.rpc('get_user_activity_feed'),
             supabase.rpc('get_feedback_stats'),
