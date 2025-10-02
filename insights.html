@@ -24,7 +24,7 @@
       height: 100%; margin: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color); color: var(--text-color);
-      font-size: 16px; /* Increased base font size */
+      font-size: 16px;
     }
     .page-wrapper {
       padding: 1.5rem 2rem;
@@ -91,7 +91,7 @@
     
     .chart-wrapper {
         position: relative;
-        height: 350px; /* Fixed height */
+        height: 350px;
     }
 
     .table-wrap { overflow-x: auto; }
@@ -104,6 +104,7 @@
       background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
+    tbody tr:hover { background-color: #2a3546; }
     
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
     .spinner { width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
@@ -252,8 +253,15 @@
 
         const chartOptions = {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: legendColor, font: { family: 'Inter', size: 14 }}}},
-            scales: { y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor }, grid: { color: gridColor } } }
+            plugins: { 
+                legend: { 
+                    labels: { color: legendColor, font: { family: 'Inter', size: 14 } }
+                }
+            },
+            scales: { 
+                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor, drawBorder: false } }, 
+                x: { ticks: { color: ticksColor }, grid: { display: false } } 
+            }
         };
 
         if(type === 'doughnut') {
@@ -262,7 +270,7 @@
 
         return new Chart(ctx, {
             type,
-            data: { labels, datasets: [{ label: dataLabels, data, backgroundColor: backgroundColors }] },
+            data: { labels, datasets: [{ label: dataLabels, data, backgroundColor: backgroundColors, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), borderWidth: 2 }] },
             options: chartOptions
         });
     }
@@ -344,9 +352,6 @@
 
     async function initData() {
       showSpinner(true);
-      // =========================================================================
-      // >>>>>>>>>>>> تعديل مهم: الاعتماد على RPC Functions <<<<<<<<<<<<<<<
-      // =========================================================================
       const [actsRes, fbRes, tuRes] = await Promise.all([
           supabase.rpc('get_user_activity_feed'),
           supabase.rpc('get_feedback_stats'),
