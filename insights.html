@@ -1,182 +1,206 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Insights — Activity & Audit Dashboard</title>
-
-  <!-- Tailwind for quick styling (CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Chart.js for charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-
-  <!--
-    Insights - Final version
-    - Compact KPI boxes (smaller height, spaced)
-    - Export CSV button with hover color
-    - Pagination (Previous / Next)
-    - Charts: Top Active Users (bar), Feedback distribution (doughnut)
-    - Recent Activities table showing: User, Email, Case, Action, Details, Activity Time
-    - Fetches data from RPC: get_user_activity_feed (expects p_page,p_size,p_action,p_from,p_to,p_search)
-    - Displays `details` JSON prettified when available
-    - Robust fallbacks if RPC not available; useful debug messages in console
-    - Comments/documentation are deliberately verbose to help future edits
-  -->
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InfiniBase - User Activity Insights</title>
+  <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
   <style>
-    :root{
-      --bg:#071023;
-      --card:#0f1724;
-      --muted:#94a3b8;
-      --accent:#6366f1; /* indigo-500 */
-      --accent-2:#06b6d4; /* cyan */
-      --success:#10b981;
-      --danger:#ef4444;
-      --glass: rgba(255,255,255,0.03);
+    :root {
+      --primary-color: #6366f1;
+      --primary-color-hover: #4f46e5;
+      --text-color: #d1d5db;
+      --text-color-muted: #9ca3af;
+      --bg-color: #0b1220;
+      --bg-color-alt: #0f1724;
+      --border-color: #1f2937;
+      --border-radius: 0.5rem;
+      --border-radius-lg: 0.75rem;
+      --header-height: 72px;
     }
-    html,body{height:100%; margin:0; background:var(--bg); color:#e6eef8; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-    .container{max-width:1200px; margin:28px auto; padding:0 18px;}
-    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .brand .logo { width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex; align-items:center; justify-content:center; font-weight:800; color:white; }
-    .panel { background:var(--card); border:1px solid rgba(255,255,255,0.03); border-radius:12px; padding:14px; box-shadow:0 6px 20px rgba(2,6,23,0.6); }
-    .muted { color:var(--muted); }
-    .kpi-row { display:flex; gap:12px; margin-bottom:14px; }
-    /* KPI boxes are smaller: */
-    .kpi { flex:1; min-width:150px; padding:10px 14px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
-    .kpi .label { font-size:13px; color:var(--muted); }
-    .kpi .value { font-size:22px; font-weight:700; color:white; }
-    .kpi.small { padding:8px 12px; }
-    .flex-row { display:flex; gap:12px; align-items:center; }
-    /* Export button hover color */
-    .export-btn { background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:8px; cursor:pointer; color:#e6eef8; display:inline-flex; gap:8px; align-items:center; }
-    .export-btn:hover { background:linear-gradient(90deg, rgba(99,102,241,0.12), rgba(6,182,212,0.08)); transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,0.08); }
-    .filters { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
-    .filters .field { display:flex; flex-direction:column; }
-    select,input { background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; color:#e6eef8; min-width:160px; }
-    input::placeholder { color: rgba(230,238,248,0.35); }
-    .charts { display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:16px; }
-    .chart-card { height:320px; padding:12px; display:flex; flex-direction:column; gap:10px; }
-    .table-wrap { overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; font-size:14px; }
-    thead th { text-align:left; color:var(--muted); font-size:12px; padding:10px 12px; text-transform:uppercase; letter-spacing:0.04em; }
-    tbody td { padding:10px 12px; border-top:1px solid rgba(255,255,255,0.02); vertical-align:top; }
-    tbody tr:hover { background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
-    .action-pill { padding:6px 10px; border-radius:999px; font-weight:600; font-size:12px; }
-    .act-view { background:rgba(99,102,241,0.14); color:var(--accent); }
-    .act-update { background:rgba(16,185,129,0.12); color:var(--success); }
-    .act-delete { background:rgba(239,68,68,0.12); color:var(--danger); }
-    .details-pre { white-space:pre-wrap; color:#cfe9ff; font-size:13px; max-width:420px; }
-    .pager { display:flex; align-items:center; gap:8px; }
-    .pill { padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:#e6eef8; cursor:pointer; }
-    .pill:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-    .small-muted { font-size:12px; color:var(--muted); }
-    footer { margin-top:18px; color:var(--muted); font-size:13px; text-align:center; }
-    /* responsive tweaks */
-    @media (max-width:920px){ .charts{grid-template-columns:1fr; } .kpi-row{flex-direction:column} }
+    html, body {
+      height: 100%; margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--bg-color); color: var(--text-color);
+      font-size: 16px;
+    }
+    .page-wrapper {
+      padding: 1.25rem 2rem;
+      padding-top: calc(var(--header-height) + 1.25rem);
+      max-width: 1200px; margin: 0 auto;
+    }
+    .page-header {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: var(--header-height);
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0 2rem;
+        background-color: rgba(10, 15, 25, 0.7);
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        backdrop-filter: blur(6px); z-index: 100;
+    }
+    .page-header .header-title { display: flex; align-items: center; gap: 0.75rem; }
+    .page-header .logo-icon { font-size: 1.4rem; color: var(--primary-color); }
+    .page-header h1 {
+      font-size: 1.25rem; font-weight: 700; color: white; margin: 0;
+    }
+    .button, button {
+        background-color: var(--primary-color); color: white; border: 1px solid transparent;
+        padding: 0.5rem 0.9rem; border-radius: var(--border-radius);
+        cursor: pointer; font-size: 0.95rem; font-weight: 600;
+        transition: all 0.15s; text-decoration: none;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .button:hover, button:hover { background-color: var(--primary-color-hover); transform: translateY(-1px); }
+    .button-secondary {
+        background-color: transparent; color: var(--text-color); border: 1px solid rgba(255,255,255,0.04);
+    }
+    .button-secondary:hover { background-color: rgba(255,255,255,0.02); color: white; border-color: rgba(255,255,255,0.06); }
+    #exportBtn:hover { background-color: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.25); color: var(--primary-color); }
+    .card {
+      background-color: var(--bg-color-alt); border: 1px solid rgba(255,255,255,0.03);
+      border-radius: var(--border-radius-lg); padding: 1.1rem; margin-bottom: 1rem;
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: flex-end; justify-content: space-between; }
+    .filters .form-group { display: flex; flex-direction: column; width: 100%; max-width: 320px; }
+    .filters .form-group label {
+        font-size: 0.82rem; font-weight: 600;
+        color: var(--text-color-muted); margin-bottom: 0.45rem;
+    }
+    .filters input, .filters select {
+        width: 100%; padding: 0.6rem; border: 1px solid rgba(255,255,255,0.03);
+        border-radius: var(--border-radius); background-color: transparent;
+        color: var(--text-color); font-size: 0.95rem;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.9rem; margin-bottom: 0.9rem;
+    }
+    .stat-card { text-align: left; padding: 0.9rem; min-height: 64px; display:flex; flex-direction:column; justify-content:center; }
+    .stat-card h2 {
+        font-size: 0.92rem; font-weight:700;
+        color: var(--text-color-muted); margin: 0 0 0.45rem 0;
+    }
+    .stat-card .stat-value { font-size: 1.6rem; font-weight:800; }
+    .stat-card .stat-value.helpful { color: #22c55e; }
+    .stat-card .stat-value.not-helpful { color: #ef4444; }
+    .chart-wrapper {
+        position: relative;
+        height: 260px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 840px; }
+    th, td {
+      padding: 0.86rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.025);
+      font-size: 0.95rem; text-align: left;
+    }
+    thead th {
+      background-color: transparent; color: var(--text-color-muted); font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+    .pagination { display:flex; gap:0.75rem; align-items:center; justify-content:flex-end; margin-top:12px; }
+    .spinner-overlay{ position:fixed; inset:0; background:rgba(11,17,28,0.7); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .spinner { width:48px; height:48px; border-radius:50%; border:4px solid rgba(255,255,255,0.06); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
+    @keyframes spin{ to{transform:rotate(360deg);} }
+    .toast{ position:fixed; top:20px; right:20px; padding:10px 14px; border-radius: var(--border-radius); color:white; z-index:1100; display:flex; align-items:center; gap:10px; cursor:pointer; opacity:0; transform:translateY(-10px); transition: all .2s; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; width: 100%; }
+    .access-restricted-container .card { max-width: 450px; padding: 2.5rem; }
+    .access-restricted-container .icon { font-size: 3rem; color: var(--primary-color); margin-bottom: 1.25rem; }
+    .access-restricted-container h2 { font-size: 1.5rem; margin-bottom: 0.5rem; color: white; }
+    .access-restricted-container p { color: var(--text-color-muted); margin-bottom: 1.25rem; }
+    @media (max-width:900px){ .stats-grid { grid-template-columns: 1fr; } .filters { gap:0.6rem; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="brand">
-        <div class="logo">IB</div>
-        <div>
-          <div style="font-weight:700;font-size:18px">Insights — Knowledge Base</div>
-          <div class="small-muted">Live activity, audit and feedback overview</div>
-        </div>
-      </div>
 
-      <div class="flex-row">
-        <button id="backBtn" class="pill">← Back to Dashboard</button>
-        <button id="debugBtn" class="pill">Debug</button>
-      </div>
-    </header>
+<div id="dashboard" style="visibility: hidden;">
+  <header class="page-header">
+    <div class="header-title">
+        <i class="fas fa-chart-pie logo-icon"></i>
+        <h1>Insights — Knowledge Base</h1>
+    </div>
+    <div style="display:flex; gap:0.6rem;">
+      <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+      <button id="debugBtn" class="button button-secondary">Debug</button>
+    </div>
+  </header>
+  
+  <div class="page-wrapper">
+    <div id="toast" class="toast"></div>
+    <div id="spinner" class="spinner-overlay" style="display: none;"><div class="spinner"></div></div>
 
-    <!-- Filters panel -->
-    <div class="panel" style="margin-bottom:12px;">
-      <div class="filters">
-        <div class="field">
-          <label class="small-muted">Time Range</label>
-          <select id="timeRange">
+    <div class="card filters">
+      <div style="display:flex; gap:0.9rem; width:100%; align-items:flex-end; justify-content:space-between;">
+        <div class="form-group">
+          <label for="timeFilter">Time Range</label>
+          <select id="timeFilter">
             <option value="all">All time</option>
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
           </select>
         </div>
-
-        <div class="field">
-          <label class="small-muted">Action</label>
+        <div class="form-group">
+          <label for="actionFilter">Action</label>
           <select id="actionFilter">
-            <option value="">All</option>
-            <option value="VIEW">Viewed</option>
-            <option value="UPDATE">Updated</option>
-            <option value="INSERT">Created</option>
-            <option value="DELETE">Deleted</option>
+            <option value="all">All</option>
+            <option value="viewed">Viewed</option>
+            <option value="updated">Updated</option>
+            <option value="deleted">Deleted</option>
+            <option value="insert">Insert</option>
           </select>
         </div>
-
-        <div class="field" style="flex:1; min-width:260px;">
-          <label class="small-muted">Search</label>
-          <input id="searchInput" placeholder="Search by user, email or case..." />
+        <div class="form-group search-group">
+          <label for="searchInput">Search</label>
+          <input id="searchInput" type="text" placeholder="Search by user, email or case..." />
         </div>
-
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-          <button id="refreshBtn" class="pill">Refresh</button>
-          <button id="exportBtn" class="export-btn" title="Export CSV"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</button>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <button id="refreshBtn" class="button-secondary">Refresh</button>
+          <button id="exportBtn" class="button"><i class="fas fa-file-csv"></i> Export</button>
         </div>
       </div>
     </div>
 
-    <!-- KPIs (compact, spaced) -->
-    <div class="kpi-row" style="margin-bottom:10px;">
-      <div class="kpi panel small-kpi">
-        <div class="label">Total Activities</div>
-        <div id="kpiTotal" class="value">—</div>
-        <div class="small-muted">Number of events recorded in activity log</div>
+    <div class="card stats-grid" aria-hidden="false">
+      <div class="stat-card">
+        <h2>Total Activities</h2>
+        <p id="totalActivities" class="stat-value">0</p>
+        <div style="font-size:0.85rem; color:var(--text-color-muted); margin-top:6px;">Number of events recorded in activity log</div>
       </div>
-      <div class="kpi panel small-kpi">
-        <div class="label">Helpful Feedback</div>
-        <div id="kpiHelpful" class="value" style="color:var(--success)">—</div>
-        <div class="small-muted">Positive feedback counts</div>
+      <div class="stat-card">
+        <h2>Helpful Feedback</h2>
+        <p id="helpfulCount" class="stat-value helpful">0</p>
+        <div style="font-size:0.85rem; color:var(--text-color-muted); margin-top:6px;">Positive feedback counts</div>
       </div>
-      <div class="kpi panel small-kpi">
-        <div class="label">Not Helpful</div>
-        <div id="kpiNotHelpful" class="value" style="color:var(--danger)">—</div>
-        <div class="small-muted">Negative feedback counts</div>
+      <div class="stat-card">
+        <h2>Not Helpful</h2>
+        <p id="notHelpfulCount" class="stat-value not-helpful">0</p>
+        <div style="font-size:0.85rem; color:var(--text-color-muted); margin-top:6px;">Negative feedback counts</div>
       </div>
     </div>
 
-    <!-- Charts -->
-    <div class="charts">
-      <div class="panel chart-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div><strong>Top Active Users</strong><div class="small-muted">Who interacts most with KB</div></div>
-          <div class="small-muted">Last 30 days</div>
-        </div>
-        <div style="flex:1; min-height:220px;">
-          <canvas id="usersBar"></canvas>
+    <div class="card" style="display:grid; grid-template-columns: 1fr 360px; gap:0.9rem; margin-bottom:1rem;">
+      <div>
+        <h2 style="font-size:1rem; font-weight:600; margin-bottom:0.55rem;">Top Active Users</h2>
+        <p style="font-size:0.85rem; color:var(--text-color-muted); margin-top:0; margin-bottom:0.8rem;">Who interacts most with KB</p>
+        <div class="chart-wrapper">
+            <canvas id="activeUsersChart"></canvas>
         </div>
       </div>
-
-      <div class="panel chart-card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div><strong>Feedback Distribution</strong><div class="small-muted">Helpful vs Not Helpful</div></div>
-        </div>
-        <div style="flex:1; min-height:220px; display:flex; align-items:center; justify-content:center;">
-          <canvas id="feedbackDonut" style="max-width:240px; max-height:240px;"></canvas>
+      <div>
+        <h2 style="font-size:1rem; font-weight:600; margin-bottom:0.55rem;">Feedback Distribution</h2>
+        <div class="chart-wrapper">
+            <canvas id="feedbackChart"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Recent Activities table with pagination -->
-    <div class="panel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <div><strong>Recent Activities</strong> <span class="small-muted">— latest activity logs</span></div>
-        <div class="small-muted">Actions shown for admins</div>
-      </div>
-
+    <div class="card">
+      <h2 style="font-size:1rem; font-weight:600; margin-bottom:0.8rem;">Recent Activities</h2>
       <div class="table-wrap">
         <table>
           <thead>
@@ -189,243 +213,290 @@
               <th>Activity Time</th>
             </tr>
           </thead>
-          <tbody id="activityBody">
-            <tr><td colspan="6" class="muted p-4">Loading…</td></tr>
-          </tbody>
+          <tbody id="activityTable"></tbody>
         </table>
       </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-        <div class="small-muted" id="pageInfo">Page <span id="pageNumber">1</span></div>
-        <div class="pager">
-          <button id="prevPage" class="pill">Previous</button>
-          <button id="nextPage" class="pill">Next</button>
-        </div>
+      <div class="pagination">
+        <div id="pageInfo" style="color:var(--text-color-muted); font-size:0.9rem;"></div>
+        <div style="flex:1"></div>
+        <button id="prevBtn" class="button-secondary">Previous</button>
+        <button id="nextBtn" class="button-secondary">Next</button>
       </div>
     </div>
 
-    <footer>
+    <div style="text-align:center; color:var(--text-color-muted); font-size:0.85rem; margin-top:1.25rem;">
       Built for Knowledge Base tracking — live connected views. If charts are empty please run the SQL views/triggers then refresh.
-    </footer>
+    </div>
   </div>
+</div>
 
-  <!-- Scripts -->
-  <script>
-    // Configuration: Adjust these if your RPC endpoint or path differs.
-    const RPC_ENDPOINT = '/rpc/get_user_activity_feed'; // expects JSON POST with p_page,p_size,p_action,p_from,p_to,p_search
-    const PAGE_SIZE = 10;
+<div id="restricted-card" class="access-restricted-container">
+    <div class="card">
+        <div class="icon">🔒</div>
+        <h2>Access Restricted</h2>
+        <p>This page is available to administrators only.</p>
+        <a href="app.html" class="button">Go Back to Dashboard</a>
+    </div>
+</div>
+
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    let activities = [];
+    let feedbackStats = { helpful: 0, notHelpful: 0 };
+    let topUsers = [];
     let currentPage = 1;
-    let lastFetched = [];
+    const pageSize = 10;
 
-    // Chart instances
-    let usersBarChart = null;
-    let feedbackDonutChart = null;
+    const table = document.getElementById('activityTable');
+    const totalActivitiesEl = document.getElementById('totalActivities');
+    const helpfulCountEl = document.getElementById('helpfulCount');
+    const notHelpfulCountEl = document.getElementById('notHelpfulCount');
+    const toast = document.getElementById('toast');
+    const spinner = document.getElementById('spinner');
+    const pageInfo = document.getElementById('pageInfo');
 
-    // Utilities
-    function fmtDateISO(ts){
-      if(!ts) return '—';
-      try{ const d = new Date(ts); return d.toLocaleString('en-GB', { timeZone:'Africa/Cairo' }); } catch(e){ return ts; }
+    let feedbackChart = null, activeUsersChart = null;
+
+    function showSpinner(show) { spinner.style.display = show ? 'flex' : 'none'; }
+
+    function showToast(message, timeout = 3000) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), timeout);
     }
 
-    function safeParseDetails(d){
-      if(!d) return null;
-      if(typeof d === 'object') return d;
-      try { return JSON.parse(d); } catch(e){ return {raw: String(d)}; }
-    }
+    function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
+        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
-    function prettifyDetails(d){
-      const obj = safeParseDetails(d);
-      if(!obj) return '—';
-      // show compact useful info if field present
-      if(obj.field) return `${obj.field}: ${obj.old ?? '—'} → ${obj.new ?? '—'}`;
-      if(obj.feedback) return `Feedback: ${obj.feedback}`;
-      // fallback full JSON pretty
-      return JSON.stringify(obj, null, 2);
-    }
+        const chartOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: legendColor, font: { family: 'Inter', size: 12 } }
+                },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor, drawBorder: false } },
+                x: { ticks: { color: ticksColor }, grid: { display: false } }
+            }
+        };
 
-    // Render functions
-    function renderRows(items){
-      const tbody = document.getElementById('activityBody');
-      if(!items || items.length===0){
-        tbody.innerHTML = '<tr><td colspan="6" class="muted p-4">No activities found.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = '';
-      items.forEach(it => {
-        const tr = document.createElement('tr');
-        const action = (it.action || '').toString().toUpperCase();
-        let actionHtml = `<span class="action-pill ${action==='VIEW'?'act-view': action==='UPDATE'?'act-update': action==='DELETE'?'act-delete':'act-view'}">${escapeHtml(action||'')}</span>`;
-
-        tr.innerHTML = `
-          <td>${escapeHtml(it.user_name || it.modified_by_name || '—')}</td>
-          <td>${escapeHtml(it.user_email || it.modified_by_name || '—')}</td>
-          <td>${escapeHtml(it.case_title || it.case_slug || it.item_title || '—')}</td>
-          <td>${actionHtml}</td>
-          <td><div class="details-pre">${escapeHtml(prettifyDetails(it.details))}</div></td>
-          <td>${fmtDateISO(it.activity_time || it.modified_at)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function updateKPIs(items){
-      // Total activities (server-side count preferred: TODO implement RPC or separate endpoint)
-      document.getElementById('kpiTotal').textContent = items.length || 0;
-      // Feedback counters (scan details)
-      let helpful=0, notHelpful=0;
-      items.forEach(it => {
-        const d = safeParseDetails(it.details);
-        if(d){
-          if(d.helpful === true || (d.feedback && d.feedback.toLowerCase()==='helpful')) helpful++;
-          if(d.helpful === false || (d.feedback && d.feedback.toLowerCase()==='not helpful')) notHelpful++;
+        if(type === 'doughnut') {
+            delete chartOptions.scales;
         }
-      });
-      document.getElementById('kpiHelpful').textContent = helpful;
-      document.getElementById('kpiNotHelpful').textContent = notHelpful;
+
+        return new Chart(ctx, {
+            type,
+            data: {
+              labels,
+              datasets: [{
+                label: dataLabel || '',
+                data,
+                backgroundColor: Array.isArray(backgroundColors) ? backgroundColors : [backgroundColors],
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+                borderWidth: 2
+              }]
+            },
+            options: chartOptions
+        });
     }
 
-    function updateCharts(items){
-      // Top active users (simple aggregation)
-      const counts = {};
-      items.forEach(it => {
-        const name = it.user_name || it.user_email || 'Unknown';
-        counts[name] = (counts[name]||0) + 1;
-      });
-      const labels = Object.keys(counts);
-      const data = labels.map(l => counts[l]);
-      if(!usersBarChart){
-        const ctx = document.getElementById('usersBar').getContext('2d');
-        usersBarChart = new Chart(ctx, {
-          type:'bar',
-          data:{ labels, datasets:[{ label:'Activities', data, backgroundColor:labels.map(()=> 'rgba(99,102,241,0.9)') }] },
-          options:{ maintainAspectRatio:false, plugins:{legend:{display:false}} }
-        });
-      } else {
-        usersBarChart.data.labels = labels;
-        usersBarChart.data.datasets[0].data = data;
-        usersBarChart.update();
-      }
+    function renderActivities(filtered) {
+      const start = (currentPage - 1) * pageSize;
+      const paginated = filtered.slice(start, start + pageSize);
 
-      // Feedback donut handled in KPIs (counts)
-      const help = Number(document.getElementById('kpiHelpful').textContent || 0);
-      const noth = Number(document.getElementById('kpiNotHelpful').textContent || 0);
-      if(!feedbackDonutChart){
-        const ctx2 = document.getElementById('feedbackDonut').getContext('2d');
-        feedbackDonutChart = new Chart(ctx2, {
-          type:'doughnut',
-          data:{ labels:['Helpful','Not Helpful'], datasets:[{ data:[help,noth], backgroundColor:['#10b981','#ef4444']}] },
-          options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
-        });
-      } else {
-        feedbackDonutChart.data.datasets[0].data = [help,noth];
-        feedbackDonutChart.update();
-      }
+      table.innerHTML = paginated.map((act) => {
+          return `<tr>
+            <td>${escapeHtml(act.user_name) || 'N/A'}</td>
+            <td>${escapeHtml(act.user_email) || 'N/A'}</td>
+            <td>${escapeHtml(act.item_title) || '-'}</td>
+            <td>${escapeHtml(act.action) || '-'}</td>
+            <td>${act.details ? escapeHtml(formatDetails(act.details)) : '-'}</td>
+            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) : '-'}</td>
+          </tr>`;
+      }).join('');
+
+      totalActivitiesEl.textContent = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
     }
 
-    // Fetching data via RPC POST to RPC_ENDPOINT
-    async function fetchPage(page=1){
-      currentPage = page;
-      document.getElementById('pageNumber').textContent = page;
-      const action = document.getElementById('actionFilter').value || null;
-      const search = document.getElementById('searchInput').value.trim() || null;
-      const timeRange = document.getElementById('timeRange').value || 'all';
+    function formatDetails(details) {
+      if (!details) return '';
+      if (typeof details === 'string') return details;
+      try { return JSON.stringify(details); } catch (e) { return String(details); }
+    }
 
-      // Compute optional from/to if user selected 7/30 days
-      let p_from = null, p_to = null;
-      if(timeRange !== 'all'){
-        const days = Number(timeRange);
-        const to = new Date();
-        const from = new Date(); from.setDate(from.getDate() - days);
-        p_from = from.toISOString();
-        p_to = to.toISOString();
-      }
+    function renderFeedback() {
+      helpfulCountEl.textContent = feedbackStats.helpful;
+      notHelpfulCountEl.textContent = feedbackStats.notHelpful;
+      if (feedbackChart) feedbackChart.destroy();
+      feedbackChart = createChart(document.getElementById('feedbackChart').getContext('2d'), 'doughnut',
+        ['Helpful', 'Not Helpful'],
+        [feedbackStats.helpful, feedbackStats.notHelpful],
+        'Feedback',
+        ['#10B981', '#EF4444']
+      );
+    }
 
-      // Build payload according to your RPC signature
-      const payload = {
-        p_page: page,
-        p_size: PAGE_SIZE,
-        p_action: action,
-        p_from: p_from,
-        p_to: p_to,
-        p_search: search
-      };
+    function renderTopUsers() {
+      if (activeUsersChart) activeUsersChart.destroy();
+      const labels = topUsers.map(u => u.user_name || 'Unknown');
+      const data = topUsers.map(u => u.activity_count || 0);
+      const colors = data.map(_ => '#6366F1');
+      activeUsersChart = createChart(document.getElementById('activeUsersChart').getContext('2d'), 'bar', labels, data, 'Activities', colors);
+    }
 
+    function filterAndRender() {
+        const timeFilter = document.getElementById('timeFilter').value;
+        const actionFilter = document.getElementById('actionFilter').value;
+        const search = document.getElementById('searchInput').value.trim().toLowerCase();
+        let filtered = [...activities];
+        const now = new Date();
+
+        if (timeFilter !== 'all') {
+            filtered = filtered.filter(a => {
+                const ts = new Date(a.activity_time);
+                if (isNaN(ts)) return false;
+                if (timeFilter === 'today') return ts.toDateString() === now.toDateString();
+                if (timeFilter === '7d') return (now - ts) / (1000*60*60*24) <= 7;
+                if (timeFilter === '30d') return (now - ts) / (1000*60*60*24) <= 30;
+                return true;
+            });
+        }
+        if (actionFilter !== 'all') {
+            const wanted = actionFilter.toLowerCase();
+            filtered = filtered.filter(a => (a.action || '').toLowerCase() === wanted);
+        }
+        if (search) {
+            filtered = filtered.filter(a =>
+                ((a.user_name || '').toLowerCase().includes(search)) ||
+                ((a.user_email || '').toLowerCase().includes(search)) ||
+                ((a.item_title || '').toLowerCase().includes(search))
+            );
+        }
+
+        // reset to first page when filters change
+        currentPage = 1;
+        renderActivities(filtered);
+        return filtered;
+    }
+
+    function exportCSV(data) {
+        const headers = ['User','Email','Case','Action','Details','Activity Time'];
+        let csv = headers.join(',') + '\n';
+        data.forEach(a => {
+            const row = [a.user_name, a.user_email, a.item_title || '-', a.action, JSON.stringify(a.details || ''), a.activity_time];
+            csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = 'activities_insights.csv'; document.body.appendChild(link);
+        link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    async function initData() {
+      showSpinner(true);
       try {
-        const res = await fetch(RPC_ENDPOINT, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if(!res.ok){
-          console.error('RPC error', res.status, await res.text());
-          // show fallback empty
-          renderRows([]);
-          updateKPIs([]);
-          updateCharts([]);
+        const [actsRes, fbRes, tuRes] = await Promise.all([
+            supabase.rpc('get_user_activity_feed'),
+            supabase.rpc('get_feedback_stats'),
+            supabase.rpc('get_top_active_users', { limit_count: 5 })
+        ]);
+
+        if (actsRes.error) {
+          console.error('activity feed RPC error', actsRes.error);
+          activities = [];
+          showToast('Failed to load activities.');
+        } else {
+          activities = Array.isArray(actsRes.data) ? actsRes.data : (actsRes.data || []);
+        }
+
+        if (fbRes.error) {
+          console.error('feedback stats RPC error', fbRes.error);
+          feedbackStats = { helpful: 0, notHelpful: 0 };
+        } else {
+          const fbData = fbRes.data || [];
+          feedbackStats = {
+            helpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'helpful')?.count) || 0,
+            notHelpful: (fbData.find(f => String(f.rating_type).toLowerCase() === 'not helpful')?.count) || 0
+          };
+        }
+
+        if (tuRes.error) {
+          console.error('top users RPC error', tuRes.error);
+          topUsers = [];
+        } else {
+          topUsers = Array.isArray(tuRes.data) ? tuRes.data : (tuRes.data || []);
+        }
+
+        activities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
+
+        filterAndRender();
+        renderFeedback();
+        renderTopUsers();
+      } catch (e) {
+        console.error('initData error', e);
+        showToast('Error loading insights.');
+      } finally {
+        showSpinner(false);
+      }
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentPage > 1) { currentPage--; filterAndRender(); }
+    });
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      currentPage++; filterAndRender();
+    });
+    document.getElementById('refreshBtn').addEventListener('click', () => initData());
+    document.getElementById('exportBtn').addEventListener('click', () => exportCSV(activities));
+
+    ['timeFilter', 'actionFilter', 'searchInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', filterAndRender);
+    });
+
+    async function checkAdminAccess() {
+      try {
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        const user = userData?.user;
+        if (!user) {
+          document.getElementById('restricted-card').style.display = 'flex';
           return;
         }
-        const data = await res.json();
-        // Keep last fetched page for export
-        lastFetched = Array.isArray(data) ? data : [];
-        renderRows(lastFetched);
-        updateKPIs(lastFetched);
-        updateCharts(lastFetched);
-      } catch (err){
-        console.error('Network or CORS error', err);
-        renderRows([]);
+        const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (error || !data || data.role !== 'admin') {
+          document.getElementById('restricted-card').style.display = 'flex';
+        } else {
+          document.getElementById('dashboard').style.visibility = 'visible';
+          initData();
+        }
+      } catch (e) {
+        console.error('Admin check failed', e);
+        document.getElementById('restricted-card').style.display = 'flex';
       }
     }
 
-    // Export CSV for lastFetched
-    function exportCSV(){
-      if(!lastFetched || lastFetched.length===0){ alert('No data to export'); return; }
-      const headers = ['user_name','user_email','case_title','action','details','activity_time'];
-      const rows = lastFetched.map(r => headers.map(h => {
-        const v = r[h] === undefined || r[h] === null ? '' : (typeof r[h] === 'object' ? JSON.stringify(r[h]) : String(r[h]));
-        return '"' + v.replace(/"/g,'""') + '"';
-      }).join(','));
-      const csv = [headers.join(',')].concat(rows).join('\n');
-      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `activities_page_${currentPage}.csv`; a.click();
-      URL.revokeObjectURL(url);
+    function escapeHtml(unsafe) {
+      if (unsafe === null || unsafe === undefined) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
-    // Helper to escape HTML
-    function escapeHtml(s){ if(s===null||s===undefined) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-
-    // Controls wiring
-    document.getElementById('refreshBtn').addEventListener('click', ()=> fetchPage(1));
-    document.getElementById('nextPage').addEventListener('click', ()=> fetchPage(currentPage+1));
-    document.getElementById('prevPage').addEventListener('click', ()=> { if(currentPage>1) fetchPage(currentPage-1); });
-    document.getElementById('exportBtn').addEventListener('click', exportCSV);
-    document.getElementById('searchInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') fetchPage(1); });
-    document.getElementById('actionFilter').addEventListener('change', ()=> fetchPage(1));
-    document.getElementById('timeRange').addEventListener('change', ()=> fetchPage(1));
-    document.getElementById('backBtn').addEventListener('click', ()=> { if(history.length>1) history.back(); else location.href='app.html'; });
-    document.getElementById('debugBtn').addEventListener('click', async ()=>{
-      console.log('Debug: attempting simple RPC call sample');
-      try {
-        const r = await fetch(RPC_ENDPOINT, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ p_page:1, p_size:3 })});
-        console.log('RPC status', r.status);
-        const dd = await r.json().catch(()=>null);
-        console.log('RPC sample result', dd);
-        alert('Check console for RPC debug output.');
-      } catch(e){ console.error(e); alert('RPC debug failed (see console)'); }
-    });
-
-    // Initialize charts and fetch first page
-    window.addEventListener('load', ()=>{
-      // create empty charts first
-      const uctx = document.getElementById('usersBar').getContext('2d');
-      usersBarChart = new Chart(uctx, { type:'bar', data:{ labels:[], datasets:[{ label:'Activities', data:[], backgroundColor:[] }] }, options:{ maintainAspectRatio:false }});
-
-      const fctx = document.getElementById('feedbackDonut').getContext('2d');
-      feedbackDonutChart = new Chart(fctx, { type:'doughnut', data:{ labels:['Helpful','Not Helpful'], datasets:[{ data:[0,0], backgroundColor:['#10b981','#ef4444'] }] }, options:{ maintainAspectRatio:false }});
-
-      // initial load
-      fetchPage(1);
-    });
+    document.addEventListener('DOMContentLoaded', checkAdminAccess);
   </script>
 </body>
 </html>
