@@ -26,7 +26,7 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
-      font-size: 16px; /* Increased base font size */
+      font-size: 16px;
     }
     .page-wrapper {
       padding: 1.5rem 2rem;
@@ -57,7 +57,7 @@
         color: var(--primary-color);
     }
     .page-header h1 {
-      font-size: 1.75rem; /* Increased font size */
+      font-size: 1.75rem;
       font-weight: 700;
       color: white;
       margin: 0;
@@ -66,10 +66,10 @@
         background-color: var(--primary-color);
         color: white;
         border: 1px solid transparent;
-        padding: 0.75rem 1.25rem; /* Increased padding */
+        padding: 0.75rem 1.25rem;
         border-radius: var(--border-radius);
         cursor: pointer;
-        font-size: 1rem; /* Increased font size */
+        font-size: 1rem;
         font-weight: 600;
         transition: all 0.2s;
         text-decoration: none;
@@ -121,7 +121,7 @@
     }
     .chart-wrapper {
         position: relative;
-        height: 350px; /* Fixed height for chart container */
+        height: 350px;
     }
     .chart-wrapper h3 {
       font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);
@@ -143,6 +143,7 @@
       background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem;
       text-transform: uppercase; letter-spacing: 0.05em;
     }
+    tbody tr:hover { background-color: #2a3546; }
     
     .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(17,24,39,0.8); z-index:1000; opacity:0; visibility: hidden; transition: opacity .2s; }
     .overlay.show { opacity: 1; visibility: visible; }
@@ -281,7 +282,7 @@
 
     let auditStore = [];
     let filtered = [];
-    let pageSize = 25;
+    let pageSize = 10; // Changed from 25 to 10 as requested
     let currentPage = 1;
     let fieldsChart = null, editorsChart = null;
 
@@ -292,14 +293,19 @@
     
     function showOverlay(show = true) { overlay.classList.toggle('show', show); }
     function escapeHtml(s) { return s === null || s === undefined ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function formatTime(ts) { return !ts ? '-' : new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }); }
+    function formatTime(ts) { 
+        if (!ts) return '-';
+        // Format to 12-hour AM/PM as requested
+        return new Date(ts).toLocaleString('en-GB', { 
+            timeZone: 'Africa/Cairo',
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        }); 
+    }
     
     async function fetchInitial() {
       showOverlay(true);
       try {
-        // =========================================================================
-        // >>>>>>>>>>>> تعديل مهم: الاعتماد على RPC Function <<<<<<<<<<<<<<<
-        // =========================================================================
         const { data, error } = await supabase.rpc('get_full_case_history');
         if (error) { 
             console.error('get_full_case_history error', error); 
@@ -390,8 +396,8 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { color: gridColor } },
-                    x: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { color: gridColor } }
+                    y: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { color: gridColor, drawBorder: false } },
+                    x: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { display: false } }
                 }
             }
         });
@@ -440,10 +446,8 @@
     }
 
     function setupRealtime() {
-      supabase.channel('public:case_history') // Listen to the correct table
+      supabase.channel('public:case_history')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'case_history' }, async payload => {
-          // A change happened, the simplest way is to just refetch all data
-          // This avoids complex state management and ensures data consistency
           showToastNotification(payload.new || payload.old, payload.eventType.toLowerCase());
           await fetchInitial();
         })
