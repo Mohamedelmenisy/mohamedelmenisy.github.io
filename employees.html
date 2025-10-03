@@ -278,7 +278,6 @@
                         <div class="label">Online Now</div>
                     </div>
                 </div>
-                <!-- This is the Inactive Employees card you requested -->
                 <div class="stat-card">
                     <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
                     <div class="stat-info">
@@ -441,7 +440,6 @@
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
-    // Fetching from the main users table again for raw data
     async function fetchEmployees() {
         const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
         if (error) { 
@@ -460,7 +458,6 @@
         document.getElementById('online-employees').textContent = onlineCount;
     }
     
-    // This function updates the "Inactive Employees" card
     async function updateEngagementStats() {
         const { data, error } = await supabase.from('v_employee_engagement').select('*').single();
         if (error) {
@@ -483,12 +480,16 @@
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
-            // **FIXED**: Formatting the 'last_seen' timestamp here on the client-side
-            // This ensures correct timezone (Africa/Cairo) and 12-hour format (AM/PM)
+            // **FIXED**: Using a more compatible locale ('en-US') to ensure correct timezone conversion.
             const lastSeen = emp.last_seen
-                ? new Date(emp.last_seen).toLocaleString('en-GB', { 
-                    timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit', hour12: true
+                ? new Date(emp.last_seen).toLocaleString('en-US', { 
+                    timeZone: 'Africa/Cairo',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
                 }) : 'Never';
             
             const isOnline = emp.status === 'ONLINE'; 
@@ -732,16 +733,6 @@
         document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
     }
     
-    async function getAuthHeader() {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error || !session) {
-            console.error('Could not get user session.');
-            alert('Authentication error. Please log in again.');
-            return null;
-        }
-        return `Bearer ${session.access_token}`;
-    }
-
     async function handleFormSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('employee-id').value;
@@ -769,11 +760,9 @@
                 return;
             }
             const email = document.getElementById('employee-email').value;
-            const authToken = await getAuthHeader();
-            if (!authToken) return;
 
             try {
-                // IMPORTANT: Replace '/functions/v1/create-employee' with your actual Edge Function name
+                // **IMPROVED**: Using Supabase's invoke method. Ensure your function is named 'create-employee'.
                 const { error } = await supabase.functions.invoke('create-employee', {
                     body: { email, password, ...userMetadata },
                 });
@@ -782,18 +771,18 @@
                 alert('Employee created successfully!');
                 employeeModal.classList.remove('show');
             } catch (err) {
-                alert(`Error: ${err.message}`);
+                // **IMPROVED**: More detailed error message for easier debugging.
+                const detailedError = `Error: Failed to send a request to the Edge Function.\n\nPlease check the following:\n1. The Edge Function name in the code ("create-employee") matches the one you deployed in Supabase.\n2. The function is deployed successfully.\n3. Check the function logs in your Supabase dashboard for runtime errors.\n\nOriginal message: ${err.message}`;
+                alert(detailedError);
             }
         }
     }
 
     async function handleDelete(e) {
         const userId = e.currentTarget.dataset.userId;
-        const authToken = await getAuthHeader();
-        if (!authToken) return;
 
         try {
-            // IMPORTANT: Replace '/functions/v1/delete-employee' with your actual Edge Function name
+            // **IMPROVED**: Ensure your function is named 'delete-employee'.
             const { error } = await supabase.functions.invoke('delete-employee', {
                 body: { user_id: userId },
             });
@@ -802,7 +791,9 @@
             alert('Employee deleted successfully!');
             deleteConfirmModal.classList.remove('show');
         } catch (err) {
-            alert(`Error: ${err.message}`);
+            // **IMPROVED**: More detailed error message for easier debugging.
+            const detailedError = `Error: Failed to send a request to the Edge Function.\n\nPlease check the following:\n1. The Edge Function name in the code ("delete-employee") matches the one you deployed in Supabase.\n2. The function is deployed successfully.\n3. Check the function logs in your Supabase dashboard for runtime errors.\n\nOriginal message: ${err.message}`;
+            alert(detailedError);
         }
     }
 
