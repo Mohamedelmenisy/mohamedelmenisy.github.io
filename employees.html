@@ -20,18 +20,19 @@
             --border-radius-lg: 0.75rem;
             --status-online: #22c55e;
             --status-offline: #9ca3af;
-            --status-inactive: #f59e0b;
             --role-admin-bg: rgba(167, 139, 250, 0.2);
             --role-admin-text: #c4b5fd;
             --role-agent-bg: rgba(59, 130, 246, 0.2);
             --role-agent-text: #93c5fd;
+            --role-owner-bg: rgba(251, 191, 36, 0.2);
+            --role-owner-text: #fcd34d;
             --header-height: 70px;
         }
         html, body {
             height: 100%; margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg-color); color: var(--text-color);
-            font-size: 16.5px;
+            font-size: 16.5px; /* Improved font size */
         }
         .hidden { display: none !important; }
 
@@ -123,7 +124,7 @@
         .stat-info .label { font-size: 1rem; color: var(--text-color-muted); }
         
         .charts-section {
-            margin-top: 2.5rem;
+            margin-top: 2rem;
         }
         .charts-section h2 {
              font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;
@@ -147,9 +148,6 @@
         }
         .chart-placeholder i {
             font-size: 2.5rem; margin-bottom: 1rem;
-        }
-        .chart-placeholder p {
-            font-size: 0.9rem;
         }
 
         .table-controls {
@@ -188,6 +186,7 @@
         .role-badge { padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
         .role-badge.admin { background-color: var(--role-admin-bg); color: var(--role-admin-text); }
         .role-badge.agent { background-color: var(--role-agent-bg); color: var(--role-agent-text); }
+        .role-badge.owner { background-color: var(--role-owner-bg); color: var(--role-owner-text); }
         
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
         .status-dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -229,7 +228,7 @@
         footer {
             text-align: center;
             padding: 1.5rem 0;
-            margin-top: 3rem;
+            margin-top: 2rem;
             border-top: 1px solid var(--border-color);
             color: var(--text-color-muted);
             font-size: 0.9rem;
@@ -260,6 +259,13 @@
                     </div>
                 </div>
                 <div class="stat-card">
+                    <i class="fas fa-crown" style="color: var(--role-owner-text);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="owner-count">0</div>
+                        <div class="label">Owners</div>
+                    </div>
+                </div>
+                <div class="stat-card">
                     <i class="fas fa-user-shield" style="color: var(--role-admin-text);"></i>
                     <div class="stat-info">
                         <div class="value" id="admin-count">0</div>
@@ -280,13 +286,6 @@
                         <div class="label">Online Now</div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="inactive-count">0</div>
-                        <div class="label">Inactive</div>
-                    </div>
-                </div>
             </div>
 
             <div class="table-controls">
@@ -294,6 +293,7 @@
                     <input type="text" id="searchInput" placeholder="Search by name, email, or dept...">
                     <select id="roleFilter">
                         <option value="all">All Roles</option>
+                        <option value="owner">Owner</option>
                         <option value="admin">Admin</option>
                         <option value="agent">Agent</option>
                     </select>
@@ -313,7 +313,7 @@
                                 <th>Role</th>
                                 <th>Department</th>
                                 <th>Status</th>
-                                <th>Last Seen</th>
+                                <th>Last Seen (Africa/Cairo)</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -342,7 +342,7 @@
                         <div class="chart-wrapper">
                              <div id="activityChartPlaceholder" class="chart-placeholder">
                                  <i class="fas fa-chart-line"></i>
-                                 <p>No activity data found.</p>
+                                 <p>Activity data not available</p>
                              </div>
                              <canvas id="activityChart"></canvas>
                         </div>
@@ -352,7 +352,7 @@
                         <div class="chart-wrapper">
                              <div id="top5ChartPlaceholder" class="chart-placeholder">
                                 <i class="fas fa-medal"></i>
-                                <p>No ranking data found.</p>
+                                <p>Ranking data not available</p>
                             </div>
                              <canvas id="top5Chart"></canvas>
                         </div>
@@ -372,7 +372,7 @@
     <div class="modal-content" style="text-align: center;">
         <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
         <h2>Access Restricted</h2>
-        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
+        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators and owners only.</p>
         <a href="app.html" class="button">Go Back to Dashboard</a>
     </div>
 </div>
@@ -403,10 +403,11 @@
                 <select id="employee-role" required>
                     <option value="agent">Agent</option>
                     <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
                 </select>
             </div>
              <div class="form-group">
-                <label for="employee-password">Password</label>
+                <label for="employee-password">Password (leave blank to not change)</label>
                 <input type="password" id="employee-password" autocomplete="new-password">
             </div>
             <div class="modal-actions">
@@ -435,16 +436,16 @@
     import { supabase } from './supabase.js';
 
     let allEmployees = [];
-    let rolesChart, deptsChart, activityChart, top5Chart;
+    let rolesChart = null;
+    let deptsChart = null;
     let currentUser = null;
     let presenceInterval;
 
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
-    // Fetch from the new view for pre-formatted Cairo time
     async function fetchEmployees() {
-        const { data, error } = await supabase.from('v_employee_last_seen').select('*').order('name', { ascending: true });
+        const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
         if (error) { 
             console.error("Error fetching employees:", error);
             alert("Failed to fetch employees. See console for details.");
@@ -455,10 +456,11 @@
 
     function updateKPIs(employees) {
         document.getElementById('total-employees').textContent = employees.length;
+        document.getElementById('owner-count').textContent = employees.filter(e => e.role === 'owner').length;
         document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
         document.getElementById('agent-count').textContent = employees.filter(e => e.role === 'agent').length;
-        document.getElementById('online-employees').textContent = employees.filter(e => e.status === 'ONLINE').length;
-        document.getElementById('inactive-count').textContent = employees.filter(e => !e.last_seen_raw).length;
+        const onlineCount = employees.filter(e => e.status === 'ONLINE').length;
+        document.getElementById('online-employees').textContent = onlineCount;
     }
 
     function renderEmployees(employees) {
@@ -472,7 +474,12 @@
 
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            const lastSeen = emp.last_seen_cairo || 'Never'; // Use the pre-formatted value
+            const lastSeen = emp.last_seen
+                ? new Date(emp.last_seen).toLocaleString('en-GB', { 
+                    timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                }) : 'Never';
+            
             const isOnline = emp.status === 'ONLINE'; 
             const role = emp.role || 'agent';
 
@@ -505,82 +512,26 @@
         }).join('');
     }
     
-    // --- NEW CHART FUNCTIONS ---
-    async function fetchChartData() {
-        const [activityRes, top5Res] = await Promise.all([
-            supabase.from('v_monthly_activity').select('month, active_employees'),
-            supabase.from('v_top5_employees').select('user_name, total_views')
-        ]);
-
-        if (activityRes.error) console.error("Error fetching monthly activity:", activityRes.error);
-        if (top5Res.error) console.error("Error fetching top 5 employees:", top5Res.error);
-
-        renderActivityChart(activityRes.data || []);
-        renderTop5Chart(top5Res.data || []);
-    }
-
-    function renderActivityChart(data) {
-        const canvas = document.getElementById('activityChart');
-        const placeholder = document.getElementById('activityChartPlaceholder');
-        if (!data || data.length === 0) {
-            canvas.style.display = 'none';
-            placeholder.style.display = 'block';
-            return;
-        }
-        canvas.style.display = 'block';
-        placeholder.style.display = 'none';
-        
-        const labels = data.map(d => new Date(d.month).toLocaleString('default', { month: 'short', year: 'numeric' })).reverse();
-        const values = data.map(d => d.active_employees).reverse();
-
-        if (activityChart) activityChart.destroy();
-        activityChart = new Chart(canvas.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Active Employees', data: values,
-                    borderColor: 'var(--primary-color)', tension: 0.3,
-                    backgroundColor: 'rgba(99, 102, 241, 0.2)', fill: true,
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
-    }
-
-    function renderTop5Chart(data) {
-        const canvas = document.getElementById('top5Chart');
-        const placeholder = document.getElementById('top5ChartPlaceholder');
-        if (!data || data.length === 0) {
-            canvas.style.display = 'none';
-            placeholder.style.display = 'block';
-            return;
-        }
-        canvas.style.display = 'block';
-        placeholder.style.display = 'none';
-
-        const labels = data.map(d => d.user_name);
-        const values = data.map(d => d.total_views);
-
-        if (top5Chart) top5Chart.destroy();
-        top5Chart = new Chart(canvas.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Total Views', data: values,
-                    backgroundColor: 'var(--primary-color)', borderRadius: 4,
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
-        });
-    }
-
-    function renderBaseCharts(employees) {
+    function renderAllCharts(employees) {
         renderRolesChart(employees);
         renderDeptsChart(employees);
+        // Render placeholder charts
+        renderPlaceholderChart('activityChart');
+        renderPlaceholderChart('top5Chart');
     }
     
+    function renderPlaceholderChart(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (canvas) {
+            canvas.style.display = 'none'; // Hide canvas
+        }
+        const placeholder = document.getElementById(`${canvasId}Placeholder`);
+        if (placeholder) {
+            placeholder.style.display = 'block'; // Show placeholder
+        }
+    }
+
+
     function renderRolesChart(employees) {
         const ctx = document.getElementById('rolesChart').getContext('2d');
         const roleCounts = employees.reduce((acc, emp) => {
@@ -590,6 +541,11 @@
         }, {});
         
         if (rolesChart) rolesChart.destroy();
+        
+        const styles = getComputedStyle(document.documentElement);
+        const textColor = styles.getPropertyValue('--text-color').trim();
+        const bgColor = styles.getPropertyValue('--bg-color-alt').trim();
+
         rolesChart = new Chart(ctx, {
             type: 'pie',
             data: {
@@ -597,18 +553,21 @@
                 datasets: [{
                     data: Object.values(roleCounts),
                     backgroundColor: [
-                        'var(--role-admin-text)',
-                        'var(--role-agent-text)',
+                        styles.getPropertyValue('--role-owner-text').trim(),
+                        styles.getPropertyValue('--role-admin-text').trim(),
+                        styles.getPropertyValue('--role-agent-text').trim(),
                     ],
-                    borderColor: 'var(--bg-color-alt)', borderWidth: 2,
+                    borderColor: bgColor,
+                    borderWidth: 2,
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: textColor, font: { size: 14 } } } } }
         });
     }
     
     function renderDeptsChart(employees) {
-        const ctx = document.getElementById('deptsChart').getContext('2d');
+        const canvas = document.getElementById('deptsChart');
+        const ctx = canvas.getContext('2d');
         const deptCounts = employees.reduce((acc, emp) => {
             const dept = emp.department || 'Unassigned';
             acc[dept] = (acc[dept] || 0) + 1;
@@ -616,16 +575,21 @@
         }, {});
         
         if (deptsChart) deptsChart.destroy();
+
+        const styles = getComputedStyle(document.documentElement);
+        const textColor = styles.getPropertyValue('--text-color').trim();
+        const primaryColor = styles.getPropertyValue('--primary-color').trim();
+
         deptsChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: Object.keys(deptCounts),
                 datasets: [{
                     label: 'Employees', data: Object.values(deptCounts),
-                    backgroundColor: 'var(--primary-color)', borderRadius: 4,
+                    backgroundColor: primaryColor, borderRadius: 4,
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } } }
         });
     }
 
@@ -650,7 +614,7 @@
             const row = [
                 emp.name || 'No Name', emp.email, emp.role, emp.department || 'N/A',
                 emp.status === 'ONLINE' ? 'Online' : 'Offline',
-                emp.last_seen_raw || 'Never'
+                emp.last_seen ? new Date(emp.last_seen).toISOString() : 'Never'
             ].map(val => `"${String(val).replace(/"/g, '""')}"`);
             csvContent += row.join(',') + '\r\n';
         });
@@ -673,7 +637,6 @@
             document.getElementById('employee-form').reset();
             document.getElementById('employee-id').value = '';
             document.getElementById('employee-email').disabled = false;
-            document.getElementById('employee-password').placeholder = 'Required for new employee';
             employeeModal.classList.add('show');
         });
 
@@ -695,7 +658,6 @@
                 document.getElementById('employee-department').value = employee.department;
                 document.getElementById('employee-role').value = employee.role;
                 document.getElementById('employee-password').value = '';
-                document.getElementById('employee-password').placeholder = 'Leave blank to not change';
                 employeeModal.classList.add('show');
             }
             if (deleteBtn) {
@@ -709,71 +671,46 @@
         document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
     }
 
-    // --- UPDATED TO USE EDGE FUNCTIONS ---
     async function handleFormSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('employee-id').value;
+        const email = document.getElementById('employee-email').value;
         const password = document.getElementById('employee-password').value;
-
-        if (!id && !password) {
-            alert("Password is required for new employees.");
-            return;
-        }
-
-        const body = {
+        const userMetadata = {
             name: document.getElementById('employee-name').value,
             role: document.getElementById('employee-role').value,
             department: document.getElementById('employee-department').value,
         };
 
+        let result = {};
         if (id) { // Update existing user
-            body.id = id;
-            // Password updates should also be handled by a secure edge function if needed
-        } else { // Create new user
-            body.email = document.getElementById('employee-email').value;
-            body.password = password;
-        }
-
-        try {
-            // Assumes you have an Edge Function named 'create-user'
-            // For updates, you might have another function like 'update-user'
-            const functionName = id ? 'update-user' : 'create-user';
-            const { data, error } = await supabase.functions.invoke(functionName, { body });
-
-            if (error) throw error;
-
-            alert(`Employee ${id ? 'updated' : 'created'} successfully!`);
+            const { data, error } = await supabase.from('users').update(userMetadata).eq('id', id).select().single();
+            if (error) {
+                if (error.message.includes('chk_role_check')) {
+                    alert(`Error: The role '${userMetadata.role}' is not allowed. Please check the database constraints.`);
+                } else {
+                    alert(`Error updating user: ${error.message}`);
+                }
+                return;
+            }
+            if (password) {
+                alert("For security reasons, password changes must be done through a secure server environment (e.g., Supabase Edge Function), not directly from the browser.");
+            }
             employeeModal.classList.remove('show');
-        } catch (error) {
-            console.error(`Error invoking Edge Function:`, error);
-            alert(`Error: ${error.message || 'An unknown error occurred.'}`);
+        } else { // Create new user
+            alert("For security reasons, creating users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
         }
     }
 
     async function handleDelete(e) {
         const userId = e.currentTarget.dataset.userId;
-        if (!userId) return;
-
-        try {
-            // Assumes you have an Edge Function named 'delete-user'
-            const { data, error } = await supabase.functions.invoke('delete-user', {
-                body: { id: userId }
-            });
-
-            if (error) throw error;
-
-            alert("User deleted successfully.");
-            deleteConfirmModal.classList.remove('show');
-        } catch (error) {
-            console.error("Error deleting user via Edge Function:", error);
-            alert(`Error: ${error.message || 'Failed to delete user.'}`);
-        }
+        alert("For security reasons, deleting users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
     }
 
     async function updateLastSeen() {
         if (!currentUser) return;
         const { error } = await supabase
-            .from('users') // Base table for updates
+            .from('users')
             .update({ last_seen: new Date().toISOString() })
             .eq('id', currentUser.id);
         if (error) console.error('Error updating last_seen:', error.message);
@@ -792,10 +729,11 @@
 
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await channel.track({ user_id: currentUser.id });
+                await channel.track({ user_id: currentUser.id, email: currentUser.email });
                 await updateLastSeen();
+                // Periodically update last_seen every 5 minutes
                 if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000); // 5 minutes
+                presenceInterval = setInterval(updateLastSeen, 300000); // 300000 ms = 5 minutes
             }
         });
     }
@@ -805,8 +743,7 @@
         allEmployees = await fetchEmployees();
         applyFilters();
         updateKPIs(allEmployees);
-        renderBaseCharts(allEmployees);
-        await fetchChartData(); // Also refresh analytics charts
+        renderAllCharts(allEmployees);
     }
 
     async function checkAdminAccess() {
@@ -819,7 +756,7 @@
             currentUser = user;
 
             const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error || !data || data.role !== 'admin') {
+            if (error || !data || !['admin', 'owner'].includes(data.role)) {
                 document.getElementById('restricted-modal').classList.add('show');
             } else {
                 document.getElementById('dashboard').style.visibility = 'visible';
@@ -827,8 +764,7 @@
                 allEmployees = await fetchEmployees();
                 updateKPIs(allEmployees);
                 renderEmployees(allEmployees);
-                renderBaseCharts(allEmployees);
-                await fetchChartData(); // Initial fetch for analytics charts
+                renderAllCharts(allEmployees);
                 setupModals();
                 
                 await initPresence();
