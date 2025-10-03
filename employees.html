@@ -21,14 +21,12 @@
             --border-radius-lg: 0.75rem;
             --status-online: #22c55e;
             --status-offline: #9ca3af;
-            --status-inactive: #f59e0b;
+            --status-inactive: #f59e0b; /* For inactive users */
             --role-admin-bg: rgba(167, 139, 250, 0.2);
             --role-admin-text: #c4b5fd;
             --role-agent-bg: rgba(59, 130, 246, 0.2);
             --role-agent-text: #93c5fd;
             --header-height: 70px;
-            --error-color: #ef4444;
-            --error-bg-color: rgba(239, 68, 68, 0.1);
         }
         html, body {
             height: 100%; margin: 0;
@@ -69,10 +67,8 @@
             cursor: pointer; font-size: 1rem; font-weight: 600;
             transition: all 0.2s; text-decoration: none;
             display: inline-flex; align-items: center; gap: 0.5rem;
-            justify-content: center;
         }
         .button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
-        .button:disabled { background-color: var(--border-color); cursor: not-allowed; transform: none; }
         .button-secondary {
             background-color: var(--bg-color-alt); color: var(--text-color);
             border: 1px solid var(--border-color);
@@ -228,19 +224,6 @@
             box-sizing: border-box;
         }
 
-        /* Improved Error Message Style */
-        .form-error-message {
-            background-color: var(--error-bg-color);
-            color: var(--error-color);
-            border: 1px solid var(--error-color);
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-            white-space: pre-wrap; /* To respect newlines */
-            display: none; /* Hidden by default */
-        }
-
         footer {
             text-align: center;
             padding: 1.5rem 0;
@@ -295,6 +278,7 @@
                         <div class="label">Online Now</div>
                     </div>
                 </div>
+                <!-- This is the Inactive Employees card you requested -->
                 <div class="stat-card">
                     <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
                     <div class="stat-info">
@@ -399,8 +383,6 @@
             <h2 id="modal-title">Add New Employee</h2>
             <button class="close-button" data-close-modal>&times;</button>
         </div>
-        <!-- Error message container -->
-        <div id="form-error" class="form-error-message"></div>
         <form id="employee-form">
             <input type="hidden" id="employee-id">
             <div class="form-group">
@@ -459,10 +441,12 @@
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
+    // Fetching from the main users table again for raw data
     async function fetchEmployees() {
         const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
         if (error) { 
             console.error("Error fetching employees:", error);
+            alert("Failed to fetch employees. See console for details.");
             return [];
         }
         return data;
@@ -476,6 +460,7 @@
         document.getElementById('online-employees').textContent = onlineCount;
     }
     
+    // This function updates the "Inactive Employees" card
     async function updateEngagementStats() {
         const { data, error } = await supabase.from('v_employee_engagement').select('*').single();
         if (error) {
@@ -498,16 +483,12 @@
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
-            // **FIXED**: Using 'ar-EG' locale for robust timezone formatting.
+            // **FIXED**: Formatting the 'last_seen' timestamp here on the client-side
+            // This ensures correct timezone (Africa/Cairo) and 12-hour format (AM/PM)
             const lastSeen = emp.last_seen
-                ? new Date(emp.last_seen).toLocaleString('ar-EG', { 
-                    timeZone: 'Africa/Cairo',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
+                ? new Date(emp.last_seen).toLocaleString('en-GB', { 
+                    timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
                 }) : 'Never';
             
             const isOnline = emp.status === 'ONLINE'; 
@@ -619,6 +600,7 @@
     async function renderActivityChart() {
         const { data, error } = await supabase.from('v_monthly_activity').select('*').limit(12);
         if (error || !data || data.length === 0) {
+            console.error('Could not fetch monthly activity:', error);
             showChart('activityChart', false);
             document.querySelector('#activityChartPlaceholder p').textContent = 'Activity data not available';
             return;
@@ -646,6 +628,7 @@
     async function renderTop5Chart() {
         const { data, error } = await supabase.from('v_top5_employees').select('*');
         if (error || !data || data.length === 0) {
+            console.error('Could not fetch top 5 employees:', error);
             showChart('top5Chart', false);
             document.querySelector('#top5ChartPlaceholder p').textContent = 'Ranking data not available';
             return;
@@ -704,14 +687,11 @@
     }
 
     function setupModals() {
-        const formError = document.getElementById('form-error');
-
         document.querySelectorAll('[data-close-modal]').forEach(btn => {
             btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show'));
         });
 
         document.getElementById('addEmployeeBtn').addEventListener('click', () => {
-            formError.style.display = 'none'; // Hide error on open
             document.getElementById('modal-title').textContent = 'Add New Employee';
             document.getElementById('employee-form').reset();
             document.getElementById('employee-id').value = '';
@@ -730,7 +710,6 @@
             if (!employee) return;
 
             if (editBtn) {
-                formError.style.display = 'none'; // Hide error on open
                 document.getElementById('modal-title').textContent = 'Edit Employee';
                 document.getElementById('employee-id').value = employee.id;
                 document.getElementById('employee-name').value = employee.name;
@@ -753,14 +732,18 @@
         document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
     }
     
+    async function getAuthHeader() {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+            console.error('Could not get user session.');
+            alert('Authentication error. Please log in again.');
+            return null;
+        }
+        return `Bearer ${session.access_token}`;
+    }
+
     async function handleFormSubmit(e) {
         e.preventDefault();
-        const formError = document.getElementById('form-error');
-        const submitButton = e.target.querySelector('button[type="submit"]');
-        formError.style.display = 'none';
-        submitButton.disabled = true;
-        submitButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
-
         const id = document.getElementById('employee-id').value;
         const password = document.getElementById('employee-password').value;
         const userMetadata = {
@@ -769,55 +752,57 @@
             department: document.getElementById('employee-department').value,
         };
 
-        try {
-            if (id) { // Update existing user
-                // Password should not be sent for updates from client-side for security.
-                if (password) {
-                    throw new Error("Password changes must be done via a secure, dedicated function.");
-                }
-                const { error } = await supabase.from('users').update({ ...userMetadata }).eq('id', id);
-                if (error) throw error;
+        if (id) { // Update existing user
+            if (password) {
+                 alert("Password changes should be handled via a dedicated, secure server function for security.");
+            }
+            const { error } = await supabase.from('users').update({ ...userMetadata }).eq('id', id);
+            if (error) {
+                alert(`Error updating user: ${error.message}`);
+            } else {
+                alert('User updated successfully.');
                 employeeModal.classList.remove('show');
-            } else { // Create new user via Edge Function
-                if (!password) {
-                    throw new Error("Password is required for a new employee.");
-                }
-                const email = document.getElementById('employee-email').value;
+            }
+        } else { // Create new user via Edge Function
+            if (!password) {
+                alert("Password is required for a new employee.");
+                return;
+            }
+            const email = document.getElementById('employee-email').value;
+            const authToken = await getAuthHeader();
+            if (!authToken) return;
+
+            try {
+                // IMPORTANT: Replace '/functions/v1/create-employee' with your actual Edge Function name
                 const { error } = await supabase.functions.invoke('create-employee', {
                     body: { email, password, ...userMetadata },
                 });
                 if (error) throw error;
+                
+                alert('Employee created successfully!');
                 employeeModal.classList.remove('show');
+            } catch (err) {
+                alert(`Error: ${err.message}`);
             }
-        } catch (err) {
-            let detailedError = err.message;
-            if (err.message.toLowerCase().includes('failed to send a request')) {
-                 detailedError = `Error: Failed to send a request to the Edge Function.\n\nPlease check the following:\n1. The Edge Function name in the code ("create-employee") matches the one you deployed in Supabase.\n2. The function is deployed successfully.\n3. Check the function logs in your Supabase dashboard for runtime errors.\n\nOriginal message: ${err.message}`;
-            }
-            formError.textContent = detailedError;
-            formError.style.display = 'block';
-        } finally {
-            submitButton.disabled = false;
-            submitButton.innerHTML = `Save Employee`;
         }
     }
 
     async function handleDelete(e) {
-        const button = e.currentTarget;
-        button.disabled = true;
-        const userId = button.dataset.userId;
+        const userId = e.currentTarget.dataset.userId;
+        const authToken = await getAuthHeader();
+        if (!authToken) return;
 
         try {
+            // IMPORTANT: Replace '/functions/v1/delete-employee' with your actual Edge Function name
             const { error } = await supabase.functions.invoke('delete-employee', {
                 body: { user_id: userId },
             });
             if (error) throw error;
+            
+            alert('Employee deleted successfully!');
             deleteConfirmModal.classList.remove('show');
         } catch (err) {
-            const detailedError = `Error: Failed to delete user via Edge Function.\nPlease check your function ('delete-employee') logs and deployment status.\nOriginal message: ${err.message}`;
-            alert(detailedError); // Alert is acceptable here as the modal closes.
-        } finally {
-            button.disabled = false;
+            alert(`Error: ${err.message}`);
         }
     }
 
@@ -845,7 +830,7 @@
                 await channel.track({ user_id: currentUser.id });
                 await updateLastSeen();
                 if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000);
+                presenceInterval = setInterval(updateLastSeen, 300000); // every 5 minutes
             }
         });
     }
