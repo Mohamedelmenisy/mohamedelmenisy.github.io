@@ -1,528 +1,387 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Employees Directory - InfiniBase</title>
-  <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Employees • InfiniBase — Admin</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root{--primary-color:#6366f1;--primary-color-hover:#4f46e5;--text-color:#d1d5db;--text-color-muted:#9ca3af;--bg-color:#111827;--bg-color-alt:#1f2937;--border-color:#374151;--border-radius:.5rem;--border-radius-lg:.75rem;--status-online:#22c55e;--status-offline:#9ca3af;--header-height:70px}
-    html,body{height:100%;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background-color:var(--bg-color);color:var(--text-color);font-size:16px}
-    .hidden{display:none!important}
-    .page-wrapper{padding:1.5rem 2rem;padding-top:calc(var(--header-height) + 1.5rem)}
-    .page-header{position:fixed;top:0;left:0;right:0;height:var(--header-height);display:flex;justify-content:space-between;align-items:center;padding:0 2rem;background-color:rgba(31,41,55,.8);border-bottom:1px solid var(--border-color);backdrop-filter:blur(8px);z-index:100}
-    .header-title{display:flex;align-items:center;gap:1rem}
-    .header-title .logo-icon{font-size:1.8rem;color:var(--primary-color)}
-    .header-title h1{font-size:1.75rem;font-weight:700;color:white;margin:0}
-    .header-actions{display:flex;gap:1rem}
-    .button{background-color:var(--primary-color);color:white;border:none;padding:.75rem 1.25rem;border-radius:var(--border-radius);cursor:pointer;font-size:1rem;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
-    .button:hover{background-color:var(--primary-color-hover);transform:translateY(-2px)}
-    .button-secondary{background-color:var(--bg-color-alt);color:var(--text-color);border:1px solid var(--border-color)}
-    .button-secondary:hover{background-color:var(--border-color)}
-    .button-danger{background-color:#ef4444}
-    .button-danger:hover{background-color:#dc2626}
-    .card{background-color:var(--bg-color-alt);border:1px solid var(--border-color);border-radius:var(--border-radius-lg);padding:1.5rem;margin-bottom:1.5rem;overflow:hidden}
-    .card h3{font-size:1.25rem;font-weight:600;margin:0 0 1.5rem 0;padding-bottom:1rem;border-bottom:1px solid var(--border-color)}
-    .stats-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-bottom:1.5rem}
-    .stat-card{background-color:var(--bg-color-alt);border-radius:var(--border-radius-lg);padding:1.5rem;display:flex;align-items:center;gap:1rem}
-    .stat-card i{font-size:2rem;color:var(--primary-color);background-color:var(--bg-color);padding:.75rem;border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center}
-    .stat-info .value{font-size:2rem;font-weight:700;color:white}
-    .stat-info .label{font-size:1rem;color:var(--text-color-muted)}
-    .dashboard-grid{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-bottom:1.5rem}
-    @media (min-width:992px){.dashboard-grid{grid-template-columns:1fr 350px}}
-    .chart-wrapper{position:relative;height:300px;max-width:400px;margin:auto}
-    .table-controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem}
-    .search-filter-box{display:flex;gap:1rem}
-    .search-filter-box input,.search-filter-box select{padding:.75rem;border:1px solid var(--border-color);border-radius:var(--border-radius);background-color:var(--bg-color);color:var(--text-color);font-size:1rem}
-    .table-container{overflow-x:auto}
+    :root{--primary:#6366f1;--bg:#0f1724;--panel:#111827;--muted:#9ca3af;--card:#0b1220;--accent:#06b6d4;}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:#e6eef8; -webkit-font-smoothing:antialiased}
+    header{height:72px;position:fixed;left:0;right:0;top:0;background:rgba(6,8,15,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.03);z-index:40}
+    header .left{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    main{padding:96px 28px 28px;max-width:1200px;margin:0 auto}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
+    .kpi{background:var(--panel);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,.03);display:flex;align-items:center;gap:12px}
+    .kpi .icon{width:44px;height:44;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.03);font-size:18px}
+    .kpi .num{font-weight:700;font-size:20px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:var(--panel);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,.03)}
+    .controls{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+    input[type="text"], select{background:transparent;border:1px solid rgba(255,255,255,.05);color:inherit;padding:10px;border-radius:8px}
     table{width:100%;border-collapse:collapse}
-    th,td{padding:1rem;border-bottom:1px solid var(--border-color);text-align:left;font-size:1rem;vertical-align:middle}
-    thead th{background-color:var(--bg-color);color:var(--text-color-muted);font-size:.8rem;text-transform:uppercase}
-    tbody tr:hover{background-color:#2a3546}
-    tr:last-child td{border-bottom:none}
-    .user-info{display:flex;align-items:center;gap:1rem}
-    .user-avatar{width:40px;height:40px;border-radius:50%;background-color:var(--primary-color);color:white;display:flex;align-items:center;justify-content:center;font-weight:600}
-    .user-name{font-weight:600;color:white}
-    .user-email{font-size:.9rem;color:var(--text-color-muted)}
-    .role-badge{padding:.3rem .7rem;border-radius:99px;font-size:.85rem;font-weight:500;text-transform:capitalize}
-    .role-badge.admin{background-color:rgba(167,139,250,.2);color:#c4b5fd}
-    .role-badge.viewer{background-color:rgba(59,130,246,.2);color:#93c5fd}
-    .role-badge.agent{background-color:rgba(99,102,241,.08);color:#9ca3ff}
-    .status-indicator{display:flex;align-items:center;gap:.5rem}
-    .status-dot{width:12px;height:12px;border-radius:50%}
-    .status-dot.online{background-color:var(--status-online);box-shadow:0 0 8px var(--status-online)}
-    .status-dot.offline{background-color:var(--status-offline)}
-    .actions-cell button{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:.5rem;color:var(--text-color-muted);transition:color .2s}
-    .actions-cell button:hover{color:var(--primary-color)}
-    .actions-cell button.delete:hover{color:#ef4444}
-    .modal-overlay{position:fixed;inset:0;background-color:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:1000;opacity:0;transition:opacity .2s ease-out;visibility:hidden}
-    .modal-overlay.show{opacity:1;visibility:visible}
-    .modal-content{background-color:var(--bg-color-alt);padding:1.5rem;border-radius:var(--border-radius-lg);box-shadow:0 20px 25px -5px rgba(0,0,0,.1);width:100%;max-width:36rem;max-height:90vh;overflow-y:auto;transform:scale(.95);transition:transform .2s ease-out}
-    .modal-overlay.show .modal-content{transform:scale(1)}
-    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
-    .modal-header h2{margin:0;font-size:1.5rem;font-weight:700}
-    .modal-header .close-button{background:none;border:none;font-size:1.5rem;color:var(--text-color-muted);cursor:pointer}
-    .modal-actions{margin-top:1.5rem;display:flex;justify-content:flex-end;gap:.75rem}
-    .form-group{margin-bottom:1rem}
-    .form-group label{display:block;margin-bottom:.5rem;font-weight:500}
-    .form-group input,.form-group select{width:100%;padding:.75rem;border:1px solid var(--border-color);border-radius:var(--border-radius);background-color:var(--bg-color);color:var(--text-color);font-size:1rem}
-    .small-muted{font-size:.85rem;color:var(--text-color-muted)}
+    thead th{font-size:12px;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.02)}
+    tbody td{padding:12px;border-bottom:1px solid rgba(255,255,255,.02);vertical-align:middle}
+    .avatar{width:40px;height:40;border-radius:10px;background:linear-gradient(135deg,#6ee7b7,#3b82f6);display:flex;align-items:center;justify-content:center;font-weight:700;color:#032; margin-right:10px}
+    .role-badge{padding:6px 10px;border-radius:999px;font-size:13px}
+    .role-admin{background:rgba(167,139,250,.12);color:#c4b5fd}
+    .role-agent{background:rgba(99,102,241,.06);color:#9ca3ff}
+    .role-viewer{background:rgba(59,130,246,.06);color:#93c5fd}
+    .actions button{background:transparent;border:1px solid rgba(255,255,255,.04);color:inherit;padding:8px;border-radius:8px;margin-left:6px;cursor:pointer}
+    .actions button.danger{border-color:rgba(239,68,68,.2);color:#fda4af}
+    footer.note{margin-top:12px;color:var(--muted);font-size:13px}
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}
+    .modal{width:100%;max-width:680px;background:var(--panel);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,.03)}
+    .modal .row{display:flex;gap:12px;margin-bottom:10px}
+    .modal label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .btn{background:var(--primary);padding:10px 14px;border-radius:10px;border:none;color:white;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.04)}
+    .small{font-size:13px;color:var(--muted)}
+    @media (max-width:960px){ .grid{grid-template-columns:1fr} .chart-side{order:2} }
   </style>
 </head>
 <body>
-
-<div id="dashboard" style="visibility: hidden;">
-  <header class="page-header">
-    <div class="header-title">
-      <i class="fas fa-users logo-icon"></i>
-      <h1>Employees Directory</h1>
-    </div>
-    <div class="header-actions">
-      <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+  <header>
+    <div class="left"><div class="logo">IB</div><div><strong style="font-size:16px">InfiniBase</strong><div class="small" style="color:var(--muted)">Knowledge Base — Employees</div></div></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="exportCsv" class="btn ghost" title="Export CSV"><i class="fas fa-file-csv"></i>&nbsp;Export</button>
+      <button id="addBtn" class="btn"><i class="fas fa-plus"></i>&nbsp;Add</button>
     </div>
   </header>
 
-  <div class="page-wrapper">
-    <div class="stats-container">
-      <div class="stat-card">
-        <i class="fas fa-users-cog"></i>
-        <div class="stat-info">
-          <div class="value" id="total-employees">0</div>
-          <div class="label">Total Employees</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-user-check" style="color:var(--status-online);"></i>
-        <div class="stat-info">
-          <div class="value" id="online-employees">0</div>
-          <div class="label">Online</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-user-shield" style="color:#c4b5fd;"></i>
-        <div class="stat-info">
-          <div class="value" id="admin-count">0</div>
-          <div class="label">Admins</div>
-        </div>
-      </div>
+  <main>
+    <div class="kpis">
+      <div class="kpi"><div class="icon"><i class="fas fa-users"></i></div><div><div class="num" id="k_total">0</div><div class="small">Total Employees</div></div></div>
+      <div class="kpi"><div class="icon"><i class="fas fa-user-shield"></i></div><div><div class="num" id="k_admins">0</div><div class="small">Admins</div></div></div>
+      <div class="kpi"><div class="icon"><i class="fas fa-user-tie"></i></div><div><div class="num" id="k_agents">0</div><div class="small">Agents</div></div></div>
+      <div class="kpi"><div class="icon"><i class="fas fa-crown"></i></div><div><div class="num" id="k_owners">0</div><div class="small">Owners</div></div></div>
     </div>
 
-    <div class="dashboard-grid">
-      <div class="main-content">
-        <div class="table-controls">
-          <div class="search-filter-box">
-            <input type="text" id="searchInput" placeholder="Search by name, email or department...">
-            <select id="roleFilter">
-              <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="agent">Agent</option>
-              <option value="viewer">Viewer</option>
-            </select>
-          </div>
-          <div>
-            <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
-            <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
-          </div>
+    <div class="grid">
+      <div class="card">
+        <div class="controls">
+          <input type="text" id="search" placeholder="Search name / email / department..." />
+          <select id="filterRole"><option value="">All roles</option><option>admin</option><option>agent</option><option>viewer</option></select>
+          <div style="flex:1"></div>
+          <div class="small" id="lastUpdated">—</div>
         </div>
 
-        <div class="card">
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Last Seen (Africa/Cairo)</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="employeesTableBody"></tbody>
-            </table>
-          </div>
+        <div style="overflow:auto;max-height:560px">
+          <table>
+            <thead><tr><th>User</th><th>Department</th><th>Role</th><th>Last Seen</th><th style="text-align:center">Actions</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
         </div>
+        <div class="note small" id="note">Note: Creating/deleting auth-users requires server-side service_role key. Client attempts may fail; when needed use server endpoint.</div>
       </div>
 
-      <div class="sidebar-content">
-        <div class="card">
-          <h3>Role Distribution</h3>
-          <div class="chart-wrapper">
-            <canvas id="rolesChart"></canvas>
-          </div>
-          <div style="margin-top:1rem;" id="role-legend"></div>
+      <div class="card chart-side">
+        <h4 style="margin:0 0 10px 0">Role Distribution</h4>
+        <div style="height:220px"><canvas id="roleChart" style="width:100%;height:220px"></canvas></div>
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.03)" />
+        <h4 style="margin:0 0 10px 0">Activity (Active Employees — This Month vs Last)</h4>
+        <div style="height:140px"><canvas id="activityChart" style="width:100%;height:140px"></canvas></div>
+        <div id="topList" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Add Employee</h3>
+      <div style="margin-top:12px">
+        <div class="row"><div style="flex:1"><label>Name</label><input id="m_name" type="text" /></div><div style="width:220px"><label>Role</label><select id="m_role"><option>agent</option><option>admin</option><option>viewer</option></select></div></div>
+        <div class="row"><div style="flex:1"><label>Email</label><input id="m_email" type="text" /></div><div style="width:220px"><label>Department</label><input id="m_dept" type="text" /></div></div>
+        <div class="row"><div style="flex:1"><label>Password <span class="small">(optional — server required)</span></label><input id="m_pass" type="password" /></div><div style="width:220px"><label>Owner?</label><select id="m_owner"><option value="0">No</option><option value="1">Yes</option></select></div></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:10px">
+          <button id="m_cancel" class="btn ghost">Cancel</button>
+          <button id="m_save" class="btn">Save</button>
         </div>
+        <div class="small" id="modalMsg" style="margin-top:8px;color:#fca5a5"></div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Restricted -->
-<div id="restricted-modal" class="modal-overlay">
-  <div class="modal-content" style="text-align:center;">
-    <div style="font-size:3rem;color:var(--primary-color);margin-bottom:1rem;">🔒</div>
-    <h2>Access Restricted</h2>
-    <p style="color:var(--text-color-muted);font-size:1.1rem;margin-bottom:2rem;">This page is available for administrators only.</p>
-    <a href="app.html" class="button">Go Back to Dashboard</a>
+  <!-- Delete confirm -->
+  <div id="delBackdrop" class="modal-backdrop">
+    <div class="modal"><h3>Confirm Delete</h3><p class="small" id="delText"></p><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button id="delCancel" class="btn ghost">Cancel</button><button id="delConfirm" class="btn danger">Delete</button></div></div>
   </div>
-</div>
-
-<!-- Add/Edit Employee Modal -->
-<div id="employee-modal" class="modal-overlay">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 id="modal-title">Add New Employee</h2>
-      <button class="close-button" data-close-modal>&times;</button>
-    </div>
-    <form id="employee-form">
-      <input type="hidden" id="employee-id">
-      <div class="form-group">
-        <label for="employee-name">Full Name</label>
-        <input type="text" id="employee-name" required>
-      </div>
-      <div class="form-group">
-        <label for="employee-email">Email</label>
-        <input type="email" id="employee-email" required>
-      </div>
-      <div class="form-group">
-        <label for="employee-role">Role</label>
-        <select id="employee-role" required>
-          <option value="viewer">Viewer</option>
-          <option value="agent">Agent</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="employee-department">Department</label>
-        <input type="text" id="employee-department" placeholder="e.g. Support, Content, Dev">
-      </div>
-      <div class="form-group">
-        <label for="employee-password">Password (leave blank to not change)</label>
-        <input type="password" id="employee-password" autocomplete="new-password">
-        <div class="small-muted">Creating users requires service role/admin privileges on Supabase (server-side).</div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="button button-secondary" data-close-modal>Cancel</button>
-        <button type="submit" class="button">Save Employee</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Delete -->
-<div id="delete-confirm-modal" class="modal-overlay">
-  <div class="modal-content" style="max-width:28rem;text-align:center;">
-    <div style="font-size:3rem;color:#ef4444;margin-bottom:1rem;"><i class="fas fa-exclamation-triangle"></i></div>
-    <h2>Confirm Deletion</h2>
-    <p id="delete-confirm-message" style="margin-bottom:1.5rem;font-size:1.1rem;"></p>
-    <div class="modal-actions" style="justify-content:center;">
-      <button type="button" class="button button-secondary" data-close-modal>Cancel</button>
-      <button type="button" id="confirm-delete-btn" class="button button-danger">Confirm Delete</button>
-    </div>
-  </div>
-</div>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-  // --- CONFIGURE: replace with your keys or keep using separate supabase.js file ---
+  // TODO: Replace with your project's values
   const SUPABASE_URL = 'https://YOUR_SUPABASE_URL';
   const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-  // NOTE: createUser/deleteUser/admin actions require service_role key on server side.
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // State
-  let allUsers = [];
-  let employeesMeta = {}; // map id -> { department }
-  let rolesChart = null;
+  let users = []; // merged users + metadata
+  let presenceState = {};
+  let roleChart, activityChart;
 
-  // UI refs
-  const employeeModal = document.getElementById('employee-modal');
-  const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+  // Utils
+  const tz = 'Africa/Cairo';
+  function fmt(dt){ if(!dt) return '—'; try{ return new Date(dt).toLocaleString('en-GB',{timeZone:tz,year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}) }catch(e){return dt} }
 
-  // --- Fetching ---
-  async function fetchUsersAndMeta() {
-    // fetch users
-    const { data: users, error: uErr } = await supabase.from('users').select('*').order('name', { ascending: true });
-    if (uErr) { console.error('fetch users error', uErr); return []; }
-
-    // fetch employees table metadata (department) and map by id
-    const { data: emps, error: eErr } = await supabase.from('employees').select('id, department');
-    if (eErr) { console.warn('no employees meta or permission', eErr); }
-    employeesMeta = (emps || []).reduce((acc, r) => { acc[r.id] = r; return acc; }, {});
-
-    // merge department into users
-    const merged = (users || []).map(u => ({ ...u, department: employeesMeta[u.id]?.department || u.department || '' }));
-    return merged;
+  // Fetch and merge
+  async function fetchAll(){
+    const [{ data:authUsers, error: uErr }, { data:meta, error: mErr }] = await Promise.all([
+      supabase.from('users').select('id,name,email,role,is_admin,created_at').order('name',{ascending:true}),
+      supabase.from('employees').select('id,department').order('id',{ascending:true})
+    ]);
+    if(uErr) console.error('users err',uErr);
+    const metaMap = (meta||[]).reduce((a,r)=>{a[r.id]=r;return a},{ });
+    users = (authUsers||[]).map(u=>({ ...u, department: metaMap[u.id]?.department || '' }));
+    return users;
   }
 
-  async function fetchKPIs() {
-    const { data, error } = await supabase.from('v_employees_kpis').select('*').single();
-    if (error) { console.warn('kpis error', error); return; }
-    document.getElementById('total-employees').textContent = data.total_employees ?? 0;
-    document.getElementById('online-employees').textContent = data.total_employees ? '—' : 0; // presence will update
-    document.getElementById('admin-count').textContent = data.total_admins ?? 0;
-  }
+  // KPIs & Charts
+  async function refreshKPIs(){
+    // total etc
+    const tot = users.length;
+    const admins = users.filter(u=>u.role==='admin' || u.is_admin).length;
+    const agents = users.filter(u=>u.role==='agent').length;
+    const owners = users.filter(u=>u.role==='owner' || u.is_owner).length || 1;
+    document.getElementById('k_total').innerText = tot;
+    document.getElementById('k_admins').innerText = admins;
+    document.getElementById('k_agents').innerText = agents;
+    document.getElementById('k_owners').innerText = owners;
 
-  async function fetchRoleDistributionAndRender() {
-    // Prefer DB view for accuracy
-    const { data, error } = await supabase.from('v_role_distribution').select('*');
-    if (error || !data) {
-      // fallback: compute from allUsers
-      renderRolesChartFromLocal(allUsers);
-      return;
+    // role distribution chart data
+    const counts = users.reduce((a,u)=>{ a[u.role]=(a[u.role]||0)+1; return a },{});
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const ctx = document.getElementById('roleChart').getContext('2d');
+    if(roleChart) roleChart.destroy();
+    roleChart = new Chart(ctx,{type:'doughnut',data:{labels, datasets:[{data, backgroundColor:['#c4b5fd','#93c5fd','#fcd34d','#86efac']}]} , options:{plugins:{legend:{display:true}}}});
+
+    // activity chart (monthly). try DB view v_monthly_activity else compute
+    const { data: monthly, error: monErr } = await supabase.from('v_monthly_activity').select('*').order('month', {ascending:true});
+    let months=[], totals=[], edits=[];
+    if(!monErr && monthly && monthly.length){
+      monthly.forEach(r=>{ months.push(new Date(r.month).toLocaleString('en-GB',{timeZone:tz,month:'short',year:'numeric'})); totals.push(r.total_actions); edits.push(r.total_edits); });
+    } else {
+      // fallback: compute counts from activity_log
+      const { data: al } = await supabase.from('activity_log').select('id, user_id, action, timestamp');
+      const byMonth = {};
+      (al||[]).forEach(a=>{ const m=new Date(a.timestamp).toLocaleString('en-GB',{timeZone:tz,month:'short',year:'numeric'}); byMonth[m]=byMonth[m]||{tot:0,edit:0}; byMonth[m].tot++; if(['INSERT','UPDATE','DELETE'].includes(a.action)) byMonth[m].edit++; });
+      Object.keys(byMonth).slice(-6).forEach(k=>{ months.push(k); totals.push(byMonth[k].tot); edits.push(byMonth[k].edit); });
     }
-    const roleCounts = {};
-    data.forEach(r => roleCounts[r.role || 'unknown'] = r.count);
-    renderRolesChartFromCounts(roleCounts);
+    const actCtx = document.getElementById('activityChart').getContext('2d');
+    if(activityChart) activityChart.destroy();
+    activityChart = new Chart(actCtx,{type:'line',data:{labels:months,datasets:[{label:'Total actions',data:totals,fill:false,borderColor:'#60a5fa'},{label:'Edits',data:edits,fill:false,borderColor:'#f97316'}]},options:{scales:{y:{beginAtZero:true}}}});
+
+    // top active employees (by view count)
+    const { data: tops } = await supabase.from('activity_log').select('user_id, user_name').limit(1000);
+    const cnt = {};
+    (tops||[]).forEach(r=>{ if(!r.user_id) return; cnt[r.user_name||r.user_id]=(cnt[r.user_name||r.user_id]||0)+1; });
+    const sorted = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topList = document.getElementById('topList'); topList.innerHTML = '<strong class="small">Top Active</strong><ul class="small" style="padding-left:12px;margin:6px 0">'+sorted.map(s=>`<li>${s[0]} — ${s[1]} actions</li>`).join('')+'</ul>';
   }
 
-  function renderRolesChartFromLocal(users) {
-    const counts = users.reduce((acc, u) => { acc[u.role] = (acc[u.role] || 0) + 1; return acc; }, {});
-    renderRolesChartFromCounts(counts);
-  }
-
-  function renderRolesChartFromCounts(counts) {
-    const ctx = document.getElementById('rolesChart').getContext('2d');
-    if (rolesChart) rolesChart.destroy();
-    const labels = Object.keys(counts).map(r => r.charAt(0).toUpperCase() + r.slice(1));
-    const values = Object.values(counts);
-    rolesChart = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels,
-        datasets: [{ data: values, backgroundColor: ['#c4b5fd', '#93c5fd', '#fcd34d'], borderColor: 'transparent', borderWidth: 1 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false }
+  // Render table
+  function renderTable(filter=''){
+    const tbody = document.getElementById('tableBody');
+    const roleFilter = document.getElementById('filterRole').value;
+    const q = (filter||'').toLowerCase();
+    const rows = users.filter(u=>{
+      if(roleFilter && u.role!==roleFilter) return false;
+      if(!q) return true;
+      return (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || (u.department||'').toLowerCase().includes(q);
     });
-
-    // legend below
-    const legend = document.getElementById('role-legend');
-    legend.innerHTML = labels.map((l, i) => `<span style="display:inline-flex;gap:.5rem;align-items:center;margin-right:1rem"><span style="width:12px;height:12px;background:${['#c4b5fd','#93c5fd','#fcd34d'][i]};display:inline-block;border-radius:2px"></span> ${l}: <strong>${values[i] ?? 0}</strong></span>`).join('');
+    if(rows.length===0){ tbody.innerHTML = '<tr><td colspan="5" class="small">No employees found</td></tr>'; return; }
+    tbody.innerHTML = rows.map(u=>{
+      const initials = (u.name||'').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()||'U';
+      const last = u.last_seen || u.last_seen_at || null;
+      return `<tr data-id="${u.id}">
+        <td><div style="display:flex;align-items:center"><div class="avatar">${initials}</div><div><div style="font-weight:700">${u.name||'—'}</div><div class="small">${u.email||''}</div></div></div></td>
+        <td>${u.department||'—'}</td>
+        <td><span class="role-badge ${u.role==='admin'?'role-admin':u.role==='agent'?'role-agent':'role-viewer'}">${u.role||'agent'}</span></td>
+        <td>${fmt(last)}</td>
+        <td style="text-align:center" class="actions"><button class="editBtn">Edit</button><button class="danger deleteBtn">Delete</button></td>
+      </tr>`;
+    }).join('');
   }
 
-  function formatLastSeen(ts) {
-    if (!ts) return 'Never';
-    try {
-      return new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-    } catch (e) { return ts; }
+  // Open/close modal
+  function openModal(data){
+    document.getElementById('modalBackdrop').style.display='flex';
+    document.getElementById('modalMsg').innerText='';
+    document.getElementById('m_name').value = data?.name||'';
+    document.getElementById('m_email').value = data?.email||'';
+    document.getElementById('m_role').value = data?.role||'agent';
+    document.getElementById('m_dept').value = data?.department||'';
+    document.getElementById('m_pass').value = '';
+    document.getElementById('m_owner').value = data?.is_owner?1:0;
+    document.getElementById('modalTitle').innerText = data? 'Edit Employee' : 'Add Employee';
+    document.getElementById('m_save').dataset.id = data?.id||'';
+  }
+  function closeModal(){ document.getElementById('modalBackdrop').style.display='none'; }
+
+  // Delete modal
+  function openDelete(id,name){ document.getElementById('delBackdrop').style.display='flex'; document.getElementById('delText').innerText=`Delete ${name}? This action cannot be undone.`; document.getElementById('delConfirm').dataset.id=id; }
+  function closeDelete(){ document.getElementById('delBackdrop').style.display='none'; }
+
+  // CSV Export
+  function exportCSV(){
+    const headers = ['Name','Email','Role','Department','Created At'];
+    const lines = [headers.join(',')];
+    users.forEach(u=> lines.push([u.name||'',u.email||'',u.role||'',u.department||'',u.created_at||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')));
+    const blob = new Blob([lines.join('\n')],{type:'text/csv'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='employees_export.csv'; a.click(); URL.revokeObjectURL(url);
   }
 
-  function renderEmployees(users) {
-    const tableBody = document.getElementById('employeesTableBody');
-    if (!tableBody) return;
-    document.getElementById('total-employees').textContent = users.length;
-    const onlineCount = users.filter(e => e.status === 'ONLINE').length;
-    document.getElementById('online-employees').textContent = onlineCount;
-    document.getElementById('admin-count').textContent = users.filter(e => e.role === 'admin').length;
+  // Save (create or update)
+  async function saveEmployee(){
+    const id = document.getElementById('m_save').dataset.id;
+    const name = document.getElementById('m_name').value.trim();
+    const email = document.getElementById('m_email').value.trim();
+    const role = document.getElementById('m_role').value;
+    const department = document.getElementById('m_dept').value.trim()||null;
+    const pass = document.getElementById('m_pass').value;
+    const isOwner = document.getElementById('m_owner').value==='1';
 
-    if (!users.length) {
-      tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem">No employees found.</td></tr>`;
-      return;
-    }
-
-    tableBody.innerHTML = users.map(emp => {
-      const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-      const lastSeen = formatLastSeen(emp.last_seen);
-      const isOnline = emp.status === 'ONLINE';
-      return `
-        <tr data-user-id="${emp.id}">
-          <td>
-            <div class="user-info">
-              <div class="user-avatar">${initials}</div>
-              <div>
-                <div class="user-name">${emp.name || 'No Name'}</div>
-                <div class="user-email">${emp.email || ''}</div>
-              </div>
-            </div>
-          </td>
-          <td><span class="role-badge ${emp.role}">${emp.role || 'viewer'}</span></td>
-          <td>${emp.department || ''}</td>
-          <td>
-            <div class="status-indicator"><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span><span>${isOnline ? 'Online' : 'Offline'}</span></div>
-          </td>
-          <td>${lastSeen}</td>
-          <td class="actions-cell">
-            <button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button>
-            <button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button>
-          </td>
-        </tr>
-      `;
-    }).join('\n');
-  }
-
-  function applyFilters() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const roleFilter = document.getElementById('roleFilter').value;
-    const filtered = allUsers.filter(emp => {
-      const matchesSearch = (emp.name||'').toLowerCase().includes(searchTerm) || (emp.email||'').toLowerCase().includes(searchTerm) || (emp.department||'').toLowerCase().includes(searchTerm);
-      const matchesRole = roleFilter === 'all' || (emp.role === roleFilter);
-      return matchesSearch && matchesRole;
-    });
-    renderEmployees(filtered);
-  }
-
-  function exportCSV() {
-    const headers = ['Name','Email','Role','Department','Status','Last Seen'];
-    let csv = headers.join(',') + '\r\n';
-    allUsers.forEach(u => {
-      const row = [u.name||'', u.email||'', u.role||'', u.department||'', u.status === 'ONLINE' ? 'Online' : 'Offline', formatLastSeen(u.last_seen)];
-      csv += row.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',') + '\r\n';
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'employees_export.csv'; link.click(); URL.revokeObjectURL(link.href);
-  }
-
-  // --- Modals and actions ---
-  function setupModals() {
-    document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show')));
-
-    document.getElementById('addEmployeeBtn').addEventListener('click', () => {
-      document.getElementById('modal-title').textContent = 'Add New Employee';
-      document.getElementById('employee-form').reset(); document.getElementById('employee-id').value = '';
-      employeeModal.classList.add('show');
-    });
-
-    document.getElementById('employeesTableBody').addEventListener('click', async (e) => {
-      const editBtn = e.target.closest('button.edit');
-      const deleteBtn = e.target.closest('button.delete');
-      const row = e.target.closest('tr');
-      const userId = row?.dataset.userId;
-      if (!userId) return;
-      const employee = allUsers.find(x => x.id === userId);
-      if (!employee) return;
-      if (editBtn) {
-        document.getElementById('modal-title').textContent = 'Edit Employee';
-        document.getElementById('employee-id').value = employee.id;
-        document.getElementById('employee-name').value = employee.name || '';
-        document.getElementById('employee-email').value = employee.email || '';
-        document.getElementById('employee-role').value = employee.role || 'viewer';
-        document.getElementById('employee-department').value = employee.department || '';
-        document.getElementById('employee-password').value = '';
-        employeeModal.classList.add('show');
-      }
-      if (deleteBtn) {
-        document.getElementById('delete-confirm-message').textContent = `Are you sure you want to delete ${employee.name || employee.email}? This action cannot be undone.`;
-        document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
-        deleteConfirmModal.classList.add('show');
-      }
-    });
-
-    document.getElementById('employee-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('employee-id').value;
-      const name = document.getElementById('employee-name').value.trim();
-      const email = document.getElementById('employee-email').value.trim();
-      const role = document.getElementById('employee-role').value;
-      const department = document.getElementById('employee-department').value.trim() || null;
-      const password = document.getElementById('employee-password').value;
-
-      try {
-        if (id) {
-          // update user metadata and users table
-          const { data, error } = await supabase.from('users').update({ name, role }).eq('id', id).select().single();
-          if (error) throw error;
-          // upsert department into employees table (keeps data in sync)
-          const { error: upErr } = await supabase.from('employees').upsert([{ id, name, email, role, department }], { onConflict: 'id' });
-          if (upErr) console.warn('employees upsert warn', upErr);
-          // change password requires admin privileges (service role) - run from secure server
-          if (password) {
-            // This API requires server-side privileged key. Recommend using a server endpoint.
-            console.warn('Password update requires server-side admin key. Skipped in client.');
-          }
-        } else {
-          // Create user (requires admin/service-role on server). Here we attempt to use auth.admin.createUser if available (not on client anon).
-          const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-            email,
-            password: password || Math.random().toString(36).slice(-8),
-            email_confirm: true,
-            user_metadata: { name, role }
-          }).catch(err => ({ error: err }));
-          if (createErr || created?.error) {
-            alert('Creating user requires service-role key on server. Please create user from admin panel.');
-            return;
-          }
-          const newUser = created.user || created;
-          // insert into employees metadata table
-          await supabase.from('employees').upsert([{ id: newUser.id, name, email, role, department }], { onConflict: 'id' });
+    try{
+      if(id){
+        // update users table
+        const { error: uErr } = await supabase.from('users').update({ name, role }).eq('id', id);
+        if(uErr) throw uErr;
+        // upsert metadata into employees
+        const { error: eErr } = await supabase.from('employees').upsert([{ id, department }], { onConflict: 'id' });
+        if(eErr) console.warn('employees upsert', eErr);
+        // update local state
+        const idx = users.findIndex(x=>x.id===id);
+        if(idx>=0){ users[idx].name=name; users[idx].role=role; users[idx].department=department; users[idx].is_owner=isOwner; }
+        closeModal();
+        renderTable(document.getElementById('search').value);
+        refreshKPIs();
+        return;
+      } else {
+        // create: try to create auth user via admin API (likely fails on client) — fallback: create entry in employees and ask admin to create auth user
+        let createdId = null;
+        try{
+          const { data: created, error: createErr } = await supabase.auth.admin.createUser({ email, password: pass||Math.random().toString(36).slice(-8), user_metadata:{ name, role } });
+          if(createErr) throw createErr;
+          createdId = (created && (created.user?.id||created.id)) || created.id;
+        }catch(err){
+          // admin API not available on client - fallback create minimal record in employees table and users table (if allowed)
+          console.warn('admin create failed (client). We'll try to insert into users table directly.');
+          const { data: ins, error: insErr } = await supabase.from('users').insert([{ name, email, role, created_at: new Date().toISOString() }]).select().single();
+          if(insErr) { document.getElementById('modalMsg').innerText = 'Could not auto-create auth user. Please create via Admin panel.'; console.error(insErr); return; }
+          createdId = ins.id;
         }
-        employeeModal.classList.remove('show');
-      } catch (err) {
-        console.error(err);
-        alert('Error saving employee: ' + (err.message || JSON.stringify(err)));
+        // upsert metadata
+        await supabase.from('employees').upsert([{ id: createdId, department }], { onConflict: 'id' });
+        // refresh list
+        await refreshAll();
+        closeModal();
       }
-    });
-
-    document.getElementById('confirm-delete-btn').addEventListener('click', async (e) => {
-      const userId = e.currentTarget.dataset.userId;
-      try {
-        // delete user requires admin/service_role key
-        const { error } = await supabase.auth.admin.deleteUser(userId).catch(err => ({ error: err }));
-        if (error) { alert('Delete requires server admin key. Please delete from admin panel.'); return; }
-        deleteConfirmModal.classList.remove('show');
-      } catch (err) { console.error(err); alert('Error deleting: ' + err.message); }
-    });
+    }catch(err){
+      console.error(err);
+      document.getElementById('modalMsg').innerText = err.message || JSON.stringify(err);
+    }
   }
 
-  // Presence initialization
-  async function initPresence(user) {
-    try {
-      const channel = supabase.channel('presence:employees', { config: { presence: { key: user.id } } });
-      channel.on('presence', { event: 'sync' }, () => {
+  // Delete
+  async function confirmDelete(id){
+    try{
+      // try to delete auth user via admin (server) — likely blocked on client
+      try{
+        const { error: aErr } = await supabase.auth.admin.deleteUser(id);
+        if(aErr) throw aErr;
+      }catch(e){
+        // fallback: remove entry from users table and employees metadata (soft in client-only mode)
+        await supabase.from('employees').delete().eq('id',id);
+        await supabase.from('users').delete().eq('id',id);
+      }
+      await refreshAll();
+      closeDelete();
+    }catch(err){ console.error(err); alert('Delete failed: '+(err.message||err)); }
+  }
+
+  // Presence setup
+  async function initPresence(currentUser){
+    try{
+      const channel = supabase.channel('presence:employees', { config: { presence: { key: currentUser.id } } });
+      channel.on('presence', { event:'sync' }, () => {
         const state = channel.presenceState();
-        const onlineIds = Object.keys(state);
-        allUsers = allUsers.map(emp => ({ ...emp, status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE' }));
-        applyFilters();
+        presenceState = state;
+        // map users online
+        users = users.map(u=>({...u, is_online: !!state[u.id]}));
+        renderTable(document.getElementById('search').value);
       });
       await channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: user.id, email: user.email });
-          // update last_seen (RPC update_last_seen exists in DB)
-          await supabase.rpc('update_last_seen', { p_user_id: user.id }).catch(() => {});
+        if(status==='SUBSCRIBED'){
+          await channel.track({ user_id: currentUser.id, email: currentUser.email });
+          // update last_seen via rpc if exists
+          await supabase.rpc('update_last_seen',{ p_user_id: currentUser.id }).catch(()=>{});
         }
       });
-    } catch (err) { console.warn('presence init failed', err); }
+    }catch(err){ console.warn('presence init error',err); }
   }
 
-  // Watch for DB changes
-  function watchUsersTable() {
-    supabase.channel('public:users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
-        allUsers = await fetchUsersAndMeta(); applyFilters(); fetchRoleDistributionAndRender();
-      })
-      .subscribe();
+  // Refresh everything
+  async function refreshAll(){
+    users = await fetchAll();
+    renderTable(document.getElementById('search').value);
+    await refreshKPIs();
   }
 
-  // --- bootstrap ---
-  async function init() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { document.getElementById('restricted-modal').classList.add('show'); return; }
-      const { data: profile, error: profErr } = await supabase.from('users').select('role').eq('id', user.id).single();
-      if (profErr || !profile || profile.role !== 'admin') { document.getElementById('restricted-modal').classList.add('show'); return; }
+  // Init
+  document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+  document.getElementById('m_cancel').addEventListener('click', closeModal);
+  document.getElementById('m_save').addEventListener('click', saveEmployee);
+  document.getElementById('m_pass').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ saveEmployee(); } });
+  document.getElementById('delCancel').addEventListener('click', closeDelete);
+  document.getElementById('delConfirm').addEventListener('click', ()=>confirmDelete(document.getElementById('delConfirm').dataset.id));
+  document.getElementById('search').addEventListener('input', (e)=>renderTable(e.target.value));
+  document.getElementById('filterRole').addEventListener('change', ()=>renderTable(document.getElementById('search').value));
+  document.getElementById('exportCsv').addEventListener('click', exportCSV);
 
-      // Load data
-      allUsers = await fetchUsersAndMeta();
-      renderEmployees(allUsers);
-      setupModals();
-      fetchKPIs();
-      await fetchRoleDistributionAndRender();
-      watchUsersTable();
+  // delegate edit/delete
+  document.addEventListener('click', (e)=>{
+    if(e.target.closest('.editBtn')){
+      const id = e.target.closest('tr').dataset.id; const u = users.find(x=>x.id===id); openModal(u);
+    }
+    if(e.target.closest('.deleteBtn')){
+      const id = e.target.closest('tr').dataset.id; const u = users.find(x=>x.id===id); openDelete(id,u?.name||u?.email||id);
+    }
+  });
+
+  // Startup: check admin from users table not auth metadata
+  (async function(){
+    try{
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.data?.user || (await supabase.auth.getUser()).data?.user;
+      if(!user){ document.getElementById('note').innerText = 'Please login to view this page.'; return; }
+
+      const { data: profile, error: pErr } = await supabase.from('users').select('role,is_admin').eq('id', user.id).single();
+      if(pErr || !profile){ document.getElementById('note').innerText = 'Unable to read users profile. Please ensure you have read permissions.'; console.warn(pErr); return; }
+      if(!(profile.role==='admin' || profile.is_admin===true)){
+        // show restricted overlay
+        document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff"><div style="max-width:600px;text-align:center"><h2 style="font-size:22px">Access restricted</h2><p class="small">This page is for admins only. Ask an owner to grant you access.</p></div></div>`;
+        return;
+      }
+
+      // user is admin — proceed
+      users = await fetchAll();
+      await refreshKPIs();
+      renderTable();
+      // presence & realtime
       await initPresence(user);
+      supabase.channel('public:users').on('postgres_changes',{event:'*',schema:'public',table:'users'}, async ()=> { users = await fetchAll(); renderTable(); await refreshKPIs(); }).subscribe();
+      supabase.channel('public:employees').on('postgres_changes',{event:'*',schema:'public',table:'employees'}, async ()=> { users = await fetchAll(); renderTable(); await refreshKPIs(); }).subscribe();
 
-      document.getElementById('dashboard').style.visibility = 'visible';
-
-      // connect UI
-      document.getElementById('searchInput').addEventListener('input', applyFilters);
-      document.getElementById('roleFilter').addEventListener('change', applyFilters);
-      document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
-
-    } catch (err) { console.error('init error', err); document.getElementById('restricted-modal').classList.add('show'); }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => { init(); });
+      // update lastUpdated
+      document.getElementById('lastUpdated').innerText = 'Updated: ' + new Date().toLocaleString('en-GB',{timeZone:tz, hour12:true});
+    }catch(err){ console.error('init err',err); document.getElementById('note').innerText = 'Initialization error: '+err.message; }
+  })();
 </script>
 </body>
 </html>
