@@ -20,19 +20,18 @@
             --border-radius-lg: 0.75rem;
             --status-online: #22c55e;
             --status-offline: #9ca3af;
+            --status-inactive: #f59e0b; /* Amber color for inactive */
             --role-admin-bg: rgba(167, 139, 250, 0.2);
             --role-admin-text: #c4b5fd;
             --role-agent-bg: rgba(59, 130, 246, 0.2);
             --role-agent-text: #93c5fd;
-            --role-owner-bg: rgba(251, 191, 36, 0.2);
-            --role-owner-text: #fcd34d;
             --header-height: 70px;
         }
         html, body {
             height: 100%; margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg-color); color: var(--text-color);
-            font-size: 16.5px; /* Improved font size */
+            font-size: 16.5px;
         }
         .hidden { display: none !important; }
 
@@ -124,7 +123,7 @@
         .stat-info .label { font-size: 1rem; color: var(--text-color-muted); }
         
         .charts-section {
-            margin-top: 2rem;
+            margin-top: 2.5rem;
         }
         .charts-section h2 {
              font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;
@@ -148,6 +147,9 @@
         }
         .chart-placeholder i {
             font-size: 2.5rem; margin-bottom: 1rem;
+        }
+        .chart-placeholder p {
+            font-size: 0.9rem;
         }
 
         .table-controls {
@@ -186,7 +188,6 @@
         .role-badge { padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
         .role-badge.admin { background-color: var(--role-admin-bg); color: var(--role-admin-text); }
         .role-badge.agent { background-color: var(--role-agent-bg); color: var(--role-agent-text); }
-        .role-badge.owner { background-color: var(--role-owner-bg); color: var(--role-owner-text); }
         
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
         .status-dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -228,7 +229,7 @@
         footer {
             text-align: center;
             padding: 1.5rem 0;
-            margin-top: 2rem;
+            margin-top: 3rem; /* Increased margin */
             border-top: 1px solid var(--border-color);
             color: var(--text-color-muted);
             font-size: 0.9rem;
@@ -259,13 +260,6 @@
                     </div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-crown" style="color: var(--role-owner-text);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="owner-count">0</div>
-                        <div class="label">Owners</div>
-                    </div>
-                </div>
-                <div class="stat-card">
                     <i class="fas fa-user-shield" style="color: var(--role-admin-text);"></i>
                     <div class="stat-info">
                         <div class="value" id="admin-count">0</div>
@@ -286,6 +280,13 @@
                         <div class="label">Online Now</div>
                     </div>
                 </div>
+                 <div class="stat-card">
+                    <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="inactive-count">0</div>
+                        <div class="label">Inactive</div>
+                    </div>
+                </div>
             </div>
 
             <div class="table-controls">
@@ -293,7 +294,6 @@
                     <input type="text" id="searchInput" placeholder="Search by name, email, or dept...">
                     <select id="roleFilter">
                         <option value="all">All Roles</option>
-                        <option value="owner">Owner</option>
                         <option value="admin">Admin</option>
                         <option value="agent">Agent</option>
                     </select>
@@ -342,7 +342,7 @@
                         <div class="chart-wrapper">
                              <div id="activityChartPlaceholder" class="chart-placeholder">
                                  <i class="fas fa-chart-line"></i>
-                                 <p>Activity data not available</p>
+                                 <p>Data from 'activity_log' table is required for this chart.</p>
                              </div>
                              <canvas id="activityChart"></canvas>
                         </div>
@@ -352,7 +352,7 @@
                         <div class="chart-wrapper">
                              <div id="top5ChartPlaceholder" class="chart-placeholder">
                                 <i class="fas fa-medal"></i>
-                                <p>Ranking data not available</p>
+                                <p>Ranking data from 'activity_log' is required for this chart.</p>
                             </div>
                              <canvas id="top5Chart"></canvas>
                         </div>
@@ -372,7 +372,7 @@
     <div class="modal-content" style="text-align: center;">
         <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
         <h2>Access Restricted</h2>
-        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators and owners only.</p>
+        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
         <a href="app.html" class="button">Go Back to Dashboard</a>
     </div>
 </div>
@@ -403,7 +403,6 @@
                 <select id="employee-role" required>
                     <option value="agent">Agent</option>
                     <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
                 </select>
             </div>
              <div class="form-group">
@@ -456,11 +455,11 @@
 
     function updateKPIs(employees) {
         document.getElementById('total-employees').textContent = employees.length;
-        document.getElementById('owner-count').textContent = employees.filter(e => e.role === 'owner').length;
         document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
         document.getElementById('agent-count').textContent = employees.filter(e => e.role === 'agent').length;
-        const onlineCount = employees.filter(e => e.status === 'ONLINE').length;
-        document.getElementById('online-employees').textContent = onlineCount;
+        document.getElementById('online-employees').textContent = employees.filter(e => e.status === 'ONLINE').length;
+        // Inactive is defined as never having logged in (last_seen is null)
+        document.getElementById('inactive-count').textContent = employees.filter(e => !e.last_seen).length;
     }
 
     function renderEmployees(employees) {
@@ -522,15 +521,10 @@
     
     function renderPlaceholderChart(canvasId) {
         const canvas = document.getElementById(canvasId);
-        if (canvas) {
-            canvas.style.display = 'none'; // Hide canvas
-        }
+        if (canvas) canvas.style.display = 'none';
         const placeholder = document.getElementById(`${canvasId}Placeholder`);
-        if (placeholder) {
-            placeholder.style.display = 'block'; // Show placeholder
-        }
+        if (placeholder) placeholder.style.display = 'block';
     }
-
 
     function renderRolesChart(employees) {
         const ctx = document.getElementById('rolesChart').getContext('2d');
@@ -553,7 +547,6 @@
                 datasets: [{
                     data: Object.values(roleCounts),
                     backgroundColor: [
-                        styles.getPropertyValue('--role-owner-text').trim(),
                         styles.getPropertyValue('--role-admin-text').trim(),
                         styles.getPropertyValue('--role-agent-text').trim(),
                     ],
@@ -566,8 +559,7 @@
     }
     
     function renderDeptsChart(employees) {
-        const canvas = document.getElementById('deptsChart');
-        const ctx = canvas.getContext('2d');
+        const ctx = document.getElementById('deptsChart').getContext('2d');
         const deptCounts = employees.reduce((acc, emp) => {
             const dept = emp.department || 'Unassigned';
             acc[dept] = (acc[dept] || 0) + 1;
@@ -674,36 +666,25 @@
     async function handleFormSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('employee-id').value;
-        const email = document.getElementById('employee-email').value;
-        const password = document.getElementById('employee-password').value;
         const userMetadata = {
             name: document.getElementById('employee-name').value,
             role: document.getElementById('employee-role').value,
             department: document.getElementById('employee-department').value,
         };
 
-        let result = {};
         if (id) { // Update existing user
-            const { data, error } = await supabase.from('users').update(userMetadata).eq('id', id).select().single();
+            const { error } = await supabase.from('users').update(userMetadata).eq('id', id);
             if (error) {
-                if (error.message.includes('chk_role_check')) {
-                    alert(`Error: The role '${userMetadata.role}' is not allowed. Please check the database constraints.`);
-                } else {
-                    alert(`Error updating user: ${error.message}`);
-                }
-                return;
+                alert(`Error updating user: ${error.message}`);
+            } else {
+                employeeModal.classList.remove('show');
             }
-            if (password) {
-                alert("For security reasons, password changes must be done through a secure server environment (e.g., Supabase Edge Function), not directly from the browser.");
-            }
-            employeeModal.classList.remove('show');
         } else { // Create new user
             alert("For security reasons, creating users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
         }
     }
 
     async function handleDelete(e) {
-        const userId = e.currentTarget.dataset.userId;
         alert("For security reasons, deleting users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
     }
 
@@ -729,11 +710,10 @@
 
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await channel.track({ user_id: currentUser.id, email: currentUser.email });
+                await channel.track({ user_id: currentUser.id });
                 await updateLastSeen();
-                // Periodically update last_seen every 5 minutes
                 if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000); // 300000 ms = 5 minutes
+                presenceInterval = setInterval(updateLastSeen, 300000); // 5 minutes
             }
         });
     }
@@ -756,7 +736,7 @@
             currentUser = user;
 
             const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error || !data || !['admin', 'owner'].includes(data.role)) {
+            if (error || !data || data.role !== 'admin') {
                 document.getElementById('restricted-modal').classList.add('show');
             } else {
                 document.getElementById('dashboard').style.visibility = 'visible';
