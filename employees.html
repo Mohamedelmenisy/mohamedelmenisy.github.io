@@ -11,6 +11,7 @@
         :root {
             --primary-color: #6366f1;
             --primary-color-hover: #4f46e5;
+            --primary-color-transparent: rgba(99, 102, 241, 0.2);
             --text-color: #d1d5db;
             --text-color-muted: #9ca3af;
             --bg-color: #111827;
@@ -31,7 +32,7 @@
             height: 100%; margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg-color); color: var(--text-color);
-            font-size: 16.5px; /* Improved font size */
+            font-size: 16.5px;
         }
         .hidden { display: none !important; }
 
@@ -277,6 +278,7 @@
                         <div class="label">Online Now</div>
                     </div>
                 </div>
+                <!-- This is the Inactive Employees card you requested -->
                 <div class="stat-card">
                     <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
                     <div class="stat-info">
@@ -439,9 +441,9 @@
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
-    // Fetch from the new view for pre-formatted Cairo time
+    // Fetching from the main users table again for raw data
     async function fetchEmployees() {
-        const { data, error } = await supabase.from('v_employee_last_seen').select('*').order('name', { ascending: true });
+        const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
         if (error) { 
             console.error("Error fetching employees:", error);
             alert("Failed to fetch employees. See console for details.");
@@ -458,10 +460,12 @@
         document.getElementById('online-employees').textContent = onlineCount;
     }
     
+    // This function updates the "Inactive Employees" card
     async function updateEngagementStats() {
         const { data, error } = await supabase.from('v_employee_engagement').select('*').single();
         if (error) {
             console.error("Error fetching engagement stats:", error);
+            document.getElementById('inactive-employees').textContent = 'N/A';
             return;
         }
         document.getElementById('inactive-employees').textContent = data.inactive_employees || 0;
@@ -478,8 +482,14 @@
 
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            // Directly use the pre-formatted time from the view
-            const lastSeenCairo = emp.last_seen_cairo || 'Never';
+            
+            // **FIXED**: Formatting the 'last_seen' timestamp here on the client-side
+            // This ensures correct timezone (Africa/Cairo) and 12-hour format (AM/PM)
+            const lastSeen = emp.last_seen
+                ? new Date(emp.last_seen).toLocaleString('en-GB', { 
+                    timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                }) : 'Never';
             
             const isOnline = emp.status === 'ONLINE'; 
             const role = emp.role || 'agent';
@@ -503,7 +513,7 @@
                             <span>${isOnline ? 'Online' : 'Offline'}</span>
                         </div>
                     </td>
-                    <td>${lastSeenCairo}</td>
+                    <td>${lastSeen}</td>
                     <td class="actions-cell">
                         <button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button>
                         <button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button>
@@ -553,6 +563,7 @@
                     ],
                     borderColor: bgColor,
                     borderWidth: 2,
+                    hoverOffset: 4
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: textColor, font: { size: 14 } } } } }
@@ -582,7 +593,7 @@
                     backgroundColor: primaryColor, borderRadius: 4,
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: textColor } } } }
         });
     }
 
@@ -602,14 +613,15 @@
         const styles = getComputedStyle(document.documentElement);
         const textColor = styles.getPropertyValue('--text-color').trim();
         const primaryColor = styles.getPropertyValue('--primary-color').trim();
+        const primaryColorTransparent = styles.getPropertyValue('--primary-color-transparent').trim();
         
         const labels = data.map(d => new Date(d.month).toLocaleString('en-US', { month: 'short' })).reverse();
         const values = data.map(d => d.active_employees).reverse();
 
         activityChart = new Chart(ctx, {
             type: 'line',
-            data: { labels, datasets: [{ label: 'Active Employees', data: values, borderColor: primaryColor, tension: 0.3, fill: false }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } }, plugins: { legend: { labels: { color: textColor } } } }
+            data: { labels, datasets: [{ label: 'Active Employees', data: values, borderColor: primaryColor, backgroundColor: primaryColorTransparent, tension: 0.3, fill: true }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: textColor } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: textColor } } }, plugins: { legend: { labels: { color: textColor } } } }
         });
     }
 
@@ -636,7 +648,7 @@
                 labels: data.map(u => u.user_name || u.user_email),
                 datasets: [{ label: 'Total Views', data: data.map(u => u.total_views), backgroundColor: primaryColor, borderRadius: 4 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: textColor } } } }
         });
     }
 
@@ -661,7 +673,7 @@
             const row = [
                 emp.name || 'No Name', emp.email, emp.role, emp.department || 'N/A',
                 emp.status === 'ONLINE' ? 'Online' : 'Offline',
-                emp.last_seen_raw ? new Date(emp.last_seen_raw).toISOString() : 'Never'
+                emp.last_seen ? new Date(emp.last_seen).toISOString() : 'Never'
             ].map(val => `"${String(val).replace(/"/g, '""')}"`);
             csvContent += row.join(',') + '\r\n';
         });
@@ -724,6 +736,7 @@
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
             console.error('Could not get user session.');
+            alert('Authentication error. Please log in again.');
             return null;
         }
         return `Bearer ${session.access_token}`;
@@ -740,9 +753,8 @@
         };
 
         if (id) { // Update existing user
-            // Password updates should be handled by a secure function as well.
             if (password) {
-                 alert("Password changes should be handled via a dedicated, secure server function.");
+                 alert("Password changes should be handled via a dedicated, secure server function for security.");
             }
             const { error } = await supabase.from('users').update({ ...userMetadata }).eq('id', id);
             if (error) {
@@ -750,7 +762,6 @@
             } else {
                 alert('User updated successfully.');
                 employeeModal.classList.remove('show');
-                handleRealtimeChanges(); // Refresh data
             }
         } else { // Create new user via Edge Function
             if (!password) {
@@ -762,17 +773,14 @@
             if (!authToken) return;
 
             try {
-                const response = await fetch('/functions/v1/create-employee', { // Replace with your function name
-                    method: 'POST',
-                    headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, ...userMetadata }),
+                // IMPORTANT: Replace '/functions/v1/create-employee' with your actual Edge Function name
+                const { error } = await supabase.functions.invoke('create-employee', {
+                    body: { email, password, ...userMetadata },
                 });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Failed to create user');
+                if (error) throw error;
                 
                 alert('Employee created successfully!');
                 employeeModal.classList.remove('show');
-                handleRealtimeChanges(); // Refresh data
             } catch (err) {
                 alert(`Error: ${err.message}`);
             }
@@ -785,17 +793,14 @@
         if (!authToken) return;
 
         try {
-            const response = await fetch('/functions/v1/delete-employee', { // Replace with your function name
-                method: 'POST', // or 'DELETE' depending on your function
-                headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId }),
+            // IMPORTANT: Replace '/functions/v1/delete-employee' with your actual Edge Function name
+            const { error } = await supabase.functions.invoke('delete-employee', {
+                body: { user_id: userId },
             });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Failed to delete user');
+            if (error) throw error;
             
             alert('Employee deleted successfully!');
             deleteConfirmModal.classList.remove('show');
-            handleRealtimeChanges(); // Refresh data
         } catch (err) {
             alert(`Error: ${err.message}`);
         }
@@ -803,8 +808,6 @@
 
     async function updateLastSeen() {
         if (!currentUser) return;
-        // The 'v_employee_last_seen' view handles the time conversion, 
-        // but the 'users' table still needs the UTC timestamp update.
         await supabase
             .from('users')
             .update({ last_seen: new Date().toISOString() })
@@ -827,13 +830,13 @@
                 await channel.track({ user_id: currentUser.id });
                 await updateLastSeen();
                 if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000);
+                presenceInterval = setInterval(updateLastSeen, 300000); // every 5 minutes
             }
         });
     }
 
-    async function handleRealtimeChanges() {
-        console.log('Realtime change detected, refreshing data...');
+    async function handleRealtimeChanges(payload) {
+        console.log('Realtime change detected, refreshing data...', payload);
         allEmployees = await fetchEmployees();
         applyFilters();
         updateKPIs(allEmployees);
@@ -850,12 +853,13 @@
             }
             
             const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error || !data || !['admin'].includes(data.role)) { // Only admin can access now
+            if (error || !data || !['admin'].includes(data.role)) {
                 document.getElementById('restricted-modal').classList.add('show');
             } else {
-                currentUser = user; // Set current user here after role check
+                currentUser = user; 
                 document.getElementById('dashboard').style.visibility = 'visible';
                 
+                // Initial Load
                 allEmployees = await fetchEmployees();
                 updateKPIs(allEmployees);
                 renderEmployees(allEmployees);
@@ -865,6 +869,7 @@
                 
                 await initPresence();
 
+                // Listen for future changes
                 supabase.channel('public:users')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, handleRealtimeChanges)
                     .subscribe();
