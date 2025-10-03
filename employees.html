@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employees Directory - InfiniBase</title>
+    <title>Employees Dashboard - InfiniBase</title>
     <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -32,13 +32,19 @@
             height: 100%; margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg-color); color: var(--text-color);
-            font-size: 16px;
+            font-size: 16.5px; /* Improved font size */
         }
         .hidden { display: none !important; }
 
         .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
             padding: 1.5rem 2rem;
             padding-top: calc(var(--header-height) + 1.5rem);
+        }
+        main {
+            flex-grow: 1;
         }
         .page-header {
             position: fixed; top: 0; left: 0; right: 0;
@@ -75,8 +81,11 @@
             background-color: var(--bg-color-alt);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius-lg);
-            padding: 1.5rem; margin-bottom: 1.5rem;
+            padding: 1.5rem;
             overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         .card h3 {
             font-size: 1.25rem;
@@ -111,44 +120,34 @@
             align-items: center;
             justify-content: center;
         }
-        .stat-info .value {
-            font-size: 2.25rem;
-            font-weight: 700;
-            color: white;
-        }
-        .stat-info .label {
-            font-size: 1rem;
-            color: var(--text-color-muted);
-        }
+        .stat-info .value { font-size: 2.25rem; font-weight: 700; color: white; }
+        .stat-info .label { font-size: 1rem; color: var(--text-color-muted); }
         
-        .dashboard-grid {
+        .charts-section {
+            margin-top: 2rem;
+        }
+        .charts-section h2 {
+             font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;
+        }
+        .charts-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 1.5rem;
-        }
-        @media (min-width: 1200px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr 400px;
-            }
-        }
-        .chart-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-        @media (min-width: 768px) {
-             .chart-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-         @media (min-width: 1200px) {
-             .chart-grid {
-                grid-template-columns: 1fr;
-            }
         }
         .chart-wrapper {
             position: relative;
             height: 300px;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-placeholder {
+            text-align: center;
+            color: var(--text-color-muted);
+        }
+        .chart-placeholder i {
+            font-size: 2.5rem; margin-bottom: 1rem;
         }
 
         .table-controls {
@@ -159,16 +158,11 @@
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
-        .search-filter-box {
-            display: flex;
-            gap: 1rem;
-        }
+        .search-filter-box { display: flex; gap: 1rem; }
         .search-filter-box input, .search-filter-box select {
             padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            border: 1px solid var(--border-color); border-radius: var(--border-radius);
+            background-color: var(--bg-color); color: var(--text-color);
             font-size: 1rem;
         }
 
@@ -230,6 +224,15 @@
             background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
             box-sizing: border-box;
         }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-color-muted);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -237,7 +240,7 @@
 <div id="dashboard" style="visibility: hidden;">
     <header class="page-header">
         <div class="header-title">
-            <i class="fas fa-users logo-icon"></i>
+            <i class="fas fa-users-cog logo-icon"></i>
             <h1>Employees Dashboard</h1>
         </div>
         <div class="header-actions">
@@ -246,83 +249,83 @@
     </header>
 
     <div class="page-wrapper">
-        <div class="stats-container">
-             <div class="stat-card">
-                <i class="fas fa-users" style="color: #6366f1;"></i>
-                <div class="stat-info">
-                    <div class="value" id="total-employees">0</div>
-                    <div class="label">Total Employees</div>
+        <main>
+            <div class="stats-container">
+                 <div class="stat-card">
+                    <i class="fas fa-users" style="color: #6366f1;"></i>
+                    <div class="stat-info">
+                        <div class="value" id="total-employees">0</div>
+                        <div class="label">Total Employees</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-crown" style="color: var(--role-owner-text);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="owner-count">0</div>
+                        <div class="label">Owners</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-user-shield" style="color: var(--role-admin-text);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="admin-count">0</div>
+                        <div class="label">Admins</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-headset" style="color: var(--role-agent-text);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="agent-count">0</div>
+                        <div class="label">Agents</div>
+                    </div>
+                </div>
+                 <div class="stat-card">
+                    <i class="fas fa-user-check" style="color: var(--status-online);"></i>
+                    <div class="stat-info">
+                        <div class="value" id="online-employees">0</div>
+                        <div class="label">Online Now</div>
+                    </div>
                 </div>
             </div>
-            <div class="stat-card">
-                <i class="fas fa-crown" style="color: var(--role-owner-text);"></i>
-                <div class="stat-info">
-                    <div class="value" id="owner-count">0</div>
-                    <div class="label">Owners</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-user-shield" style="color: var(--role-admin-text);"></i>
-                <div class="stat-info">
-                    <div class="value" id="admin-count">0</div>
-                    <div class="label">Admins</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-headset" style="color: var(--role-agent-text);"></i>
-                <div class="stat-info">
-                    <div class="value" id="agent-count">0</div>
-                    <div class="label">Agents</div>
-                </div>
-            </div>
-             <div class="stat-card">
-                <i class="fas fa-user-check" style="color: var(--status-online);"></i>
-                <div class="stat-info">
-                    <div class="value" id="online-employees">0</div>
-                    <div class="label">Online Now</div>
-                </div>
-            </div>
-        </div>
 
-        <div class="dashboard-grid">
-            <div class="main-content">
-                <div class="table-controls">
-                    <div class="search-filter-box">
-                        <input type="text" id="searchInput" placeholder="Search by name, email, or dept...">
-                        <select id="roleFilter">
-                            <option value="all">All Roles</option>
-                            <option value="owner">Owner</option>
-                            <option value="admin">Admin</option>
-                            <option value="agent">Agent</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
-                        <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
-                    </div>
+            <div class="table-controls">
+                <div class="search-filter-box">
+                    <input type="text" id="searchInput" placeholder="Search by name, email, or dept...">
+                    <select id="roleFilter">
+                        <option value="all">All Roles</option>
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="agent">Agent</option>
+                    </select>
                 </div>
-        
-                <div class="card">
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Department</th>
-                                    <th>Status</th>
-                                    <th>Last Seen (Africa/Cairo)</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="employeesTableBody"></tbody>
-                        </table>
-                    </div>
+                <div>
+                    <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+                    <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
                 </div>
             </div>
-            <div class="sidebar-content">
-                 <div class="chart-grid">
-                     <div class="card">
+    
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Last Seen (Africa/Cairo)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <section class="charts-section">
+                <h2>Analytics</h2>
+                <div class="charts-grid">
+                    <div class="card">
                          <h3>Role Distribution</h3>
                         <div class="chart-wrapper">
                              <canvas id="rolesChart"></canvas>
@@ -334,18 +337,42 @@
                              <canvas id="deptsChart"></canvas>
                         </div>
                     </div>
-                 </div>
-            </div>
-        </div>
+                    <div class="card">
+                         <h3>Monthly Activity</h3>
+                        <div class="chart-wrapper">
+                             <div id="activityChartPlaceholder" class="chart-placeholder">
+                                 <i class="fas fa-chart-line"></i>
+                                 <p>Activity data not available</p>
+                             </div>
+                             <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+                     <div class="card">
+                         <h3>Top 5 Active Employees</h3>
+                        <div class="chart-wrapper">
+                             <div id="top5ChartPlaceholder" class="chart-placeholder">
+                                <i class="fas fa-medal"></i>
+                                <p>Ranking data not available</p>
+                            </div>
+                             <canvas id="top5Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            © 2025 InfiniBase.Elmensy
+        </footer>
     </div>
 </div>
 
 <!-- Access Restricted Modal -->
-<div id="restricted-modal" class="modal-overlay show">
+<div id="restricted-modal" class="modal-overlay">
     <div class="modal-content" style="text-align: center;">
         <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
         <h2>Access Restricted</h2>
-        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
+        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators and owners only.</p>
         <a href="app.html" class="button">Go Back to Dashboard</a>
     </div>
 </div>
@@ -412,12 +439,12 @@
     let rolesChart = null;
     let deptsChart = null;
     let currentUser = null;
+    let presenceInterval;
 
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     
     async function fetchEmployees() {
-        // Fetches all users from the auth schema and joins with users table for metadata
         const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
         if (error) { 
             console.error("Error fetching employees:", error);
@@ -447,17 +474,14 @@
 
         tableBody.innerHTML = employees.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            
             const lastSeen = emp.last_seen
                 ? new Date(emp.last_seen).toLocaleString('en-GB', { 
-                    timeZone: 'Africa/Cairo',
-                    year: 'numeric', month: 'short', day: 'numeric',
+                    timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric',
                     hour: '2-digit', minute: '2-digit', hour12: true
-                })
-                : 'Never';
+                }) : 'Never';
             
             const isOnline = emp.status === 'ONLINE'; 
-            const role = emp.role || 'agent'; // Default to agent if role is null
+            const role = emp.role || 'agent';
 
             return `
                 <tr data-user-id="${emp.id}">
@@ -488,10 +512,25 @@
         }).join('');
     }
     
-    function renderCharts(employees) {
+    function renderAllCharts(employees) {
         renderRolesChart(employees);
         renderDeptsChart(employees);
+        // Render placeholder charts
+        renderPlaceholderChart('activityChart');
+        renderPlaceholderChart('top5Chart');
     }
+    
+    function renderPlaceholderChart(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (canvas) {
+            canvas.style.display = 'none'; // Hide canvas
+        }
+        const placeholder = document.getElementById(`${canvasId}Placeholder`);
+        if (placeholder) {
+            placeholder.style.display = 'block'; // Show placeholder
+        }
+    }
+
 
     function renderRolesChart(employees) {
         const ctx = document.getElementById('rolesChart').getContext('2d');
@@ -522,15 +561,13 @@
                     borderWidth: 2,
                 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'top', labels: { color: textColor, font: { size: 14 } } } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: textColor, font: { size: 14 } } } } }
         });
     }
     
     function renderDeptsChart(employees) {
-        const ctx = document.getElementById('deptsChart').getContext('2d');
+        const canvas = document.getElementById('deptsChart');
+        const ctx = canvas.getContext('2d');
         const deptCounts = employees.reduce((acc, emp) => {
             const dept = emp.department || 'Unassigned';
             acc[dept] = (acc[dept] || 0) + 1;
@@ -548,20 +585,11 @@
             data: {
                 labels: Object.keys(deptCounts),
                 datasets: [{
-                    label: 'Employees',
-                    data: Object.values(deptCounts),
-                    backgroundColor: primaryColor,
-                    borderRadius: 4,
+                    label: 'Employees', data: Object.values(deptCounts),
+                    backgroundColor: primaryColor, borderRadius: 4,
                 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { ticks: { color: textColor } },
-                    x: { ticks: { color: textColor } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } } }
         });
     }
 
@@ -584,10 +612,7 @@
         
         allEmployees.forEach(emp => {
             const row = [
-                emp.name || 'No Name',
-                emp.email,
-                emp.role,
-                emp.department || 'N/A',
+                emp.name || 'No Name', emp.email, emp.role, emp.department || 'N/A',
                 emp.status === 'ONLINE' ? 'Online' : 'Offline',
                 emp.last_seen ? new Date(emp.last_seen).toISOString() : 'Never'
             ].map(val => `"${String(val).replace(/"/g, '""')}"`);
@@ -604,9 +629,7 @@
 
     function setupModals() {
         document.querySelectorAll('[data-close-modal]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.closest('.modal-overlay').classList.remove('show');
-            });
+            btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show'));
         });
 
         document.getElementById('addEmployeeBtn').addEventListener('click', () => {
@@ -662,79 +685,44 @@
         let result = {};
         if (id) { // Update existing user
             const { data, error } = await supabase.from('users').update(userMetadata).eq('id', id).select().single();
-            if(error) result.error = error; else result.data = data;
-            
-            if (password && !error) {
-                // This requires service_role key and server-side execution for security.
-                // The client-side admin API is often disabled.
-                // We'll proceed assuming row-level security allows the update.
-                console.warn("Password change initiated. This requires elevated privileges.");
-                const { error: passwordError } = await supabase.auth.admin.updateUserById(id, { password: password });
-                if(passwordError) {
-                    result.error = passwordError;
-                    alert(`Failed to update password. Admin privileges may be required on the server. Error: ${passwordError.message}`);
+            if (error) {
+                if (error.message.includes('chk_role_check')) {
+                    alert(`Error: The role '${userMetadata.role}' is not allowed. Please check the database constraints.`);
+                } else {
+                    alert(`Error updating user: ${error.message}`);
                 }
+                return;
             }
-        } else { // Create new user
-            const { data, error } = await supabase.auth.admin.createUser({
-                email: email,
-                password: password,
-                email_confirm: true,
-                user_metadata: userMetadata,
-            });
-            if(error) {
-                result.error = error;
-            } else if (data.user) {
-                 // The user is created in auth, but we need to insert their metadata into our public 'users' table
-                 const { error: profileError } = await supabase.from('users').insert({
-                    id: data.user.id,
-                    email: data.user.email,
-                    ...userMetadata
-                 });
-                 if (profileError) {
-                    result.error = profileError;
-                    // Attempt to clean up the auth user if profile creation fails
-                    await supabase.auth.admin.deleteUser(data.user.id);
-                 } else {
-                    result.data = data.user;
-                 }
+            if (password) {
+                alert("For security reasons, password changes must be done through a secure server environment (e.g., Supabase Edge Function), not directly from the browser.");
             }
-        }
-        
-        if (result.error) {
-            alert(`Error: ${result.error.message}`);
-        } else {
             employeeModal.classList.remove('show');
+        } else { // Create new user
+            alert("For security reasons, creating users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
         }
     }
 
     async function handleDelete(e) {
         const userId = e.currentTarget.dataset.userId;
-        const { error } = await supabase.auth.admin.deleteUser(userId);
-        if (error) {
-            alert(`Error deleting user. Make sure you have admin privileges. Error: ${error.message}`);
-        } else {
-             // Deletion from auth schema triggers a cascade delete on the public.users table (if set up with foreign key + on delete cascade)
-             // If not, we might need to delete manually. The realtime update will handle UI.
-            deleteConfirmModal.classList.remove('show');
-        }
+        alert("For security reasons, deleting users directly from the browser is disabled. Please use a secure server environment (e.g., Supabase Edge Function).");
     }
 
+    async function updateLastSeen() {
+        if (!currentUser) return;
+        const { error } = await supabase
+            .from('users')
+            .update({ last_seen: new Date().toISOString() })
+            .eq('id', currentUser.id);
+        if (error) console.error('Error updating last_seen:', error.message);
+    }
 
     async function initPresence() {
-        const channel = supabase.channel('presence:employees', {
-            config: { presence: { key: currentUser.id } }
-        });
+        const channel = supabase.channel('presence:employees', { config: { presence: { key: currentUser.id } } });
 
         channel.on('presence', { event: 'sync' }, () => {
             const state = channel.presenceState();
             const onlineIds = Object.keys(state);
-
-            allEmployees = allEmployees.map(emp => ({
-                ...emp,
-                status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE'
-            }));
-            // We only re-render the table here to avoid chart flickering on presence updates. KPIs are fast.
+            allEmployees = allEmployees.map(emp => ({...emp, status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE' }));
             applyFilters(); 
             updateKPIs(allEmployees);
         });
@@ -742,22 +730,20 @@
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
                 await channel.track({ user_id: currentUser.id, email: currentUser.email });
-                const { error } = await supabase
-                    .from('users')
-                    .update({ last_seen: new Date().toISOString() })
-                    .eq('id', currentUser.id);
-                if (error) console.error('Error updating last_seen:', error.message);
+                await updateLastSeen();
+                // Periodically update last_seen every 5 minutes
+                if (presenceInterval) clearInterval(presenceInterval);
+                presenceInterval = setInterval(updateLastSeen, 300000); // 300000 ms = 5 minutes
             }
         });
     }
 
     async function handleRealtimeChanges(payload) {
         console.log('Realtime change detected:', payload);
-        // A simple and robust way to handle any change is to just refetch all data.
         allEmployees = await fetchEmployees();
         applyFilters();
         updateKPIs(allEmployees);
-        renderCharts(allEmployees);
+        renderAllCharts(allEmployees);
     }
 
     async function checkAdminAccess() {
@@ -773,13 +759,12 @@
             if (error || !data || !['admin', 'owner'].includes(data.role)) {
                 document.getElementById('restricted-modal').classList.add('show');
             } else {
-                document.getElementById('restricted-modal').classList.remove('show');
                 document.getElementById('dashboard').style.visibility = 'visible';
                 
                 allEmployees = await fetchEmployees();
                 updateKPIs(allEmployees);
                 renderEmployees(allEmployees);
-                renderCharts(allEmployees);
+                renderAllCharts(allEmployees);
                 setupModals();
                 
                 await initPresence();
