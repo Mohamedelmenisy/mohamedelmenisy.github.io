@@ -1390,9 +1390,14 @@
             gap: 1.5rem;
             grid-template-columns: 1fr;
         }
-        @media(min-width: 1024px) {
+        @media(min-width: 640px) { /* NEW */
             .dashboard-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media(min-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
         }
         @media(min-width: 1280px) {
@@ -1400,6 +1405,7 @@
                 grid-template-columns: repeat(4, 1fr);
             }
         }
+
         .dashboard-grid .grid-col-span-2 {
             grid-column: span 1;
         }
@@ -1408,35 +1414,43 @@
                 grid-column: span 2;
             }
         }
+        @media(min-width: 1280px) { /* NEW */
+            .dashboard-grid .grid-col-span-4 {
+                grid-column: span 4;
+            }
+        }
+
 
         .dashboard-stat-card {
             background-color: var(--bg-color-alt);
             border: 1px solid var(--border-color);
-            padding: 1.5rem;
+            padding: 1rem;
             border-radius: var(--border-radius-lg);
             box-shadow: var(--card-shadow);
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
         }
         .dashboard-stat-card .icon-container {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             color: var(--primary-color);
             background-color: var(--bg-color);
-            height: 50px;
-            width: 50px;
+            height: 44px;
+            width: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .dashboard-stat-card .stat-info .stat-value {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 700;
             display: block;
+            line-height: 1.2;
         }
         .dashboard-stat-card .stat-info .stat-label {
-            font-size: 1rem;
+            font-size: 0.85rem;
             color: var(--text-color-muted);
         }
 
@@ -2123,13 +2137,14 @@
             console.error('Error logging activity:', error);
         }
     }
-
-    async function fetchInsights() {
-      // Assuming a view `v_kb_insights` exists with article_id, title, views, last_viewed etc.
-      const { data, error } = await supabase.rpc('get_kb_insights');
+    
+    // NEW: Fetch data from the v_overall_insights view
+    async function fetchOverallInsights() {
+      const { data, error } = await supabase.from('v_overall_insights').select('*').single();
       if (error) {
-        console.error('Error fetching insights:', error);
-        return [];
+        console.error('Error fetching overall insights:', error);
+        showToast('Could not load dashboard stats.', 'error');
+        return null;
       }
       return data;
     }
@@ -2137,12 +2152,12 @@
     async function fetchDashboardData() {
         const [activity, insights] = await Promise.all([
             supabase.from('activity_log').select('*, cases(title_en, slug, sub_categories(slug))').order('timestamp', { ascending: false }).limit(100),
-            fetchInsights()
+            fetchOverallInsights() // Using the new function
         ]);
         
         return {
             activityLog: activity.data || [],
-            articleViews: insights || []
+            overallInsights: insights || {}
         };
     }
 
@@ -2170,7 +2185,8 @@
     let currentUser = null;
     let currentOpenItem = null;
     let activityChartInstance;
-    let dashboardData = { activityLog: [], articleViews: [] };
+    let contentDistChartInstance; // NEW: For the pie chart
+    let dashboardData = { activityLog: [], overallInsights: {} };
 
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
@@ -2226,7 +2242,7 @@
     }
 
     function escapeHTML(str) {
-        if (typeof str !== 'string') return '';
+        if (typeof str !== 'string' && typeof str !== 'number') return '';
         const el = document.createElement('div');
         el.textContent = str;
         return el.innerHTML;
@@ -2454,18 +2470,9 @@
                 </div>
             </div>`;
     }
-
-    async function displayDashboard() {
-        dashboardOverviewContainer.classList.remove('hidden');
-        standardSectionContentPlaceholder.classList.add('hidden');
-        itemDetailViewPlaceholder.classList.add('hidden');
-        pageBody.classList.remove('item-view-active');
-        currentSectionTitleEl.textContent = 'Dashboard';
-        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
-        if (isCurrentUserAdmin()) {
-            updateAdminToolbar('dashboard');
-        }
-
+    
+    // NEW: Function to render the dynamic dashboard
+    async function renderDynamicDashboard() {
         if (!isCurrentUserAdmin()) {
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
@@ -2479,55 +2486,50 @@
         }
 
         dashboardData = await fetchDashboardData();
+        const insights = dashboardData.overallInsights;
         
-        const allItems = kbSystemData.sections.flatMap(s => s.items || []);
-        const totalArticles = allItems.filter(i => ['article', 'guide', 'policy'].includes(i.type)).length;
-        const totalCases = allItems.filter(i => i.type === 'case').length;
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const editsThisWeek = dashboardData.activityLog.filter(log => log.action === 'updated' && new Date(log.timestamp) > sevenDaysAgo).length;
-
+        // Populate stat cards with data from v_overall_insights
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-grid">
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-folder-open"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value">${kbSystemData.sections.length}</span>
-                        <span class="stat-label">Total Sections</span>
-                    </div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_sections || 0}</span><span class="stat-label">Total Sections</span></div>
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-newspaper"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value">${totalArticles}</span>
-                        <span class="stat-label">Articles & Guides</span>
-                    </div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Articles & Guides</span></div>
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-briefcase"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value">${totalCases}</span>
-                        <span class="stat-label">Total Cases</span>
-                    </div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_cases || 0}</span><span class="stat-label">Total Cases</span></div>
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-edit"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value">${editsThisWeek}</span>
-                        <span class="stat-label">Edits This Week</span>
-                    </div>
+                    <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
                 </div>
-                
-                <div class="dashboard-table-card grid-col-span-2">
-                    <h3><i class="fas fa-eye" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Top Viewed Articles (Last 7 Days)</h3>
-                    <div class="dashboard-table-wrapper">
-                        <table>
-                            <thead><tr><th>Title</th><th>Views</th><th>Last Viewed</th></tr></thead>
-                            <tbody id="topViewedTbody"></tbody>
-                        </table>
-                    </div>
+                 <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-users"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div>
                 </div>
-                
-                <div class="dashboard-table-card grid-col-span-2">
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-eye"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>
+                </div>
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-star"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating || 0}</span><span class="stat-label">Avg. Feedback</span></div>
+                </div>
+
+                <div class="chart-container grid-col-span-2">
+                    <h3>Content Activity (Last 7 Days)</h3>
+                    <canvas id="activityChart"></canvas>
+                </div>
+                 <div class="chart-container grid-col-span-2">
+                    <h3>Content Distribution</h3>
+                    <canvas id="contentDistChart"></canvas>
+                </div>
+
+                <div class="dashboard-table-card grid-col-span-4">
                     <h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Content Edits</h3>
                     <div class="dashboard-table-wrapper">
                         <table>
@@ -2536,48 +2538,41 @@
                         </table>
                     </div>
                 </div>
-
-                <div class="chart-container grid-col-span-2">
-                    <h3>Content Activity (Last 7 Days)</h3>
-                    <canvas id="activityChart"></canvas>
-                </div>
-            </div>
-        `;
+            </div>`;
         
         renderDashboardTables(dashboardData);
         renderDashboardCharts(dashboardData);
     }
 
+    async function displayDashboard() {
+        dashboardOverviewContainer.classList.remove('hidden');
+        standardSectionContentPlaceholder.classList.add('hidden');
+        itemDetailViewPlaceholder.classList.add('hidden');
+        pageBody.classList.remove('item-view-active');
+        currentSectionTitleEl.textContent = 'Dashboard';
+        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
+        if (isCurrentUserAdmin()) {
+            updateAdminToolbar('dashboard');
+            // Initial render
+            await renderDynamicDashboard();
+        } else {
+             dashboardOverviewContainer.innerHTML = `
+                <div class="viewer-dashboard-message">
+                    <div class="card">
+                        <i class="fas fa-columns"></i>
+                        <h2>Welcome to the Knowledge Base</h2>
+                        <p>Use the sidebar to navigate through different sections and find the information you need.</p>
+                    </div>
+                </div>`;
+        }
+    }
+
+
     function renderDashboardTables(data) {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        
-        // Top Viewed This Week
-        const weeklyViews = data.activityLog
-            .filter(log => log.action === 'viewed' && new Date(log.timestamp) > sevenDaysAgo)
-            .reduce((acc, log) => {
-                if (!log.item_id) return acc;
-                acc[log.item_id] = acc[log.item_id] || { count: 0, title: log.cases?.title_en || 'Unknown', slug: log.cases?.slug, sectionSlug: log.cases?.sub_categories?.slug, last_viewed: '1970-01-01T00:00:00Z' };
-                acc[log.item_id].count++;
-                if (log.timestamp > acc[log.item_id].last_viewed) {
-                    acc[log.item_id].last_viewed = log.timestamp;
-                }
-                return acc;
-            }, {});
-
-        const sortedWeeklyViews = Object.values(weeklyViews).sort((a,b) => b.count - a.count).slice(0, 5);
-        const topViewedTbody = document.getElementById('topViewedTbody');
-        topViewedTbody.innerHTML = sortedWeeklyViews.map(item => `
-            <tr>
-                <td><a href="#${item.sectionSlug}/${item.slug}">${escapeHTML(item.title)}</a></td>
-                <td>${item.count}</td>
-                <td>${formatReadableDate(item.last_viewed)}</td>
-            </tr>
-        `).join('') || `<tr><td colspan="3" style="text-align:center; padding: 1rem;">No views recorded this week.</td></tr>`;
-
-        // Recent Edits
+        // Recent Edits table (still useful)
         const recentEdits = data.activityLog
             .filter(log => log.action === 'updated')
-            .slice(0, 5);
+            .slice(0, 10);
         const recentEditsTbody = document.getElementById('recentEditsTbody');
         recentEditsTbody.innerHTML = recentEdits.map(log => `
             <tr>
@@ -2602,25 +2597,23 @@
             }
         };
 
+        // 1. Activity Chart (Bar)
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx && data.activityLog.length > 0) {
             const labels = [...Array(7)].map((_, i) => {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
-                return d.toLocaleDateString('en-CA'); // YYYY-MM-DD format for easy matching
+                return d.toLocaleDateString('en-CA');
             }).reverse();
             
-            const labelMap = labels.reduce((acc, l) => {
-                acc[l] = { views: 0, edits: 0 };
-                return acc;
-            }, {});
+            const labelMap = labels.reduce((acc, l) => ({ ...acc, [l]: { views: 0, edits: 0 } }), {});
 
             data.activityLog.forEach(log => {
                 const logDate = new Date(log.timestamp).toLocaleDateString('en-CA');
                 if (labelMap[logDate]) {
                     if (log.action === 'viewed') labelMap[logDate].views++;
-                    if (log.action === 'updated' || log.action === 'created') labelMap[logDate].edits++;
+                    if (['updated', 'created'].includes(log.action)) labelMap[logDate].edits++;
                 }
             });
 
@@ -2633,11 +2626,39 @@
                 data: {
                     labels: displayLabels,
                     datasets: [
-                        { label: 'Views', data: viewsData, backgroundColor: 'rgba(99, 102, 241, 0.7)', borderColor: '#6366f1', borderWidth: 1 },
-                        { label: 'Edits', data: editsData, backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1 }
+                        { label: 'Views', data: viewsData, backgroundColor: 'rgba(99, 102, 241, 0.7)' },
+                        { label: 'Edits', data: editsData, backgroundColor: 'rgba(34, 197, 94, 0.7)' }
                     ]
                 },
                 options: chartOptions
+            });
+        }
+        
+        // 2. Content Distribution Chart (Pie)
+        if (contentDistChartInstance) contentDistChartInstance.destroy();
+        const contentDistCtx = document.getElementById('contentDistChart')?.getContext('2d');
+        if(contentDistCtx) {
+            const allItems = kbSystemData.sections.flatMap(s => s.items || []);
+            const typeCounts = allItems.reduce((acc, item) => {
+                acc[item.type] = (acc[item.type] || 0) + 1;
+                return acc;
+            }, {});
+
+            const pieLabels = Object.keys(typeCounts);
+            const pieData = Object.values(typeCounts);
+            
+            contentDistChartInstance = new Chart(contentDistCtx, {
+                type: 'pie',
+                data: {
+                    labels: pieLabels.map(l => l.charAt(0).toUpperCase() + l.slice(1).replace('_', ' ')),
+                    datasets: [{
+                        label: 'Content Types',
+                        data: pieData,
+                        backgroundColor: ['#6366F1', '#22C55E', '#FBBF24', '#EC4899', '#38BDF8', '#A78BFA'],
+                        borderColor: 'transparent'
+                    }]
+                },
+                options: { ...chartOptions, scales: {} } // Remove scales for pie chart
             });
         }
     }
@@ -3200,6 +3221,14 @@
         
         if (isCurrentUserAdmin()) {
             adminToolbar.classList.remove('hidden');
+            // NEW: Set an interval to refresh dashboard stats
+            setInterval(async () => {
+                const hash = window.location.hash.substring(1) || 'home';
+                if(hash === 'home') {
+                    console.log("Refreshing dashboard stats...");
+                    await renderDynamicDashboard();
+                }
+            }, 60000); // Refresh every 60 seconds
         }
 
         await loadAndStructureData();
