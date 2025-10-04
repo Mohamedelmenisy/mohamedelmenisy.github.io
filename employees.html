@@ -233,6 +233,31 @@
             font-size: 0.9rem;
         }
     </style>
+
+<style>
+  #toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+  }
+  .toast {
+    display: block;
+    min-width: 200px;
+    margin-bottom: 10px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  }
+  .toast.success { background-color: #28a745; }
+  .toast.error { background-color: #dc3545; }
+  @keyframes fadein { from {opacity: 0;} to {opacity: 1;} }
+  @keyframes fadeout { from {opacity: 1;} to {opacity: 0;} }
+</style>
+<div id="toast-container"></div>
+
 </head>
 <body>
 
@@ -318,6 +343,7 @@
                         </thead>
                         <tbody id="employeesTableBody"></tbody>
                     </table>
+<div id='pagination-controls'></div>
                 </div>
             </div>
             
@@ -936,6 +962,56 @@
         document.getElementById('roleFilter').addEventListener('change', applyFilters);
         document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
     });
+
+
+function showToast(message, type="success") {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = "toast " + type;
+  toast.innerText = message;
+  container.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3000);
+}
+
+let currentPage = 1;
+const rowsPerPage = 5;
+let allEmployees = [];
+
+function renderEmployeesWithPagination(employees) {
+  allEmployees = employees;
+  renderPage();
+}
+
+function renderPage() {
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const paginated = allEmployees.slice(start, end);
+  renderEmployees(paginated);
+  renderPaginationControls();
+}
+
+function renderPaginationControls() {
+  const container = document.getElementById("pagination-controls");
+  if (!container) return;
+  container.innerHTML = `
+    <button onclick="prevPage()" ${currentPage===1?'disabled':''}>Previous</button>
+    <span> Page ${currentPage} of ${Math.ceil(allEmployees.length/rowsPerPage)} </span>
+    <button onclick="nextPage()" ${currentPage===Math.ceil(allEmployees.length/rowsPerPage)?'disabled':''}>Next</button>
+  `;
+}
+
+function nextPage() {
+  if (currentPage < Math.ceil(allEmployees.length/rowsPerPage)) {
+    currentPage++;
+    renderPage();
+  }
+}
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderPage();
+  }
+}
 
 </script>
 </body>
