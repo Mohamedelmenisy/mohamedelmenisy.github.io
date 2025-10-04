@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InfiniBase - User Activity Insights</title>
+  <title>InfiniBase - Knowledge Base Insights</title>
   
   <!-- Favicon -->
   <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
@@ -25,6 +25,9 @@
       --border-radius: 0.5rem;
       --border-radius-lg: 0.75rem;
       --header-height: 65px;
+      --yes-color: #22c55e;
+      --no-color: #ef4444;
+      --rating-color: #fbbf24;
     }
     html, body {
       height: 100%; margin: 0;
@@ -65,6 +68,24 @@
       background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
       border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.25rem;
     }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .card-header h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .card-header h2 i { color: var(--primary-color); }
+
     .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
     .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; }
     .filters .form-group label {
@@ -78,46 +99,29 @@
     }
     .filters .search-group { flex-basis: 350px; }
 
-    .stats-grid {
+    .insights-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
       gap: 1.25rem;
     }
-    .stat-card { text-align: center; padding: 0.5rem; }
-    .stat-card h2 {
-        font-size: 1rem; font-weight: 500;
-        color: var(--text-color-muted); margin-bottom: 0.5rem;
-    }
-    .stat-card .stat-value { font-size: 2.5rem; font-weight: 700; }
-    .stat-card .stat-value.helpful { color: #22c55e; }
-    .stat-card .stat-value.not-helpful { color: #ef4444; }
 
-    .chart-wrapper { position: relative; height: 300px; }
+    .chart-wrapper { position: relative; height: 320px; }
 
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { overflow-x: auto; max-height: 500px; }
     table { width: 100%; border-collapse: collapse; min-width: 900px; }
     th, td {
       padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color);
       font-size: 0.9rem; text-align: left; /* LTR support */
+      white-space: nowrap;
     }
     thead th {
       background-color: #111827; color: var(--text-color-muted); font-size: 0.75rem;
       text-transform: uppercase; letter-spacing: 0.05em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
     tbody tr:hover { background-color: #2a3546; }
-
-    /* Dynamic Action Styles */
-    .action-badge {
-        display: inline-block;
-        padding: 0.25em 0.7em;
-        border-radius: 0.3rem;
-        font-weight: 600;
-        text-transform: capitalize;
-        font-size: 0.8rem;
-    }
-    .action-viewer { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-    .action-updated { background-color: rgba(249, 115, 22, 0.2); color: #fb923c; }
-    .action-deleted { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
 
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
     .spinner { width:50px; height:50px; border-radius:50%; border:4px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
@@ -140,7 +144,7 @@
   <header class="page-header">
     <div class="header-title">
         <i class="fas fa-chart-pie logo-icon"></i>
-        <h1>User Activity Insights</h1>
+        <h1>Knowledge Base Insights</h1>
     </div>
     <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
   </header>
@@ -150,83 +154,99 @@
     <div id="spinner" class="spinner-overlay" style="display: none;"><div class="spinner"></div></div>
 
     <div class="card filters">
-      <div class="form-group">
-        <label for="timeFilter">Time Range</label>
-        <select id="timeFilter">
-          <option value="all">All Time</option>
-          <option value="today">Today</option>
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="roleFilter">User Role</label>
-        <select id="roleFilter">
-          <option value="all">All</option>
-          <option value="admin">Admin</option>
-          <option value="agent">Agent</option>
-        </select>
-      </div>
       <div class="form-group search-group">
-        <label for="searchInput">Search by Name, Email, or Case</label>
-        <!-- MODIFICATION: Added autocomplete="off" -->
-        <input id="searchInput" type="text" placeholder="Type to search..." autocomplete="off" />
+        <label for="searchInput">Search Tables</label>
+        <input id="searchInput" type="text" placeholder="Search by title, name, email, or section..." autocomplete="off" />
       </div>
-      <!-- MODIFICATION: Added margin-left to the button -->
-      <button id="exportBtn" class="button-secondary" style="margin-left: 0.5rem;"><i class="fas fa-file-csv"></i> Export CSV</button>
+      <button id="exportBtn" class="button-secondary" style="margin-left: 0.5rem;"><i class="fas fa-file-csv"></i> Export All Data</button>
     </div>
-
-    <div class="card stats-grid">
-      <div class="stat-card">
-        <h2>Total Activities</h2>
-        <p id="totalActivities" class="stat-value">0</p>
-      </div>
-      <div class="stat-card">
-        <h2>Helpful Ratings</h2>
-        <p id="helpfulCount" class="stat-value helpful">0</p>
-      </div>
-      <div class="stat-card">
-        <h2>Not Helpful Ratings</h2>
-        <p id="notHelpfulCount" class="stat-value not-helpful">0</p>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="card">
-        <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1.5rem;">Feedback Distribution</h2>
-        <div class="chart-wrapper">
-            <canvas id="feedbackChart"></canvas>
+    
+    <div class="insights-grid">
+        <div class="card">
+            <div class="card-header" style="border: none; padding-bottom: 0;">
+                <h2><i class="fas fa-chart-bar"></i>Activity by Section</h2>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="activityBySectionChart"></canvas>
+            </div>
         </div>
-      </div>
-      <div class="card">
-        <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1.5rem;">Top Active Users</h2>
-        <div class="chart-wrapper">
-            <canvas id="activeUsersChart"></canvas>
+        <div class="card">
+            <div class="card-header" style="border: none; padding-bottom: 0;">
+                <h2><i class="fas fa-fire"></i>Top Viewed Articles</h2>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="topArticlesChart"></canvas>
+            </div>
         </div>
-      </div>
     </div>
 
+
+    <!-- Article Insights Table -->
     <div class="card">
-      <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:1rem;">Recent Activities</h2>
+      <div class="card-header">
+        <h2><i class="fas fa-newspaper"></i>Article Performance</h2>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Case/Article</th>
-              <th>Section</th>
-              <th>Action</th>
-              <th>Activity Time</th>
+              <th>Article Title</th>
+              <th>Total Views</th>
+              <th>Avg Rating (1=Helpful)</th>
+              <th>Total Feedbacks</th>
+              <th>Last Viewed (Egypt Time)</th>
+              <th>Last Viewed By</th>
             </tr>
           </thead>
-          <tbody id="activityTable"></tbody>
+          <tbody id="articleInsightsTable"></tbody>
         </table>
       </div>
-      <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-        <button id="loadMoreBtn" class="button-secondary">Load More</button>
-      </div>
     </div>
+    
+    <!-- User Insights Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-users"></i>User Engagement</h2>
+        </div>
+        <div class="table-wrap">
+            <table>
+            <thead>
+                <tr>
+                <th>User Name</th>
+                <th>Email</th>
+                <th>Total Articles Viewed</th>
+                <th>Unique Articles Viewed</th>
+                <th>Average Feedback Rating</th>
+                <th>Last Activity (Egypt Time)</th>
+                </tr>
+            </thead>
+            <tbody id="userInsightsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section Insights Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-folder-tree"></i>Section Performance</h2>
+        </div>
+        <div class="table-wrap">
+            <table>
+            <thead>
+                <tr>
+                <th>Section Name</th>
+                <th>Total Articles</th>
+                <th>Total Views</th>
+                <th>Average Rating</th>
+                <th>Total Feedbacks</th>
+                <th>Last Activity (Egypt Time)</th>
+                </tr>
+            </thead>
+            <tbody id="sectionInsightsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
   </div>
 </div>
 
@@ -247,25 +267,15 @@
 
 
   <script type="module">
-    // Make sure you have a supabase.js file that exports the supabase client
     import { supabase } from './supabase.js';
 
-    let allActivities = []; // Holds all data fetched from the server
-    let filteredActivities = []; // Holds the currently filtered data
-    
-    let feedbackStats = { helpful: 0, notHelpful: 0 };
-    let topUsers = [];
-    let currentPage = 1;
-    const pageSize = 15; // Number of items per page
+    let allInsights = { articles: [], users: [], sections: [] };
+    let filteredInsights = { articles: [], users: [], sections: [] };
 
-    const tableBody = document.getElementById('activityTable');
-    const totalActivitiesEl = document.getElementById('totalActivities');
-    const helpfulCountEl = document.getElementById('helpfulCount');
-    const notHelpfulCountEl = document.getElementById('notHelpfulCount');
     const toast = document.getElementById('toast');
     const spinner = document.getElementById('spinner');
 
-    let feedbackChart = null, activeUsersChart = null;
+    let activityBySectionChart = null, topArticlesChart = null;
 
     function showSpinner(show) { spinner.style.display = show ? 'flex' : 'none'; }
 
@@ -275,167 +285,139 @@
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
+    
+    function escapeHtml(unsafe) {
+      if (unsafe === null || unsafe === undefined) return '';
+      return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
-
-        const chartOptions = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { labels: { color: legendColor, font: { family: 'Inter', size: 12 } } },
-                tooltip: { mode: 'index', intersect: false }
-            },
-            scales: {
-                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor, drawBorder: false } },
-                x: { ticks: { color: ticksColor }, grid: { display: false } }
-            }
-        };
-        // For doughnut charts, we don't need scales.
-        if(type === 'doughnut') {
-            delete chartOptions.scales;
-            // Also, prevent the chart from rendering if there's no data.
-            if (data.every(item => item === 0)) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                // Optionally, display a message
-                ctx.font = "16px 'Inter'";
-                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
-                ctx.textAlign = "center";
-                ctx.fillText("No feedback data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return null;
-            }
+        const defaultOptions = { responsive: true, maintainAspectRatio: false };
+        if (type === 'bar') {
+            return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: { ...defaultOptions, scales: { y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor }, grid: { display: false } } } } });
         }
+        return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: { ...defaultOptions, plugins: { legend: { position: 'right', labels: { color: legendColor } } } } });
+    }
+    
+    function renderTables() {
+        const { articles, users, sections } = filteredInsights;
+        
+        document.getElementById('articleInsightsTable').innerHTML = articles.map(item => `
+            <tr>
+                <td>${escapeHtml(item.article_title)}</td>
+                <td>${item.total_views}</td>
+                <td>${item.avg_rating}</td>
+                <td>${item.total_feedbacks}</td>
+                <td>${escapeHtml(item.last_view_egypt)}</td>
+                <td>${escapeHtml(item.last_viewed_by)}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching articles found.</td></tr>';
 
-        return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors, borderColor: 'transparent' }] }, options: chartOptions });
+        document.getElementById('userInsightsTable').innerHTML = users.map(item => `
+            <tr>
+                <td>${escapeHtml(item.user_name)}</td>
+                <td>${escapeHtml(item.user_email)}</td>
+                <td>${item.total_articles_viewed}</td>
+                <td>${item.unique_articles_viewed}</td>
+                <td>${item.avg_feedback_rating}</td>
+                <td>${escapeHtml(item.last_activity_egypt)}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching users found.</td></tr>';
+
+        document.getElementById('sectionInsightsTable').innerHTML = sections.map(item => `
+            <tr>
+                <td>${escapeHtml(item.section_name)}</td>
+                <td>${item.total_articles}</td>
+                <td>${item.total_views}</td>
+                <td>${item.avg_rating}</td>
+                <td>${item.total_feedbacks}</td>
+                <td>${escapeHtml(item.last_activity_egypt)}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching sections found.</td></tr>';
     }
 
-    function getActionClass(action) {
-        const actionLower = (action || 'viewer').toLowerCase();
-        if (actionLower === 'updated') return 'action-updated';
-        if (actionLower === 'deleted') return 'action-deleted';
-        return 'action-viewer'; // Default for 'viewer' or others
-    }
+    function renderCharts() {
+        // Activity by Section Chart
+        if (activityBySectionChart) activityBySectionChart.destroy();
+        const sectionLabels = allInsights.sections.map(s => s.section_name);
+        const sectionViews = allInsights.sections.map(s => s.total_views);
+        activityBySectionChart = createChart(document.getElementById('activityBySectionChart').getContext('2d'), 'doughnut', sectionLabels, sectionViews, 'Total Views', ['#6366F1', '#22C55E', '#FBBF24', '#EC4899', '#38BDF8']);
 
-    function renderActivities() {
-      const end = currentPage * pageSize;
-      const paginated = filteredActivities.slice(0, end);
-
-      tableBody.innerHTML = paginated.map((act) => {
-          return `<tr>
-            <td>${escapeHtml(act.user_name) || 'N/A'}</td>
-            <td>${escapeHtml(act.user_email) || 'N/A'}</td>
-            <td>${escapeHtml(act.case_title) || '-'}</td>
-            <td>${escapeHtml(act.section) || '-'}</td>
-            <td><span class="action-badge ${getActionClass(act.action)}">${escapeHtml(act.action)}</span></td>
-            <td>${act.activity_time ? new Date(act.activity_time).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}</td>
-          </tr>`;
-      }).join('');
-
-      totalActivitiesEl.textContent = filteredActivities.length;
-      document.getElementById('loadMoreBtn').style.display = end < filteredActivities.length ? 'inline-flex' : 'none';
-    }
-
-    function renderFeedback() {
-      helpfulCountEl.textContent = feedbackStats.helpful;
-      notHelpfulCountEl.textContent = feedbackStats.notHelpful;
-      if (feedbackChart) feedbackChart.destroy();
-      
-      const ctx = document.getElementById('feedbackChart').getContext('2d');
-      feedbackChart = createChart(ctx, 'doughnut',
-        ['Helpful', 'Not Helpful'],
-        [feedbackStats.helpful, feedbackStats.notHelpful],
-        'Feedback',
-        ['#10B981', '#EF4444']
-      );
-    }
-
-    function renderTopUsers() {
-      if (activeUsersChart) activeUsersChart.destroy();
-      const labels = topUsers.map(u => u.user_name || 'Unknown');
-      const data = topUsers.map(u => u.activity_count || 0);
-      const ctx = document.getElementById('activeUsersChart').getContext('2d');
-      activeUsersChart = createChart(ctx, 'bar', labels, data, 'Activities', '#6366F1');
+        // Top 5 Viewed Articles Chart
+        if (topArticlesChart) topArticlesChart.destroy();
+        const topArticles = [...allInsights.articles].sort((a,b) => b.total_views - a.total_views).slice(0, 5);
+        const articleLabels = topArticles.map(a => a.article_title);
+        const articleViews = topArticles.map(a => a.total_views);
+        topArticlesChart = createChart(document.getElementById('topArticlesChart').getContext('2d'), 'bar', articleLabels, articleViews, 'Total Views', '#6366F1');
     }
 
     function applyFilters() {
-        const timeFilter = document.getElementById('timeFilter').value;
-        const roleFilter = document.getElementById('roleFilter').value;
         const search = document.getElementById('searchInput').value.trim().toLowerCase();
         
-        filteredActivities = allActivities.filter(a => {
-            const now = new Date();
-            const ts = new Date(a.activity_time);
-
-            // Time filter
-            let timeMatch = true;
-            if (timeFilter !== 'all') {
-                if (isNaN(ts)) { timeMatch = false; }
-                else if (timeFilter === 'today') { timeMatch = ts.toDateString() === now.toDateString(); }
-                else if (timeFilter === '7d') { timeMatch = (now - ts) / (1000*60*60*24) <= 7; }
-                else if (timeFilter === '30d') { timeMatch = (now - ts) / (1000*60*60*24) <= 30; }
-            }
-
-            // Role filter
-            const roleMatch = (roleFilter === 'all') || (a.role || '').toLowerCase() === roleFilter;
-
-            // Search filter
-            const searchMatch = !search ||
-                (a.user_name || '').toLowerCase().includes(search) ||
-                (a.user_email || '').toLowerCase().includes(search) ||
-                (a.case_title || '').toLowerCase().includes(search);
-
-            return timeMatch && roleMatch && searchMatch;
-        });
-
-        currentPage = 1; // Reset page on new filter
-        renderActivities();
+        if (!search) {
+            filteredInsights = { ...allInsights };
+        } else {
+            filteredInsights.articles = allInsights.articles.filter(a => a.article_title.toLowerCase().includes(search));
+            filteredInsights.users = allInsights.users.filter(u => u.user_name?.toLowerCase().includes(search) || u.user_email?.toLowerCase().includes(search));
+            filteredInsights.sections = allInsights.sections.filter(s => s.section_name.toLowerCase().includes(search));
+        }
+        renderTables();
     }
-
+    
     function exportCSV() {
-        const headers = ['User','Email','Case','Section','Action','Activity Time'];
-        let csv = headers.join(',') + '\n';
-        filteredActivities.forEach(a => {
-            const row = [a.user_name, a.user_email, a.case_title, a.section, a.action, a.activity_time];
-            csv += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\n';
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'user_activities.csv'; a.click();
-        URL.revokeObjectURL(url);
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        const generateCsvSection = (title, headers, data) => {
+            let sectionCsv = `${title}\n`;
+            sectionCsv += headers.join(',') + '\n';
+            data.forEach(item => {
+                const row = headers.map(header => `"${String(item[header.toLowerCase().replace(/ /g, '_')] || '').replace(/"/g, '""')}"`);
+                sectionCsv += row.join(',') + '\n';
+            });
+            return sectionCsv + '\n';
+        };
+
+        csvContent += generateCsvSection("Article Performance", ["article_title", "total_views", "avg_rating", "total_feedbacks", "last_view_egypt", "last_viewed_by"], allInsights.articles);
+        csvContent += generateCsvSection("User Engagement", ["user_name", "user_email", "total_articles_viewed", "unique_articles_viewed", "avg_feedback_rating", "last_activity_egypt"], allInsights.users);
+        csvContent += generateCsvSection("Section Performance", ["section_name", "total_articles", "total_views", "avg_rating", "total_feedbacks", "last_activity_egypt"], allInsights.sections);
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "infinibase_insights.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    async function initData() {
+    async function fetchData() {
       showSpinner(true);
       try {
-        const [actsRes, fbRes, tuRes] = await Promise.all([
-            supabase.rpc('get_user_activity_feed'),
-            supabase.rpc('get_feedback_stats'),
-            supabase.rpc('get_top_active_users', { limit_count: 5 })
+        const [articles, users, sections] = await Promise.all([
+            supabase.from('v_article_insights').select('*'),
+            supabase.from('v_user_insights').select('*'),
+            supabase.from('v_section_insights').select('*')
         ]);
 
-        if (actsRes.error) throw new Error(actsRes.error.message);
-        allActivities = Array.isArray(actsRes.data) ? actsRes.data : [];
-        allActivities.sort((a,b) => new Date(b.activity_time) - new Date(a.activity_time));
+        if (articles.error) throw new Error(`Article Insights: ${articles.error.message}`);
+        if (users.error) throw new Error(`User Insights: ${users.error.message}`);
+        if (sections.error) throw new Error(`Section Insights: ${sections.error.message}`);
         
-        if (fbRes.data) {
-          const fbData = fbRes.data;
-          feedbackStats.helpful = fbData.find(f => f.rating_type === 'helpful')?.count || 0;
-          feedbackStats.notHelpful = fbData.find(f => f.rating_type === 'not helpful')?.count || 0;
-        }
-
-        if (tuRes.data) {
-          topUsers = tuRes.data;
-        }
-
-        applyFilters(); // Apply default filters and render
-        renderFeedback();
-        renderTopUsers();
+        allInsights = {
+            articles: articles.data || [],
+            users: users.data || [],
+            sections: sections.data || []
+        };
+        
+        applyFilters();
+        renderCharts();
 
       } catch (e) {
         console.error('Error loading initial data:', e);
-        showToast('Failed to load data. Please try again.');
+        showToast(`Failed to load data: ${e.message}`);
       } finally {
         showSpinner(false);
       }
@@ -453,7 +435,19 @@
           document.getElementById('restricted-card').style.display = 'flex';
         } else {
           document.getElementById('dashboard').style.visibility = 'visible';
-          initData();
+          await fetchData();
+
+          // Set up real-time subscriptions
+          supabase.channel('public:activity_log_and_feedback')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => {
+              console.log('Real-time activity change received!', payload);
+              fetchData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, (payload) => {
+              console.log('Real-time feedback change received!', payload);
+              fetchData();
+            })
+            .subscribe();
         }
       } catch (e) {
         console.error('Admin check failed:', e);
@@ -461,16 +455,8 @@
       }
     }
 
-    function escapeHtml(unsafe) {
-      if (unsafe === null || unsafe === undefined) return '';
-      return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
     // Event Listeners
-    ['timeFilter', 'roleFilter', 'searchInput'].forEach(id => {
-        document.getElementById(id).addEventListener('input', applyFilters);
-    });
-    document.getElementById('loadMoreBtn').onclick = () => { currentPage++; renderActivities(); };
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('exportBtn').onclick = exportCSV;
 
     // Start the application
