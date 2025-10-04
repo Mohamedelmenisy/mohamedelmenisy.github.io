@@ -433,7 +433,7 @@
 <script type="module">
     import { supabase } from './supabase.js';
 
-    // Edge function endpoints (تم التعديل هنا)
+    // Edge function endpoints
     const EDGE_ADD_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/dynamic-endpoint';
     const EDGE_DELETE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/bright-responder';
 
@@ -780,14 +780,17 @@
                 alert('User updated successfully.');
                 employeeModal.classList.remove('show');
             }
-        } else { // Create new user via Edge Function (no password required from the UI)
+        } else { // Create new user via Edge Function
             const email = document.getElementById('employee-email').value;
+            const authHeader = await getAuthHeader(); // <-- تم التعديل هنا
+            if (!authHeader) return; // Stop if no auth header
 
             try {
                 const res = await fetch(EDGE_ADD_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader // <-- تم التعديل هنا
                     },
                     body: JSON.stringify({ email, ...userMetadata })
                 });
@@ -814,11 +817,16 @@
 
     async function handleDelete(e) {
         const userId = e.currentTarget.dataset.userId;
+        const authHeader = await getAuthHeader(); // <-- تم التعديل هنا
+        if (!authHeader) return; // Stop if no auth header
 
         try {
             const res = await fetch(EDGE_DELETE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authHeader // <-- تم التعديل هنا
+                },
                 body: JSON.stringify({ user_id: userId })
             });
             if (!res.ok) {
