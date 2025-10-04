@@ -1,3 +1,9 @@
+code
+Html
+play_circle
+download
+content_copy
+expand_less
 <!DOCTYPE html>
 <html lang="ar" dir="ltr">
 <head>
@@ -763,13 +769,13 @@
         e.preventDefault();
         const id = document.getElementById('employee-id').value;
         const password = document.getElementById('employee-password').value;
-        const userMetadata = {
-            name: document.getElementById('employee-name').value,
-            role: document.getElementById('employee-role').value,
-            department: document.getElementById('employee-department').value,
-        };
 
         if (id) { // Update existing user
+             const userMetadata = {
+                name: document.getElementById('employee-name').value,
+                role: document.getElementById('employee-role').value,
+                department: document.getElementById('employee-department').value,
+            };
             if (password) {
                  alert("Password changes should be handled via a dedicated, secure server function for security.");
             }
@@ -781,18 +787,26 @@
                 employeeModal.classList.remove('show');
             }
         } else { // Create new user via Edge Function
-            const email = document.getElementById('employee-email').value;
-            const authHeader = await getAuthHeader(); // <-- تم التعديل هنا
-            if (!authHeader) return; // Stop if no auth header
+            const authHeader = await getAuthHeader();
+            if (!authHeader) return;
+
+            // Construct payload with keys expected by the backend
+            const payload = {
+                full_name: document.getElementById('employee-name').value,
+                email: document.getElementById('employee-email').value,
+                department: document.getElementById('employee-department').value,
+                role: document.getElementById('employee-role').value,
+                password: document.getElementById('employee-password').value
+            };
 
             try {
                 const res = await fetch(EDGE_ADD_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': authHeader // <-- تم التعديل هنا
+                        'Authorization': authHeader
                     },
-                    body: JSON.stringify({ email, ...userMetadata })
+                    body: JSON.stringify(payload) // Send the new payload
                 });
 
                 if (!res.ok) {
@@ -817,15 +831,15 @@
 
     async function handleDelete(e) {
         const userId = e.currentTarget.dataset.userId;
-        const authHeader = await getAuthHeader(); // <-- تم التعديل هنا
-        if (!authHeader) return; // Stop if no auth header
+        const authHeader = await getAuthHeader();
+        if (!authHeader) return; 
 
         try {
             const res = await fetch(EDGE_DELETE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': authHeader // <-- تم التعديل هنا
+                    'Authorization': authHeader
                 },
                 body: JSON.stringify({ user_id: userId })
             });
