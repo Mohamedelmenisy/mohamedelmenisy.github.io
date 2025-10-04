@@ -27,6 +27,8 @@
             --role-agent-bg: rgba(59, 130, 246, 0.2);
             --role-agent-text: #93c5fd;
             --header-height: 70px;
+            --toast-success-bg: #22c55e;
+            --toast-error-bg: #ef4444;
         }
         html, body {
             height: 100%; margin: 0;
@@ -69,6 +71,7 @@
             display: inline-flex; align-items: center; gap: 0.5rem;
         }
         .button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
+        .button:disabled { background-color: var(--border-color); cursor: not-allowed; transform: none; }
         .button-secondary {
             background-color: var(--bg-color-alt); color: var(--text-color);
             border: 1px solid var(--border-color);
@@ -83,7 +86,6 @@
             border-radius: var(--border-radius-lg);
             padding: 1.5rem;
             overflow: hidden;
-            height: 100%;
             display: flex;
             flex-direction: column;
         }
@@ -166,7 +168,7 @@
             font-size: 1rem;
         }
 
-        .table-container { overflow-x: auto; }
+        .table-container { overflow-x: auto; flex-grow: 1; }
         table { width: 100%; border-collapse: collapse; }
         th, td {
             padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);
@@ -223,6 +225,49 @@
             background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
             box-sizing: border-box;
         }
+        
+        /* START: Toast Notification Styles */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+        .toast {
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-weight: 600;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: var(--toast-success-bg); }
+        .toast.error { background-color: var(--toast-error-bg); }
+        /* END: Toast Notification Styles */
+        
+        /* START: Pagination Styles */
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            margin-top: 1.5rem;
+            color: var(--text-color-muted);
+        }
+        /* END: Pagination Styles */
 
         footer {
             text-align: center;
@@ -233,33 +278,11 @@
             font-size: 0.9rem;
         }
     </style>
-
-<style>
-  #toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-  }
-  .toast {
-    display: block;
-    min-width: 200px;
-    margin-bottom: 10px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 14px;
-    animation: fadein 0.5s, fadeout 0.5s 2.5s;
-  }
-  .toast.success { background-color: #28a745; }
-  .toast.error { background-color: #dc3545; }
-  @keyframes fadein { from {opacity: 0;} to {opacity: 1;} }
-  @keyframes fadeout { from {opacity: 1;} to {opacity: 0;} }
-</style>
-<div id="toast-container"></div>
-
 </head>
 <body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
 
 <div id="dashboard" style="visibility: hidden;">
     <header class="page-header">
@@ -343,7 +366,12 @@
                         </thead>
                         <tbody id="employeesTableBody"></tbody>
                     </table>
-<div id='pagination-controls'></div>
+                </div>
+                 <!-- Pagination Controls -->
+                <div class="pagination-controls">
+                    <button id="prevPageBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPageBtn" class="button button-secondary">Next <i class="fas fa-arrow-right"></i></button>
                 </div>
             </div>
             
@@ -467,9 +495,35 @@
     let rolesChart, deptsChart, activityChart, top5Chart = null;
     let currentUser = null;
     let presenceInterval;
+    
+    // Pagination state
+    let currentPage = 1;
+    const rowsPerPage = 5;
 
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    
+    // START: Toast Notification Function
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        toast.innerHTML = `<i class="fas ${iconClass}"></i> ${message}`;
+        
+        container.appendChild(toast);
+
+        // Animate in
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Animate out and remove
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+        }, 3000);
+    }
+    // END: Toast Notification Function
     
     // Fetching from the main users table again for raw data
     async function fetchEmployees() {
@@ -477,7 +531,7 @@
         const { data, error } = await supabase.from('v_users_with_last_seen').select('*').order('name', { ascending: true });
         if (error) { 
             console.error("Error fetching employees:", error);
-            alert("Failed to fetch employees. See console for details.");
+            showToast("Failed to fetch employees.", "error");
             return [];
         }
         return data;
@@ -502,23 +556,20 @@
         document.getElementById('inactive-employees').textContent = data.inactive_employees || 0;
     }
 
-    function renderEmployees(employees) {
+    function renderEmployees(employeesToRender) {
         const tableBody = document.getElementById('employeesTableBody');
         if (!tableBody) return;
 
-        if (employees.length === 0) {
+        if (employeesToRender.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`;
             return;
         }
 
-        tableBody.innerHTML = employees.map(emp => {
+        tableBody.innerHTML = employeesToRender.map(emp => {
             const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             
-            // Prefer last_seen_cairo returned by the DB view (already converted/formatted). If not present, fall back to emp.last_seen and format it.
             let lastSeen = 'Never';
             if (emp.last_seen_cairo) {
-                // If the view returned a human-readable formatted string (e.g. '01/10/2025 07:37:01 PM') show it as-is.
-                // If the view returned a raw timestamp, format it for Cairo as well.
                 try {
                     const s = String(emp.last_seen_cairo);
                     if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(s) || /AM|PM/.test(s)) {
@@ -564,6 +615,25 @@
                 </tr>
             `;
         }).join('');
+    }
+    
+    function setupPagination(filteredEmployees) {
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevPageBtn');
+        const nextBtn = document.getElementById('nextPageBtn');
+        
+        const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
+        
+        if (totalPages <= 1) {
+            document.querySelector('.pagination-controls').classList.add('hidden');
+            return;
+        }
+        
+        document.querySelector('.pagination-controls').classList.remove('hidden');
+
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
     }
     
     function showChart(canvasId, show = true) {
@@ -695,7 +765,9 @@
         });
     }
 
-    function applyFilters() {
+    function applyFilters(resetPage = false) {
+        if(resetPage) currentPage = 1;
+        
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const roleFilter = document.getElementById('roleFilter').value;
 
@@ -705,7 +777,14 @@
             const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
             return matchesSearch && matchesRole;
         });
-        renderEmployees(filtered);
+
+        // Paginate the filtered results
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        const paginatedEmployees = filtered.slice(startIndex, endIndex);
+
+        renderEmployees(paginatedEmployees);
+        setupPagination(filtered);
     }
     
     function exportCSV() {
@@ -779,7 +858,7 @@
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
             console.error('Could not get user session.');
-            alert('Authentication error. Please log in again.');
+            showToast('Authentication error. Please log in again.', 'error');
             return null;
         }
         return `Bearer ${session.access_token}`;
@@ -797,20 +876,24 @@
                 department: document.getElementById('employee-department').value,
             };
             if (password) {
-                 alert("Password changes should be handled via a dedicated, secure server function for security.");
+                showToast("Password changes should be handled via a dedicated, secure server function for security.", "error");
             }
             const { error } = await supabase.from('users').update({ ...userMetadata }).eq('id', id);
             if (error) {
-                alert(`Error updating user: ${error.message}`);
+                showToast(`Error updating user: ${error.message}`, 'error');
             } else {
-                alert('User updated successfully.');
+                showToast('User updated successfully.', 'success');
                 employeeModal.classList.remove('show');
+                // Auto Refresh Data
+                allEmployees = await fetchEmployees();
+                applyFilters();
+                updateKPIs(allEmployees);
+                await renderAllCharts(allEmployees);
             }
         } else { // Create new user via Edge Function
             const authHeader = await getAuthHeader();
             if (!authHeader) return;
 
-            // Construct payload with keys expected by the backend
             const payload = {
                 full_name: document.getElementById('employee-name').value,
                 email: document.getElementById('employee-email').value,
@@ -822,11 +905,8 @@
             try {
                 const res = await fetch(EDGE_ADD_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': authHeader
-                    },
-                    body: JSON.stringify(payload) // Send the new payload
+                    headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!res.ok) {
@@ -834,17 +914,17 @@
                     throw new Error(text || 'Failed to create employee');
                 }
 
-                alert('Employee created successfully!');
+                showToast('Employee created successfully!', 'success');
                 employeeModal.classList.remove('show');
 
-                // Refresh list
+                // Auto Refresh Data
                 allEmployees = await fetchEmployees();
-                applyFilters();
+                applyFilters(true); // reset to page 1
                 updateKPIs(allEmployees);
                 await renderAllCharts(allEmployees);
                 await updateEngagementStats();
             } catch (err) {
-                alert(`Error creating employee: ${err.message}`);
+                showToast(`Error creating employee: ${err.message}`, 'error');
             }
         }
     }
@@ -857,10 +937,7 @@
         try {
             const res = await fetch(EDGE_DELETE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': authHeader
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
                 body: JSON.stringify({ user_id: userId })
             });
             if (!res.ok) {
@@ -868,17 +945,17 @@
                 throw new Error(text || 'Failed to delete employee');
             }
 
-            alert('Employee deleted successfully!');
+            showToast('Employee deleted successfully!', 'success');
             deleteConfirmModal.classList.remove('show');
 
-            // Refresh list
+            // Auto Refresh Data
             allEmployees = await fetchEmployees();
             applyFilters();
             updateKPIs(allEmployees);
             await renderAllCharts(allEmployees);
             await updateEngagementStats();
         } catch (err) {
-            alert(`Error deleting employee: ${err.message}`);
+            showToast(`Error deleting employee: ${err.message}`, 'error');
         }
     }
 
@@ -938,7 +1015,7 @@
                 // Initial Load
                 allEmployees = await fetchEmployees();
                 updateKPIs(allEmployees);
-                renderEmployees(allEmployees);
+                applyFilters(); // Initially render with pagination
                 await renderAllCharts(allEmployees);
                 await updateEngagementStats();
                 setupModals();
@@ -958,60 +1035,27 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         checkAdminAccess();
-        document.getElementById('searchInput').addEventListener('input', applyFilters);
-        document.getElementById('roleFilter').addEventListener('change', applyFilters);
+        document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
+        document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
         document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+        
+        // Pagination Event Listeners
+        document.getElementById('prevPageBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                applyFilters();
+            }
+        });
+        document.getElementById('nextPageBtn').addEventListener('click', () => {
+            // Logic to check if next page exists is handled by disabled state,
+            // but this is a safe check.
+            const totalPages = Math.ceil(allEmployees.length / rowsPerPage);
+            if(currentPage < totalPages) {
+                currentPage++;
+                applyFilters();
+            }
+        });
     });
-
-
-function showToast(message, type="success") {
-  const container = document.getElementById("toast-container");
-  const toast = document.createElement("div");
-  toast.className = "toast " + type;
-  toast.innerText = message;
-  container.appendChild(toast);
-  setTimeout(() => { toast.remove(); }, 3000);
-}
-
-let currentPage = 1;
-const rowsPerPage = 5;
-let allEmployees = [];
-
-function renderEmployeesWithPagination(employees) {
-  allEmployees = employees;
-  renderPage();
-}
-
-function renderPage() {
-  const start = (currentPage - 1) * rowsPerPage;
-  const end = start + rowsPerPage;
-  const paginated = allEmployees.slice(start, end);
-  renderEmployees(paginated);
-  renderPaginationControls();
-}
-
-function renderPaginationControls() {
-  const container = document.getElementById("pagination-controls");
-  if (!container) return;
-  container.innerHTML = `
-    <button onclick="prevPage()" ${currentPage===1?'disabled':''}>Previous</button>
-    <span> Page ${currentPage} of ${Math.ceil(allEmployees.length/rowsPerPage)} </span>
-    <button onclick="nextPage()" ${currentPage===Math.ceil(allEmployees.length/rowsPerPage)?'disabled':''}>Next</button>
-  `;
-}
-
-function nextPage() {
-  if (currentPage < Math.ceil(allEmployees.length/rowsPerPage)) {
-    currentPage++;
-    renderPage();
-  }
-}
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    renderPage();
-  }
-}
 
 </script>
 </body>
