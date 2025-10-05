@@ -88,15 +88,15 @@
 
     .filters-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1.5rem; /* Increased spacing */
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem; /* MODIFICATION: Increased gap for better spacing */
         align-items: flex-end;
     }
     .filters-container .form-group { margin-bottom: 0; }
     .filters-container .form-group label {
-        display: block;
         font-size: 0.85rem; font-weight: 500;
-        color: var(--text-color-muted); margin-bottom: 0.5rem; /* Increased margin */
+        color: var(--text-color-muted); margin-bottom: 0.4rem;
+        display: block; /* Ensures label is on its own line */
     }
     .filters-container input, .filters-container select {
         width: 100%; padding: 0.7rem; border: 1px solid var(--border-color);
@@ -135,6 +135,7 @@
     }
     tbody tr:hover { background-color: #2a3546; }
 
+    /* NEW: Pagination Styles */
     .pagination-controls {
         display: flex;
         justify-content: flex-end;
@@ -196,12 +197,6 @@
             <label for="filterEmployee">Employee</label>
             <select id="filterEmployee">
                 <option value="">All Employees</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="filterSection">Section</label>
-            <select id="filterSection">
-                <option value="">All Sections</option>
             </select>
         </div>
         <div class="form-group">
@@ -349,28 +344,20 @@
       if (unsafe === null || unsafe === undefined) return '';
       return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-
-    function formatEgyptTime(dateString) {
+    
+    // MODIFICATION: Function to format date to Egypt time
+    function formatToEgyptTime(dateString) {
         if (!dateString) return 'N/A';
-        try {
-            // Attempt to create a valid Date object
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return 'Invalid Date';
-            }
-            return date.toLocaleString('en-EG', {
-                timeZone: 'Africa/Cairo',
-                year: 'numeric',
-                month: 'short',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        } catch (e) {
-            console.error("Could not format date:", dateString, e);
-            return 'N/A';
+        // Check if the date string is valid before attempting to format
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return dateString; // Return original string if it's not a valid date
         }
+        return date.toLocaleString('en-EG', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true,
+            timeZone: 'Africa/Cairo'
+        });
     }
 
     function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
@@ -415,11 +402,11 @@
 
         let tableHtml;
         if (tableKey === 'articles') {
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.article_title)}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${formatEgyptTime(item.last_view_egypt)}</td><td>${escapeHtml(item.last_viewed_by)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.article_title)}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(formatToEgyptTime(item.last_view_egypt))}</td><td>${escapeHtml(item.last_viewed_by)}</td></tr>`).join('');
         } else if (tableKey === 'users') {
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.user_email)}</td><td>${item.total_articles_viewed}</td><td>${item.unique_articles_viewed}</td><td>${item.avg_feedback_rating}</td><td>${formatEgyptTime(item.last_activity_egypt)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.user_email)}</td><td>${item.total_articles_viewed}</td><td>${item.unique_articles_viewed}</td><td>${item.avg_feedback_rating}</td><td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td></tr>`).join('');
         } else { // sections
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.section_name)}</td><td>${item.total_articles}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${formatEgyptTime(item.last_activity_egypt)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.section_name)}</td><td>${item.total_articles}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td></tr>`).join('');
         }
         container.innerHTML = tableHtml || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
 
@@ -461,56 +448,60 @@
         topArticlesChart = createChart(document.getElementById('topArticlesChart').getContext('2d'), 'bar', articleLabels, articleViews, 'Total Views', '#6366F1');
     }
 
+    // MODIFICATION: Improved filtering logic
     function applyFilters() {
-        showSpinner(true);
-        const dateFrom = document.getElementById('filterDateFrom').value;
-        const dateTo = document.getElementById('filterDateTo').value;
+        const dateFromStr = document.getElementById('filterDateFrom').value;
+        const dateToStr = document.getElementById('filterDateTo').value;
         const employee = document.getElementById('filterEmployee').value;
-        const section = document.getElementById('filterSection').value;
         const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
 
-        const dateFromObj = dateFrom ? new Date(dateFrom) : null;
-        const dateToObj = dateTo ? new Date(dateTo) : null;
-        if (dateToObj) dateToObj.setHours(23, 59, 59, 999); // Include the whole end day
+        // For date filtering, set time to include the whole day
+        const dateFrom = dateFromStr ? new Date(dateFromStr) : null;
+        if(dateFrom) dateFrom.setHours(0, 0, 0, 0);
 
+        const dateTo = dateToStr ? new Date(dateToStr) : null;
+        if(dateTo) dateTo.setHours(23, 59, 59, 999);
+
+        // Filter Articles
         filteredInsights.articles = allInsights.articles.filter(item => {
             const titleMatch = !caseTitle || item.article_title.toLowerCase().includes(caseTitle);
-            const sectionMatch = !section || item.section_name === section;
             const lastViewDate = item.last_view_egypt ? new Date(item.last_view_egypt) : null;
-            const dateMatch = (!dateFromObj || (lastViewDate && lastViewDate >= dateFromObj)) &&
-                              (!dateToObj || (lastViewDate && lastViewDate <= dateToObj));
-            return titleMatch && sectionMatch && dateMatch;
+            const dateMatch = (!dateFrom || (lastViewDate && lastViewDate >= dateFrom)) &&
+                              (!dateTo || (lastViewDate && lastViewDate <= dateTo));
+            return titleMatch && dateMatch;
         });
 
+        // Filter Users
         filteredInsights.users = allInsights.users.filter(item => {
             const employeeMatch = !employee || item.user_name === employee;
             const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt) : null;
-            const dateMatch = (!dateFromObj || (lastActivity && lastActivity >= dateFromObj)) &&
-                              (!dateToObj || (lastActivity && lastActivity <= dateToObj));
+            const dateMatch = (!dateFrom || (lastActivity && lastActivity >= dateFrom)) &&
+                              (!dateTo || (lastActivity && lastActivity <= dateTo));
             return employeeMatch && dateMatch;
         });
         
+        // Filter Sections
         filteredInsights.sections = allInsights.sections.filter(item => {
-             const sectionMatch = !section || item.section_name === section;
              const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt) : null;
-             const dateMatch = (!dateFromObj || (lastActivity && lastActivity >= dateFromObj)) &&
-                              (!dateToObj || (lastActivity && lastActivity <= dateToObj));
-            return sectionMatch && dateMatch;
+             const dateMatch = (!dateFrom || (lastActivity && lastActivity >= dateFrom)) &&
+                              (!dateTo || (lastActivity && lastActivity <= dateTo));
+            return dateMatch;
         });
 
         // Reset pagination before rendering
         paginationState = { articles: 1, users: 1, sections: 1 };
         renderAllTables();
-        showSpinner(false);
     }
     
     function clearFilters() {
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
         document.getElementById('filterEmployee').value = '';
-        document.getElementById('filterSection').value = '';
         document.getElementById('filterCase').value = '';
-        applyFilters();
+        // After clearing, reset to the full dataset
+        filteredInsights = { ...allInsights };
+        paginationState = { articles: 1, users: 1, sections: 1 };
+        renderAllTables();
     }
     
     function exportCSV() {
@@ -520,10 +511,10 @@
             let sectionCsv = `${title}\n`;
             sectionCsv += headers.join(',') + '\n';
             data.forEach(item => {
-                const row = headers.map(header => {
-                    let value = item[header.toLowerCase().replace(/ /g, '_')] || '';
-                    if (header.includes('egypt')) {
-                        value = formatEgyptTime(value);
+                const row = headers.map(headerKey => {
+                    let value = item[headerKey] || '';
+                    if (headerKey.includes('egypt')) {
+                        value = formatToEgyptTime(value);
                     }
                     return `"${String(value).replace(/"/g, '""')}"`;
                 });
@@ -545,25 +536,15 @@
         document.body.removeChild(link);
     }
     
-    function populateFilters(users, sections) {
-        const userSelect = document.getElementById('filterEmployee');
+    function populateUserFilter(users) {
+        const select = document.getElementById('filterEmployee');
         const uniqueUsers = [...new Map(users.map(item => [item['user_name'], item])).values()];
         uniqueUsers.forEach(user => {
             if (user.user_name) {
                 const option = document.createElement('option');
                 option.value = user.user_name;
                 option.textContent = user.user_name;
-                userSelect.appendChild(option);
-            }
-        });
-        
-        const sectionSelect = document.getElementById('filterSection');
-        sections.forEach(section => {
-             if (section.section_name) {
-                const option = document.createElement('option');
-                option.value = section.section_name;
-                option.textContent = section.section_name;
-                sectionSelect.appendChild(option);
+                select.appendChild(option);
             }
         });
     }
@@ -587,10 +568,9 @@
             sections: sections.data || []
         };
         
-        // Deep copy for filtering
-        filteredInsights = JSON.parse(JSON.stringify(allInsights));
+        filteredInsights = { ...allInsights };
         
-        populateFilters(allInsights.users, allInsights.sections);
+        populateUserFilter(allInsights.users);
         renderAllTables();
         renderCharts();
 
@@ -617,13 +597,13 @@
           await fetchData();
 
           // Set up real-time subscriptions
-          supabase.channel('public:insights_changes')
+          supabase.channel('public:activity_log_and_feedback')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => {
-              console.log('Real-time activity change received, refetching insights.', payload);
+              console.log('Real-time activity change received!', payload);
               fetchData();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, (payload) => {
-              console.log('Real-time feedback change received, refetching insights.', payload);
+              console.log('Real-time feedback change received!', payload);
               fetchData();
             })
             .subscribe();
