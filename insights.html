@@ -88,14 +88,15 @@
 
     .filters-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem; /* Increased spacing */
         align-items: flex-end;
     }
     .filters-container .form-group { margin-bottom: 0; }
     .filters-container .form-group label {
+        display: block;
         font-size: 0.85rem; font-weight: 500;
-        color: var(--text-color-muted); margin-bottom: 0.4rem;
+        color: var(--text-color-muted); margin-bottom: 0.5rem; /* Increased margin */
     }
     .filters-container input, .filters-container select {
         width: 100%; padding: 0.7rem; border: 1px solid var(--border-color);
@@ -134,7 +135,6 @@
     }
     tbody tr:hover { background-color: #2a3546; }
 
-    /* NEW: Pagination Styles */
     .pagination-controls {
         display: flex;
         justify-content: flex-end;
@@ -196,6 +196,12 @@
             <label for="filterEmployee">Employee</label>
             <select id="filterEmployee">
                 <option value="">All Employees</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filterSection">Section</label>
+            <select id="filterSection">
+                <option value="">All Sections</option>
             </select>
         </div>
         <div class="form-group">
@@ -344,6 +350,29 @@
       return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
+    function formatEgyptTime(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            // Attempt to create a valid Date object
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return 'Invalid Date';
+            }
+            return date.toLocaleString('en-EG', {
+                timeZone: 'Africa/Cairo',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch (e) {
+            console.error("Could not format date:", dateString, e);
+            return 'N/A';
+        }
+    }
+
     function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
         if (!ctx) return null;
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
@@ -386,11 +415,11 @@
 
         let tableHtml;
         if (tableKey === 'articles') {
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.article_title)}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(item.last_view_egypt)}</td><td>${escapeHtml(item.last_viewed_by)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.article_title)}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${formatEgyptTime(item.last_view_egypt)}</td><td>${escapeHtml(item.last_viewed_by)}</td></tr>`).join('');
         } else if (tableKey === 'users') {
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.user_email)}</td><td>${item.total_articles_viewed}</td><td>${item.unique_articles_viewed}</td><td>${item.avg_feedback_rating}</td><td>${escapeHtml(item.last_activity_egypt)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.user_email)}</td><td>${item.total_articles_viewed}</td><td>${item.unique_articles_viewed}</td><td>${item.avg_feedback_rating}</td><td>${formatEgyptTime(item.last_activity_egypt)}</td></tr>`).join('');
         } else { // sections
-            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.section_name)}</td><td>${item.total_articles}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(item.last_activity_egypt)}</td></tr>`).join('');
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.section_name)}</td><td>${item.total_articles}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${formatEgyptTime(item.last_activity_egypt)}</td></tr>`).join('');
         }
         container.innerHTML = tableHtml || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
 
@@ -433,44 +462,53 @@
     }
 
     function applyFilters() {
+        showSpinner(true);
         const dateFrom = document.getElementById('filterDateFrom').value;
         const dateTo = document.getElementById('filterDateTo').value;
         const employee = document.getElementById('filterEmployee').value;
+        const section = document.getElementById('filterSection').value;
         const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
 
-        // NOTE: Since views are pre-aggregated, we will perform filtering on the client-side.
-        // For production with large datasets, this filtering should be moved to a Supabase RPC function.
+        const dateFromObj = dateFrom ? new Date(dateFrom) : null;
+        const dateToObj = dateTo ? new Date(dateTo) : null;
+        if (dateToObj) dateToObj.setHours(23, 59, 59, 999); // Include the whole end day
+
         filteredInsights.articles = allInsights.articles.filter(item => {
             const titleMatch = !caseTitle || item.article_title.toLowerCase().includes(caseTitle);
-            // Date filtering is complex on aggregated views, so we filter by title only for now.
-            return titleMatch;
+            const sectionMatch = !section || item.section_name === section;
+            const lastViewDate = item.last_view_egypt ? new Date(item.last_view_egypt) : null;
+            const dateMatch = (!dateFromObj || (lastViewDate && lastViewDate >= dateFromObj)) &&
+                              (!dateToObj || (lastViewDate && lastViewDate <= dateToObj));
+            return titleMatch && sectionMatch && dateMatch;
         });
 
         filteredInsights.users = allInsights.users.filter(item => {
             const employeeMatch = !employee || item.user_name === employee;
-            const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt.replace(' AM', '').replace(' PM', '')) : null;
-            const dateMatch = (!dateFrom || (lastActivity && lastActivity >= new Date(dateFrom))) &&
-                              (!dateTo || (lastActivity && lastActivity <= new Date(dateTo)));
+            const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt) : null;
+            const dateMatch = (!dateFromObj || (lastActivity && lastActivity >= dateFromObj)) &&
+                              (!dateToObj || (lastActivity && lastActivity <= dateToObj));
             return employeeMatch && dateMatch;
         });
         
         filteredInsights.sections = allInsights.sections.filter(item => {
-            // No specific filters for sections yet, can be added if needed
-             const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt.replace(' AM', '').replace(' PM', '')) : null;
-             const dateMatch = (!dateFrom || (lastActivity && lastActivity >= new Date(dateFrom))) &&
-                              (!dateTo || (lastActivity && lastActivity <= new Date(dateTo)));
-            return dateMatch;
+             const sectionMatch = !section || item.section_name === section;
+             const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt) : null;
+             const dateMatch = (!dateFromObj || (lastActivity && lastActivity >= dateFromObj)) &&
+                              (!dateToObj || (lastActivity && lastActivity <= dateToObj));
+            return sectionMatch && dateMatch;
         });
 
         // Reset pagination before rendering
         paginationState = { articles: 1, users: 1, sections: 1 };
         renderAllTables();
+        showSpinner(false);
     }
     
     function clearFilters() {
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
         document.getElementById('filterEmployee').value = '';
+        document.getElementById('filterSection').value = '';
         document.getElementById('filterCase').value = '';
         applyFilters();
     }
@@ -482,7 +520,13 @@
             let sectionCsv = `${title}\n`;
             sectionCsv += headers.join(',') + '\n';
             data.forEach(item => {
-                const row = headers.map(header => `"${String(item[header.toLowerCase().replace(/ /g, '_')] || '').replace(/"/g, '""')}"`);
+                const row = headers.map(header => {
+                    let value = item[header.toLowerCase().replace(/ /g, '_')] || '';
+                    if (header.includes('egypt')) {
+                        value = formatEgyptTime(value);
+                    }
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                });
                 sectionCsv += row.join(',') + '\n';
             });
             return sectionCsv + '\n';
@@ -501,15 +545,25 @@
         document.body.removeChild(link);
     }
     
-    function populateUserFilter(users) {
-        const select = document.getElementById('filterEmployee');
+    function populateFilters(users, sections) {
+        const userSelect = document.getElementById('filterEmployee');
         const uniqueUsers = [...new Map(users.map(item => [item['user_name'], item])).values()];
         uniqueUsers.forEach(user => {
             if (user.user_name) {
                 const option = document.createElement('option');
                 option.value = user.user_name;
                 option.textContent = user.user_name;
-                select.appendChild(option);
+                userSelect.appendChild(option);
+            }
+        });
+        
+        const sectionSelect = document.getElementById('filterSection');
+        sections.forEach(section => {
+             if (section.section_name) {
+                const option = document.createElement('option');
+                option.value = section.section_name;
+                option.textContent = section.section_name;
+                sectionSelect.appendChild(option);
             }
         });
     }
@@ -533,9 +587,10 @@
             sections: sections.data || []
         };
         
-        filteredInsights = { ...allInsights };
+        // Deep copy for filtering
+        filteredInsights = JSON.parse(JSON.stringify(allInsights));
         
-        populateUserFilter(allInsights.users);
+        populateFilters(allInsights.users, allInsights.sections);
         renderAllTables();
         renderCharts();
 
@@ -562,13 +617,13 @@
           await fetchData();
 
           // Set up real-time subscriptions
-          supabase.channel('public:activity_log_and_feedback')
+          supabase.channel('public:insights_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => {
-              console.log('Real-time activity change received!', payload);
+              console.log('Real-time activity change received, refetching insights.', payload);
               fetchData();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'kb_feedback' }, (payload) => {
-              console.log('Real-time feedback change received!', payload);
+              console.log('Real-time feedback change received, refetching insights.', payload);
               fetchData();
             })
             .subscribe();
