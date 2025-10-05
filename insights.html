@@ -86,18 +86,29 @@
     }
     .card-header h2 i { color: var(--primary-color); }
 
-    .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
-    .filters .form-group { display: flex; flex-direction: column; flex-grow: 1; }
-    .filters .form-group label {
+    .filters-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .filters-container .form-group { margin-bottom: 0; }
+    .filters-container .form-group label {
         font-size: 0.85rem; font-weight: 500;
         color: var(--text-color-muted); margin-bottom: 0.4rem;
     }
-    .filters input, .filters select {
+    .filters-container input, .filters-container select {
         width: 100%; padding: 0.7rem; border: 1px solid var(--border-color);
         border-radius: var(--border-radius); background-color: var(--bg-color);
         color: var(--text-color); font-size: 0.9rem;
     }
-    .filters .search-group { flex-basis: 350px; }
+    .filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding-top: 1.5rem; /* Pushes buttons below filters */
+        grid-column: 1 / -1; /* Makes it span full width */
+        justify-content: flex-start;
+    }
 
     .insights-grid {
       display: grid;
@@ -122,6 +133,25 @@
       z-index: 1;
     }
     tbody tr:hover { background-color: #2a3546; }
+
+    /* NEW: Pagination Styles */
+    .pagination-controls {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: var(--text-color-muted);
+    }
+    .pagination-controls button {
+        padding: 0.4rem 0.8rem;
+    }
+    .pagination-controls button:disabled {
+        background-color: var(--border-color);
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
 
     .spinner-overlay{ position:fixed; inset:0; background:rgba(17,24,39,0.8); display:flex; align-items:center; justify-content:center; z-index:1000; }
     .spinner { width:50px; height:50px; border-radius:50%; border:4px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
@@ -153,12 +183,30 @@
     <div id="toast" class="toast"></div>
     <div id="spinner" class="spinner-overlay" style="display: none;"><div class="spinner"></div></div>
 
-    <div class="card filters">
-      <div class="form-group search-group">
-        <label for="searchInput">Search Tables</label>
-        <input id="searchInput" type="text" placeholder="Search by title, name, email, or section..." autocomplete="off" />
-      </div>
-      <button id="exportBtn" class="button-secondary" style="margin-left: 0.5rem;"><i class="fas fa-file-csv"></i> Export All Data</button>
+    <div class="card filters-container">
+        <div class="form-group">
+            <label for="filterDateFrom">From Date</label>
+            <input id="filterDateFrom" type="date">
+        </div>
+        <div class="form-group">
+            <label for="filterDateTo">To Date</label>
+            <input id="filterDateTo" type="date">
+        </div>
+        <div class="form-group">
+            <label for="filterEmployee">Employee</label>
+            <select id="filterEmployee">
+                <option value="">All Employees</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filterCase">Case / Article Title</label>
+            <input id="filterCase" type="text" placeholder="Enter title to search...">
+        </div>
+        <div class="filter-actions">
+            <button id="applyFiltersBtn" class="button"><i class="fas fa-filter"></i> Apply Filters</button>
+            <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
+            <button id="exportBtn" class="button-secondary" style="margin-left: auto;"><i class="fas fa-file-csv"></i> Export All Data</button>
+        </div>
     </div>
     
     <div class="insights-grid">
@@ -201,6 +249,7 @@
           <tbody id="articleInsightsTable"></tbody>
         </table>
       </div>
+      <div class="pagination-controls" id="paginationArticles"></div>
     </div>
     
     <!-- User Insights Table -->
@@ -223,6 +272,7 @@
             <tbody id="userInsightsTable"></tbody>
             </table>
         </div>
+        <div class="pagination-controls" id="paginationUsers"></div>
     </div>
 
     <!-- Section Insights Table -->
@@ -245,6 +295,7 @@
             <tbody id="sectionInsightsTable"></tbody>
             </table>
         </div>
+        <div class="pagination-controls" id="paginationSections"></div>
     </div>
 
   </div>
@@ -271,6 +322,8 @@
 
     let allInsights = { articles: [], users: [], sections: [] };
     let filteredInsights = { articles: [], users: [], sections: [] };
+    let paginationState = { articles: 1, users: 1, sections: 1 };
+    const ROWS_PER_PAGE = 5;
 
     const toast = document.getElementById('toast');
     const spinner = document.getElementById('spinner');
@@ -292,51 +345,76 @@
     }
 
     function createChart(ctx, type, labels, data, dataLabel, backgroundColors) {
+        if (!ctx) return null;
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
-        const defaultOptions = { responsive: true, maintainAspectRatio: false };
+        
+        const defaultOptions = { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: type === 'doughnut' ? 'right' : 'top',
+                    labels: { 
+                        color: legendColor,
+                        font: { size: 14 }
+                    } 
+                },
+                tooltip: {
+                    bodyFont: { size: 14 },
+                    titleFont: { size: 16 }
+                }
+            }
+        };
+        
         if (type === 'bar') {
-            return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: { ...defaultOptions, scales: { y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor }, grid: { display: false } } } } });
+            return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: { ...defaultOptions, scales: { y: { beginAtZero: true, ticks: { color: ticksColor, font: { size: 12 } }, grid: { color: gridColor } }, x: { ticks: { color: ticksColor, font: { size: 12 } }, grid: { display: false } } } } });
         }
-        return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: { ...defaultOptions, plugins: { legend: { position: 'right', labels: { color: legendColor } } } } });
+        return new Chart(ctx, { type, data: { labels, datasets: [{ label: dataLabel, data, backgroundColor: backgroundColors }] }, options: defaultOptions });
     }
     
-    function renderTables() {
-        const { articles, users, sections } = filteredInsights;
-        
-        document.getElementById('articleInsightsTable').innerHTML = articles.map(item => `
-            <tr>
-                <td>${escapeHtml(item.article_title)}</td>
-                <td>${item.total_views}</td>
-                <td>${item.avg_rating}</td>
-                <td>${item.total_feedbacks}</td>
-                <td>${escapeHtml(item.last_view_egypt)}</td>
-                <td>${escapeHtml(item.last_viewed_by)}</td>
-            </tr>
-        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching articles found.</td></tr>';
+    function renderPaginatedTable(tableKey, data, containerId, paginationId) {
+        const page = paginationState[tableKey];
+        const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
+        const start = (page - 1) * ROWS_PER_PAGE;
+        const end = start + ROWS_PER_PAGE;
+        const paginatedData = data.slice(start, end);
 
-        document.getElementById('userInsightsTable').innerHTML = users.map(item => `
-            <tr>
-                <td>${escapeHtml(item.user_name)}</td>
-                <td>${escapeHtml(item.user_email)}</td>
-                <td>${item.total_articles_viewed}</td>
-                <td>${item.unique_articles_viewed}</td>
-                <td>${item.avg_feedback_rating}</td>
-                <td>${escapeHtml(item.last_activity_egypt)}</td>
-            </tr>
-        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching users found.</td></tr>';
+        const container = document.getElementById(containerId);
+        const paginationContainer = document.getElementById(paginationId);
 
-        document.getElementById('sectionInsightsTable').innerHTML = sections.map(item => `
-            <tr>
-                <td>${escapeHtml(item.section_name)}</td>
-                <td>${item.total_articles}</td>
-                <td>${item.total_views}</td>
-                <td>${item.avg_rating}</td>
-                <td>${item.total_feedbacks}</td>
-                <td>${escapeHtml(item.last_activity_egypt)}</td>
-            </tr>
-        `).join('') || '<tr><td colspan="6" style="text-align:center;">No matching sections found.</td></tr>';
+        let tableHtml;
+        if (tableKey === 'articles') {
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.article_title)}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(item.last_view_egypt)}</td><td>${escapeHtml(item.last_viewed_by)}</td></tr>`).join('');
+        } else if (tableKey === 'users') {
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.user_email)}</td><td>${item.total_articles_viewed}</td><td>${item.unique_articles_viewed}</td><td>${item.avg_feedback_rating}</td><td>${escapeHtml(item.last_activity_egypt)}</td></tr>`).join('');
+        } else { // sections
+            tableHtml = paginatedData.map(item => `<tr><td>${escapeHtml(item.section_name)}</td><td>${item.total_articles}</td><td>${item.total_views}</td><td>${item.avg_rating}</td><td>${item.total_feedbacks}</td><td>${escapeHtml(item.last_activity_egypt)}</td></tr>`).join('');
+        }
+        container.innerHTML = tableHtml || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
+
+        // Render pagination controls
+        paginationContainer.innerHTML = `
+            <span>Page ${page} of ${totalPages || 1}</span>
+            <button class="button-secondary" onclick="window.changePage('${tableKey}', -1)" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <button class="button-secondary" onclick="window.changePage('${tableKey}', 1)" ${page === totalPages || totalPages === 0 ? 'disabled' : ''}>Next</button>
+        `;
+    }
+    
+    window.changePage = (tableKey, direction) => {
+        const totalPages = Math.ceil(filteredInsights[tableKey].length / ROWS_PER_PAGE);
+        let newPage = paginationState[tableKey] + direction;
+        if (newPage < 1) newPage = 1;
+        if (newPage > totalPages) newPage = totalPages;
+        paginationState[tableKey] = newPage;
+        renderAllTables();
+    }
+    
+    function renderAllTables() {
+        renderPaginatedTable('articles', filteredInsights.articles, 'articleInsightsTable', 'paginationArticles');
+        renderPaginatedTable('users', filteredInsights.users, 'userInsightsTable', 'paginationUsers');
+        renderPaginatedTable('sections', filteredInsights.sections, 'sectionInsightsTable', 'paginationSections');
     }
 
     function renderCharts() {
@@ -355,16 +433,46 @@
     }
 
     function applyFilters() {
-        const search = document.getElementById('searchInput').value.trim().toLowerCase();
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        const employee = document.getElementById('filterEmployee').value;
+        const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
+
+        // NOTE: Since views are pre-aggregated, we will perform filtering on the client-side.
+        // For production with large datasets, this filtering should be moved to a Supabase RPC function.
+        filteredInsights.articles = allInsights.articles.filter(item => {
+            const titleMatch = !caseTitle || item.article_title.toLowerCase().includes(caseTitle);
+            // Date filtering is complex on aggregated views, so we filter by title only for now.
+            return titleMatch;
+        });
+
+        filteredInsights.users = allInsights.users.filter(item => {
+            const employeeMatch = !employee || item.user_name === employee;
+            const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt.replace(' AM', '').replace(' PM', '')) : null;
+            const dateMatch = (!dateFrom || (lastActivity && lastActivity >= new Date(dateFrom))) &&
+                              (!dateTo || (lastActivity && lastActivity <= new Date(dateTo)));
+            return employeeMatch && dateMatch;
+        });
         
-        if (!search) {
-            filteredInsights = { ...allInsights };
-        } else {
-            filteredInsights.articles = allInsights.articles.filter(a => a.article_title.toLowerCase().includes(search));
-            filteredInsights.users = allInsights.users.filter(u => u.user_name?.toLowerCase().includes(search) || u.user_email?.toLowerCase().includes(search));
-            filteredInsights.sections = allInsights.sections.filter(s => s.section_name.toLowerCase().includes(search));
-        }
-        renderTables();
+        filteredInsights.sections = allInsights.sections.filter(item => {
+            // No specific filters for sections yet, can be added if needed
+             const lastActivity = item.last_activity_egypt ? new Date(item.last_activity_egypt.replace(' AM', '').replace(' PM', '')) : null;
+             const dateMatch = (!dateFrom || (lastActivity && lastActivity >= new Date(dateFrom))) &&
+                              (!dateTo || (lastActivity && lastActivity <= new Date(dateTo)));
+            return dateMatch;
+        });
+
+        // Reset pagination before rendering
+        paginationState = { articles: 1, users: 1, sections: 1 };
+        renderAllTables();
+    }
+    
+    function clearFilters() {
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        document.getElementById('filterEmployee').value = '';
+        document.getElementById('filterCase').value = '';
+        applyFilters();
     }
     
     function exportCSV() {
@@ -380,17 +488,30 @@
             return sectionCsv + '\n';
         };
 
-        csvContent += generateCsvSection("Article Performance", ["article_title", "total_views", "avg_rating", "total_feedbacks", "last_view_egypt", "last_viewed_by"], allInsights.articles);
-        csvContent += generateCsvSection("User Engagement", ["user_name", "user_email", "total_articles_viewed", "unique_articles_viewed", "avg_feedback_rating", "last_activity_egypt"], allInsights.users);
-        csvContent += generateCsvSection("Section Performance", ["section_name", "total_articles", "total_views", "avg_rating", "total_feedbacks", "last_activity_egypt"], allInsights.sections);
+        csvContent += generateCsvSection("Article Performance", ["article_title", "total_views", "avg_rating", "total_feedbacks", "last_view_egypt", "last_viewed_by"], filteredInsights.articles);
+        csvContent += generateCsvSection("User Engagement", ["user_name", "user_email", "total_articles_viewed", "unique_articles_viewed", "avg_feedback_rating", "last_activity_egypt"], filteredInsights.users);
+        csvContent += generateCsvSection("Section Performance", ["section_name", "total_articles", "total_views", "avg_rating", "total_feedbacks", "last_activity_egypt"], filteredInsights.sections);
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "infinibase_insights.csv");
+        link.setAttribute("download", "infinibase_insights_report.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+    
+    function populateUserFilter(users) {
+        const select = document.getElementById('filterEmployee');
+        const uniqueUsers = [...new Map(users.map(item => [item['user_name'], item])).values()];
+        uniqueUsers.forEach(user => {
+            if (user.user_name) {
+                const option = document.createElement('option');
+                option.value = user.user_name;
+                option.textContent = user.user_name;
+                select.appendChild(option);
+            }
+        });
     }
 
     async function fetchData() {
@@ -412,7 +533,10 @@
             sections: sections.data || []
         };
         
-        applyFilters();
+        filteredInsights = { ...allInsights };
+        
+        populateUserFilter(allInsights.users);
+        renderAllTables();
         renderCharts();
 
       } catch (e) {
@@ -456,7 +580,8 @@
     }
 
     // Event Listeners
-    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
     document.getElementById('exportBtn').onclick = exportCSV;
 
     // Start the application
