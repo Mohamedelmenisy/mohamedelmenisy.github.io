@@ -285,8 +285,9 @@
         filteredStore.slice(start, end).forEach(r => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${formatTime(r.modified_at_egypt, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-            <td>${escapeHtml(r.user_name)}</td><td>${escapeHtml(r.user_email)}</td>
+            <td>${formatTime(r.modified_at_egypt || r.modified_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' })}</td>
+            <td>${escapeHtml(r.user_name || r.modified_by_name || '—')}</td>
+            <td>${escapeHtml(r.user_email)}</td>
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
             <td><span class="badge ${r.action}">${r.action}</span></td>
             <td class="details-cell">${escapeHtml(r.details)}</td>
@@ -381,11 +382,23 @@
         }, { ...baseOptions, plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Daily Modification Trend'}}, scales: { ...baseOptions.scales, x: { ...baseOptions.scales.x, type: 'time', time: { unit: 'day' }, grid: { display: false } } } });
         
         // Action Types
-        const actions = filteredStore.reduce((acc, r) => { acc[r.action] = (acc[r.action] || 0) + 1; return acc; }, {});
+        const actions = { Create: 0, Update: 0, Delete: 0 };
+        filteredStore.forEach(r => {
+            const act = (r.action || '').toLowerCase();
+            if (act.includes('create')) actions.Create++;
+            else if (act.includes('update')) actions.Update++;
+            else if (act.includes('delete')) actions.Delete++;
+        });
+
         createChart('actionsPieChart', 'doughnut', {
             labels: ['Create', 'Update', 'Delete'],
-            datasets: [{ data: [actions.Create||0, actions.Update||0, actions.Delete||0], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderColor: '#1f2937', borderWidth: 4, hoverOffset: 8 }]
+            datasets: [{
+                data: [actions.Create, actions.Update, actions.Delete],
+                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                borderColor: '#1f2937', borderWidth: 4, hoverOffset: 8
+            }]
         }, { ...baseOptions, cutout: '65%', plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Action Types'}} });
+
 
         // Top 5 Edited Cases
         const cases = filteredStore.reduce((acc, r) => { if (r.case_title) acc[r.case_title] = (acc[r.case_title] || 0) + 1; return acc; }, {});
@@ -410,7 +423,7 @@
                     <div class="details" title="Old: ${escapeHtml(r.old_value)} \nNew: ${escapeHtml(r.new_value)}">
                         ${escapeHtml(r.details)}
                     </div>
-                    <div class="user">by ${escapeHtml(r.user_name)}</div>
+                    <div class="user">by ${escapeHtml(r.user_name || r.modified_by_name || 'Unknown')}</div>
                 </div>
             </div>`).join('');
         document.getElementById('timelineModal').classList.add('show');
