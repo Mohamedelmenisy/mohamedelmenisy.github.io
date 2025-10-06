@@ -16,6 +16,7 @@
             align-items: center;
             margin: 0;
             padding: 1rem;
+            overflow: hidden; /* This line removes the scrollbar */
         }
 
         /* --- New Styles from Uiverse.io by ammarsaa --- */
@@ -197,7 +198,6 @@
             margin-top: 1.5rem;
             font-weight: 500;
             font-size: 15px;
-            text-align: center; /* Added for better alignment */
         }
 
         .hidden {
@@ -336,16 +336,33 @@
                 if (authResponse.user) {
                     const user = authResponse.user;
 
-                    // *** التغيير الأساسي: تم حذف الخطوة 2 (insert) من هنا لمنع التعارض مع قاعدة البيانات ***
-                    // قاعدة البيانات الآن تقوم بإضافة المستخدم تلقائيًا بعد نجاح الخطوة 1.
+                    // Step 2: Insert profile into the public.users table (CRITICAL STEP)
+                    const { error: insertError } = await supabase
+                        .from('users')
+                        .insert({
+                            id: user.id,
+                            email: user.email,
+                            name: fullName,
+                            role: 'agent' // Default role
+                        });
                     
-                    console.log('Supabase Signup Successful. Profile is being created by the database trigger.', user);
+                    // *** THIS IS THE CORRECTED LOGIC ***
+                    // If inserting the profile fails, stop and show a specific error.
+                    if (insertError) {
+                        console.error("CRITICAL: Failed to insert user profile into public.users table.", insertError);
+                        errorDiv.textContent = `Account created, but profile could not be saved. Please contact support. (Error: ${insertError.message})`;
+                        errorDiv.classList.remove('hidden');
+                        // Do not re-enable the button to avoid confusion
+                        return; 
+                    }
+                    
+                    // Only proceed if both steps were successful
+                    console.log('Supabase Signup Successful & User Profile Created:', user);
                     
                     signupForm.classList.add('hidden');
                     errorDiv.classList.add('hidden');
 
-                    // *** التغيير المطلوب: تم تعديل رسالة النجاح هنا ***
-                    successDiv.innerHTML = "Account Created Successfully! <br> Redirecting to the login page...";
+                    successDiv.innerHTML = "Signup successful! Please check your email to confirm your account, then you can login. <br> Redirecting to login page...";
                     successDiv.classList.remove('hidden');
                     
                     await supabase.auth.signOut();
