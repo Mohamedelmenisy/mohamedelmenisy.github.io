@@ -236,7 +236,7 @@
     async function fetchData() {
       showOverlay();
       try {
-        const { data, error } = await supabase.from('v_case_history_audit').select('*').order('modified_at_cairo', { ascending: false });
+        const { data, error } = await supabase.from('v_case_history_audit').select('*').order('modified_at_egypt', { ascending: false });
         if (error) throw error;
         auditStore = data || [];
         populateFilters();
@@ -271,7 +271,7 @@
         filteredStore.slice(start, end).forEach(r => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${formatTime(r.modified_at_cairo, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+            <td>${formatTime(r.modified_at_egypt, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
             <td>${escapeHtml(r.user_name)}</td><td>${escapeHtml(r.user_email)}</td>
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
             <td><span class="badge ${r.action}">${r.action}</span></td>
@@ -297,7 +297,7 @@
         if (end) end.setHours(23, 59, 59, 999);
 
         filteredStore = auditStore.filter(r => {
-            const recordDate = new Date(r.modified_at_cairo);
+            const recordDate = new Date(r.modified_at_egypt);
             return (!start || recordDate >= start) && (!end || recordDate <= end) &&
                    (!action || r.action === action) && (!section || r.section === section) &&
                    (!search || (r.case_title || '').toLowerCase().includes(search));
@@ -311,7 +311,7 @@
     
     const updateKpiCards = () => {
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
-        const todayRecords = auditStore.filter(r => r.modified_at_cairo?.startsWith(today));
+        const todayRecords = auditStore.filter(r => r.modified_at_egypt?.startsWith(today));
         
         document.getElementById('kpi-today-mods').textContent = todayRecords.length;
         document.getElementById('kpi-new-cases').textContent = todayRecords.filter(r => r.action === 'Create').length;
@@ -322,7 +322,7 @@
         const mostActive = Object.entries(sectionCounts).sort((a,b) => b[1] - a[1])[0];
         document.getElementById('kpi-active-section').textContent = mostActive ? mostActive[0] : '-';
 
-        const lastUpdate = auditStore[0]?.modified_at_cairo;
+        const lastUpdate = auditStore[0]?.modified_at_egypt;
         document.getElementById('kpi-last-update').textContent = lastUpdate ? formatTime(lastUpdate, { hour: '2-digit', minute: '2-digit' }) : '-';
     };
     
@@ -346,7 +346,7 @@
         };
 
         // Daily Activity
-        const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_cairo.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
+        const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_egypt.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
         createChart('dailyActivityChart', 'line', {
             labels: Object.keys(daily).sort(),
             datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.3, fill: true }]
@@ -369,7 +369,7 @@
     };
     
     const showTimeline = (caseId) => {
-        const history = auditStore.filter(r => r.case_id === caseId).sort((a, b) => new Date(a.modified_at_cairo) - new Date(b.modified_at_cairo));
+        const history = auditStore.filter(r => r.case_id === caseId).sort((a, b) => new Date(a.modified_at_egypt) - new Date(b.modified_at_egypt));
         if (!history.length) return;
         
         document.getElementById('timelineCaseTitle').textContent = `Timeline for: ${escapeHtml(history[0].case_title)}`;
@@ -378,7 +378,7 @@
             <div class="timeline-item">
                 <div class="timeline-icon ${r.action}"><i class="fas ${iconMap[r.action]}"></i></div>
                 <div class="timeline-content">
-                    <div class="timestamp">${formatTime(r.modified_at_cairo, { dateStyle: 'medium', timeStyle: 'medium' })}</div>
+                    <div class="timestamp">${formatTime(r.modified_at_egypt, { dateStyle: 'medium', timeStyle: 'medium' })}</div>
                     <div class="details">${escapeHtml(r.details)}</div>
                     <div class="user">by ${escapeHtml(r.user_name)}</div>
                 </div>
