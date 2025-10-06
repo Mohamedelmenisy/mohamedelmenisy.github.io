@@ -18,7 +18,6 @@
             padding: 1rem;
         }
 
-        /* --- New Styles from Uiverse.io by ammarsaa --- */
         .form {
             display: flex;
             flex-direction: column;
@@ -124,7 +123,7 @@
             outline: 0;
             border: 1px solid rgba(105, 105, 105, 0.397);
             border-radius: 10px;
-            box-sizing: border-box; /* Added for consistency */
+            box-sizing: border-box;
         }
 
         .form label .input + span {
@@ -255,6 +254,7 @@
         </form>
     </div>
 
+    <!-- =================== الكود المعدل والنهائي يبدأ من هنا =================== -->
     <script type="module">
         import { supabase } from './supabase.js';
 
@@ -306,8 +306,9 @@
             }
 
             try {
-                // Step 1: Create the authentication user
-                const { data: authResponse, error: authError } = await supabase.auth.signUp({
+                // الخطوة 1: إنشاء مستخدم المصادقة فقط.
+                // الـ Trigger الخفي في قاعدة البيانات سيتولى إنشاء الملف الشخصي في جدول users تلقائيًا.
+                const { data, error } = await supabase.auth.signUp({
                     email: email,
                     password: password,
                     options: {
@@ -317,48 +318,22 @@
                     }
                 });
 
-                if (authError) {
-                    // *** MODIFIED ERROR MESSAGE FOR EXISTING USER ***
-                    if (authError.message.includes("User already registered")) {
+                if (error) {
+                    if (error.message.includes("User already registered")) {
                         errorDiv.innerHTML = 'This email is already registered. <br> Please <a href="login.html" style="color: #f87171; font-weight: bold;">Login</a> instead.';
-                        errorDiv.classList.remove('hidden');
                     } else {
-                        errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
-                        errorDiv.classList.remove('hidden');
+                        errorDiv.textContent = 'Signup failed: ' + error.message;
                     }
+                    errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
                 }
 
-                if (authResponse.user) {
-                    const user = authResponse.user;
-
-                    // Step 2: Insert profile into the public.users table
-                    // This will now succeed after you apply the RLS policy in Supabase
-                    const { error: insertError } = await supabase
-                        .from('users')
-                        .insert({
-                            id: user.id,
-                            email: user.email,
-                            name: fullName,
-                            role: 'agent' // Default role
-                        });
-                    
-                    // If inserting the profile fails, show a specific error.
-                    // This error should not happen for new users after fixing RLS.
-                    if (insertError) {
-                        console.error("CRITICAL: Failed to insert user profile.", insertError);
-                        errorDiv.textContent = `Account created, but profile could not be saved. Please contact support. (Error: ${insertError.message})`;
-                        errorDiv.classList.remove('hidden');
-                        signupBtn.disabled = false;
-                        signupBtn.textContent = 'Sign Up';
-                        return; 
-                    }
-                    
-                    // *** MODIFIED SUCCESS MESSAGE ***
-                    // This part will now be executed correctly.
-                    console.log('Supabase Signup Successful & User Profile Created:', user);
+                // *** التغيير الجوهري: تم حذف كتلة .from('users').insert(...) بالكامل من هنا ***
+                
+                if (data.user) {
+                    console.log('Supabase Signup Successful. Profile created by database trigger.');
                     
                     signupForm.classList.add('hidden');
                     errorDiv.classList.add('hidden');
@@ -366,7 +341,6 @@
                     successDiv.innerHTML = "<strong>Success!</strong> Please check your email to verify your account. <br> Redirecting to the login page shortly...";
                     successDiv.classList.remove('hidden');
                     
-                    // It's good practice to sign out after signup if email verification is needed
                     await supabase.auth.signOut();
                     
                     setTimeout(() => {
@@ -374,10 +348,10 @@
                     }, 4000);
 
                 } else {
-                    errorDiv.textContent = 'An unexpected issue occurred. User data was not returned.';
-                    errorDiv.classList.remove('hidden');
-                    signupBtn.disabled = false;
-                    signupBtn.textContent = 'Sign Up';
+                     errorDiv.textContent = 'An unexpected issue occurred. User data was not returned.';
+                     errorDiv.classList.remove('hidden');
+                     signupBtn.disabled = false;
+                     signupBtn.textContent = 'Sign Up';
                 }
 
             } catch (e) {
@@ -389,5 +363,6 @@
             }
         });
     </script>
+    <!-- =================== الكود المعدل والنهائي ينتهي هنا =================== -->
 </body>
 </html>
