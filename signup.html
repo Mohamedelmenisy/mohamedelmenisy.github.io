@@ -184,8 +184,9 @@
             padding: 12px;
             border-radius: 6px;
             margin-bottom: 1rem;
-            text-align: left;
+            text-align: center;
             font-size: 14px;
+            font-weight: 500;
         }
 
         #successMessageSignup {
@@ -197,6 +198,7 @@
             margin-top: 1.5rem;
             font-weight: 500;
             font-size: 15px;
+            text-align: center;
         }
 
         .hidden {
@@ -274,9 +276,9 @@
 
             errorDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
-
+            
             signupBtn.disabled = true;
-            signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...';
+            signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> &nbsp; Signing Up...';
 
             if (!fullName) {
                 errorDiv.textContent = 'Please enter your full name.';
@@ -316,30 +318,24 @@
                 });
 
                 if (authError) {
-                    // *** THIS IS THE MODIFIED BLOCK ***
-                    if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) {
-                        // Use a simple, direct message and let the default CSS handle the red color styling.
-                        errorDiv.textContent = "This email is already registered. Redirecting to login...";
+                    // *** MODIFIED ERROR MESSAGE FOR EXISTING USER ***
+                    if (authError.message.includes("User already registered")) {
+                        errorDiv.innerHTML = 'This email is already registered. <br> Please <a href="login.html" style="color: #f87171; font-weight: bold;">Login</a> instead.';
                         errorDiv.classList.remove('hidden');
-                        
-                        setTimeout(() => {
-                            window.location.href = "login.html";
-                        }, 2500); // Redirect after 2.5 seconds
                     } else {
                         errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
                         errorDiv.classList.remove('hidden');
-                        emailInput.focus();
                     }
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
                 }
 
-
                 if (authResponse.user) {
                     const user = authResponse.user;
 
-                    // Step 2: Insert profile into the public.users table (CRITICAL STEP)
+                    // Step 2: Insert profile into the public.users table
+                    // This will now succeed after you apply the RLS policy in Supabase
                     const { error: insertError } = await supabase
                         .from('users')
                         .insert({
@@ -349,25 +345,28 @@
                             role: 'agent' // Default role
                         });
                     
-                    // *** THIS IS THE CORRECTED LOGIC ***
-                    // If inserting the profile fails, stop and show a specific error.
+                    // If inserting the profile fails, show a specific error.
+                    // This error should not happen for new users after fixing RLS.
                     if (insertError) {
-                        console.error("CRITICAL: Failed to insert user profile into public.users table.", insertError);
+                        console.error("CRITICAL: Failed to insert user profile.", insertError);
                         errorDiv.textContent = `Account created, but profile could not be saved. Please contact support. (Error: ${insertError.message})`;
                         errorDiv.classList.remove('hidden');
-                        // Do not re-enable the button to avoid confusion
+                        signupBtn.disabled = false;
+                        signupBtn.textContent = 'Sign Up';
                         return; 
                     }
                     
-                    // Only proceed if both steps were successful
+                    // *** MODIFIED SUCCESS MESSAGE ***
+                    // This part will now be executed correctly.
                     console.log('Supabase Signup Successful & User Profile Created:', user);
                     
                     signupForm.classList.add('hidden');
                     errorDiv.classList.add('hidden');
 
-                    successDiv.innerHTML = "Signup successful! Please check your email to confirm your account, then you can login. <br> Redirecting to login page...";
+                    successDiv.innerHTML = "<strong>Success!</strong> Please check your email to verify your account. <br> Redirecting to the login page shortly...";
                     successDiv.classList.remove('hidden');
                     
+                    // It's good practice to sign out after signup if email verification is needed
                     await supabase.auth.signOut();
                     
                     setTimeout(() => {
@@ -375,7 +374,7 @@
                     }, 4000);
 
                 } else {
-                    errorDiv.textContent = 'An unexpected issue occurred. User data was not returned after signup.';
+                    errorDiv.textContent = 'An unexpected issue occurred. User data was not returned.';
                     errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
