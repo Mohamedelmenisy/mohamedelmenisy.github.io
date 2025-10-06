@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -26,7 +26,7 @@
       --header-height: 70px;
     }
     html {
-      font-size: 16px; /* Base font size for responsive scaling with rem */
+      font-size: 16px;
     }
     body {
       height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -40,9 +40,9 @@
       display: none;
     }
     .page-wrapper {
-      padding: 1.5rem 2rem; padding-top: calc(var(--header-height) + 1.5rem);
-      max-width: 1500px;
-      margin: 0 auto; /* Changed: Centered the main container */
+      padding: 1.5rem 2rem; 
+      padding-top: calc(var(--header-height) + 1.5rem);
+      /* Changed: Removed max-width and margin: auto for full-width layout */
     }
     .page-header {
         position: fixed; top: 0; left: 0; right: 0; height: var(--header-height);
@@ -107,7 +107,7 @@
     
     .charts-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); /* Changed: Made the grid responsive */
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Responsive grid for charts */
         gap: 2rem;
     }
     .chart-wrapper { position: relative; min-height: 450px; width: 100%; }
@@ -231,9 +231,10 @@
     import { supabase } from './supabase.js';
 
     let auditStore = [], filteredStore = [];
-    let pageSize = 5; // Changed from 10 to 5
+    let pageSize = 5;
     let currentPage = 1;
     let charts = {};
+    const pageFont = `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
 
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
     const formatTime = (ts, options) => ts ? new Date(ts).toLocaleString('en-US', { timeZone: 'Africa/Cairo', ...options }) : '-';
@@ -335,35 +336,62 @@
     
     const createChart = (id, type, data, options) => {
         if (charts[id]) charts[id].destroy();
-        charts[id] = new Chart(document.getElementById(id), { type, data, options });
+        const ctx = document.getElementById(id).getContext('2d');
+        charts[id] = new Chart(ctx, { type, data, options });
     };
     
     const buildCharts = () => {
         const baseOptions = {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: '#fff', font: { size: 16 } } },
-                title: { display: true, color: '#fff', font: { size: 20, weight: 'bold' } },
-                tooltip: { backgroundColor: '#111827', titleFont: { size: 16 }, bodyFont: { size: 14 } }
+                legend: { labels: { color: '#fff', font: { size: 14, family: pageFont } } },
+                title: { display: true, color: '#fff', font: { size: 18, weight: 'bold', family: pageFont }, padding: { top: 10, bottom: 20 } },
+                tooltip: { 
+                    enabled: true,
+                    backgroundColor: 'rgba(17, 24, 39, 0.85)', 
+                    titleFont: { size: 14, family: pageFont, weight: 'bold' }, 
+                    bodyFont: { size: 12, family: pageFont },
+                    padding: 10,
+                    cornerRadius: var(--border-radius),
+                    borderColor: var(--border-color),
+                    borderWidth: 1,
+                    boxPadding: 8
+                }
             },
             scales: {
-                y: { ticks: { color: '#d1d5db', font: { size: 14 } }, grid: { color: '#374151' } },
-                x: { ticks: { color: '#d1d5db', font: { size: 14 } }, grid: { color: '#374151' } }
+                y: { ticks: { color: '#d1d5db', font: { size: 12, family: pageFont } }, grid: { color: '#374151' } },
+                x: { ticks: { color: '#d1d5db', font: { size: 12, family: pageFont } }, grid: { color: '#374151' } }
             }
         };
 
         // Daily Activity
         const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_egypt.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
+        const dailyCtx = document.getElementById('dailyActivityChart').getContext('2d');
+        const dailyGradient = dailyCtx.createLinearGradient(0, 0, 0, 450);
+        dailyGradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+        dailyGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
         createChart('dailyActivityChart', 'line', {
             labels: Object.keys(daily).sort(),
-            datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.3, fill: true }]
+            datasets: [{ 
+                label: 'Modifications', 
+                data: Object.values(daily), 
+                borderColor: '#6366f1', 
+                backgroundColor: dailyGradient, 
+                tension: 0.4, 
+                fill: true,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#6366f1',
+                pointRadius: 4,
+                pointHoverRadius: 8,
+                pointHoverBorderWidth: 2
+            }]
         }, { ...baseOptions, plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Daily Modification Trend'}}, scales: { ...baseOptions.scales, x: { ...baseOptions.scales.x, type: 'time', time: { unit: 'day' }, grid: { display: false } } } });
         
         // Action Types
         const actions = filteredStore.reduce((acc, r) => { acc[r.action] = (acc[r.action] || 0) + 1; return acc; }, {});
         createChart('actionsPieChart', 'pie', {
             labels: ['Create', 'Update', 'Delete'],
-            datasets: [{ data: [actions.Create||0, actions.Update||0, actions.Delete||0], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderColor: '#1f2937', borderWidth: 2 }]
+            datasets: [{ data: [actions.Create||0, actions.Update||0, actions.Delete||0], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderColor: '#1f2937', borderWidth: 3, hoverOffset: 15 }]
         }, { ...baseOptions, plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Action Types'}} });
 
         // Top 5 Edited Cases
@@ -371,8 +399,15 @@
         const topCases = Object.entries(cases).sort((a, b) => b[1] - a[1]).slice(0, 5);
         createChart('topCasesChart', 'bar', {
             labels: topCases.map(e => e[0].length > 45 ? e[0].substring(0, 42) + '...' : e[0]),
-            datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#a78bfa', '#f87171', '#fb923c', '#4ade80'] }]
-        }, { ...baseOptions, indexAxis: 'y', plugins: { ...baseOptions.plugins, legend: {display: false}, title: {...baseOptions.plugins.title, text: 'Top 5 Most Edited Cases'}}, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, grid: { display: false } } } });
+            datasets: [{ 
+                label: 'Edits', 
+                data: topCases.map(e => e[1]), 
+                backgroundColor: ['#6366f1', '#a78bfa', '#f87171', '#fb923c', '#4ade80'],
+                borderRadius: 4,
+                borderWidth: 1,
+                borderColor: '#111827'
+            }]
+        }, { ...baseOptions, indexAxis: 'y', plugins: { ...baseOptions.plugins, legend: {display: false}, title: {...baseOptions.plugins.title, text: 'Top 5 Most Edited Cases'}}, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, grid: { display: false } }, x: { ...baseOptions.scales.x, ticks: { ...baseOptions.scales.x.ticks, stepSize: 1 } } } });
     };
     
     const showTimeline = (caseId) => {
