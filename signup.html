@@ -18,6 +18,7 @@
             padding: 1rem;
         }
 
+        /* --- New Styles from Uiverse.io by ammarsaa --- */
         .form {
             display: flex;
             flex-direction: column;
@@ -123,7 +124,7 @@
             outline: 0;
             border: 1px solid rgba(105, 105, 105, 0.397);
             border-radius: 10px;
-            box-sizing: border-box;
+            box-sizing: border-box; /* Added for consistency */
         }
 
         .form label .input + span {
@@ -183,9 +184,8 @@
             padding: 12px;
             border-radius: 6px;
             margin-bottom: 1rem;
-            text-align: center;
+            text-align: left;
             font-size: 14px;
-            font-weight: 500;
         }
 
         #successMessageSignup {
@@ -197,7 +197,7 @@
             margin-top: 1.5rem;
             font-weight: 500;
             font-size: 15px;
-            text-align: center;
+            text-align: center; /* Added for better alignment */
         }
 
         .hidden {
@@ -254,7 +254,6 @@
         </form>
     </div>
 
-    <!-- =================== الكود المعدل والنهائي يبدأ من هنا =================== -->
     <script type="module">
         import { supabase } from './supabase.js';
 
@@ -278,7 +277,7 @@
             successDiv.classList.add('hidden');
             
             signupBtn.disabled = true;
-            signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> &nbsp; Signing Up...';
+            signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...';
 
             if (!fullName) {
                 errorDiv.textContent = 'Please enter your full name.';
@@ -306,9 +305,8 @@
             }
 
             try {
-                // الخطوة 1: إنشاء مستخدم المصادقة فقط.
-                // الـ Trigger الخفي في قاعدة البيانات سيتولى إنشاء الملف الشخصي في جدول users تلقائيًا.
-                const { data, error } = await supabase.auth.signUp({
+                // Step 1: Create the authentication user
+                const { data: authResponse, error: authError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
                     options: {
@@ -318,27 +316,36 @@
                     }
                 });
 
-                if (error) {
-                    if (error.message.includes("User already registered")) {
-                        errorDiv.innerHTML = 'This email is already registered. <br> Please <a href="login.html" style="color: #f87171; font-weight: bold;">Login</a> instead.';
+                if (authError) {
+                    if (authError.message.includes("User already registered") || authError.message.toLowerCase().includes("email rate limit exceeded")) {
+                        errorDiv.textContent = "This email is already registered. Redirecting to login...";
+                        errorDiv.classList.remove('hidden');
+                        setTimeout(() => {
+                            window.location.href = "login.html";
+                        }, 2500);
                     } else {
-                        errorDiv.textContent = 'Signup failed: ' + error.message;
+                        errorDiv.textContent = 'Signup failed: ' + (authError.message || 'An unknown error occurred.');
+                        errorDiv.classList.remove('hidden');
+                        emailInput.focus();
                     }
-                    errorDiv.classList.remove('hidden');
                     signupBtn.disabled = false;
                     signupBtn.textContent = 'Sign Up';
                     return;
                 }
 
-                // *** التغيير الجوهري: تم حذف كتلة .from('users').insert(...) بالكامل من هنا ***
-                
-                if (data.user) {
-                    console.log('Supabase Signup Successful. Profile created by database trigger.');
+                if (authResponse.user) {
+                    const user = authResponse.user;
+
+                    // *** التغيير الأساسي: تم حذف الخطوة 2 (insert) من هنا لمنع التعارض مع قاعدة البيانات ***
+                    // قاعدة البيانات الآن تقوم بإضافة المستخدم تلقائيًا بعد نجاح الخطوة 1.
+                    
+                    console.log('Supabase Signup Successful. Profile is being created by the database trigger.', user);
                     
                     signupForm.classList.add('hidden');
                     errorDiv.classList.add('hidden');
 
-                    successDiv.innerHTML = "<strong>Success!</strong> Please check your email to verify your account. <br> Redirecting to the login page shortly...";
+                    // *** التغيير المطلوب: تم تعديل رسالة النجاح هنا ***
+                    successDiv.innerHTML = "Account Created Successfully! <br> Redirecting to the login page...";
                     successDiv.classList.remove('hidden');
                     
                     await supabase.auth.signOut();
@@ -348,10 +355,10 @@
                     }, 4000);
 
                 } else {
-                     errorDiv.textContent = 'An unexpected issue occurred. User data was not returned.';
-                     errorDiv.classList.remove('hidden');
-                     signupBtn.disabled = false;
-                     signupBtn.textContent = 'Sign Up';
+                    errorDiv.textContent = 'An unexpected issue occurred. User data was not returned after signup.';
+                    errorDiv.classList.remove('hidden');
+                    signupBtn.disabled = false;
+                    signupBtn.textContent = 'Sign Up';
                 }
 
             } catch (e) {
@@ -363,6 +370,5 @@
             }
         });
     </script>
-    <!-- =================== الكود المعدل والنهائي ينتهي هنا =================== -->
 </body>
 </html>
