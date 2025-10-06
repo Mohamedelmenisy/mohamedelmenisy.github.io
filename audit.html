@@ -31,17 +31,16 @@
     body {
       height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color); color: var(--text-color); line-height: 1.6;
-      /* ✅ CSS to hide the scrollbar but keep scrolling */
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
     body::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, and Opera */
+      display: none;
     }
     .page-wrapper {
       padding: 1.5rem 2rem; padding-top: calc(var(--header-height) + 1.5rem);
       max-width: 1600px;
-      margin: 0 auto;
+      margin: 0; /* Changed from margin: 0 auto */
     }
     .page-header {
         position: fixed; top: 0; left: 0; right: 0; height: var(--header-height);
@@ -81,7 +80,7 @@
     }
     
     .filters {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end;
     }
     .filters .form-group { display: flex; flex-direction: column; }
     .filters label { font-size: 0.9rem; font-weight: 500; color: var(--text-color-muted); margin-bottom: 0.5rem; }
@@ -103,14 +102,15 @@
     .kpi-card .info .value { font-size: 2rem; font-weight: 700; color: white; }
     .kpi-card .info .label { font-size: 1rem; color: var(--text-color-muted); }
     
-    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; }
-    .chart-wrapper { position: relative; min-height: 400px; width: 100%; }
-    
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .chart-wrapper { position: relative; min-height: 450px; width: 100%; }
+    .chart-wrapper-full { grid-column: 1 / -1; min-height: 400px; }
+
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
     tbody tr:hover { background-color: #2a3546; }
-    td.details-cell, td.case-cell { white-space: normal; word-break: break-word; min-width: 250px; }
+    td.details-cell, td.case-cell { white-space: normal; word-break: break-word; }
     .badge { padding: 0.3em 0.8em; font-size: 0.85rem; font-weight: 600; border-radius: 20px; color: white; display: inline-flex; align-items: center; gap: 0.4rem; text-transform: capitalize; }
     .badge.Create { background-color: var(--success-color); }
     .badge.Update { background-color: var(--warning-color); }
@@ -174,7 +174,7 @@
     <div class="card">
         <h2 class="section-title"><i class="fas fa-filter"></i> Filters & Search</h2>
         <div class="filters">
-            <div class="form-group"><label for="searchInput">Search by Case Title</label><input id="searchInput" placeholder="Search by Case Title..." /></div>
+            <div class="form-group"><label for="searchInput">Search by Case Title</label><input id="searchInput" placeholder="Search..." /></div>
             <div class="form-group"><label for="sectionFilter">Section</label><select id="sectionFilter"><option value="">All Sections</option></select></div>
             <div class="form-group"><label for="actionFilter">Action Type</label><select id="actionFilter"><option value="">All</option><option>Create</option><option>Update</option><option>Delete</option></select></div>
             <div class="form-group"><label for="startDate">From Date</label><input id="startDate" type="date" /></div>
@@ -188,7 +188,7 @@
         <div class="charts-grid">
             <div class="chart-wrapper"><canvas id="dailyActivityChart"></canvas></div>
             <div class="chart-wrapper"><canvas id="actionsPieChart"></canvas></div>
-            <div class="chart-wrapper" style="grid-column: 1 / -1;"><canvas id="topCasesChart"></canvas></div>
+            <div class="chart-wrapper chart-wrapper-full"><canvas id="topCasesChart"></canvas></div>
         </div>
     </div>
 
@@ -199,7 +199,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date & Time</th><th>User</th><th>Email</th><th>Case</th><th>Section</th><th>Action</th><th>Field Changed</th><th>Details</th><th>View</th></tr></thead>
+          <thead><tr><th>Date & Time</th><th>User</th><th>Email</th><th>Case</th><th>Section</th><th>Action</th><th>Details</th><th>View</th></tr></thead>
           <tbody id="auditBody"></tbody>
         </table>
       </div>
@@ -224,7 +224,7 @@
     import { supabase } from './supabase.js';
 
     let auditStore = [], filteredStore = [];
-    let pageSize = 5;
+    let pageSize = 5; // Changed from 10 to 5
     let currentPage = 1;
     let charts = {};
 
@@ -243,7 +243,7 @@
         applyFiltersAndRender();
       } catch (err) {
         console.error('Error fetching data:', err);
-        document.getElementById('auditBody').innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--danger-color);">Failed to load data.</td></tr>`;
+        document.getElementById('auditBody').innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger-color);">Failed to load data.</td></tr>`;
       } finally {
         showOverlay(false);
       }
@@ -266,7 +266,7 @@
       
       auditBody.innerHTML = '';
       if (!filteredStore.length) {
-        auditBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem;">No records match filters.</td></tr>`;
+        auditBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem;">No records match filters.</td></tr>`;
       } else {
         filteredStore.slice(start, end).forEach(r => {
           const tr = document.createElement('tr');
@@ -274,7 +274,7 @@
             <td>${formatTime(r.modified_at_cairo, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
             <td>${escapeHtml(r.user_name)}</td><td>${escapeHtml(r.user_email)}</td>
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
-            <td><span class="badge ${r.action}">${r.action}</span></td><td><code>${escapeHtml(r.field_changed)}</code></td>
+            <td><span class="badge ${r.action}">${r.action}</span></td>
             <td class="details-cell">${escapeHtml(r.details)}</td>
             <td><button class="button-secondary view-timeline-btn" data-case-id="${r.case_id}" title="View Timeline"><i class="fas fa-stream"></i></button></td>
           `;
@@ -284,7 +284,7 @@
       
       document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
       document.getElementById('prevBtn').disabled = currentPage === 1;
-      document.getElementById('nextBtn').disabled = currentPage === totalPages;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
       document.getElementById('totalRecords').textContent = `${filteredStore.length} records`;
     };
 
@@ -335,13 +335,13 @@
         const baseOptions = {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: '#fff', font: { size: 14 } } },
-                title: { display: true, color: '#fff', font: { size: 18, weight: 'bold' } },
-                tooltip: { backgroundColor: '#111827', titleFont: { size: 14 }, bodyFont: { size: 12 } }
+                legend: { labels: { color: '#fff', font: { size: 16 } } },
+                title: { display: true, color: '#fff', font: { size: 20, weight: 'bold' } },
+                tooltip: { backgroundColor: '#111827', titleFont: { size: 16 }, bodyFont: { size: 14 } }
             },
             scales: {
-                y: { ticks: { color: '#d1d5db' }, grid: { color: '#374151' } },
-                x: { ticks: { color: '#d1d5db' }, grid: { color: '#374151' } }
+                y: { ticks: { color: '#d1d5db', font: { size: 14 } }, grid: { color: '#374151' } },
+                x: { ticks: { color: '#d1d5db', font: { size: 14 } }, grid: { color: '#374151' } }
             }
         };
 
@@ -363,7 +363,7 @@
         const cases = filteredStore.reduce((acc, r) => { if (r.case_title) acc[r.case_title] = (acc[r.case_title] || 0) + 1; return acc; }, {});
         const topCases = Object.entries(cases).sort((a, b) => b[1] - a[1]).slice(0, 5);
         createChart('topCasesChart', 'bar', {
-            labels: topCases.map(e => e[0].length > 35 ? e[0].substring(0, 32) + '...' : e[0]),
+            labels: topCases.map(e => e[0].length > 45 ? e[0].substring(0, 42) + '...' : e[0]),
             datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#a78bfa', '#f87171', '#fb923c', '#4ade80'] }]
         }, { ...baseOptions, indexAxis: 'y', plugins: { ...baseOptions.plugins, legend: {display: false}, title: {...baseOptions.plugins.title, text: 'Top 5 Most Edited Cases'}}, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, grid: { display: false } } } });
     };
