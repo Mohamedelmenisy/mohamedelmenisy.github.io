@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>InfiniBase — Audit Log</title>
+  <title>InfiniBase — Audit Dashboard</title>
   <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
   <style>
     :root {
@@ -16,6 +17,9 @@
       --bg-color: #111827;
       --bg-color-alt: #1f2937;
       --border-color: #374151;
+      --success-color: #22c55e;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
       --border-radius: 0.5rem;
       --border-radius-lg: 0.75rem;
       --header-height: 70px;
@@ -27,6 +31,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       font-size: 16px;
+      line-height: 1.6;
     }
     .page-wrapper {
       padding: 1.5rem 2rem;
@@ -47,117 +52,84 @@
         backdrop-filter: blur(8px);
         z-index: 100;
     }
-    .page-header .header-title {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .page-header .logo-icon {
-        font-size: 1.8rem;
-        color: var(--primary-color);
-    }
-    .page-header h1 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: white;
-      margin: 0;
-    }
+    .page-header .header-title { display: flex; align-items: center; gap: 1rem; }
+    .page-header .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
+    .page-header h1 { font-size: 1.75rem; font-weight: 700; color: white; margin: 0; }
     .button, button {
-        background-color: var(--primary-color);
-        color: white;
-        border: 1px solid transparent;
-        padding: 0.75rem 1.25rem;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        font-size: 1rem;
-        font-weight: 600;
-        transition: all 0.2s;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+        background-color: var(--primary-color); color: white; border: 1px solid transparent; padding: 0.75rem 1.25rem;
+        border-radius: var(--border-radius); cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s;
+        text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     .button:hover, button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
-    .button-secondary {
-        background-color: var(--bg-color-alt);
-        color: var(--text-color);
-        border-color: var(--border-color);
-    }
+    .button-secondary { background-color: var(--bg-color-alt); color: var(--text-color); border-color: var(--border-color); }
     .button-secondary:hover { background-color: var(--border-color); color: white; }
-
     .card {
-      background-color: var(--bg-color-alt);
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius-lg);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
+      background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;
     }
     .filters {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.25rem;
-      align-items: end;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.25rem; align-items: end;
     }
     .filters .form-group { display: flex; flex-direction: column; }
-    .filters .form-group label {
-      font-size: 0.9rem; font-weight: 500; color: var(--text-color-muted); margin-bottom: 0.5rem;
-    }
+    .filters .form-group label { font-size: 0.9rem; font-weight: 500; color: var(--text-color-muted); margin-bottom: 0.5rem; }
     .filters input, .filters select {
-      width: 100%; padding: 0.75rem; border: 1px solid var(--border-color);
-      border-radius: var(--border-radius); background-color: var(--bg-color);
-      color: var(--text-color); font-size: 1rem;
+      width: 100%; box-sizing: border-box; padding: 0.75rem; border: 1px solid var(--border-color);
+      border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
     }
-    .filters .filter-buttons { display: flex; gap: 0.75rem; align-items: center; }
-     @media (min-width: 1024px) {
-        .filters .search-group { grid-column: span 2; }
-     }
     #customDates { display: none; gap: 1rem; }
     
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-    .chart-wrapper {
-        position: relative;
-        height: 350px;
-    }
-    .chart-wrapper h3 {
-      font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-color);
-    }
+    .stats-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
     .stat-card {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; text-align: center;
+        background-color: var(--bg-color-alt); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);
+        padding: 1.5rem; display: flex; align-items: center; gap: 1.5rem;
     }
-    .stat-card .stat-value { font-size: 3rem; font-weight: 800; color: var(--primary-color); }
-    .stat-card .stat-label { font-size: 1.1rem; color: var(--text-color-muted); margin-top: 0.5rem;}
+    .stat-card .icon { font-size: 2.5rem; color: var(--primary-color); width: 60px; height: 60px; display: grid; place-items: center; background: var(--bg-color); border-radius: 50%; }
+    .stat-card .info .stat-value { font-size: 2rem; font-weight: 700; color: white; }
+    .stat-card .info .stat-label { font-size: 1rem; color: var(--text-color-muted); }
     
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+    .chart-wrapper { position: relative; height: 350px; }
+    .chart-wrapper h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: white; }
+
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 800px; }
-    th, td {
-      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color);
-      font-size: 1rem; text-align: left;
-    }
-    thead th {
-      background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem;
-      text-transform: uppercase; letter-spacing: 0.05em;
-    }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; text-align: left; vertical-align: middle; }
+    thead th { background-color: #111827; color: var(--text-color-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
     tbody tr:hover { background-color: #2a3546; }
-    
-    .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(17,24,39,0.8); z-index:1000; opacity:0; visibility: hidden; transition: opacity .2s; }
+    .badge { padding: 0.25em 0.6em; font-size: 0.8rem; font-weight: 600; border-radius: 20px; color: white; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .badge.created { background-color: var(--success-color); }
+    .badge.updated { background-color: var(--warning-color); }
+    .badge.deleted { background-color: var(--danger-color); }
+
+    .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(17,24,39,0.8); z-index:1000; opacity:0; visibility: hidden; transition: opacity .3s; }
     .overlay.show { opacity: 1; visibility: visible; }
     .spinner{ width:60px; height:60px; border-radius:50%; border:5px solid var(--border-color); border-top-color:var(--primary-color); animation:spin 1s linear infinite; }
     @keyframes spin{ to{transform:rotate(360deg);} }
-
-    .toast { position:fixed; top:20px; right:20px; z-index:1100; display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:var(--border-radius); color:white; box-shadow:0 8px 30px rgba(0,0,0,0.5); cursor:pointer; opacity: 0; transform: translateY(-10px); transition: all .2s; }
+    .toast { position:fixed; top:20px; right:20px; z-index:1100; display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:var(--border-radius); color:white; box-shadow:0 8px 30px rgba(0,0,0,0.5); cursor:pointer; opacity: 0; transform: translateY(-10px); transition: all .3s ease; }
     .toast.show { opacity: 1; transform: translateY(0); }
     
-    .access-restricted-container {
-        display: none; /* Initially hidden */
-        flex-direction: column; align-items: center; justify-content: center;
-        text-align: center; height: 100vh; width: 100%;
+    .modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+    .modal .modal-content { background: var(--bg-color-alt); color: var(--text-color); border-radius: var(--border-radius-lg); padding: 2rem; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; position: relative; }
+    .modal .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .modal h2 { margin: 0; color: white; }
+    .modal .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-color-muted); cursor: pointer; }
+    
+    .timeline { position: relative; padding: 1rem 0; }
+    .timeline::before { content: ''; position: absolute; left: 20px; top: 0; bottom: 0; width: 3px; background: var(--border-color); }
+    .timeline-item { position: relative; padding-left: 60px; margin-bottom: 1.5rem; }
+    .timeline-item:last-child { margin-bottom: 0; }
+    .timeline-icon {
+        position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 1.2rem; color: white;
     }
+    .timeline-icon.created { background-color: var(--success-color); }
+    .timeline-icon.updated { background-color: var(--warning-color); }
+    .timeline-icon.deleted { background-color: var(--danger-color); }
+    .timeline-content .timestamp { font-size: 0.85rem; color: var(--text-color-muted); margin-bottom: 0.25rem; }
+    .timeline-content .details { font-weight: 600; color: white; }
+    .timeline-content .user { color: var(--primary-color); }
+
+    .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; width: 100%; }
     .access-restricted-container .card { max-width: 450px; padding: 3rem; }
     .access-restricted-container .icon { font-size: 4rem; color: var(--primary-color); margin-bottom: 1.5rem; }
     .access-restricted-container h2 { font-size: 1.75rem; margin-bottom: 0.5rem; color: white; }
@@ -166,14 +138,13 @@
 </head>
 <body>
 
-<!-- Main dashboard content, initially hidden -->
 <div id="dashboard" style="visibility: hidden;">
   <header class="page-header">
     <div class="header-title">
         <i class="fas fa-history logo-icon"></i>
-        <h1>Audit Log</h1>
+        <h1>Audit Dashboard</h1>
     </div>
-    <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to App</a>
   </header>
   
   <div class="page-wrapper">
@@ -182,23 +153,28 @@
 
     <div class="card">
       <div class="filters" role="region" aria-label="filters">
-        <div class="form-group search-group">
-          <label for="searchInput">Search (case title / slug / user / field)</label>
-          <input id="searchInput" placeholder="Search..." />
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label for="searchInput">Search (case title, user, details...)</label>
+          <input id="searchInput" placeholder="e.g., 'password policy', 'john.doe@example.com'..." />
         </div>
         <div class="form-group">
-          <label for="fieldFilter">Field</label>
-          <select id="fieldFilter">
-            <option value="">All fields</option>
-            <option value="status">status</option>
-            <option value="assigned_to">assigned_to</option>
-            <option value="priority">priority</option>
-            <option value="title">title</option>
+          <label for="actionFilter">Action</label>
+          <select id="actionFilter">
+            <option value="">All Actions</option>
+            <option value="created">Created</option>
+            <option value="updated">Updated</option>
+            <option value="deleted">Deleted</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="userFilter">User</label>
-          <input id="userFilter" placeholder="User name or email" />
+            <label for="sectionFilter">Section</label>
+            <select id="sectionFilter">
+              <option value="">All Sections</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="userFilter">User</label>
+            <input id="userFilter" placeholder="User name or email" />
         </div>
         <div class="form-group">
           <label for="timeRange">Time Range</label>
@@ -210,50 +186,77 @@
             <option value="custom">Custom</option>
           </select>
         </div>
-        <div id="customDates" class="form-group">
+        <div id="customDates" class="form-group" style="grid-column: span 2;">
           <label>Custom Dates</label>
           <div style="display: flex; gap: 0.5rem;">
             <input id="startDate" type="date" />
             <input id="endDate" type="date" />
           </div>
         </div>
-        <div class="filter-buttons">
-          <button id="applyBtn" class="button">Apply</button>
-          <button id="clearBtn" class="button-secondary">Clear</button>
-          <button id="exportBtn" class="button-secondary">Export CSV</button>
+        <div class="filter-buttons" style="grid-column: 1 / -1; display:flex; justify-content: flex-end; gap: 0.75rem;">
+          <button id="clearBtn" class="button-secondary">Clear Filters</button>
+          <button id="applyBtn" class="button">Apply Filters</button>
+          <button id="exportBtn" class="button-secondary"><i class="fas fa-download"></i> Export CSV</button>
         </div>
       </div>
     </div>
-
+    
+    <div class="stats-overview card">
+        <div class="stat-card">
+            <div class="icon" style="color: var(--success-color);"><i class="fas fa-plus"></i></div>
+            <div class="info"><div id="casesCreated" class="stat-value">0</div><div class="stat-label">Cases Created (Week)</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="icon" style="color: var(--warning-color);"><i class="fas fa-pencil-alt"></i></div>
+            <div class="info"><div id="casesUpdated" class="stat-value">0</div><div class="stat-label">Cases Updated (Week)</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="icon"><i class="fas fa-user-check"></i></div>
+            <div class="info"><div id="mostActiveUser" class="stat-value">-</div><div class="stat-label">Most Active User</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="icon"><i class="fas fa-sitemap"></i></div>
+            <div class="info"><div id="mostActiveSection" class="stat-value">-</div><div class="stat-label">Most Active Section</div></div>
+        </div>
+    </div>
+    
     <div class="card">
-        <div class="stats-grid">
+        <div class="charts-grid">
             <div class="chart-wrapper">
-                <h3>Top Changed Fields</h3>
-                <canvas id="fieldsChart"></canvas>
+                <h3>Daily Modifications (Last 30 Days)</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <h3>Action Types</h3>
+                <canvas id="actionsPieChart"></canvas>
             </div>
             <div class="chart-wrapper">
                 <h3>Top Editors</h3>
                 <canvas id="editorsChart"></canvas>
             </div>
-            <div class="stat-card">
-                <div id="totalChanges" class="stat-value">0</div>
-                <div class="stat-label">Total Changes</div>
+             <div class="chart-wrapper">
+                <h3>Most Active Sections</h3>
+                <canvas id="sectionsChart"></canvas>
             </div>
         </div>
     </div>
 
     <div class="card">
-      <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Audit Trail</h3>
+      <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin:0; color:white;">Activity Log</h3>
+        <div id="totalChanges" style="color: var(--text-color-muted);">0 Records Found</div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Case</th>
-              <th>Field</th>
-              <th>Old Value</th>
-              <th>New Value</th>
+              <th>Case Title</th>
+              <th>Section</th>
+              <th>Action</th>
+              <th>Details</th>
               <th>Modified At</th>
               <th>Modified By</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="auditBody">
@@ -267,7 +270,6 @@
   </div>
 </div>
 
-<!-- Admin access restricted card, initially hidden -->
 <div id="restricted-card" class="access-restricted-container">
     <div class="card">
         <div class="icon">🔒</div>
@@ -277,90 +279,133 @@
     </div>
 </div>
 
+<div id="timelineModal" class="overlay modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="timelineCaseTitle">Case Timeline</h2>
+            <button class="close-btn" onclick="document.getElementById('timelineModal').classList.remove('show')">&times;</button>
+        </div>
+        <div id="timelineBody" class="timeline"></div>
+    </div>
+</div>
+
 <script type="module">
     import { supabase } from './supabase.js';
 
     let auditStore = [];
     let filtered = [];
-    let pageSize = 10; // Changed from 25 to 10 as requested
+    let pageSize = 15;
     let currentPage = 1;
-    let fieldsChart = null, editorsChart = null;
+    let charts = {};
 
-    const overlay = document.getElementById('overlay');
-    const toast = document.getElementById('toast');
-    const auditBody = document.getElementById('auditBody');
-    const totalChangesEl = document.getElementById('totalChanges');
+    const escapeHtml = s => s === null || s === undefined ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const formatTime = ts => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '-';
     
-    function showOverlay(show = true) { overlay.classList.toggle('show', show); }
-    function escapeHtml(s) { return s === null || s === undefined ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function formatTime(ts) { 
-        if (!ts) return '-';
-        // Format to 12-hour AM/PM as requested
-        return new Date(ts).toLocaleString('en-GB', { 
-            timeZone: 'Africa/Cairo',
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: true 
-        }); 
+    function showOverlay(show = true) { document.getElementById('overlay').classList.toggle('show', show); }
+    
+    function animateCount(el, end) {
+        let start = 0;
+        const duration = 1500;
+        const range = end - start;
+        let current = start;
+        const increment = end > start ? 1 : -1;
+        const stepTime = Math.abs(Math.floor(duration / range));
+        const timer = setInterval(() => {
+            current += increment;
+            el.textContent = Math.ceil(current);
+            if (current == end) {
+                clearInterval(timer);
+                el.textContent = end;
+            }
+        }, stepTime);
     }
-    
+
     async function fetchInitial() {
       showOverlay(true);
       try {
         const { data, error } = await supabase.rpc('get_full_case_history');
-        if (error) { 
-            console.error('get_full_case_history error', error); 
-            auditStore = []; 
-        } else { 
-            auditStore = data || []; 
-        }
+        if (error) throw error;
         
-        buildChartsFromStore();
+        auditStore = (data || []).map(r => {
+            let action = 'updated';
+            if (r.old_value === null) action = 'created';
+            // Assuming deletion is marked by new_value being null, and old_value not null.
+            if (r.new_value === null && r.old_value !== null) action = 'deleted';
+            return { ...r, action };
+        }).sort((a,b) => new Date(b.modified_at) - new Date(a.modified_at)); // Sort newest first
+        
+        populateSectionFilter();
         applyFiltersAndRender();
+        buildDashboardStats();
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        document.getElementById('auditBody').innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger-color);">Failed to load audit data.</td></tr>';
       } finally {
         showOverlay(false);
       }
     }
+    
+    function populateSectionFilter() {
+        const sections = [...new Set(auditStore.map(item => item.section_name).filter(Boolean))];
+        const select = document.getElementById('sectionFilter');
+        select.innerHTML = '<option value="">All Sections</option>';
+        sections.sort().forEach(section => {
+            const option = document.createElement('option');
+            option.value = section;
+            option.textContent = section;
+            select.appendChild(option);
+        });
+    }
 
     function renderTable(list) {
+      const auditBody = document.getElementById('auditBody');
+      const totalChangesEl = document.getElementById('totalChanges');
+      
       if (!list || !list.length) {
-        auditBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">No records found for the current filters.</td></tr>';
-        totalChangesEl.textContent = 0;
+        auditBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">No records found for the current filters.</td></tr>';
+        totalChangesEl.textContent = '0 Records Found';
         document.getElementById('loadMore').style.display = 'none';
         return;
       }
+      
       const start = (currentPage - 1) * pageSize;
       const end = Math.min(list.length, currentPage * pageSize);
       
       if (currentPage === 1) auditBody.innerHTML = '';
       
-      list.slice(start, end).forEach((r, i) => {
-        const oldVal = typeof r.old_value === 'object' ? JSON.stringify(r.old_value, null, 2) : (r.old_value || '');
-        const newVal = typeof r.new_value === 'object' ? JSON.stringify(r.new_value, null, 2) : (r.new_value || '');
+      list.slice(start, end).forEach(r => {
+        const details = r.action === 'created' ? `Case created.` :
+                        r.action === 'deleted' ? `Case deleted.` :
+                        `Field <strong>${escapeHtml(r.field_changed)}</strong> changed from "<em>${escapeHtml(r.old_value)}</em>" to "<em>${escapeHtml(r.new_value)}</em>"`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${escapeHtml(r.case_title || r.slug || '-')}</td>
-          <td><code style="background: #111827; padding: 2px 6px; border-radius: 4px;">${escapeHtml(r.field_changed || '-')}</code></td>
-          <td style="white-space:pre-wrap; max-width:300px; word-break:break-word;">${escapeHtml(oldVal)}</td>
-          <td style="white-space:pre-wrap; max-width:300px; word-break:break-word;">${escapeHtml(newVal)}</td>
+          <td>${escapeHtml(r.section_name || '-')}</td>
+          <td><span class="badge ${r.action}">${r.action}</span></td>
+          <td style="max-width:400px;">${details}</td>
           <td>${formatTime(r.modified_at)}</td>
           <td>${escapeHtml(r.modified_by_name)}</td>
+          <td>
+            <button class="button-secondary view-timeline-btn" data-case-id="${r.case_id}"><i class="fas fa-stream"></i> View Timeline</button>
+          </td>
         `;
         auditBody.appendChild(tr);
       });
-      totalChangesEl.textContent = list.length;
+      totalChangesEl.textContent = `${list.length} Records Found`;
       document.getElementById('loadMore').style.display = end < list.length ? 'inline-flex' : 'none';
     }
 
     function applyFiltersAndRender() {
         const search = document.getElementById('searchInput').value.toLowerCase().trim();
-        const field = document.getElementById('fieldFilter').value.toLowerCase();
-        const user = document.getElementById('userFilter').value.toLowerCase();
+        const action = document.getElementById('actionFilter').value;
+        const section = document.getElementById('sectionFilter').value;
+        const user = document.getElementById('userFilter').value.toLowerCase().trim();
         const range = document.getElementById('timeRange').value;
         let start = null, end = new Date();
 
         if (range === 'today') { start = new Date(); start.setHours(0,0,0,0); }
-        else if (range === '7d') { start = new Date(); start.setDate(start.getDate() - 7); }
-        else if (range === '30d') { start = new Date(); start.setDate(start.getDate() - 30); }
+        else if (range === '7d') { start = new Date(); start.setDate(start.getDate() - 7); start.setHours(0,0,0,0); }
+        else if (range === '30d') { start = new Date(); start.setDate(start.getDate() - 30); start.setHours(0,0,0,0); }
         else if (range === 'custom') {
             const s = document.getElementById('startDate').value;
             const e = document.getElementById('endDate').value;
@@ -373,10 +418,11 @@
                 const d = new Date(r.modified_at);
                 if (d < start || d > end) return false;
             }
-            if (field && String(r.field_changed || '').toLowerCase() !== field) return false;
+            if (action && r.action !== action) return false;
+            if (section && r.section_name !== section) return false;
             if (user && !(r.modified_by_name || '').toLowerCase().includes(user)) return false;
             if (search) {
-                const hay = [r.case_title, r.slug, JSON.stringify(r.old_value), JSON.stringify(r.new_value), r.field_changed, r.modified_by_name].join('|').toLowerCase();
+                const hay = [r.case_title, r.slug, r.section_name, JSON.stringify(r.old_value), JSON.stringify(r.new_value), r.field_changed, r.modified_by_name].join('|').toLowerCase();
                 if (!hay.includes(search)) return false;
             }
             return true;
@@ -385,45 +431,131 @@
         renderTable(filtered);
     }
     
-    function createChart(ctx, type, labels, data, label, backgroundColor) {
-        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+    function createChart(id, type, data, options) {
+        if (charts[id]) charts[id].destroy();
+        const ctx = document.getElementById(id).getContext('2d');
+        charts[id] = new Chart(ctx, { type, data, options });
+    }
+    
+    function getChartOptions(isTimeSeries = false) {
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
-        return new Chart(ctx, {
-            type,
-            data: { labels, datasets: [{ label, data, backgroundColor }] },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { color: gridColor, drawBorder: false } },
-                    x: { ticks: { color: ticksColor, font: { family: 'Inter', size: 14 } }, grid: { display: false } }
-                }
+        
+        let options = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: ticksColor } } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: ticksColor }, grid: { color: gridColor } },
+                x: { ticks: { color: ticksColor }, grid: { display: false } }
             }
-        });
+        };
+        if (isTimeSeries) {
+            options.scales.x.type = 'time';
+            options.scales.x.time = { unit: 'day', tooltipFormat: 'MMM dd, yyyy' };
+        }
+        return options;
+    }
+    
+    function buildDashboardStats() {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const thisWeekChanges = auditStore.filter(r => new Date(r.modified_at) >= weekAgo);
+        
+        const created = thisWeekChanges.filter(r => r.action === 'created').length;
+        const updated = thisWeekChanges.filter(r => r.action === 'updated').length;
+        animateCount(document.getElementById('casesCreated'), created);
+        animateCount(document.getElementById('casesUpdated'), updated);
+
+        const userCounts = auditStore.reduce((acc, r) => { acc[r.modified_by_name] = (acc[r.modified_by_name] || 0) + 1; return acc; }, {});
+        const mostActiveUser = Object.entries(userCounts).sort((a,b) => b[1] - a[1])[0];
+        document.getElementById('mostActiveUser').textContent = mostActiveUser ? mostActiveUser[0] : '-';
+
+        const sectionCounts = auditStore.reduce((acc, r) => { if (r.section_name) acc[r.section_name] = (acc[r.section_name] || 0) + 1; return acc; }, {});
+        const mostActiveSection = Object.entries(sectionCounts).sort((a,b) => b[1] - a[1])[0];
+        document.getElementById('mostActiveSection').textContent = mostActiveSection ? mostActiveSection[0] : '-';
+        
+        buildCharts(auditStore, userCounts, sectionCounts);
     }
 
-    function buildChartsFromStore() {
-        const fieldCounts = auditStore.reduce((acc, r) => { acc[r.field_changed || 'unknown'] = (acc[r.field_changed || 'unknown'] || 0) + 1; return acc; }, {});
-        const editorCounts = auditStore.reduce((acc, r) => { acc[r.modified_by_name || 'unknown'] = (acc[r.modified_by_name || 'unknown'] || 0) + 1; return acc; }, {});
+    function buildCharts(data, userCounts, sectionCounts) {
+        // Daily Activity Line Chart
+        const last30Days = new Date();
+        last30Days.setDate(last30Days.getDate() - 30);
+        const dailyActivity = data
+            .filter(r => new Date(r.modified_at) >= last30Days)
+            .reduce((acc, r) => {
+                const day = new Date(r.modified_at).toISOString().slice(0, 10);
+                acc[day] = (acc[day] || 0) + 1;
+                return acc;
+            }, {});
+        createChart('activityChart', 'line', {
+            labels: Object.keys(dailyActivity).sort(),
+            datasets: [{ label: 'Modifications', data: Object.values(dailyActivity), borderColor: '#6366f1', tension: 0.1, fill: false }]
+        }, getChartOptions(true));
+        
+        // Action Types Pie Chart
+        const actionCounts = data.reduce((acc, r) => { acc[r.action] = (acc[r.action] || 0) + 1; return acc; }, {});
+        createChart('actionsPieChart', 'pie', {
+            labels: Object.keys(actionCounts),
+            datasets: [{ data: Object.values(actionCounts), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'] }]
+        }, { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: 'white' } } } });
 
-        const topFields = Object.entries(fieldCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-        const topEditors = Object.entries(editorCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        // Top Editors Chart
+        const topEditors = Object.entries(userCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).reverse();
+        const editorOptions = getChartOptions();
+        editorOptions.indexAxis = 'y'; // Horizontal bar chart
+        createChart('editorsChart', 'bar', {
+            labels: topEditors.map(e => e[0]),
+            datasets: [{ label: 'Edits', data: topEditors.map(e => e[1]), backgroundColor: '#6366f1' }]
+        }, editorOptions);
+        
+        // Top Sections Chart
+        const topSections = Object.entries(sectionCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        createChart('sectionsChart', 'bar', {
+            labels: topSections.map(e => e[0]),
+            datasets: [{ label: 'Changes', data: topSections.map(e => e[1]), backgroundColor: '#22c55e' }]
+        }, getChartOptions());
+    }
+    
+    function showTimeline(caseId) {
+        const history = auditStore
+            .filter(r => r.case_id === caseId)
+            .sort((a, b) => new Date(a.modified_at) - new Date(b.modified_at));
+        
+        if (!history.length) return;
+        
+        document.getElementById('timelineCaseTitle').textContent = `Timeline for: ${escapeHtml(history[0].case_title)}`;
+        const body = document.getElementById('timelineBody');
+        body.innerHTML = '';
 
-        if (fieldsChart) fieldsChart.destroy();
-        fieldsChart = createChart(document.getElementById('fieldsChart').getContext('2d'), 'bar', topFields.map(e => e[0]), topFields.map(e => e[1]), 'Changes', '#22c55e');
-
-        if (editorsChart) editorsChart.destroy();
-        editorsChart = createChart(document.getElementById('editorsChart').getContext('2d'), 'bar', topEditors.map(e => e[0]), topEditors.map(e => e[1]), 'Edits', '#6366f1');
+        history.forEach(r => {
+            const iconMap = { created: 'fa-plus', updated: 'fa-pencil-alt', deleted: 'fa-trash' };
+            const details = r.action === 'created' ? `Case was created.` :
+                            r.action === 'deleted' ? `Case was deleted.` :
+                            `Field <strong>${escapeHtml(r.field_changed)}</strong> was updated.`;
+            
+            const item = document.createElement('div');
+            item.className = 'timeline-item';
+            item.innerHTML = `
+                <div class="timeline-icon ${r.action}"><i class="fas ${iconMap[r.action]}"></i></div>
+                <div class="timeline-content">
+                    <div class="timestamp">${formatTime(r.modified_at)}</div>
+                    <div class="details">${details}</div>
+                    <div class="user">by ${escapeHtml(r.modified_by_name)}</div>
+                </div>`;
+            body.appendChild(item);
+        });
+        
+        document.getElementById('timelineModal').classList.add('show');
     }
 
     function exportCSV(list) {
       if (!list || !list.length) { alert('No data to export.'); return; }
-      const headers = ['case_title', 'slug', 'field_changed', 'old_value', 'new_value', 'modified_at', 'modified_by_name'];
+      const headers = ['case_title', 'section_name', 'action', 'field_changed', 'old_value', 'new_value', 'modified_at', 'modified_by_name'];
       let csvContent = headers.join(',') + '\r\n';
       list.forEach(r => {
-        const row = [r.case_title, r.slug, r.field_changed, JSON.stringify(r.old_value), JSON.stringify(r.new_value), r.modified_at, r.modified_by_name];
-        csvContent += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(',') + '\r\n';
+        const row = headers.map(header => JSON.stringify(r[header] || '', (key, value) => value === null ? '' : value));
+        csvContent += row.join(',') + '\r\n';
       });
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -436,11 +568,12 @@
     let toastTimer = null;
     function showToastNotification(row, type) {
       clearTimeout(toastTimer);
+      const toast = document.getElementById('toast');
       const colors = { insert: '#16a34a', update: '#2563eb', delete: '#ef4444' };
       const icons = { insert: '✅', update: '✏️', delete: '🗑️' };
-      const msg = `${row.modified_by_name || 'System'} ${type}d an item.`;
-      toast.style.background = colors[type] || '#6366f1';
-      toast.innerHTML = `<span style="font-size:18px;">${icons[type] || 'ℹ️'}</span><span>${escapeHtml(msg)}</span>`;
+      const msg = `${row.modified_by_name || 'System'} ${type.replace('INSERT', 'created').replace('UPDATE', 'updated').replace('DELETE', 'deleted')} an item.`;
+      toast.style.background = colors[type.toLowerCase()] || '#6366f1';
+      toast.innerHTML = `<span style="font-size:18px;">${icons[type.toLowerCase()] || 'ℹ️'}</span><span>${escapeHtml(msg)}</span>`;
       toast.classList.add('show');
       toastTimer = setTimeout(() => toast.classList.remove('show'), 4500);
     }
@@ -448,53 +581,56 @@
     function setupRealtime() {
       supabase.channel('public:case_history')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'case_history' }, async payload => {
-          showToastNotification(payload.new || payload.old, payload.eventType.toLowerCase());
+          showToastNotification(payload.new || payload.old, payload.eventType);
           await fetchInitial();
         })
         .subscribe();
     }
-
-    document.getElementById('timeRange').addEventListener('change', (e) => {
-      document.getElementById('customDates').style.display = e.target.value === 'custom' ? 'flex' : 'none';
-    });
-    document.getElementById('applyBtn').addEventListener('click', applyFiltersAndRender);
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      ['searchInput', 'fieldFilter', 'userFilter', 'timeRange', 'startDate', 'endDate'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el.tagName === 'SELECT') {
-              el.value = el.querySelector('option').value;
-          } else {
-              el.value = '';
-          }
-      });
-      applyFiltersAndRender();
-    });
-    document.getElementById('exportBtn').addEventListener('click', () => exportCSV(filtered));
-    document.getElementById('loadMore').addEventListener('click', () => { currentPage++; renderTable(filtered); });
-    document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyFiltersAndRender(); });
-    document.getElementById('userFilter').addEventListener('keydown', e => { if (e.key === 'Enter') applyFiltersAndRender(); });
-
+    
     async function checkAdminAccess() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          document.getElementById('restricted-card').style.display = 'flex';
-          return;
-        }
+        if (!user) throw new Error('Not logged in');
+        
         const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-        if (error || !data || data.role !== 'admin') {
-          document.getElementById('restricted-card').style.display = 'flex';
-        } else {
-          document.getElementById('dashboard').style.visibility = 'visible';
-          await fetchInitial();
-          setupRealtime();
-        }
+        if (error || !data || data.role !== 'admin') throw new Error('Access denied');
+        
+        document.getElementById('dashboard').style.visibility = 'visible';
+        await fetchInitial();
+        setupRealtime();
       } catch (e) {
-        console.error('Admin check failed', e);
+        console.error('Admin check failed:', e.message);
         document.getElementById('restricted-card').style.display = 'flex';
       }
     }
     
+    // Event Listeners
+    document.getElementById('timeRange').addEventListener('change', (e) => {
+      document.getElementById('customDates').style.display = e.target.value === 'custom' ? 'grid' : 'none';
+    });
+    document.getElementById('applyBtn').addEventListener('click', applyFiltersAndRender);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.querySelector('.filters').querySelectorAll('input, select').forEach(el => el.value = '');
+      document.getElementById('customDates').style.display = 'none';
+      applyFiltersAndRender();
+    });
+    document.getElementById('exportBtn').addEventListener('click', () => exportCSV(filtered));
+    document.getElementById('loadMore').addEventListener('click', () => { currentPage++; renderTable(filtered); });
+    ['searchInput', 'userFilter'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') applyFiltersAndRender(); });
+    });
+    document.getElementById('auditBody').addEventListener('click', e => {
+        const btn = e.target.closest('.view-timeline-btn');
+        if (btn) {
+            showTimeline(btn.dataset.caseId);
+        }
+    });
+    document.getElementById('timelineModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+            e.currentTarget.classList.remove('show');
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', checkAdminAccess);
 </script>
 
