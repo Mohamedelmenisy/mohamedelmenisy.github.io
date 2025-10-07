@@ -193,6 +193,8 @@
         <div class="charts-grid">
             <div class="chart-wrapper"><canvas id="dailyActivityChart"></canvas></div>
             <div class="chart-wrapper"><canvas id="actionsPieChart"></canvas></div>
+            <div class="chart-wrapper"><canvas id="sectionActivityChart"></canvas></div>
+            <div class="chart-wrapper"><canvas id="userContributionChart"></canvas></div>
             <div class="chart-wrapper chart-wrapper-full"><canvas id="topCasesChart"></canvas></div>
         </div>
     </div>
@@ -243,7 +245,27 @@
     let charts = {};
 
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
-    const formatTime = (ts, options) => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', ...options }) : '-';
+    
+    // ✅ [تعديل] تم استبدال الدالة القديمة بالنسخة المحسّنة لضمان تحويل التوقيت دائمًا
+    const formatTime = (ts, options = {}) => {
+      if (!ts) return '-';
+      try {
+        const date = new Date(ts);
+        // تم دمج الخيارات الافتراضية مع الخيارات الممررة لمرونة أكبر
+        const defaultOptions = { 
+          timeZone: 'Africa/Cairo',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        };
+        return date.toLocaleString('en-GB', { ...defaultOptions, ...options });
+      } catch (err) {
+        console.error("Error formatting time:", ts, err);
+        return ts; // إرجاع النص الأصلي في حالة حدوث خطأ
+      }
+    };
     
     const showOverlay = (show = true) => document.getElementById('overlay').classList.toggle('show', show);
 
@@ -285,7 +307,7 @@
         filteredStore.slice(start, end).forEach(r => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${formatTime(r.modified_at_egypt || r.modified_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' })}</td>
+            <td>${formatTime(r.modified_at_egypt || r.modified_at)}</td>
             <td>${escapeHtml(r.user_name || r.modified_by_name || '—')}</td>
             <td>${escapeHtml(r.user_email)}</td>
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
@@ -313,7 +335,7 @@
         if (end) end.setHours(23, 59, 59, 999);
 
         filteredStore = auditStore.filter(r => {
-            const recordDate = new Date(r.modified_at_egypt);
+            const recordDate = new Date(r.modified_at_egypt || r.modified_at);
             const userMatch = !userSearch || (r.user_name || '').toLowerCase().includes(userSearch) || (r.user_email || '').toLowerCase().includes(userSearch);
             return (!start || recordDate >= start) && (!end || recordDate <= end) &&
                    (!action || r.action === action) && (!section || r.section === section) &&
@@ -329,7 +351,7 @@
     
     const updateKpiCards = () => {
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
-        const todayRecords = auditStore.filter(r => r.modified_at_egypt?.startsWith(today));
+        const todayRecords = auditStore.filter(r => (r.modified_at_egypt || r.modified_at)?.startsWith(today));
         
         document.getElementById('kpi-today-mods').textContent = todayRecords.length;
         document.getElementById('kpi-new-cases').textContent = todayRecords.filter(r => r.action === 'Create').length;
@@ -340,7 +362,7 @@
         const mostActive = Object.entries(sectionCounts).sort((a,b) => b[1] - a[1])[0];
         document.getElementById('kpi-active-section').textContent = mostActive ? mostActive[0] : '-';
 
-        const lastUpdate = auditStore[0]?.modified_at_egypt;
+        const lastUpdate = auditStore[0]?.modified_at_egypt || auditStore[0]?.modified_at;
         document.getElementById('kpi-last-update').textContent = lastUpdate ? formatTime(lastUpdate, { hour: '2-digit', minute: '2-digit' }) : '-';
     };
     
@@ -375,7 +397,7 @@
         };
 
         // Daily Activity
-        const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_egypt.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
+        const daily = filteredStore.reduce((acc, r) => { const day = (r.modified_at_egypt || r.modified_at).slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
         createChart('dailyActivityChart', 'line', {
             labels: Object.keys(daily).sort(),
             datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointHoverRadius: 7, pointHoverBorderWidth: 2 }]
@@ -384,17 +406,20 @@
         // Action Types
         const actions = { Create: 0, Update: 0, Delete: 0 };
         filteredStore.forEach(r => {
-            const act = (r.action || '').toLowerCase();
-            if (act.includes('create')) actions.Create++;
-            else if (act.includes('update')) actions.Update++;
-            else if (act.includes('delete')) actions.Delete++;
+            if (r.action === 'Create') actions.Create++;
+            else if (r.action === 'Update') actions.Update++;
+            else if (r.action === 'Delete') actions.Delete++;
         });
 
+        // ✅ [تعديل] تم تطبيق المنطق الجديد هنا لرسم الشارت بشكل ديناميكي
+        const validActions = Object.entries(actions).filter(([_, v]) => v > 0);
+        const colorMap = { Create: '#22c55e', Update: '#f59e0b', Delete: '#ef4444' };
+
         createChart('actionsPieChart', 'doughnut', {
-            labels: ['Create', 'Update', 'Delete'],
+            labels: validActions.map(([k]) => k),
             datasets: [{
-                data: [actions.Create, actions.Update, actions.Delete],
-                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                data: validActions.map(([_, v]) => v),
+                backgroundColor: validActions.map(([k]) => colorMap[k]),
                 borderColor: '#1f2937', borderWidth: 4, hoverOffset: 8
             }]
         }, { ...baseOptions, cutout: '65%', plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Action Types'}} });
@@ -407,10 +432,41 @@
             labels: topCases.map(e => e[0].length > 45 ? e[0].substring(0, 42) + '...' : e[0]),
             datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#a78bfa', '#f87171', '#fb923c', '#4ade80'], borderRadius: 5 }]
         }, { ...baseOptions, indexAxis: 'y', plugins: { ...baseOptions.plugins, legend: {display: false}, title: {...baseOptions.plugins.title, text: 'Top 5 Most Edited Cases'}}, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, grid: { display: false } } } });
+
+        // ✅ [إضافة] الكود الخاص بالشارت الجديد "Activity by Section"
+        const sectionCounts = filteredStore.reduce((acc, r) => {
+          if(r.section) acc[r.section] = (acc[r.section] || 0) + 1;
+          return acc;
+        }, {});
+        createChart('sectionActivityChart', 'bar', {
+          labels: Object.keys(sectionCounts),
+          datasets: [{
+            label: 'Edits per Section',
+            data: Object.values(sectionCounts),
+            backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#ec4899']
+          }]
+        }, { ...baseOptions, plugins: { ...baseOptions.plugins, legend: {display: false}, title: { ...baseOptions.plugins.title, text: 'Activity by Section' }}});
+
+        // ✅ [إضافة] الكود الخاص بالشارت الجديد "Top 5 Contributors"
+        const userStats = filteredStore.reduce((acc, r) => {
+          const name = r.user_name || r.modified_by_name || 'Unknown';
+          acc[name] = (acc[name] || 0) + 1;
+          return acc;
+        }, {});
+        const topUsers = Object.entries(userStats).sort((a,b) => b[1]-a[1]).slice(0,5);
+        createChart('userContributionChart', 'bar', {
+          labels: topUsers.map(u => u[0]),
+          datasets: [{
+            label: 'Edits',
+            data: topUsers.map(u => u[1]),
+            backgroundColor: ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa']
+          }]
+        }, { ...baseOptions, plugins: { ...baseOptions.plugins, legend: {display: false}, title: { ...baseOptions.plugins.title, text: 'Top 5 Contributors' }}});
+
     };
     
     const showTimeline = (caseId) => {
-        const history = auditStore.filter(r => r.case_id === caseId).sort((a, b) => new Date(a.modified_at_egypt) - new Date(b.modified_at_egypt));
+        const history = auditStore.filter(r => r.case_id === caseId).sort((a, b) => new Date(a.modified_at_egypt || a.modified_at) - new Date(b.modified_at_egypt || b.modified_at));
         if (!history.length) return;
         
         document.getElementById('timelineCaseTitle').textContent = `Timeline for: ${escapeHtml(history[0].case_title)}`;
@@ -419,7 +475,7 @@
             <div class="timeline-item">
                 <div class="timeline-icon ${r.action}"><i class="fas ${iconMap[r.action]}"></i></div>
                 <div class="timeline-content">
-                    <div class="timestamp">${formatTime(r.modified_at_egypt, { dateStyle: 'medium', timeStyle: 'medium' })}</div>
+                    <div class="timestamp">${formatTime(r.modified_at_egypt || r.modified_at, { dateStyle: 'medium', timeStyle: 'medium' })}</div>
                     <div class="details" title="Old: ${escapeHtml(r.old_value)} \nNew: ${escapeHtml(r.new_value)}">
                         ${escapeHtml(r.details)}
                     </div>
@@ -470,7 +526,7 @@
     function exportToCsv() {
         const headers = ['Date & Time', 'User', 'Email', 'Case', 'Section', 'Action', 'Details'];
         const rows = filteredStore.map(r => [
-            formatTime(r.modified_at_egypt),
+            formatTime(r.modified_at_egypt || r.modified_at),
             r.user_name,
             r.user_email,
             `"${(r.case_title || '').replace(/"/g, '""')}"`,
