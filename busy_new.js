@@ -1,4 +1,5 @@
-/* busy_new.js - الكود المُعدَّل لضبط اللغة والوظائف */
+/* busy_new.js - الكود المُعدَّل لضبط الوظائف والتنقل */
+
 /*
 Robust, works if content inserted after DOM load.
 
@@ -14,7 +15,7 @@ Robust, works if content inserted after DOM load.
         const lb = document.getElementById(targetId);
         if (!lb) return;
         lb.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        // document.body.style.overflow = 'hidden'; // FIX: لا نقوم بإخفاء التمرير من الـ body
         // if there's a video inside ensure it plays
         const v = lb.querySelector('video');
         if (v && typeof v.play === 'function') v.play().catch(()=>{});
@@ -24,7 +25,7 @@ Robust, works if content inserted after DOM load.
         const lb = document.getElementById(targetId);
         if (!lb) return;
         lb.classList.remove('active');
-        document.body.style.overflow = '';
+        // document.body.style.overflow = ''; // FIX: لا نقوم بإعادة التمرير للـ body
         const v = lb.querySelector('video');
         if (v && typeof v.pause === 'function') v.pause();
     };
@@ -60,7 +61,7 @@ Robust, works if content inserted after DOM load.
         switchLanguage(currentLang);
     };
 
-    // ===== Back to Top (Smooth Scroll) =====
+    // ===== Back to Top (Smooth Scroll) - FIXED to ensure it works on internal links too =====
     function smoothScroll(target) {
         if (!target) return;
         document.querySelector(target).scrollIntoView({
@@ -109,7 +110,7 @@ Robust, works if content inserted after DOM load.
 
         // set initial view to English if both blocks exist (Default is English now)
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-            switchLanguage('en'); // CHANGED: Default is English
+            switchLanguage('en'); // Default is English
         }
 
         // attach delegated listeners for smooth scroll, close overlay etc.
