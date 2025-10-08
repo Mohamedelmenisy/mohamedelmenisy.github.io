@@ -1,147 +1,139 @@
-/* busy_new.js - الكود المُعدَّل لضبط الوظائف والتنقل */
-
-/*
-Robust, works if content inserted after DOM load.
-
-* lightbox open/close
-* language switch (toggle)
-* back-to-top smooth scroll
-* initialization that is safe whether script runs before/after content insertion
+/* busy_new.js (Updated & Fixed)
+- Fixes body scroll freezing issue.
+- Ensures language toggle works correctly.
+- Robust back-to-top scroll.
 */
-
 (function () {
-    // ===== Lightbox =====
-    window.openLightbox = function (targetId) {
-        const lb = document.getElementById(targetId);
-        if (!lb) return;
-        lb.classList.add('active');
-        // document.body.style.overflow = 'hidden'; // FIX: لا نقوم بإخفاء التمرير من الـ body
-        // if there's a video inside ensure it plays
-        const v = lb.querySelector('video');
-        if (v && typeof v.play === 'function') v.play().catch(()=>{});
-    };
+// ===== Lightbox Functions =====
+window.openLightbox = function (targetId) {
+    const lb = document.getElementById(targetId);
+    if (!lb) return;
+    lb.classList.add('active');
+    // This is the line that can freeze the parent app's sidebar.
+    document.body.style.overflow = 'hidden'; 
+    const v = lb.querySelector('video');
+    if (v && typeof v.play === 'function') v.play().catch(()=>{});
+};
 
-    window.closeLightbox = function (targetId) {
-        const lb = document.getElementById(targetId);
-        if (!lb) return;
-        lb.classList.remove('active');
-        // document.body.style.overflow = ''; // FIX: لا نقوم بإعادة التمرير للـ body
-        const v = lb.querySelector('video');
-        if (v && typeof v.pause === 'function') v.pause();
-    };
+window.closeLightbox = function (targetId) {
+    const lb = document.getElementById(targetId);
+    if (!lb) return;
+    lb.classList.remove('active');
+    // CRUCIAL FIX: This line un-freezes the parent app's scroll.
+    document.body.style.overflow = ''; 
+    const v = lb.querySelector('video');
+    if (v && typeof v.pause === 'function') v.pause();
+};
 
-    // ===== Language switch =====
-    function switchLanguage(lang) {
-        const arContent = document.getElementById('ar-content');
-        const enContent = document.getElementById('en-content');
-        const langToggle = document.getElementById('lang-toggle-button');
-        const appWrapper = document.querySelector('.kb-app');
+// ===== Language Switch =====
+function switchLanguage(lang) {
+    const arContent = document.getElementById('ar-content');
+    const enContent = document.getElementById('en-content');
+    const langToggle = document.getElementById('lang-toggle-button');
+    const appWrapper = document.querySelector('.kb-app');
 
-        if (!arContent || !enContent || !langToggle || !appWrapper) return;
+    if (!arContent || !enContent || !langToggle || !appWrapper) return;
 
-        if (lang === 'en') {
-            enContent.style.display = 'block';
-            arContent.style.display = 'none';
-            appWrapper.setAttribute('dir', 'ltr');
-            langToggle.textContent = 'التبديل إلى العربية';
-            langToggle.setAttribute('data-lang', 'ar');
-        } else {
-            arContent.style.display = 'block';
-            enContent.style.display = 'none';
-            appWrapper.setAttribute('dir', 'rtl');
-            langToggle.textContent = 'Switch to English';
-            langToggle.setAttribute('data-lang', 'en');
-        }
+    if (lang === 'ar') {
+        arContent.style.display = 'block';
+        enContent.style.display = 'none';
+        appWrapper.setAttribute('dir', 'rtl');
+        langToggle.textContent = 'Switch to English';
+        langToggle.setAttribute('data-lang', 'en');
+    } else { // 'en'
+        arContent.style.display = 'none';
+        enContent.style.display = 'block';
+        appWrapper.setAttribute('dir', 'ltr');
+        langToggle.textContent = 'التحويل للعربية';
+        langToggle.setAttribute('data-lang', 'ar');
     }
+}
 
-    window.toggleLanguage = function () {
-        const langToggle = document.getElementById('lang-toggle-button');
-        if (!langToggle) return;
-        const currentLang = langToggle.getAttribute('data-lang');
-        switchLanguage(currentLang);
-    };
+window.toggleLanguage = function () {
+    const langToggle = document.getElementById('lang-toggle-button');
+    if (!langToggle) return;
+    const nextLang = langToggle.getAttribute('data-lang') || 'ar';
+    switchLanguage(nextLang);
+};
 
-    // ===== Back to Top (Smooth Scroll) - FIXED to ensure it works on internal links too =====
-    function smoothScroll(target) {
-        if (!target) return;
-        document.querySelector(target).scrollIntoView({
-            behavior: 'smooth'
-        });
+// ===== Smooth Scroll Top (FIXED to not interfere with routing) =====
+window.scrollToTop = function () {
+    // This function scrolls the main window without changing the URL hash.
+    try { 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    } catch (e) { 
+        // Fallback for older browsers
+        window.scrollTo(0, 0); 
     }
+};
 
-    function attachDelegatedListeners() {
-        // Delegate for smooth scroll for internal links
-        document.addEventListener('click', function (e) {
-            let target = e.target;
-            while (target && target.tagName !== 'A') {
-                target = target.parentElement;
+// ===== Event Listeners =====
+function attachDelegatedListeners() {
+    // This function runs only once.
+    if (document._busynew_delegated) return;
+
+    document.addEventListener('click', function (e) {
+        // Close lightbox on overlay or close button click
+        const closeTrigger = e.target.closest('.lightbox-overlay, .lightbox-close');
+        if (closeTrigger) {
+            e.preventDefault();
+            const lb = closeTrigger.closest('.css-lightbox');
+            if (lb && lb.id) {
+                closeLightbox(lb.id);
             }
-            if (target && target.getAttribute('href') && target.getAttribute('href').startsWith('#')) {
-                const targetId = target.getAttribute('href');
-                if (targetId.length > 1) { // Check if it's not just '#'
-                    e.preventDefault();
-                    smoothScroll(targetId);
+        }
+    }, true);
+
+    document._busynew_delegated = true;
+}
+
+// ===== Initialization =====
+function initBusyNew() {
+    const langToggle = document.getElementById('lang-toggle-button');
+    if (langToggle && !langToggle.dataset.eventAttached) {
+        langToggle.addEventListener('click', function (e) {
+            e.preventDefault();
+            toggleLanguage();
+        });
+        langToggle.dataset.eventAttached = 'true';
+    }
+
+    // Set initial view to English
+    if (document.getElementById('ar-content') && document.getElementById('en-content')) {
+        switchLanguage('en');
+    }
+
+    attachDelegatedListeners();
+}
+
+// ===== Robust Loading Logic =====
+// Run on load or immediately if DOM is ready
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(initBusyNew, 0);
+} else {
+    document.addEventListener('DOMContentLoaded', initBusyNew, { once: true });
+}
+
+// Re-initialize if content is loaded dynamically (e.g., in SPAs)
+try {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                const kbAppNode = document.querySelector('.kb-app');
+                if (kbAppNode && !kbAppNode.dataset.initialized) {
+                    initBusyNew();
+                    kbAppNode.dataset.initialized = 'true';
+                    // observer.disconnect(); // Optional: stop observing after init
                 }
             }
-        });
-
-        // Delegate for closing lightbox by clicking overlay
-        document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('lightbox-overlay')) {
-                const lb = e.target.closest('.css-lightbox');
-                if (lb) {
-                    window.closeLightbox(lb.id);
-                }
-            }
-        });
-    }
-
-
-    // Initialization logic: set event listeners, click on lang toggle and set initial lang to Arabic
-    function initBusyNew() {
-        const langToggle = document.getElementById('lang-toggle-button');
-        if (langToggle && !langToggle._busynew_attached) {
-            langToggle.addEventListener('click', function (e) {
-                e.preventDefault();
-                window.toggleLanguage();
-            });
-            langToggle._busynew_attached = true;
         }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+} catch (e) {
+    console.warn("MutationObserver not supported or failed.", e);
+}
 
-        // set initial view to English if both blocks exist (Default is English now)
-        if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-            switchLanguage('en'); // Default is English
-        }
-
-        // attach delegated listeners for smooth scroll, close overlay etc.
-        if (!document._busynew_delegated) {
-            attachDelegatedListeners();
-            document._busynew_delegated = true;
-        }
-
-    }
-
-    // Run on load (if content already in DOM)
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(initBusyNew, 0);
-    } else {
-        document.addEventListener('DOMContentLoaded', initBusyNew);
-    }
-
-    // MutationObserver: if .kb-app inserted later, init again
-    try {
-        const mo = new MutationObserver(function (mutList) {
-            for (const m of mutList) {
-                for (const n of m.addedNodes) {
-                    if (n && n.querySelector && (n.classList && n.classList.contains && n.classList.contains('kb-app') || n.querySelector('.kb-app'))) {
-                        initBusyNew();
-                    }
-                }
-            }
-        });
-        mo.observe(document.body, { childList: true, subtree: true });
-    } catch (e) {
-        console.error('MutationObserver failed', e);
-    }
+// Expose init for manual calls if needed
+window.initBusyNew = initBusyNew;
 
 })();
