@@ -101,9 +101,9 @@
             langToggle._busynew_attached = true;
         }
 
-        // Set initial view to Arabic
+        // Set initial view to English
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-            switchLanguage('ar');
+            switchLanguage('en');
         }
         
         // Start lazy loading media
