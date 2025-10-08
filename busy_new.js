@@ -4,7 +4,8 @@
 - Handles lightbox open/close via event delegation.
 - Manages language switching (toggle).
 - Includes a safe initialization that runs after content is ready.
-- NEW: Smooth scrolling for anchor links.
+- Smooth scrolling for anchor links.
+- Visual guide toggle functionality.
 */
 
 (function () {
@@ -30,39 +31,6 @@
             video.pause(); // Pause video when closing
         }
     };
-
-    // ===== Language Switch Function (MODIFIED) =====
-    function switchLanguage(lang) {
-        const arContent = document.getElementById('ar-content');
-        const enContent = document.getElementById('en-content');
-        const langToggle = document.getElementById('lang-toggle-button');
-        const appWrapper = document.querySelector('.kb-app');
-
-        if (!arContent || !enContent || !langToggle || !appWrapper) return;
-
-        if (lang === 'ar') {
-            arContent.style.display = 'block';
-            enContent.style.display = 'none';
-            appWrapper.setAttribute('dir', 'rtl');
-            langToggle.textContent = 'Switch to English';
-            langToggle.setAttribute('data-lang', 'en');
-        } else {
-            arContent.style.display = 'none';
-            enContent.style.display = 'block';
-            appWrapper.setAttribute('dir', 'ltr');
-            langToggle.textContent = 'التحويل للعربية';
-            langToggle.setAttribute('data-lang', 'ar');
-        }
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    // This function is being replaced by the new logic in the event listener below.
-    // window.toggleLanguage = function () {
-    //     const langToggle = document.getElementById('lang-toggle-button');
-    //     if (!langToggle) return;
-    //     const nextLang = langToggle.getAttribute('data-lang') || 'en';
-    //     switchLanguage(nextLang);
-    // };
     
     // ===== Lazy Loading for Media =====
     function lazyLoadMedia() {
@@ -94,8 +62,6 @@
 
     // ===== Initialization Function =====
     function initBusyNew() {
-        // The original language toggle listener is replaced by the new one below.
-        
         // Set initial view to English
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
             const arContent = document.getElementById('ar-content');
@@ -106,35 +72,9 @@
         
         // Start lazy loading media
         lazyLoadMedia();
-        
-        // Attach delegated listeners for lightbox closing and anchor links
-        if (!document._busynew_delegated) {
-            document.addEventListener('click', function (e) {
-                // Lightbox close logic
-                const overlay = e.target.closest('.lightbox-overlay');
-                if (overlay) {
-                    const lb = overlay.closest('.css-lightbox');
-                    if (lb && lb.id) {
-                        closeLightbox(lb.id);
-                        e.preventDefault();
-                    }
-                }
-                const closeBtn = e.target.closest('.lightbox-close');
-                 if (closeBtn) {
-                    const lb = closeBtn.closest('.css-lightbox');
-                    if (lb && lb.id) {
-                        closeLightbox(lb.id);
-                        e.preventDefault();
-                    }
-                }
-                
-                // (OLD ANCHOR LOGIC REMOVED)
-            }, true);
-            document._busynew_delegated = true;
-        }
     }
     
-    // Expose init function to be called from app.html
+    // Expose init function to be called from HTML
     window.initBusyNew = initBusyNew;
 
     // Fallback if script loads before DOM is ready
@@ -144,73 +84,82 @@
         document.addEventListener('DOMContentLoaded', initBusyNew);
     }
 
-    // ====== NEW JS SNIPPETS ADDED/MODIFIED ======
+    // ====== EVENT LISTENERS & DYNAMIC FUNCTIONS ======
 
-    // أ) تفعيل زر التبديل بين اللغات (بدّل class وليس محتوى كامل)
+    // (REQUEST 1) Language toggle function
     function toggleLanguage() {
       const button = document.getElementById("lang-toggle-button");
       const ar = document.getElementById("ar-content");
       const en = document.getElementById("en-content");
       const appWrapper = document.querySelector('.kb-app');
       
-      if (!ar || !en || !button || !appWrapper) {
-        // Fallback if containers don't exist
-        document.body.classList.toggle('rtl-mode');
-        const lang = document.body.classList.contains('rtl-mode') ? 'ar' : 'en';
-        button.textContent = lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية';
-        return;
-      }
+      if (!ar || !en || !button || !appWrapper) return;
 
       const isArabicVisible = ar.style.display === "block";
-      if (!isArabicVisible) {
-        ar.style.display = "block";
-        en.style.display = "none";
-        button.textContent = "Switch to English";
-        button.setAttribute('data-lang','en');
-        appWrapper.setAttribute('dir', 'rtl');
-      } else {
+
+      if (isArabicVisible) {
+        // Switch to English
         ar.style.display = "none";
         en.style.display = "block";
         button.textContent = "التحويل للعربية";
         button.setAttribute('data-lang','ar');
         appWrapper.setAttribute('dir', 'ltr');
+      } else {
+        // Switch to Arabic
+        ar.style.display = "block";
+        en.style.display = "none";
+        button.textContent = "Switch to English";
+        button.setAttribute('data-lang','en');
+        appWrapper.setAttribute('dir', 'rtl');
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
-      const btn = document.getElementById('lang-toggle-button');
-      if (btn) btn.addEventListener('click', toggleLanguage);
+    // Delegated event listener for Lightbox closing and Anchor links
+    document.addEventListener('click', function (e) {
+        // Lightbox close logic
+        const overlay = e.target.closest('.lightbox-overlay');
+        if (overlay) {
+            const lb = overlay.closest('.css-lightbox');
+            if (lb && lb.id) {
+                closeLightbox(lb.id);
+                e.preventDefault();
+            }
+        }
+        const closeBtn = e.target.closest('.lightbox-close');
+         if (closeBtn) {
+            const lb = closeBtn.closest('.css-lightbox');
+            if (lb && lb.id) {
+                closeLightbox(lb.id);
+                e.preventDefault();
+            }
+        }
 
-      const ar = document.getElementById("ar-content");
-      const en = document.getElementById("en-content");
-      if (en) en.style.display = "block";
-      if (ar) ar.style.display = "none";
-    });
-
-    // ب) إصلاح سلوك روابط الـanchor الداخلية (تمنع التحويل للداشبورد)
-    document.addEventListener('click', function(e){
-      const a = e.target.closest && e.target.closest('a[href^="#"]');
-      if (!a) return;
-      if (!a.closest('.kb-app') && !a.closest('.kb-content')) return;
+        // (REQUEST 3) Smooth scroll for internal anchor links
+        const anchor = e.target.closest('a[href^="#"]');
+        if (!anchor) return;
+        
+        const href = anchor.getAttribute('href');
+        if (!href || href === '#') return;
       
-      const href = a.getAttribute('href');
-      if (!href || href === '#') return;
-      
-      try {
-          const target = document.querySelector(href);
-          if (target) {
-            e.preventDefault();
-            if (target.tagName.toLowerCase() === 'details' && !target.open) target.open = true;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-      } catch (err) {
-          console.error("Could not scroll to anchor:", err);
-      }
-    }, true); // Use capture to handle event early
+        try {
+            const targetElement = document.querySelector(href);
+            if (targetElement) {
+                e.preventDefault();
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch (err) {
+            console.error("Could not scroll to anchor:", err);
+        }
+    }, true);
 
-    // ج) زر show/hide للـ Visual Guides (الصور)
+
     document.addEventListener('DOMContentLoaded', function(){
+      // Attach listener to language button
+      const langBtn = document.getElementById('lang-toggle-button');
+      if (langBtn) langBtn.addEventListener('click', toggleLanguage);
+
+      // (REQUEST 5) Attach listeners to visual guide toggle buttons
       document.querySelectorAll('.toggle-visual').forEach(btn => {
         btn.addEventListener('click', function(){
           const guide = btn.nextElementSibling;
