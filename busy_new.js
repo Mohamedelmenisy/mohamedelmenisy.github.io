@@ -4,7 +4,7 @@
 - Handles lightbox open/close via event delegation.
 - Manages language switching (toggle).
 - Includes a safe initialization that runs after content is ready.
-- NEW: Smooth scrolling for anchor links.
+- FIX: Smooth scrolling for anchor links is now more robust.
 */
 
 (function () {
@@ -53,7 +53,6 @@
             langToggle.textContent = 'التحويل للعربية';
             langToggle.setAttribute('data-lang', 'ar');
         }
-        // MODIFICATION: Scroll to top on language change
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -84,10 +83,8 @@
             });
             lazyMedia.forEach(media => mediaObserver.observe(media));
         } else {
-            // Fallback for older browsers
             lazyMedia.forEach(media => {
                 media.src = media.getAttribute('data-src');
-                media.removeAttribute('data-src');
             });
         }
     }
@@ -104,9 +101,8 @@
             langToggle._busynew_attached = true;
         }
 
-        // Set initial view to English
+        // Set initial view to English by default
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-            // Check if a language is already displayed, if not, set default
             const arStyle = window.getComputedStyle(document.getElementById('ar-content'));
             const enStyle = window.getComputedStyle(document.getElementById('en-content'));
             if (arStyle.display === 'none' && enStyle.display === 'none') {
@@ -117,10 +113,9 @@
         // Start lazy loading media
         lazyLoadMedia();
         
-        // Attach delegated listeners for lightbox closing and anchor links
+        // Attach delegated listeners for lightbox closing
         if (!document._busynew_delegated) {
             document.addEventListener('click', function (e) {
-                // Lightbox close logic
                 const overlay = e.target.closest('.lightbox-overlay');
                 if (overlay) {
                     const lb = overlay.closest('.css-lightbox');
@@ -137,33 +132,36 @@
                         e.preventDefault();
                     }
                 }
-                
-                // FIX: Anchor link smooth scroll logic
-                const anchorLink = e.target.closest('a[href^="#"]');
-                if (anchorLink) {
-                    const href = anchorLink.getAttribute('href');
-                    // Ensure it's not just a placeholder hash that does nothing
-                    if (href.length > 1) {
-                        try {
-                            const targetElement = document.getElementById(href.substring(1));
-                            if (targetElement) {
-                                e.preventDefault();
-                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                        } catch (err) {
-                            console.error("Could not scroll to anchor:", err);
-                        }
-                    }
-                }
             }, true);
             document._busynew_delegated = true;
         }
+
+        // NEW: Safe, robust anchor link smooth scrolling
+        if (!document._anchor_handler_attached) {
+            document.querySelectorAll('.kb-app a[href^="#"]').forEach(a => {
+                a.addEventListener('click', function (ev) {
+                    const href = this.getAttribute('href');
+                    if (!href || href === '#' || href.length <= 1) return;
+                    
+                    try {
+                        const target = document.querySelector(href);
+                        if (target) {
+                            ev.preventDefault();
+                            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    } catch (err) {
+                        // Prevents errors from invalid selectors
+                        ev.preventDefault();
+                        console.warn('Anchor target not found or invalid:', href);
+                    }
+                }, { passive: false });
+            });
+            document._anchor_handler_attached = true;
+        }
     }
 
-    // Expose init function to be called from app.html
     window.initBusyNew = initBusyNew;
 
-    // Fallback if script loads before DOM is ready
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         setTimeout(initBusyNew, 0);
     } else {
