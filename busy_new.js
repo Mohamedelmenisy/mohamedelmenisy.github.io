@@ -4,6 +4,7 @@
 - Handles lightbox open/close via event delegation.
 - Manages language switching (toggle).
 - Includes a safe initialization that runs after content is ready.
+- NEW: Smooth scrolling for anchor links.
 */
 
 (function () {
@@ -108,10 +109,11 @@
         
         // Start lazy loading media
         lazyLoadMedia();
-
-        // Attach delegated listeners for lightbox closing
+        
+        // Attach delegated listeners for lightbox closing and anchor links
         if (!document._busynew_delegated) {
             document.addEventListener('click', function (e) {
+                // Lightbox close logic
                 const overlay = e.target.closest('.lightbox-overlay');
                 if (overlay) {
                     const lb = overlay.closest('.css-lightbox');
@@ -126,6 +128,24 @@
                     if (lb && lb.id) {
                         closeLightbox(lb.id);
                         e.preventDefault();
+                    }
+                }
+                
+                // FIX: Anchor link smooth scroll logic
+                const anchorLink = e.target.closest('a[href^="#"]');
+                if (anchorLink) {
+                    const href = anchorLink.getAttribute('href');
+                    // Ensure it's not just a placeholder hash
+                    if (href.length > 1) {
+                        try {
+                            const targetElement = document.getElementById(href.substring(1));
+                            if (targetElement) {
+                                e.preventDefault();
+                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        } catch (err) {
+                            console.error("Could not scroll to anchor:", err);
+                        }
                     }
                 }
             }, true);
