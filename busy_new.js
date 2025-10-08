@@ -4,7 +4,8 @@
 - Handles lightbox open/close via event delegation.
 - Manages language switching (toggle).
 - Includes a safe initialization that runs after content is ready.
-- FIX: Smooth scrolling for anchor links is now more robust.
+- NEW: Smooth scrolling for anchor links.
+- NEW: Toggling for visual guides.
 */
 
 (function () {
@@ -53,6 +54,7 @@
             langToggle.textContent = 'التحويل للعربية';
             langToggle.setAttribute('data-lang', 'ar');
         }
+        // MODIFICATION: Scroll to top on language change
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -83,8 +85,10 @@
             });
             lazyMedia.forEach(media => mediaObserver.observe(media));
         } else {
+            // Fallback for older browsers
             lazyMedia.forEach(media => {
                 media.src = media.getAttribute('data-src');
+                media.removeAttribute('data-src');
             });
         }
     }
@@ -101,8 +105,9 @@
             langToggle._busynew_attached = true;
         }
 
-        // Set initial view to English by default
+        // Set initial view to English
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
+            // Check if a language is already displayed, if not, set default
             const arStyle = window.getComputedStyle(document.getElementById('ar-content'));
             const enStyle = window.getComputedStyle(document.getElementById('en-content'));
             if (arStyle.display === 'none' && enStyle.display === 'none') {
@@ -113,9 +118,10 @@
         // Start lazy loading media
         lazyLoadMedia();
         
-        // Attach delegated listeners for lightbox closing
+        // Attach delegated listeners for lightbox closing and anchor links
         if (!document._busynew_delegated) {
             document.addEventListener('click', function (e) {
+                // Lightbox close logic
                 const overlay = e.target.closest('.lightbox-overlay');
                 if (overlay) {
                     const lb = overlay.closest('.css-lightbox');
@@ -132,36 +138,56 @@
                         e.preventDefault();
                     }
                 }
+                
+                // FIX: Anchor link smooth scroll logic
+                const anchorLink = e.target.closest('a[href^="#"]');
+                if (anchorLink) {
+                    const href = anchorLink.getAttribute('href');
+                    if (href.length > 1) {
+                        try {
+                            const targetElement = document.getElementById(href.substring(1));
+                            if (targetElement) {
+                                e.preventDefault();
+                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        } catch (err) {
+                            console.error("Could not scroll to anchor:", err);
+                        }
+                    }
+                }
             }, true);
             document._busynew_delegated = true;
         }
 
-        // NEW: Safe, robust anchor link smooth scrolling
-        if (!document._anchor_handler_attached) {
-            document.querySelectorAll('.kb-app a[href^="#"]').forEach(a => {
-                a.addEventListener('click', function (ev) {
-                    const href = this.getAttribute('href');
-                    if (!href || href === '#' || href.length <= 1) return;
-                    
-                    try {
-                        const target = document.querySelector(href);
-                        if (target) {
-                            ev.preventDefault();
-                            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // NEW: Attach listeners for all visual guide toggle buttons
+        document.querySelectorAll(".toggle-visual").forEach(btn => {
+            // Check if a listener is already attached to avoid duplicates
+            if (btn._busynew_toggle_attached) return;
+
+            btn.addEventListener("click", () => {
+                const guide = btn.nextElementSibling;
+                if (guide && guide.classList.contains('visual-guide')) {
+                    const isHidden = guide.style.display === "none" || guide.style.display === "";
+                    guide.style.display = isHidden ? "block" : "none";
+
+                    // Lazy load the image inside when shown for the first time
+                    if (isHidden) {
+                        const img = guide.querySelector('img[data-src]');
+                        if (img) {
+                            img.src = img.getAttribute('data-src');
+                            img.removeAttribute('data-src');
                         }
-                    } catch (err) {
-                        // Prevents errors from invalid selectors
-                        ev.preventDefault();
-                        console.warn('Anchor target not found or invalid:', href);
                     }
-                }, { passive: false });
+                }
             });
-            document._anchor_handler_attached = true;
-        }
+            btn._busynew_toggle_attached = true;
+        });
     }
 
+    // Expose init function to be called from app.html
     window.initBusyNew = initBusyNew;
 
+    // Fallback if script loads before DOM is ready
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         setTimeout(initBusyNew, 0);
     } else {
