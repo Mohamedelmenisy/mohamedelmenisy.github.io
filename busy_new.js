@@ -1,157 +1,145 @@
 /* busy_new.js
-Robust, works if content inserted after DOM load.
-
-* lightbox open/close
-* language switch (toggle)
-* back-to-top smooth scroll
-* initialization that is safe whether script runs before/after content insertion
-  */
+- Robust, works if content inserted after DOM load.
+- Lazy loads images and videos for performance.
+- Handles lightbox open/close via event delegation.
+- Manages language switching (toggle).
+- Includes a safe initialization that runs after content is ready.
+*/
 
 (function () {
-// ===== Lightbox =====
-window.openLightbox = function (targetId) {
-const lb = document.getElementById(targetId);
-if (!lb) return;
-lb.classList.add('active');
-document.body.style.overflow = 'hidden';
-// if there's a video inside ensure it plays (optional)
-const v = lb.querySelector('video');
-if (v && typeof v.play === 'function') v.play().catch(()=>{});
-};
+    // ===== Lightbox Functions =====
+    window.openLightbox = function (targetId) {
+        const lb = document.getElementById(targetId);
+        if (!lb) return;
+        lb.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        const video = lb.querySelector('video');
+        if (video && typeof video.play === 'function') {
+            video.play().catch(() => {}); // Autoplay video in lightbox
+        }
+    };
 
-window.closeLightbox = function (targetId) {
-const lb = document.getElementById(targetId);
-if (!lb) return;
-lb.classList.remove('active');
-document.body.style.overflow = '';
-const v = lb.querySelector('video');
-if (v && typeof v.pause === 'function') v.pause();
-};
+    window.closeLightbox = function (targetId) {
+        const lb = document.getElementById(targetId);
+        if (!lb) return;
+        lb.classList.remove('active');
+        document.body.style.overflow = '';
+        const video = lb.querySelector('video');
+        if (video && typeof video.pause === 'function') {
+            video.pause(); // Pause video when closing
+        }
+    };
 
-// ===== Language switch =====
-function switchLanguage(lang) {
-const arContent = document.getElementById('ar-content');
-const enContent = document.getElementById('en-content');
-const langToggle = document.getElementById('lang-toggle-button');
-const appWrapper = document.querySelector('.kb-app');
+    // ===== Language Switch Function =====
+    function switchLanguage(lang) {
+        const arContent = document.getElementById('ar-content');
+        const enContent = document.getElementById('en-content');
+        const langToggle = document.getElementById('lang-toggle-button');
+        const appWrapper = document.querySelector('.kb-app');
 
-```
-if (!arContent || !enContent || !langToggle || !appWrapper) return;
+        if (!arContent || !enContent || !langToggle || !appWrapper) return;
 
-if (lang === 'ar') {
-  arContent.style.display = 'block';
-  enContent.style.display = 'none';
-  appWrapper.setAttribute('dir', 'rtl');
-  langToggle.textContent = 'Switch to English';
-  langToggle.setAttribute('data-lang', 'en');
-} else {
-  arContent.style.display = 'none';
-  enContent.style.display = 'block';
-  appWrapper.setAttribute('dir', 'ltr');
-  langToggle.textContent = 'التحويل للعربية';
-  langToggle.setAttribute('data-lang', 'ar');
-}
-```
+        if (lang === 'ar') {
+            arContent.style.display = 'block';
+            enContent.style.display = 'none';
+            appWrapper.setAttribute('dir', 'rtl');
+            langToggle.textContent = 'Switch to English';
+            langToggle.setAttribute('data-lang', 'en');
+        } else {
+            arContent.style.display = 'none';
+            enContent.style.display = 'block';
+            appWrapper.setAttribute('dir', 'ltr');
+            langToggle.textContent = 'التحويل للعربية';
+            langToggle.setAttribute('data-lang', 'ar');
+        }
+    }
 
-}
+    window.toggleLanguage = function () {
+        const langToggle = document.getElementById('lang-toggle-button');
+        if (!langToggle) return;
+        const nextLang = langToggle.getAttribute('data-lang') || 'en';
+        switchLanguage(nextLang);
+    };
+    
+    // ===== Lazy Loading for Media =====
+    function lazyLoadMedia() {
+        const lazyMedia = document.querySelectorAll('.kb-app img[data-src], .kb-app video[data-src]');
+        if ('IntersectionObserver' in window) {
+            const mediaObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const media = entry.target;
+                        const src = media.getAttribute('data-src');
+                        media.src = src;
+                        media.removeAttribute('data-src');
+                        if (media.tagName === 'VIDEO') {
+                           media.load();
+                        }
+                        observer.unobserve(media);
+                    }
+                });
+            });
+            lazyMedia.forEach(media => mediaObserver.observe(media));
+        } else {
+            // Fallback for older browsers
+            lazyMedia.forEach(media => {
+                media.src = media.getAttribute('data-src');
+                media.removeAttribute('data-src');
+            });
+        }
+    }
 
-// toggle based on data-lang OR current visibility
-window.toggleLanguage = function () {
-const langToggle = document.getElementById('lang-toggle-button');
-if (!langToggle) return;
-const next = langToggle.getAttribute('data-lang') || (document.getElementById('ar-content').style.display === 'none' ? 'ar' : 'en');
-switchLanguage(next);
-};
+    // ===== Initialization Function =====
+    function initBusyNew() {
+        // Attach click listener to language toggle button
+        const langToggle = document.getElementById('lang-toggle-button');
+        if (langToggle && !langToggle._busynew_attached) {
+            langToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.toggleLanguage();
+            });
+            langToggle._busynew_attached = true;
+        }
 
-// smooth scroll top
-window.scrollToTop = function () {
-try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
-};
+        // Set initial view to Arabic
+        if (document.getElementById('ar-content') && document.getElementById('en-content')) {
+            switchLanguage('ar');
+        }
+        
+        // Start lazy loading media
+        lazyLoadMedia();
 
-// attach delegated listeners for lightbox close (overlay and close buttons)
-function attachDelegatedListeners() {
-document.addEventListener('click', function (e) {
-// Close when clicking .lightbox-overlay or .lightbox-close
-const overlay = e.target.closest('.lightbox-overlay');
-if (overlay) {
-const lb = overlay.closest('.css-lightbox');
-if (lb && lb.id) closeLightbox(lb.id);
-e.preventDefault();
-return;
-}
-const close = e.target.closest('.lightbox-close');
-if (close) {
-const lb = close.closest('.css-lightbox');
-if (lb && lb.id) closeLightbox(lb.id);
-e.preventDefault();
-return;
-}
-// open lightbox: elements may call openLightbox('id') inline. We also handle clickable media-preview anchors
-const media = e.target.closest('.media-preview a, .media-preview');
-if (media) {
-// allow inline onclick handlers to run; if they don't, try to find href / data-target
-const anchor = media.closest('a');
-if (anchor) {
-// if anchor has onclick openLightbox("id") it'll already run; otherwise if anchor.href="#lb-xxx" pattern:
-const href = anchor.getAttribute('href') || '';
-if (href.startsWith('#lb-')) {
-const id = href.replace('#', '');
-openLightbox(id);
-e.preventDefault();
-}
-}
-}
-}, true);
-}
+        // Attach delegated listeners for lightbox closing
+        if (!document._busynew_delegated) {
+            document.addEventListener('click', function (e) {
+                const overlay = e.target.closest('.lightbox-overlay');
+                if (overlay) {
+                    const lb = overlay.closest('.css-lightbox');
+                    if (lb && lb.id) {
+                        closeLightbox(lb.id);
+                        e.preventDefault();
+                    }
+                }
+                const closeBtn = e.target.closest('.lightbox-close');
+                 if (closeBtn) {
+                    const lb = closeBtn.closest('.css-lightbox');
+                    if (lb && lb.id) {
+                        closeLightbox(lb.id);
+                        e.preventDefault();
+                    }
+                }
+            }, true);
+            document._busynew_delegated = true;
+        }
+    }
 
-// init: attach click on lang toggle and set initial lang to Arabic
-function initBusyNew() {
-const langToggle = document.getElementById('lang-toggle-button');
-if (langToggle && !langToggle._busynew_attached) {
-langToggle.addEventListener('click', function (e) {
-e.preventDefault();
-window.toggleLanguage();
-});
-langToggle._busynew_attached = true;
-}
+    // Expose init function to be called from app.html
+    window.initBusyNew = initBusyNew;
 
-```
-// set initial view to Arabic if both blocks exist
-if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-  switchLanguage('ar');
-}
-
-// attach delegated listeners for close overlay etc.
-if (!document._busynew_delegated) {
-  attachDelegatedListeners();
-  document._busynew_delegated = true;
-}
-```
-
-}
-
-// Run on load (if content already in DOM)
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-setTimeout(initBusyNew, 0);
-} else {
-document.addEventListener('DOMContentLoaded', initBusyNew);
-}
-
-// MutationObserver: if .kb-app inserted later, init again
-try {
-const mo = new MutationObserver(function (mutList) {
-for (const m of mutList) {
-for (const n of m.addedNodes) {
-if (n && n.querySelector && (n.classList && n.classList.contains && n.classList.contains('kb-app') || n.querySelector('.kb-app'))) {
-initBusyNew();
-return;
-}
-}
-}
-});
-mo.observe(document.documentElement || document.body, { childList: true, subtree: true });
-} catch (e) { /* noop */ }
-
-// expose init in case you need to call manually:
-window.initBusyNew = initBusyNew;
+    // Fallback if script loads before DOM is ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initBusyNew, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', initBusyNew);
+    }
 })();
