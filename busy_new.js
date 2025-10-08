@@ -5,7 +5,6 @@
 - Manages language switching (toggle).
 - Includes a safe initialization that runs after content is ready.
 - NEW: Smooth scrolling for anchor links.
-- NEW: Toggling for visual guides.
 */
 
 (function () {
@@ -143,6 +142,7 @@
                 const anchorLink = e.target.closest('a[href^="#"]');
                 if (anchorLink) {
                     const href = anchorLink.getAttribute('href');
+                    // Ensure it's not just a placeholder hash that does nothing
                     if (href.length > 1) {
                         try {
                             const targetElement = document.getElementById(href.substring(1));
@@ -158,30 +158,6 @@
             }, true);
             document._busynew_delegated = true;
         }
-
-        // NEW: Attach listeners for all visual guide toggle buttons
-        document.querySelectorAll(".toggle-visual").forEach(btn => {
-            // Check if a listener is already attached to avoid duplicates
-            if (btn._busynew_toggle_attached) return;
-
-            btn.addEventListener("click", () => {
-                const guide = btn.nextElementSibling;
-                if (guide && guide.classList.contains('visual-guide')) {
-                    const isHidden = guide.style.display === "none" || guide.style.display === "";
-                    guide.style.display = isHidden ? "block" : "none";
-
-                    // Lazy load the image inside when shown for the first time
-                    if (isHidden) {
-                        const img = guide.querySelector('img[data-src]');
-                        if (img) {
-                            img.src = img.getAttribute('data-src');
-                            img.removeAttribute('data-src');
-                        }
-                    }
-                }
-            });
-            btn._busynew_toggle_attached = true;
-        });
     }
 
     // Expose init function to be called from app.html
