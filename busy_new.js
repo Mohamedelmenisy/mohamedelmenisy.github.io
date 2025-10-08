@@ -1,13 +1,15 @@
-/* busy_new.js
+/* busy_new.js - v2
 Robust, works if content inserted after DOM load.
 
 * lightbox open/close
-* language switch (toggle)
+* language switch (toggle) with smooth scroll
 * back-to-top smooth scroll
+* smart internal link handling (opens <details>)
 * initialization that is safe whether script runs before/after content insertion
 */
 
 (function () {
+
 // ===== Lightbox =====
 window.openLightbox = function (targetId) {
     const lb = document.getElementById(targetId);
@@ -15,8 +17,7 @@ window.openLightbox = function (targetId) {
     lb.classList.add('active');
     document.body.style.overflow = 'hidden';
     const v = lb.querySelector('video');
-    // منع التشغيل التلقائي عبر JS (مع الأمل أن يكون preload="metadata" في HTML كافي)
-    // if (v && typeof v.play === 'function') v.play().catch(()=>{});
+    if (v && typeof v.play === 'function') v.play().catch(()=>{});
 };
 
 window.closeLightbox = function (targetId) {
@@ -40,94 +41,73 @@ function switchLanguage(lang) {
     if (lang === 'ar') {
         arContent.style.display = 'block';
         enContent.style.display = 'none';
-        langToggle.setAttribute('data-lang', 'en');
-        langToggle.textContent = 'Switch to English';
         appWrapper.setAttribute('dir', 'rtl');
+        langToggle.textContent = 'Switch to English';
+        langToggle.setAttribute('data-lang', 'en');
     } else { // 'en'
         arContent.style.display = 'none';
         enContent.style.display = 'block';
-        langToggle.setAttribute('data-lang', 'ar');
-        langToggle.textContent = 'التحويل للعربية';
         appWrapper.setAttribute('dir', 'ltr');
+        langToggle.textContent = 'التحويل للعربية';
+        langToggle.setAttribute('data-lang', 'ar');
     }
+    // Scroll to top after switching
+    window.scrollToTop();
 }
 
 window.toggleLanguage = function () {
     const langToggle = document.getElementById('lang-toggle-button');
-    const currentLang = langToggle.getAttribute('data-lang') === 'ar' ? 'en' : 'ar';
-    switchLanguage(currentLang);
-    // scroll to top smoothly
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!langToggle) return;
+    const nextLang = langToggle.getAttribute('data-lang') || 'ar';
+    switchLanguage(nextLang);
 };
 
-// ===== Anchor Fix: Open Details before scrolling =====
-function handleAnchorClick(e) {
-    // Check if the click target is an anchor tag with a hash
-    const anchor = e.target.closest('a[href^="#"]');
-    if (!anchor || anchor.href.indexOf('#') === -1) return;
-
-    const hash = anchor.getAttribute('href');
-    if (hash.length <= 1) return; // Skip "#" anchor
-
-    const targetId = hash.substring(1);
-    const targetElement = document.getElementById(targetId);
-    if (!targetElement) return;
-
-    // 1. Find the closest <details> parent to the target element
-    let parentDetails = targetElement.closest('details');
-
-    // 2. Open all parent <details> elements before scrolling
-    let detailsToOpen = [];
-    let current = targetElement;
-    while(current && current !== document.body) {
-        if(current.tagName === 'DETAILS' && !current.open) {
-            detailsToOpen.push(current);
-        }
-        current = current.parentElement;
+// ===== Smooth scroll top =====
+window.scrollToTop = function () {
+    try { 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    } catch (e) { 
+        window.scrollTo(0, 0); 
     }
+};
 
-    if (detailsToOpen.length > 0) {
-        e.preventDefault(); // Stop default scroll
-
-        // Open details from outside-in (bottom of the array to top)
-        for (let i = detailsToOpen.length - 1; i >= 0; i--) {
-            detailsToOpen[i].open = true;
-        }
-
-        // 3. Scroll smoothly to the target element after opening
-        setTimeout(() => {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100); // Small delay to allow layout change
-    }
-    // If no parent details, let default behavior happen, or if details is already open.
-}
-
-// ===== Delegated Listeners =====
+// ===== Attach event listeners =====
 function attachDelegatedListeners() {
     document.addEventListener('click', function (e) {
-        // Close lightbox by clicking overlay or close button
-        if (e.target.classList.contains('lightbox-overlay') || e.target.classList.contains('lightbox-close')) {
+        // Close lightbox on overlay or close button click
+        const closeTrigger = e.target.closest('.lightbox-overlay, .lightbox-close');
+        if (closeTrigger) {
             const lb = e.target.closest('.css-lightbox');
-            if (lb) {
+            if (lb && lb.id) {
+                closeLightbox(lb.id);
                 e.preventDefault();
-                window.closeLightbox(lb.id);
             }
         }
         
-        // Handle Anchor Links fix
-        handleAnchorClick(e);
-        
-        // Handle Back-to-Top (for anchors that use javascript:void(0))
-        if(e.target.closest('.back-to-top a') && e.target.closest('.back-to-top a').href.includes('javascript')) {
-             e.preventDefault();
-             window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Smart scroll for internal links
+        const internalLink = e.target.closest('a.internal-link');
+        if (internalLink && internalLink.hash) {
+            const targetElement = document.querySelector(internalLink.hash);
+            if (targetElement) {
+                e.preventDefault();
+                
+                // Check if target is inside a closed <details> tag and open it
+                const parentDetails = targetElement.closest('details');
+                if (parentDetails && !parentDetails.open) {
+                    parentDetails.open = true;
+                }
+                
+                // Scroll to the element
+                setTimeout(() => {
+                   targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100); // Small delay to allow <details> to open
+            }
         }
-    });
+    }, true);
 }
 
-// ===== Initialization Logic =====
+// ===== Initialization =====
 function initBusyNew() {
-    // Attach language toggle listener
     const langToggle = document.getElementById('lang-toggle-button');
     if (langToggle && !langToggle._busynew_attached) {
         langToggle.addEventListener('click', function (e) {
@@ -137,18 +117,12 @@ function initBusyNew() {
         langToggle._busynew_attached = true;
     }
 
-    // Set initial view to English if both blocks exist and language is not set (default to en)
+    // Set initial view to English if both blocks exist
     if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-        // Check current dir to decide initial language, default to 'en' (ltr)
-        const appWrapper = document.querySelector('.kb-app');
-        if (appWrapper && appWrapper.getAttribute('dir') === 'rtl') {
-             switchLanguage('ar'); // Initialize to Arabic if dir="rtl" is set in HTML
-        } else {
-             switchLanguage('en'); // Default to English
-        }
+        switchLanguage('en');
     }
 
-    // Attach delegated listeners for close overlay, anchor fix etc.
+    // Attach delegated listeners for close overlay etc. if not already attached
     if (!document._busynew_delegated) {
         attachDelegatedListeners();
         document._busynew_delegated = true;
@@ -162,18 +136,20 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     document.addEventListener('DOMContentLoaded', initBusyNew);
 }
 
-// Re-initialize if content is loaded dynamically via MutationObserver
+// Re-initialize if content is loaded dynamically (e.g., via AJAX/Mutation)
 try {
     const mo = new MutationObserver(function (mutList) {
         for (const m of mutList) {
-            for (const n of m.addedNodes) {
-                if (n && n.querySelector && (n.classList && n.classList.contains('kb-app') || n.querySelector('.kb-app'))) {
-                    initBusyNew();
-                    return; // Init once and exit
-                }
+            if (m.addedNodes.length > 0) {
+                 initBusyNew();
+                 // We don't disconnect, to handle multiple dynamic loads
             }
         }
     });
     mo.observe(document.documentElement || document.body, { childList: true, subtree: true });
-} catch (e) { /* Mutation Observer not supported */ }
+} catch (e) { /* Fails gracefully on older browsers */ }
+
+// Expose init in case of manual call
+window.initBusyNew = initBusyNew;
+
 })();
