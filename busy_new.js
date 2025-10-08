@@ -53,6 +53,8 @@
             langToggle.textContent = 'التحويل للعربية';
             langToggle.setAttribute('data-lang', 'ar');
         }
+        // MODIFICATION: Scroll to top on language change
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     window.toggleLanguage = function () {
@@ -104,7 +106,12 @@
 
         // Set initial view to English
         if (document.getElementById('ar-content') && document.getElementById('en-content')) {
-            switchLanguage('en');
+            // Check if a language is already displayed, if not, set default
+            const arStyle = window.getComputedStyle(document.getElementById('ar-content'));
+            const enStyle = window.getComputedStyle(document.getElementById('en-content'));
+            if (arStyle.display === 'none' && enStyle.display === 'none') {
+                 switchLanguage('en');
+            }
         }
         
         // Start lazy loading media
@@ -135,7 +142,7 @@
                 const anchorLink = e.target.closest('a[href^="#"]');
                 if (anchorLink) {
                     const href = anchorLink.getAttribute('href');
-                    // Ensure it's not just a placeholder hash
+                    // Ensure it's not just a placeholder hash that does nothing
                     if (href.length > 1) {
                         try {
                             const targetElement = document.getElementById(href.substring(1));
