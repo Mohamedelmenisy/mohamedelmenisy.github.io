@@ -1,5 +1,6 @@
+/*
   Unified script for InfiniBase Cases
-  - Language switching is handled by pure CSS.
+  - Handles language toggling.
   - Manages lightboxes for images.
   - Controls visual guide section visibility.
   - Powers the interactive delay calculator.
@@ -53,6 +54,24 @@
         }
     }
     
+    // ===== Language Toggle Function =====
+    function toggleLanguage() {
+      const button = document.getElementById("lang-toggle-button");
+      const appWrapper = document.querySelector(APP_SELECTOR);
+      if (!button || !appWrapper) return;
+
+      const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+
+      if (isArabicActive) {
+        appWrapper.setAttribute('dir', 'ltr');
+        button.textContent = "التحويل للعربية";
+      } else {
+        appWrapper.setAttribute('dir', 'rtl');
+        button.textContent = "Switch to English";
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     // ===== Delay Calculator Logic =====
     function setupCalculator(lang) {
         const langSuffix = lang === 'ar' ? 'Ar' : 'En';
@@ -142,6 +161,12 @@
     document.addEventListener('click', function (e) {
         const target = e.target;
         
+        // --- Language Toggle Button ---
+        if (target.closest('#lang-toggle-button')) {
+            toggleLanguage();
+            return;
+        }
+
         // --- Visual guide toggle buttons ---
         const toggleBtn = target.closest('.toggle-visual');
         if (toggleBtn) {
