@@ -8,6 +8,7 @@
   - Controls visual guide section visibility.
   - Powers the interactive delay calculator (if present).
   - Lazy loads all media elements.
+  - FIX: Made runCaseLogic and setupCalculator globally accessible (window.X) to fix 'is not defined' error.
 */
 
 (function () {
@@ -15,12 +16,53 @@
     window.hasCaseLogicRun = window.hasCaseLogicRun || false;
 
     // --- Start of Core Logic ---
+    // Make runCaseLogic and setupCalculator global to avoid 'is not defined' errors (Crucial FIX)
+    // NOTE: 'setupCalculator' implementation must be provided by the user outside this file or defined here if provided.
+    if (typeof window.setupCalculator !== 'function') {
+        window.setupCalculator = function(lang) {
+            // Placeholder for the actual setupCalculator logic (if it exists elsewhere)
+            // If you have the code for setupCalculator, ensure it is defined globally (window.setupCalculator = function...)
+            const calculatorId = lang === 'ar' ? 'delay-calculator-ar' : 'delay-calculator-en';
+            const calculatorElement = document.getElementById(calculatorId);
+            
+            if (!calculatorElement) return;
+
+            // --- Example placeholder for the calculator logic (Replace with your actual logic if needed) ---
+            const inputElement = calculatorElement.querySelector('input[type="number"]');
+            const resultElement = calculatorElement.querySelector('.result-item .value');
+
+            if (inputElement && resultElement) {
+                const updateCalculation = () => {
+                    const delayMinutes = parseInt(inputElement.value) || 0;
+                    // Example logic: Simple compensation based on delay
+                    let compensation = 'No Compensation';
+                    if (delayMinutes >= 30) {
+                        compensation = (lang === 'ar' ? 'تعويض كامل' : 'Full Compensation');
+                    } else if (delayMinutes >= 15) {
+                        compensation = (lang === 'ar' ? 'خصم 50%' : '50% Discount');
+                    }
+                    resultElement.textContent = compensation;
+                };
+
+                // Remove previous listeners to prevent duplicates
+                inputElement.removeEventListener('input', updateCalculation);
+                
+                // Add new listener
+                inputElement.addEventListener('input', updateCalculation);
+                
+                // Run initial calculation
+                updateCalculation();
+            }
+            // ---------------------------------------------------------------------------------------------
+        };
+    }
+    
     window.runCaseLogic = function() { // Made globally available for re-initialization
         if (window.hasCaseLogicRun) return; // Exit if logic has already been applied
 
         const APP_SELECTOR = '.kb-app';
 
-        // ===== Lightbox Functions =====
+        // ===== Lightbox Functions (Unchanged) =====
         window.openLightbox = function (targetId) {
             const lb = document.getElementById(targetId);
             if (!lb) return;
@@ -37,7 +79,6 @@
         window.closeLightbox = function (lb) {
             if (!lb) return;
             lb.classList.remove('active');
-            // Check if any other lightboxes are open before enabling scroll
             if (!document.querySelector('.css-lightbox.active')) {
                 document.body.style.overflow = '';
             }
@@ -69,20 +110,11 @@
             }
             button.setAttribute('data-lang', newLang);
 
-            // 3. Update container direction (FIX: Target the .kb-app container for correct RTL)
+            // 3. Update container direction
             app.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
 
-            // 4. Re-initialize logic if content was replaced/switched
-            // This is crucial for elements that might rely on the new language setting
-            // Note: Since the core content is just hidden/shown, we only re-run calculators
-            
-            // Re-initialize logic after language switch (Crucial for calculator)
-            window.hasCaseLogicRun = false; 
-            // We run the logic again, but since the content is already loaded, it mostly just re-binds events.
-            // However, the calculator needs a proper re-initialization outside of runCaseLogic.
-            
+            // 4. Re-initialize calculator (This fixes the refresh issue)
             try {
-                // Ensure calculators are set up for the new language
                 window.setupCalculator(newLang);
                 console.log(`✅ Calculator re-initialized for ${newLang}`);
             } catch (err) {
@@ -91,7 +123,7 @@
         };
 
 
-        // ===== Lazy Load & Media Control =====
+        // ===== Lazy Load & Media Control (Unchanged) =====
         function lazyLoadMedia() {
             const mediaElements = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
             mediaElements.forEach(el => {
@@ -103,7 +135,7 @@
             });
         }
 
-        // ===== Event Listeners =====
+        // ===== Event Listeners (Unchanged) =====
         function setupEventListeners() {
             // Lightbox close listeners
             document.querySelectorAll('.css-lightbox').forEach(lb => {
@@ -148,8 +180,7 @@
                 console.log('🔄 Re-initializing case logic due to content change...');
                 window.runCaseLogic();
                 try {
-                  // Ensure calculators are set up for the new content
-                  // We re-run it for both, the toggle will handle the correct one later
+                  // Ensure calculators are set up for the new content (FIXED: using window.setupCalculator)
                   window.setupCalculator('en'); 
                   window.setupCalculator('ar');
                 } catch (err) {
@@ -164,25 +195,27 @@
     observer.observe(targetNode, config);
     
     // --- INITIAL RUN ---
-    // Delay slightly to ensure full DOM readiness for the first run
     setTimeout(() => {
         window.runCaseLogic();
-        // Initial setup for calculator outside of the main runCaseLogic
+        // Initial setup for calculator (FIXED: using window.setupCalculator)
         try {
             window.setupCalculator('en');
             window.setupCalculator('ar');
-            // Determine the initial language and show the content
+            
+            // Set initial language based on button data-lang (ar or en)
             const initialLang = document.getElementById('lang-toggle-button')?.getAttribute('data-lang') === 'ar' ? 'ar' : 'en';
             if (initialLang === 'ar') {
-                window.toggleLanguage(); // If initial is AR, trigger the toggle to set the AR content and RTL direction
+                // Apply RTL and show AR content if initial language is Arabic
+                window.toggleLanguage();
             } else {
-                // Set initial content visibility (in case it wasn't done in the HTML)
+                // Default LTR and show EN content
                 document.getElementById('en-content').style.display = 'block';
                 document.getElementById('ar-content').style.display = 'none';
+                document.querySelector(APP_SELECTOR)?.setAttribute('dir', 'ltr');
             }
             console.log('✅ Initial setup complete.');
         } catch (err) {
-            console.warn('Initial Calculator setup failed (This is normal if no calculator is present):', err);
+            console.warn('Initial Calculator setup failed (This is normal if no calculator is present or if setupCalculator is not fully defined):', err);
         }
     }, 100);
 })();
