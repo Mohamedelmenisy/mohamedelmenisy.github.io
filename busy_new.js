@@ -1,172 +1,224 @@
-/*
-  Unified InfiniBase Cases JS - Final Optimized (v5)
-  - Instant language toggle (no refresh required)
-  - Fixed banner position regardless of language direction
-  - Stable lightbox with proper centering & size
-  - Instant image loading (no lazy-loading bugs)
-  - Interactive Delay Calculator (fully functional)
-  - Smooth performance (no freezing)
-*/
+/* ==========================================================
+   InfiniBase Cases - Final Optimized CSS (v5)
+   - Fixed Arabic alignment
+   - Static banner (doesn't move with language switch)
+   - Balanced lightbox size & centered properly
+   - Proper bullet alignment inside boxes
+   - Optimized image scaling (no oversized visuals)
+   ========================================================== */
 
-(function () {
-  const APP_SELECTOR = ".kb-app";
+/* ---------- Root Variables ---------- */
+:root {
+  --bg-main: #0b1220;
+  --bg-content: #0f1724;
+  --text-main: #e6eef8;
+  --text-secondary: #9ca3af;
+  --border-color: #1e293b;
+  --color-highlight: #93c5fd;
+  --color-pill: #6d28d9;
+  --font-family: 'Cairo', sans-serif;
+}
 
-  // ====== Initialize on DOM ready ======
-  document.addEventListener("DOMContentLoaded", () => {
-    loadAllImagesImmediately();
-    setupCalculator("en");
-    setupCalculator("ar");
-    setupLanguageToggle();
-  });
+/* ---------- Base Layout ---------- */
+.kb-app {
+  font-family: var(--font-family);
+  background: var(--bg-main);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  // ====== Fix Banner Position ======
-  function fixBannerPosition() {
-    const banner = document.querySelector(".header-banner");
-    if (banner) {
-      banner.style.position = "relative";
-      banner.style.left = "0";
-      banner.style.right = "auto";
-      banner.style.margin = "0 auto";
-      banner.style.textAlign = "left";
-    }
-  }
+/* ---------- Banner ---------- */
+.header-banner {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto 1.5rem auto;
+  text-align: left;
+}
+.kb-app[dir="rtl"] .header-banner {
+  text-align: left !important; /* Keep static position */
+}
+.header-banner img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
 
-  // ====== Instant Load for Images ======
-  function loadAllImagesImmediately() {
-    document
-      .querySelectorAll("img[data-src], video[data-src]")
-      .forEach((el) => {
-        const src = el.getAttribute("data-src");
-        if (src) {
-          el.src = src;
-          el.removeAttribute("data-src");
-        }
-      });
-  }
+/* ---------- Language Toggle Button ---------- */
+#lang-toggle-button {
+  display: inline-block;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.7rem 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 1rem auto;
+  transition: 0.2s;
+}
+#lang-toggle-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
 
-  // ====== Language Toggle ======
-  function setupLanguageToggle() {
-    const button = document.getElementById("lang-toggle-button");
-    const app = document.querySelector(APP_SELECTOR);
-    if (!button || !app) return;
+/* ---------- Text Alignment Fix ---------- */
+.kb-app[dir="rtl"] p,
+.kb-app[dir="rtl"] li,
+.kb-app[dir="rtl"] h3,
+.kb-app[dir="rtl"] h4 {
+  text-align: right !important;
+}
+.kb-app[dir="ltr"] p,
+.kb-app[dir="ltr"] li,
+.kb-app[dir="ltr"] h3,
+.kb-app[dir="ltr"] h4 {
+  text-align: left !important;
+}
 
-    button.addEventListener("click", () => {
-      const isArabic = app.getAttribute("dir") === "rtl";
-      app.setAttribute("dir", isArabic ? "ltr" : "rtl");
-      button.textContent = isArabic ? "التحويل للعربية" : "Switch to English";
-      fixBannerPosition();
-      alignArabicText();
-    });
-  }
+/* ---------- Bullet Points ---------- */
+.kb-app ul {
+  list-style-position: inside !important;
+  margin-left: 1rem;
+  padding: 0;
+}
+.kb-app li {
+  padding: 0.2rem 0.5rem;
+}
+.kb-app[dir="rtl"] li {
+  padding-right: 0;
+  padding-left: 10px;
+}
 
-  // ====== Arabic Alignment Fix ======
-  function alignArabicText() {
-    const app = document.querySelector(APP_SELECTOR);
-    if (!app) return;
-    if (app.getAttribute("dir") === "rtl") {
-      app.querySelectorAll("p, li, h3, h4").forEach((el) => {
-        el.style.textAlign = "right";
-      });
-    } else {
-      app.querySelectorAll("p, li, h3, h4").forEach((el) => {
-        el.style.textAlign = "left";
-      });
-    }
-  }
+/* ---------- Lightbox Styling ---------- */
+.css-lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: none;
+}
+.css-lightbox.active {
+  display: block;
+}
+.lightbox-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+}
+.lightbox-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+.lightbox-content img, .lightbox-content video {
+  max-width: 100%;
+  max-height: 70vh;
+  height: auto;
+  display: block;
+  margin: 15px auto;
+  border-radius: 8px;
+}
+.lightbox-close {
+  position: absolute;
+  top: 10px;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.kb-app[dir="ltr"] .lightbox-close {
+  right: 15px;
+}
+.kb-app[dir="rtl"] .lightbox-close {
+  left: 15px;
+}
+.lightbox-close:hover {
+  color: var(--color-highlight);
+}
 
-  // ====== Lightbox Functions ======
-  window.openLightbox = function (targetId) {
-    const lb = document.getElementById(targetId);
-    if (!lb) return;
-    lb.classList.add("active");
-    document.body.style.overflow = "hidden";
-    lb.scrollIntoView({ behavior: "instant", block: "center" });
-    const video = lb.querySelector("video");
-    if (video) {
-      video.currentTime = 0;
-      video.play().catch(() => {});
-    }
-  };
+/* ---------- Image Size Control ---------- */
+.media-preview img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  max-height: 480px;
+}
+.image-grid-2 img {
+  max-height: 350px;
+}
 
-  window.closeLightbox = function (targetId) {
-    const lb = document.getElementById(targetId);
-    if (!lb) return;
-    lb.classList.remove("active");
-    document.body.style.overflow = "";
-    const video = lb.querySelector("video");
-    if (video) video.pause();
-  };
+/* ---------- Calculator ---------- */
+.recommendation-box {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 8px;
+  line-height: 1.6;
+  border-left: 4px solid;
+}
+.recommendation-box.success {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+  color: #86efac;
+}
+.recommendation-box.info {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+.recommendation-box.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.kb-app[dir="rtl"] .recommendation-box {
+  border-left: 0;
+  border-right: 4px solid;
+}
+.kb-app[dir="rtl"] .recommendation-box.success { border-right-color: #22c55e; }
+.kb-app[dir="rtl"] .recommendation-box.info { border-right-color: #3b82f6; }
+.kb-app[dir="rtl"] .recommendation-box.error { border-right-color: #ef4444; }
 
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".lightbox-overlay") || e.target.closest(".lightbox-close")) {
-      const lb = e.target.closest(".css-lightbox");
-      if (lb) closeLightbox(lb.id);
-    }
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      const activeLb = document.querySelector(".css-lightbox.active");
-      if (activeLb) closeLightbox(activeLb.id);
-    }
-  });
-
-  // ====== Calculator Setup ======
-  function setupCalculator(lang) {
-    const langSuffix = lang === "ar" ? "Ar" : "En";
-    const estInput = document.getElementById(`estTimeInput${langSuffix}`);
-    const actInput = document.getElementById(`actTimeInput${langSuffix}`);
-    const orderTypeRadios = document.querySelectorAll(`input[name="orderType${langSuffix}"]`);
-    const recommendationBox = document.getElementById(`recommendationBox${langSuffix}`);
-    const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
-    const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
-
-    if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
-
-    let currentText = "";
-
-    const calculate = () => {
-      const est = estInput.value;
-      const act = actInput.value;
-      if (!est || !act) return;
-
-      const type = document.querySelector(`input[name="orderType${langSuffix}"]:checked`)?.value;
-      const diff = Math.round((new Date(`1970-01-01T${act}:00`) - new Date(`1970-01-01T${est}:00`)) / 60000);
-
-      let msg = "", boxClass = "info";
-
-      if (diff < 0) {
-        msg = lang === "en" ? "Error: Actual time before estimate." : "خطأ: الوقت الفعلي قبل الوقت المتوقع.";
-        boxClass = "error";
-      } else if (diff <= 15) {
-        msg = lang === "en" ? `Delay: ${diff} mins — Apology only.` : `مدة التأخير ${diff} دقيقة — يكتفى بالاعتذار.`;
-        boxClass = "info";
-      } else {
-        boxClass = "success";
-        if (type === "fast") {
-          if (diff <= 30) msg = lang === "en" ? "Delivery Fees only." : "رسوم التوصيل فقط.";
-          else if (diff <= 45) msg = lang === "en" ? "Delivery + 25% chef." : "التوصيل + 25٪ من قيمة الطلب.";
-          else if (diff <= 60) msg = lang === "en" ? "Delivery + 50% chef." : "التوصيل + 50٪ من قيمة الطلب.";
-          else msg = lang === "en" ? "Full Order Amount." : "كامل قيمة الطلب.";
-        } else {
-          if (diff <= 60) msg = lang === "en" ? "50%-100% of order." : "من 50٪ إلى 100٪ من الطلب.";
-          else msg = lang === "en" ? "Full + 50 SAR credit." : "كامل المبلغ + 50 ريال رصيد.";
-        }
-      }
-
-      recommendationTextElem.innerHTML = msg;
-      recommendationBox.className = `recommendation-box ${boxClass}`;
-      currentText = msg;
-    };
-
-    [estInput, actInput, ...orderTypeRadios].forEach((el) => el.addEventListener("input", calculate));
-
-    copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(currentText).then(() => {
-        const original = copyBtn.innerHTML;
-        copyBtn.innerHTML = lang === "en" ? "Copied!" : "تم النسخ!";
-        setTimeout(() => (copyBtn.innerHTML = original), 1500);
-      });
-    });
-  }
-})();
+/* ---------- General Styling ---------- */
+.kb-card {
+  background: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem auto;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+.kb-app h3 {
+  color: var(--color-highlight);
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+.kb-app a {
+  color: var(--color-highlight);
+  text-decoration: none;
+}
+.kb-app a:hover {
+  text-decoration: underline;
+  color: #a5b4fc;
+}
