@@ -86,6 +86,7 @@
         const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
         const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
+        // If calculator elements don't exist on this page, do nothing.
         if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
 
         let currentRecommendationText = '';
@@ -150,6 +151,7 @@
     // ===== Initialization Function =====
     function init() {
         lazyLoadMedia();
+        // Attempt to set up calculator; it will do nothing if elements aren't found
         setupCalculator('en');
         setupCalculator('ar');
     }
