@@ -1,7 +1,7 @@
 /*
-  Unified script for InfiniBase Cases - v6 (Stable - Final Patches)
-  - FIX: Corrected MutationObserver scope to resolve "setupCalculator is not defined" error.
-  - FIX: Forced a browser reflow in toggleLanguage() to make language switching instant.
+  Unified script for InfiniBase Cases - v5 (Stable - Optimized Observer)
+  - FIX: Replaced aggressive MutationObserver with a smarter, debounced version to prevent infinite loops and improve performance.
+  - Calculators are re-initialized immediately after language switch, no refresh needed.
   - Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
   - Smarter anchor link scrolling to prevent conflicts.
   - Manages lightboxes for images and videos.
@@ -32,6 +32,7 @@
                 video.currentTime = 0;
                 video.play().catch(() => {});
             }
+            // FIX: Removed scrollIntoView; CSS now handles perfect centering.
         };
 
         window.closeLightbox = function (targetId) {
@@ -91,10 +92,11 @@
             button.textContent = "Switch to English";
           }
           
-          // FIX: Force browser to reflow layout to apply CSS changes instantly
-          document.body.offsetHeight;
-          // FIX: Re-check for newly visible images after language switch
-          lazyLoadMedia();
+          // FIX: Re-initialize calculators after a short delay to ensure the DOM is updated.
+          setTimeout(() => {
+              setupCalculator('en');
+              setupCalculator('ar');
+          }, 50);
         }
 
         // ===== Delay Calculator Logic (Compensation Case) =====
@@ -109,6 +111,7 @@
             const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
             const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
+            // This check is crucial because this function can be called multiple times.
             if (!actInput || !recommendationBox || !copyBtn || copyBtn.dataset.initialized === 'true') {
                 return;
             }
@@ -122,7 +125,7 @@
                 if (!estTime || !actTime) return;
 
                 const orderTypeEl = document.querySelector(`input[name="orderType${langSuffix}"]:checked`);
-                if (!orderTypeEl) return;
+                if (!orderTypeEl) return; // Exit if no order type is selected
                 const orderType = orderTypeEl.value;
                 
                 const time1 = new Date(`1970-01-01T${estTime}:00`);
@@ -152,17 +155,18 @@
                 if(recommendationTextElem) recommendationTextElem.innerHTML = message;
                 currentRecommendationText = rawMessage;
                 if(recommendationBox) {
-                    recommendationBox.className = 'recommendation-box';
+                    recommendationBox.className = 'recommendation-box'; // Reset classes
                     recommendationBox.classList.add(boxClass);
                 }
             };
             
+            // Mark elements as initialized to prevent re-attaching listeners
             [estInput, actInput, ...orderTypeRadios].forEach(el => {
-              el.removeEventListener('input', calculateDelay);
+              el.removeEventListener('input', calculateDelay); // Remove old listener if any
               el.addEventListener('input', calculateDelay);
             });
-            copyBtn.removeEventListener('click', copyBtn.handler);
-            copyBtn.handler = () => {
+            copyBtn.removeEventListener('click', copyBtn.handler); // Remove old listener
+            copyBtn.handler = () => { // Attach new one
                 navigator.clipboard.writeText(currentRecommendationText).then(() => {
                     const originalText = copyBtn.innerHTML;
                     copyBtn.innerHTML = lang === 'en' ? 'Copied!' : 'تم النسخ!';
@@ -238,26 +242,34 @@
     }
     // --- End of Core Logic ---
 
-    // --- ROBUST INITIALIZATION (Optimized & Corrected) ---
+    // --- ROBUST INITIALIZATION (Optimized) ---
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
     const config = { childList: true, subtree: false }; // watch only top-level children
 
     let reinitTimer;
     const observer = new MutationObserver(function(mutationsList) {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                const kbAppNode = document.querySelector('.kb-app');
-                if (kbAppNode) {
-                    clearTimeout(reinitTimer);
-                    reinitTimer = setTimeout(() => {
-                        console.log('🔄 Re-initializing case logic...');
-                        // FIX: Reset the flag and call the main function, which handles everything internally.
-                        window.hasCaseLogicRun = false;
-                        runCaseLogic();
-                    }, 600);
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+          // detect if kb-app is added or replaced
+          const kbAppNode = document.querySelector('.kb-app');
+          if (kbAppNode) {
+            clearTimeout(reinitTimer);
+            reinitTimer = setTimeout(() => {
+                // When content is replaced, we must reset the flag to allow re-initialization
+                window.hasCaseLogicRun = false; 
+                console.log('🔄 Re-initializing case logic due to content change...');
+                runCaseLogic();
+                try {
+                  // Ensure calculators are set up for the new content
+                  setupCalculator('en');
+                  setupCalculator('ar');
+                } catch (err) {
+                  console.warn('Calculator re-init on content change failed:', err);
                 }
-            }
+            }, 500); // Debounce to prevent rapid firing
+          }
         }
+      }
     });
 
     observer.observe(targetNode, config);
