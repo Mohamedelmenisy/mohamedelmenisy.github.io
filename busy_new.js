@@ -1,277 +1,224 @@
-/*
-  Unified script for InfiniBase Cases - v5 (Stable - Optimized Observer)
-  - FIX: Replaced aggressive MutationObserver with a smarter, debounced version to prevent infinite loops and improve performance.
-  - Calculators are re-initialized immediately after language switch, no refresh needed.
-  - Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
-  - Smarter anchor link scrolling to prevent conflicts.
-  - Manages lightboxes for images and videos.
-  - Controls visual guide section visibility.
-  - Powers the interactive delay calculator (if present).
-  - Lazy loads all media elements.
-*/
+/* ==========================================================
+   InfiniBase Cases - Final Optimized CSS (v5)
+   - Fixed Arabic alignment
+   - Static banner (doesn't move with language switch)
+   - Balanced lightbox size & centered properly
+   - Proper bullet alignment inside boxes
+   - Optimized image scaling (no oversized visuals)
+   ========================================================== */
 
-(function () {
-    // A flag to prevent the logic from running multiple times on the same content
-    window.hasCaseLogicRun = window.hasCaseLogicRun || false;
+/* ---------- Root Variables ---------- */
+:root {
+  --bg-main: #0b1220;
+  --bg-content: #0f1724;
+  --text-main: #e6eef8;
+  --text-secondary: #9ca3af;
+  --border-color: #1e293b;
+  --color-highlight: #93c5fd;
+  --color-pill: #6d28d9;
+  --font-family: 'Cairo', sans-serif;
+}
 
-    // --- Start of Core Logic ---
-    function runCaseLogic() {
-        if (window.hasCaseLogicRun) return; // Exit if logic has already been applied
+/* ---------- Base Layout ---------- */
+.kb-app {
+  font-family: var(--font-family);
+  background: var(--bg-main);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-        const APP_SELECTOR = '.kb-app';
+/* ---------- Banner ---------- */
+.header-banner {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto 1.5rem auto;
+  text-align: left;
+}
+.kb-app[dir="rtl"] .header-banner {
+  text-align: left !important; /* Keep static position */
+}
+.header-banner img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
 
-        // ===== Lightbox Functions =====
-        window.openLightbox = function (targetId) {
-            const lb = document.getElementById(targetId);
-            if (!lb) return;
-            lb.classList.add('active');
-            document.body.style.overflow = 'hidden';
+/* ---------- Language Toggle Button ---------- */
+#lang-toggle-button {
+  display: inline-block;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.7rem 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 1rem auto;
+  transition: 0.2s;
+}
+#lang-toggle-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
 
-            const video = lb.querySelector('video');
-            if (video && typeof video.play === 'function') {
-                video.currentTime = 0;
-                video.play().catch(() => {});
-            }
-            // FIX: Removed scrollIntoView; CSS now handles perfect centering.
-        };
+/* ---------- Text Alignment Fix ---------- */
+.kb-app[dir="rtl"] p,
+.kb-app[dir="rtl"] li,
+.kb-app[dir="rtl"] h3,
+.kb-app[dir="rtl"] h4 {
+  text-align: right !important;
+}
+.kb-app[dir="ltr"] p,
+.kb-app[dir="ltr"] li,
+.kb-app[dir="ltr"] h3,
+.kb-app[dir="ltr"] h4 {
+  text-align: left !important;
+}
 
-        window.closeLightbox = function (targetId) {
-            const lb = document.getElementById(targetId);
-            if (!lb) return;
-            lb.classList.remove('active');
-            document.body.style.overflow = '';
-            const video = lb.querySelector('video');
-            if (video && typeof video.pause === 'function') {
-                video.pause();
-            }
-        };
-        
-        // ===== Lazy Loading for Media =====
-        function lazyLoadMedia() {
-            const lazyMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
-            if ('IntersectionObserver' in window) {
-                const mediaObserver = new IntersectionObserver((entries, observer) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const media = entry.target;
-                            const src = media.getAttribute('data-src');
-                            if (src) {
-                                media.src = src;
-                                media.removeAttribute('data-src');
-                                if (media.tagName === 'VIDEO') media.load();
-                            }
-                            observer.unobserve(media);
-                        }
-                    });
-                });
-                lazyMedia.forEach(media => mediaObserver.observe(media));
-            } else {
-                lazyMedia.forEach(media => {
-                    const src = media.getAttribute('data-src');
-                    if (src) {
-                        media.src = src;
-                        media.removeAttribute('data-src');
-                    }
-                });
-            }
-        }
-        
-        // ===== Language Toggle Function =====
-        function toggleLanguage() {
-          const button = document.getElementById("lang-toggle-button");
-          const appWrapper = document.querySelector(APP_SELECTOR);
-          if (!button || !appWrapper) return;
+/* ---------- Bullet Points ---------- */
+.kb-app ul {
+  list-style-position: inside !important;
+  margin-left: 1rem;
+  padding: 0;
+}
+.kb-app li {
+  padding: 0.2rem 0.5rem;
+}
+.kb-app[dir="rtl"] li {
+  padding-right: 0;
+  padding-left: 10px;
+}
 
-          const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+/* ---------- Lightbox Styling ---------- */
+.css-lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: none;
+}
+.css-lightbox.active {
+  display: block;
+}
+.lightbox-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+}
+.lightbox-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+.lightbox-content img, .lightbox-content video {
+  max-width: 100%;
+  max-height: 70vh;
+  height: auto;
+  display: block;
+  margin: 15px auto;
+  border-radius: 8px;
+}
+.lightbox-close {
+  position: absolute;
+  top: 10px;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.kb-app[dir="ltr"] .lightbox-close {
+  right: 15px;
+}
+.kb-app[dir="rtl"] .lightbox-close {
+  left: 15px;
+}
+.lightbox-close:hover {
+  color: var(--color-highlight);
+}
 
-          if (isArabicActive) {
-            appWrapper.setAttribute('dir', 'ltr');
-            button.textContent = "التحويل للعربية";
-          } else {
-            appWrapper.setAttribute('dir', 'rtl');
-            button.textContent = "Switch to English";
-          }
-          
-          // FIX: Re-initialize calculators after a short delay to ensure the DOM is updated.
-          setTimeout(() => {
-              setupCalculator('en');
-              setupCalculator('ar');
-          }, 50);
-        }
+/* ---------- Image Size Control ---------- */
+.media-preview img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  max-height: 480px;
+}
+.image-grid-2 img {
+  max-height: 350px;
+}
 
-        // ===== Delay Calculator Logic (Compensation Case) =====
-        function setupCalculator(lang) {
-            const langSuffix = lang === 'ar' ? 'Ar' : 'En';
-            const estInput = document.getElementById(`estTimeInput${langSuffix}`);
-            if (!estInput) return; // If calculator is not on the page, exit immediately
+/* ---------- Calculator ---------- */
+.recommendation-box {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 8px;
+  line-height: 1.6;
+  border-left: 4px solid;
+}
+.recommendation-box.success {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+  color: #86efac;
+}
+.recommendation-box.info {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+.recommendation-box.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.kb-app[dir="rtl"] .recommendation-box {
+  border-left: 0;
+  border-right: 4px solid;
+}
+.kb-app[dir="rtl"] .recommendation-box.success { border-right-color: #22c55e; }
+.kb-app[dir="rtl"] .recommendation-box.info { border-right-color: #3b82f6; }
+.kb-app[dir="rtl"] .recommendation-box.error { border-right-color: #ef4444; }
 
-            const actInput = document.getElementById(`actTimeInput${langSuffix}`);
-            const orderTypeRadios = document.querySelectorAll(`input[name="orderType${langSuffix}"]`);
-            const recommendationBox = document.getElementById(`recommendationBox${langSuffix}`);
-            const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
-            const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
-
-            // This check is crucial because this function can be called multiple times.
-            if (!actInput || !recommendationBox || !copyBtn || copyBtn.dataset.initialized === 'true') {
-                return;
-            }
-
-            let currentRecommendationText = '';
-            if (recommendationTextElem) recommendationTextElem.parentElement.classList.add('info');
-
-            const calculateDelay = () => {
-                const estTime = estInput.value;
-                const actTime = actInput.value;
-                if (!estTime || !actTime) return;
-
-                const orderTypeEl = document.querySelector(`input[name="orderType${langSuffix}"]:checked`);
-                if (!orderTypeEl) return; // Exit if no order type is selected
-                const orderType = orderTypeEl.value;
-                
-                const time1 = new Date(`1970-01-01T${estTime}:00`);
-                const time2 = new Date(`1970-01-01T${actTime}:00`);
-                const diffMins = Math.round((time2 - time1) / 60000);
-
-                let message = '', rawMessage = '', boxClass = 'info';
-
-                if (diffMins < 0) {
-                    message = lang === 'en' ? '<strong>Error:</strong> Actual time cannot be before estimated time.' : '<strong>خطأ:</strong> الوقت الفعلي لا يمكن أن يكون قبل الوقت المتوقع.';
-                    boxClass = 'error'; rawMessage = 'Error: Invalid time input.';
-                } else if (diffMins <= 15) {
-                    message = lang === 'en' ? `<strong>Delay: ${diffMins} mins.</strong> An apology is sufficient.` : `<strong>مدة التأخير: ${diffMins} دقيقة.</strong> يكتفى بالاعتذار للعميل.`;
-                    boxClass = 'info'; rawMessage = `Delay of ${diffMins} mins. Apologized. No compensation.`;
-                } else {
-                    boxClass = 'success';
-                    if (orderType === 'fast') {
-                        if (diffMins <= 30) { message = lang === 'en' ? 'Compensate: <strong>Delivery Fees only</strong>.' : 'التعويض: <strong>رسوم التوصيل فقط</strong>.'; rawMessage = 'Compensated with Delivery Fees only.'; }
-                        else if (diffMins <= 45) { message = lang === 'en' ? 'Compensate: <strong>Delivery + 25% of chef total</strong>.' : 'التعويض: <strong>التوصيل + 25% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with Delivery + 25% of chef total.'; }
-                        else if (diffMins <= 60) { message = lang === 'en' ? 'Compensate: <strong>Delivery + 50% of chef total</strong>.' : 'التعويض: <strong>التوصيل + 50% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with Delivery + 50% of chef total.'; }
-                        else { message = lang === 'en' ? 'Compensate: <strong>Full Order Amount</strong>.' : 'التعويض: <strong>كامل قيمة الطلب</strong>.'; rawMessage = 'Compensated with Full Order Amount.'; }
-                    } else { // Scheduled
-                        if (diffMins <= 60) { message = lang === 'en' ? 'Compensate: <strong>50% to 100% of the order</strong>.' : 'التعويض: <strong>50% إلى 100% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with 50%-100% of order.'; }
-                        else { message = lang === 'en' ? 'Compensate: <strong>Full Amount + 50 SAR credit</strong>.' : 'التعويض: <strong>كامل المبلغ + 50 ريال كرصيد</strong>.'; rawMessage = 'Compensated with Full Amount + 50 SAR.'; }
-                    }
-                }
-                if(recommendationTextElem) recommendationTextElem.innerHTML = message;
-                currentRecommendationText = rawMessage;
-                if(recommendationBox) {
-                    recommendationBox.className = 'recommendation-box'; // Reset classes
-                    recommendationBox.classList.add(boxClass);
-                }
-            };
-            
-            // Mark elements as initialized to prevent re-attaching listeners
-            [estInput, actInput, ...orderTypeRadios].forEach(el => {
-              el.removeEventListener('input', calculateDelay); // Remove old listener if any
-              el.addEventListener('input', calculateDelay);
-            });
-            copyBtn.removeEventListener('click', copyBtn.handler); // Remove old listener
-            copyBtn.handler = () => { // Attach new one
-                navigator.clipboard.writeText(currentRecommendationText).then(() => {
-                    const originalText = copyBtn.innerHTML;
-                    copyBtn.innerHTML = lang === 'en' ? 'Copied!' : 'تم النسخ!';
-                    setTimeout(() => { copyBtn.innerHTML = originalText; }, 1500);
-                });
-            };
-            copyBtn.addEventListener('click', copyBtn.handler);
-            copyBtn.dataset.initialized = 'true';
-        }
-
-        function init() {
-            lazyLoadMedia();
-            setupCalculator('en');
-            setupCalculator('ar');
-        }
-
-        init(); // Run all setup functions
-
-        document.body.addEventListener('click', function (e) {
-            const target = e.target;
-            
-            if (target.closest('#lang-toggle-button')) {
-                toggleLanguage();
-                return;
-            }
-
-            const toggleBtn = target.closest('.toggle-visual');
-            if (toggleBtn) {
-                const guide = toggleBtn.nextElementSibling;
-                if (guide && guide.classList.contains('visual-guide')) {
-                    const isHidden = guide.style.display === 'none' || guide.style.display === '';
-                    guide.style.display = isHidden ? (guide.classList.contains('image-grid-2') ? 'grid' : 'block') : 'none';
-                    if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
-                }
-                return;
-            }
-
-            const overlay = target.closest('.lightbox-overlay');
-            const closeBtn = target.closest('.lightbox-close');
-            if(overlay || closeBtn) {
-                const lb = target.closest('.css-lightbox');
-                if (lb && lb.id) {
-                    closeLightbox(lb.id);
-                    e.preventDefault();
-                }
-                return;
-            }
-            
-            const anchor = target.closest('a[href^="#"]');
-            if (anchor) {
-                const href = anchor.getAttribute('href');
-                if (href.length > 1 && document.getElementById(href.substring(1))) {
-                    try {
-                        const targetElement = document.querySelector(href);
-                        if (targetElement) {
-                            e.preventDefault();
-                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    } catch (err) {}
-                }
-            }
-            
-        }, true);
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === "Escape") {
-                 const activeLightbox = document.querySelector('.css-lightbox.active');
-                 if(activeLightbox) closeLightbox(activeLightbox.id);
-            }
-        });
-        
-        window.hasCaseLogicRun = true;
-    }
-    // --- End of Core Logic ---
-
-    // --- ROBUST INITIALIZATION (Optimized) ---
-    const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
-    const config = { childList: true, subtree: false }; // watch only top-level children
-
-    let reinitTimer;
-    const observer = new MutationObserver(function(mutationsList) {
-      for (const mutation of mutationsList) {
-        if (mutation.type === 'childList') {
-          // detect if kb-app is added or replaced
-          const kbAppNode = document.querySelector('.kb-app');
-          if (kbAppNode) {
-            clearTimeout(reinitTimer);
-            reinitTimer = setTimeout(() => {
-                // When content is replaced, we must reset the flag to allow re-initialization
-                window.hasCaseLogicRun = false; 
-                console.log('🔄 Re-initializing case logic due to content change...');
-                runCaseLogic();
-                try {
-                  // Ensure calculators are set up for the new content
-                  setupCalculator('en');
-                  setupCalculator('ar');
-                } catch (err) {
-                  console.warn('Calculator re-init on content change failed:', err);
-                }
-            }, 500); // Debounce to prevent rapid firing
-          }
-        }
-      }
-    });
-
-    observer.observe(targetNode, config);
-
-})();
+/* ---------- General Styling ---------- */
+.kb-card {
+  background: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem auto;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+.kb-app h3 {
+  color: var(--color-highlight);
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+.kb-app a {
+  color: var(--color-highlight);
+  text-decoration: none;
+}
+.kb-app a:hover {
+  text-decoration: underline;
+  color: #a5b4fc;
+}
