@@ -1,7 +1,7 @@
 /*
   Unified script for InfiniBase Cases
-  - Handles language toggling.
-  - Manages lightboxes for images.
+  - Handles language toggling with smooth transitions.
+  - Manages lightboxes for images and videos.
   - Loads all media on initialization.
 */
 
@@ -48,22 +48,28 @@
         });
     }
     
-    // ===== Language Toggle Function =====
+    // ===== Language Toggle Function with Smooth Transition =====
     function toggleLanguage() {
       const button = document.getElementById("lang-toggle-button");
       const appWrapper = document.querySelector(APP_SELECTOR);
       if (!button || !appWrapper) return;
 
-      const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+      appWrapper.classList.add('is-switching'); // Fade out
 
-      if (isArabicActive) {
-        appWrapper.setAttribute('dir', 'ltr');
-        button.textContent = "التحويل للعربية";
-      } else {
-        appWrapper.setAttribute('dir', 'rtl');
-        button.textContent = "Switch to English";
-      }
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+
+        if (isArabicActive) {
+          appWrapper.setAttribute('dir', 'ltr');
+          button.textContent = "التحويل للعربية";
+        } else {
+          appWrapper.setAttribute('dir', 'rtl');
+          button.textContent = "Switch to English";
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        
+        appWrapper.classList.remove('is-switching'); // Fade in
+      }, 400); // Must match the transition duration in CSS
     }
 
     // ===== Initialization Function =====
