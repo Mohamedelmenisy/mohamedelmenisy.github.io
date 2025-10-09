@@ -90,6 +90,7 @@
             const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
             const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
+            // If calculator elements don't exist on this page, do nothing.
             if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
 
             let currentRecommendationText = '';
@@ -174,7 +175,8 @@
                 const guide = toggleBtn.nextElementSibling;
                 if (guide && guide.classList.contains('visual-guide')) {
                     const isHidden = guide.style.display === 'none' || guide.style.display === '';
-                    guide.style.display = isHidden ? (guide.classList.contains('image-grid-2') ? 'grid' : 'block') : 'none';
+                    const displayStyle = guide.classList.contains('image-grid-2') ? 'grid' : 'block';
+                    guide.style.display = isHidden ? displayStyle : 'none';
                     if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
                 }
                 return;
@@ -195,7 +197,6 @@
             const anchor = target.closest('a[href^="#"]');
             if (anchor) {
                 const href = anchor.getAttribute('href');
-                // Only act if the href is more than just '#' and an element with that ID exists
                 if (href.length > 1 && document.getElementById(href.substring(1))) {
                     try {
                         const targetElement = document.querySelector(href);
@@ -222,6 +223,7 @@
 
 
     // --- ROBUST INITIALIZATION (Waits for content to load) ---
+    // This watches for when the main content container is added to the page
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
     const config = { childList: true, subtree: true };
 
@@ -229,11 +231,11 @@
         for(const mutation of mutationsList) {
             if (mutation.type === 'childList') {
                 const kbAppNode = document.querySelector('.kb-app');
+                // If the main .kb-app container is found AND it hasn't been initialized yet
                 if (kbAppNode && !kbAppNode.dataset.initialized) {
-                    kbAppNode.dataset.initialized = 'true'; // Mark as initialized
+                    kbAppNode.dataset.initialized = 'true'; // Mark as initialized to prevent re-running
                     runCaseLogic(); // Run the main script
-                    observer.disconnect(); // Stop observing once it's done
-                    return;
+                    // We don't disconnect, allowing it to re-run if content is ever fully replaced
                 }
             }
         }
