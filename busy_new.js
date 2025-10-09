@@ -1,8 +1,8 @@
 /*
-  Unified script for InfiniBase Cases - v4 (Stable - Patched)
-  - FIX: Persistent MutationObserver now also watches for 'dir' attribute changes to handle language toggles.
-  - FIX: Calculators are now re-initialized immediately after language switch, no refresh needed.
-  - FIX: Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
+  Unified script for InfiniBase Cases - v5 (Stable - Optimized Observer)
+  - FIX: Replaced aggressive MutationObserver with a smarter, debounced version to prevent infinite loops and improve performance.
+  - Calculators are re-initialized immediately after language switch, no refresh needed.
+  - Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
   - Smarter anchor link scrolling to prevent conflicts.
   - Manages lightboxes for images and videos.
   - Controls visual guide section visibility.
@@ -242,40 +242,34 @@
     }
     // --- End of Core Logic ---
 
-
-    // --- ROBUST INITIALIZATION ---
-    // This watches for when the main content container is added or changed.
+    // --- ROBUST INITIALIZATION (Optimized) ---
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
-    // FIX: Observer now also watches for attribute changes on the target node.
-    const config = { childList: true, subtree: true, attributes: true };
+    const config = { childList: true, subtree: false }; // watch only top-level children
 
-    const observer = new MutationObserver(function(mutationsList, observer) {
-        for(const mutation of mutationsList) {
-            // If new nodes are added OR if attributes (like 'dir') change on existing ones
-            if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                const kbAppNode = document.querySelector('.kb-app');
-                if (kbAppNode) {
-                    // Reset the flag if the kb-app node is detected to allow re-running logic
-                    window.hasCaseLogicRun = false;
-                    runCaseLogic();
-                    
-                    // FIX: After content changes, re-initialize the calculators
-                    // Use a timeout to ensure the DOM has settled after the mutation.
-                    setTimeout(() => {
-                        try {
-                            // Un-mark calculators to allow re-initialization
-                            document.querySelectorAll('#copyBtnEn, #copyBtnAr').forEach(btn => btn.dataset.initialized = 'false');
-                            setupCalculator('en');
-                            setupCalculator('ar');
-                        } catch (err) {
-                            console.warn('Calculator re-init failed:', err);
-                        }
-                    }, 300);
-                    // We don't disconnect; it will re-run if content is replaced again.
-                    return; // Exit after first valid detection to avoid multiple runs for the same change
+    let reinitTimer;
+    const observer = new MutationObserver(function(mutationsList) {
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+          // detect if kb-app is added or replaced
+          const kbAppNode = document.querySelector('.kb-app');
+          if (kbAppNode) {
+            clearTimeout(reinitTimer);
+            reinitTimer = setTimeout(() => {
+                // When content is replaced, we must reset the flag to allow re-initialization
+                window.hasCaseLogicRun = false; 
+                console.log('🔄 Re-initializing case logic due to content change...');
+                runCaseLogic();
+                try {
+                  // Ensure calculators are set up for the new content
+                  setupCalculator('en');
+                  setupCalculator('ar');
+                } catch (err) {
+                  console.warn('Calculator re-init on content change failed:', err);
                 }
-            }
+            }, 500); // Debounce to prevent rapid firing
+          }
         }
+      }
     });
 
     observer.observe(targetNode, config);
