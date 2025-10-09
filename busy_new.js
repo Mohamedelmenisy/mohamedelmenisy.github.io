@@ -1,161 +1,171 @@
-/* busy_new.js
-- Robust, works if content inserted after DOM load.
-- Lazy loads images and videos for performance.
-- Handles lightbox open/close via event delegation.
-- Manages language switching (toggle) using DIR attribute.
-- Includes a safe initialization that runs after content is ready.
-- Smooth scrolling for anchor links.
-- Visual guide toggle functionality.
+  Unified script for InfiniBase Cases
+  - Language switching is handled by pure CSS.
+  - Manages lightboxes for images.
+  - Controls visual guide section visibility.
+  - Powers the interactive delay calculator.
+  - Lazy loads media for performance.
 */
 
 (function () {
+    const APP_SELECTOR = '.kb-app';
+
     // ===== Lightbox Functions =====
-    window.openLightbox = function (targetId) {
-        const lb = document.getElementById(targetId);
-        if (!lb) return;
-        lb.classList.add('active');
+    function openLightbox(imageUrl) {
+        let overlay = document.getElementById('kb-lightbox-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'kb-lightbox-overlay';
+            overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:2000; cursor:pointer;';
+            overlay.innerHTML = '<img id="kb-lightbox-img" style="max-width:90%; max-height:90%; border-radius:8px;">';
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', () => closeLightbox());
+        }
+        document.getElementById('kb-lightbox-img').src = imageUrl;
+        overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        
-        // Find media element and play/load
-        const media = lb.querySelector('video[data-src], img[data-src]');
-        if (media && media.tagName === 'VIDEO') {
-            const src = media.getAttribute('data-src');
-            if (src) {
-                media.src = src; // Load source if not loaded
-                media.removeAttribute('data-src');
-                if (typeof media.play === 'function') {
-                    media.play().catch(() => {}); // Autoplay video in lightbox
-                }
-            }
-        } else if (media && media.tagName === 'IMG') {
-             const src = media.getAttribute('data-src');
-            if (src) {
-                media.src = src; // Load source if not loaded
-                media.removeAttribute('data-src');
-            }
-        }
+    }
 
-    };
-
-    window.closeLightbox = function (targetId) {
-        const lb = document.getElementById(targetId);
-        if (!lb) return;
-        lb.classList.remove('active');
+    function closeLightbox() {
+        const overlay = document.getElementById('kb-lightbox-overlay');
+        if (overlay) overlay.style.display = 'none';
         document.body.style.overflow = '';
-        
-        // Pause video when closing
-        const video = lb.querySelector('video');
-        if (video && typeof video.pause === 'function') {
-            video.pause(); 
-            // Optional: reset video time to beginning
-            video.currentTime = 0;
-        }
-    };
+    }
     
     // ===== Lazy Loading for Media =====
     function lazyLoadMedia() {
-        // Only load media that is NOT inside a .css-lightbox container to keep lightbox performance high
-        const lazyMedia = document.querySelectorAll('.kb-app:not(.css-lightbox) img[data-src], .kb-app:not(.css-lightbox) video[data-src]');
-        
-        lazyMedia.forEach(media => {
-            if (media.offsetParent !== null) { // Only load if element is likely visible
-                const src = media.getAttribute('data-src');
-                if (src) {
-                    if (media.tagName === 'IMG') {
-                        media.src = src;
-                    } else if (media.tagName === 'VIDEO') {
-                        media.src = src;
-                        // For videos outside lightboxes, preload poster and metadata
-                        media.load();
+        const lazyMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src]`);
+        if ('IntersectionObserver' in window) {
+            const mediaObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const media = entry.target;
+                        media.src = media.getAttribute('data-src');
+                        media.removeAttribute('data-src');
+                        observer.unobserve(media);
                     }
-                    media.removeAttribute('data-src');
+                });
+            });
+            lazyMedia.forEach(media => mediaObserver.observe(media));
+        } else {
+            lazyMedia.forEach(media => {
+                media.src = media.getAttribute('data-src');
+            });
+        }
+    }
+    
+    // ===== Delay Calculator Logic =====
+    function setupCalculator(lang) {
+        const langSuffix = lang === 'ar' ? 'Ar' : 'En';
+        const estInput = document.getElementById(`estTimeInput${langSuffix}`);
+        const actInput = document.getElementById(`actTimeInput${langSuffix}`);
+        const orderTypeRadios = document.querySelectorAll(`input[name="orderType${langSuffix}"]`);
+        const recommendationBox = document.getElementById(`recommendationBox${langSuffix}`);
+        const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
+        const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
+
+        if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
+
+        let currentRecommendationText = '';
+        if (recommendationTextElem) recommendationTextElem.parentElement.classList.add('info');
+
+        const calculateDelay = () => {
+            const estTime = estInput.value;
+            const actTime = actInput.value;
+            if (!estTime || !actTime) {
+                if (recommendationTextElem) {
+                    recommendationTextElem.innerHTML = lang === 'en' 
+                        ? 'Enter the estimated and actual times to see the recommended compensation.' 
+                        : 'أدخل الوقت المتوقع والفعلي لعرض توصية التعويض المناسبة.';
+                    recommendationBox.className = 'recommendation-box info';
+                }
+                return;
+            }
+
+            const orderType = document.querySelector(`input[name="orderType${langSuffix}"]:checked`).value;
+            const time1 = new Date(`1970-01-01T${estTime}:00`);
+            const time2 = new Date(`1970-01-01T${actTime}:00`);
+            const diffMins = Math.round((time2 - time1) / 60000);
+
+            let message = ''; let rawMessage = ''; let boxClass = 'info';
+
+            if (diffMins < 0) {
+                message = lang === 'en' ? '<strong>Error:</strong> Actual time cannot be before estimated time.' : '<strong>خطأ:</strong> الوقت الفعلي لا يمكن أن يكون قبل الوقت المتوقع.';
+                boxClass = 'error'; rawMessage = 'Error: Invalid time input.';
+            } else if (diffMins <= 15) {
+                message = lang === 'en' ? `<strong>Delay: ${diffMins} mins.</strong> An apology is sufficient. No compensation required.` : `<strong>مدة التأخير: ${diffMins} دقيقة.</strong> يكتفى بالاعتذار للعميل. لا يتطلب تعويض.`;
+                boxClass = 'info'; rawMessage = `Delay of ${diffMins} mins. Apologized. No compensation.`;
+            } else {
+                boxClass = 'success';
+                if (orderType === 'fast') {
+                    if (diffMins <= 30) { message = lang === 'en' ? 'Compensate: <strong>Delivery Fees only</strong>.' : 'التعويض: <strong>رسوم التوصيل فقط</strong>.'; rawMessage = 'Compensated with Delivery Fees only.'; }
+                    else if (diffMins <= 45) { message = lang === 'en' ? 'Compensate: <strong>Delivery + 25% of chef total</strong>.' : 'التعويض: <strong>التوصيل + 25% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with Delivery + 25% of chef total.'; }
+                    else if (diffMins <= 60) { message = lang === 'en' ? 'Compensate: <strong>Delivery + 50% of chef total</strong>.' : 'التعويض: <strong>التوصيل + 50% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with Delivery + 50% of chef total.'; }
+                    else { message = lang === 'en' ? 'Compensate: <strong>Full Order Amount</strong>.' : 'التعويض: <strong>كامل قيمة الطلب</strong>.'; rawMessage = 'Compensated with Full Order Amount.'; }
+                } else { // Scheduled
+                    if (diffMins <= 60) { message = lang === 'en' ? 'Compensate: <strong>50% to 100% of the order</strong>.' : 'التعويض: <strong>50% إلى 100% من قيمة الطلب</strong>.'; rawMessage = 'Compensated with 50%-100% of order.'; }
+                    else { message = lang === 'en' ? 'Compensate: <strong>Full Amount + 50 SAR credit</strong>.' : 'التعويض: <strong>كامل المبلغ + 50 ريال كرصيد</strong>.'; rawMessage = 'Compensated with Full Amount + 50 SAR.'; }
                 }
             }
+            if(recommendationTextElem) recommendationTextElem.innerHTML = message;
+            currentRecommendationText = rawMessage;
+            if(recommendationBox) {
+                recommendationBox.className = 'recommendation-box';
+                recommendationBox.classList.add(boxClass);
+            }
+        };
+
+        [estInput, actInput, ...orderTypeRadios].forEach(el => el.addEventListener('input', calculateDelay));
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(currentRecommendationText).then(() => {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = lang === 'en' ? 'Copied!' : 'تم النسخ!';
+                setTimeout(() => { copyBtn.innerHTML = originalText; }, 1500);
+            });
         });
     }
 
-    // ===== (تعديل 6) Language Toggle Function Fix =====
-    function toggleLanguage() {
-        const kbApp = document.querySelector('.kb-app');
-        const toggleBtn = document.getElementById('lang-toggle-button');
-        if (!kbApp || !toggleBtn) return;
-
-        const currentDir = kbApp.getAttribute('dir');
-
-        if (currentDir === 'ltr') {
-            // Switch to Arabic (RTL)
-            kbApp.setAttribute('dir', 'rtl');
-            toggleBtn.textContent = 'Switch to English';
-        } else {
-            // Switch to English (LTR)
-            kbApp.setAttribute('dir', 'ltr');
-            toggleBtn.textContent = 'التحويل للعربية';
-        }
-        // The display logic is now handled by CSS based on [dir="rtl"] or [dir="ltr"]
-        // Re-lazy load media just in case newly visible content needs loading
+    // ===== Initialization Function =====
+    function init() {
         lazyLoadMedia();
+        setupCalculator('en');
+        setupCalculator('ar');
     }
 
-    // ===== Safe Initialization & Listeners =====
-    function initialize() {
-        // Run lazy load immediately for content visible on page load
-        lazyLoadMedia();
+    // Run init on load
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(init, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
     }
 
-    // Listeners and Initialization
-    document.addEventListener('click', function(e) {
-        // Smooth scroll for internal anchor links
-        const anchor = e.target.closest('a[href^="#"]');
-        if (!anchor) return;
+    // ====== EVENT LISTENERS (Delegated for performance) ======
+    document.addEventListener('click', function (e) {
+        const target = e.target;
         
-        const href = anchor.getAttribute('href');
-        if (!href || href === '#') return;
-      
-        try {
-            const targetElement = document.querySelector(href);
-            if (targetElement) {
-                e.preventDefault();
-                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // --- Visual guide toggle buttons ---
+        const toggleBtn = target.closest('.toggle-visual');
+        if (toggleBtn) {
+            const guide = toggleBtn.nextElementSibling;
+            if (guide && guide.classList.contains('visual-guide')) {
+                const isHidden = guide.style.display === 'none' || guide.style.display === '';
+                guide.style.display = isHidden ? 'grid' : 'none'; // Use grid for image grids
+                 if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
             }
-        } catch (err) {
-            console.error("Could not scroll to anchor:", err);
+            return;
+        }
+
+        // --- Image click for lightbox ---
+        const imgPreview = target.closest('.media-preview img');
+        if (imgPreview && imgPreview.src) {
+            e.preventDefault();
+            openLightbox(imgPreview.src);
+            return;
         }
     }, true);
-
-
-    document.addEventListener('DOMContentLoaded', function(){
-      // Attach listener to language button
-      const langBtn = document.getElementById('lang-toggle-button');
-      if (langBtn) langBtn.addEventListener('click', toggleLanguage);
-
-      // (تعديل 3) Attach listeners to visual guide toggle buttons
-      document.querySelectorAll('.toggle-visual').forEach(btn => {
-        btn.addEventListener('click', function(){
-          // The visual guide is the immediate next sibling
-          const guide = btn.nextElementSibling;
-          if (!guide || !guide.classList.contains('visual-guide')) return;
-          
-          const isHidden = guide.style.display === 'none' || guide.style.display === '';
-          
-          // Toggle display
-          guide.style.display = isHidden ? 'block' : 'none';
-          
-          if (isHidden) {
-            // Smooth scroll to the revealed content
-            guide.scrollIntoView({ behavior:'smooth', block: 'center' });
-            // Load media inside the revealed section
-            lazyLoadMedia(); 
-          }
-        });
-      });
-      
-      // Run the main initialization function after DOM is ready
-      initialize();
+    
+    // --- Close lightbox on ESC key ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") closeLightbox();
     });
-
-    // Run initialization even if DOMContentLoaded already fired (when content is injected later)
-    if (document.readyState === 'complete') {
-        initialize();
-    }
 
 })();
