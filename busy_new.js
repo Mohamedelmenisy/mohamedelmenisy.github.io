@@ -16,6 +16,10 @@
         if (!lb) return;
         lb.classList.add('active');
         document.body.style.overflow = 'hidden';
+        
+        // Fix: Scroll lightbox into center view
+        lb.scrollIntoView({ behavior: "instant", block: "center" });
+
         const video = lb.querySelector('video');
         if (video && typeof video.play === 'function') {
             video.currentTime = 0;
@@ -154,17 +158,7 @@
             });
         });
     }
-
-    // ===== Initialization Function =====
-    function init() {
-        lazyLoadMedia();
-        setupCalculator('en');
-        setupCalculator('ar');
-    }
-
-    // Run init on load
-    document.addEventListener("DOMContentLoaded", init);
-
+    
     // ====== EVENT LISTENERS (Delegated for performance) ======
     document.addEventListener('click', function (e) {
         const target = e.target;
@@ -214,18 +208,11 @@
         }
     });
 
-    // --- Lazy Loading Fallback ---
-    window.addEventListener("load", lazyLoadMedia);
-    setTimeout(() => {
-      document.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
-        if (!media.src || media.src.endsWith(media.getAttribute('data-src'))) {
-          const dataSrc = media.getAttribute('data-src');
-          if (dataSrc) {
-            media.src = dataSrc;
-            media.removeAttribute('data-src');
-          }
-        }
-      });
-    }, 3000);
+    // Fix: Initialize functions on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      lazyLoadMedia();
+      setupCalculator('en');
+      setupCalculator('ar');
+    });
 
 })();
