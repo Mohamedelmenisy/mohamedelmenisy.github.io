@@ -3,7 +3,7 @@
   - Handles language toggling.
   - Manages lightboxes for images.
   - Controls visual guide section visibility.
-  - Powers the interactive delay calculator.
+  - Powers the interactive delay calculator (if present).
   - Lazy loads media for performance.
 */
 
@@ -72,7 +72,7 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    // ===== Delay Calculator Logic =====
+    // ===== Delay Calculator Logic (Compensation Case) =====
     function setupCalculator(lang) {
         const langSuffix = lang === 'ar' ? 'Ar' : 'En';
         const estInput = document.getElementById(`estTimeInput${langSuffix}`);
@@ -82,6 +82,7 @@
         const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
         const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
+        // If calculator elements don't exist on this page, do nothing.
         if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
 
         let currentRecommendationText = '';
@@ -146,6 +147,7 @@
     // ===== Initialization Function =====
     function init() {
         lazyLoadMedia();
+        // Attempt to set up calculator; it will do nothing if elements aren't found
         setupCalculator('en');
         setupCalculator('ar');
     }
@@ -173,7 +175,8 @@
             const guide = toggleBtn.nextElementSibling;
             if (guide && guide.classList.contains('visual-guide')) {
                 const isHidden = guide.style.display === 'none' || guide.style.display === '';
-                guide.style.display = isHidden ? 'grid' : 'none'; // Use grid for image grids
+                const displayStyle = guide.classList.contains('image-grid-2') ? 'grid' : 'block';
+                guide.style.display = isHidden ? displayStyle : 'none';
                  if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
             }
             return;
