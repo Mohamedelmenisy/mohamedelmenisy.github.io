@@ -1,17 +1,22 @@
 /*
-  Unified script for InfiniBase Cases - v2 (Robust)
-  - NEW: Uses MutationObserver to wait for content to load, fixing race conditions.
-  - NEW: Smarter anchor link scrolling to prevent conflicts with app routing.
-  - Handles language toggling.
-  - Manages lightboxes for images.
+  Unified script for InfiniBase Cases - v3 (Stable)
+  - NEW: Persistent MutationObserver to handle content reloads/refreshes reliably.
+  - Smarter anchor link scrolling to prevent conflicts.
+  - Handles language toggling without needing a refresh.
+  - Manages lightboxes for images and videos, ensuring they center correctly.
   - Controls visual guide section visibility.
   - Powers the interactive delay calculator (if present).
-  - Lazy loads media for performance.
+  - Lazy loads all media elements.
 */
 
 (function () {
+    // A flag to prevent the logic from running multiple times on the same content
+    window.hasCaseLogicRun = window.hasCaseLogicRun || false;
+
     // --- Start of Core Logic ---
     function runCaseLogic() {
+        if (window.hasCaseLogicRun) return; // Exit if logic has already been applied
+
         const APP_SELECTOR = '.kb-app';
 
         // ===== Lightbox Functions =====
@@ -20,11 +25,14 @@
             if (!lb) return;
             lb.classList.add('active');
             document.body.style.overflow = 'hidden';
+
             const video = lb.querySelector('video');
             if (video && typeof video.play === 'function') {
                 video.currentTime = 0;
                 video.play().catch(() => {});
             }
+            // Center the lightbox on open
+            lb.scrollIntoView({ behavior: "instant", block: "center" });
         };
 
         window.closeLightbox = function (targetId) {
@@ -46,9 +54,12 @@
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             const media = entry.target;
-                            media.src = media.getAttribute('data-src');
-                            media.removeAttribute('data-src');
-                            if (media.tagName === 'VIDEO') media.load();
+                            const src = media.getAttribute('data-src');
+                            if (src) {
+                                media.src = src;
+                                media.removeAttribute('data-src');
+                                if (media.tagName === 'VIDEO') media.load();
+                            }
                             observer.unobserve(media);
                         }
                     });
@@ -56,8 +67,11 @@
                 lazyMedia.forEach(media => mediaObserver.observe(media));
             } else {
                 lazyMedia.forEach(media => {
-                    media.src = media.getAttribute('data-src');
-                    media.removeAttribute('data-src');
+                    const src = media.getAttribute('data-src');
+                    if (src) {
+                        media.src = src;
+                        media.removeAttribute('data-src');
+                    }
                 });
             }
         }
@@ -77,21 +91,22 @@
             appWrapper.setAttribute('dir', 'rtl');
             button.textContent = "Switch to English";
           }
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          // No scroll needed, just re-aligns content
         }
 
         // ===== Delay Calculator Logic (Compensation Case) =====
         function setupCalculator(lang) {
             const langSuffix = lang === 'ar' ? 'Ar' : 'En';
             const estInput = document.getElementById(`estTimeInput${langSuffix}`);
+            if (!estInput) return; // If calculator is not on the page, exit immediately
+
             const actInput = document.getElementById(`actTimeInput${langSuffix}`);
             const orderTypeRadios = document.querySelectorAll(`input[name="orderType${langSuffix}"]`);
             const recommendationBox = document.getElementById(`recommendationBox${langSuffix}`);
             const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
             const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
-            // If calculator elements don't exist on this page, do nothing.
-            if (!estInput || !actInput || !recommendationBox || !copyBtn) return;
+            if (!actInput || !recommendationBox || !copyBtn) return;
 
             let currentRecommendationText = '';
             if (recommendationTextElem) recommendationTextElem.parentElement.classList.add('info');
@@ -99,22 +114,14 @@
             const calculateDelay = () => {
                 const estTime = estInput.value;
                 const actTime = actInput.value;
-                if (!estTime || !actTime) {
-                    if (recommendationTextElem) {
-                        recommendationTextElem.innerHTML = lang === 'en' 
-                            ? 'Enter the estimated and actual times to see the recommended compensation.' 
-                            : 'أدخل الوقت المتوقع والفعلي لعرض توصية التعويض المناسبة.';
-                        recommendationBox.className = 'recommendation-box info';
-                    }
-                    return;
-                }
+                if (!estTime || !actTime) return;
 
                 const orderType = document.querySelector(`input[name="orderType${langSuffix}"]:checked`).value;
                 const time1 = new Date(`1970-01-01T${estTime}:00`);
                 const time2 = new Date(`1970-01-01T${actTime}:00`);
                 const diffMins = Math.round((time2 - time1) / 60000);
 
-                let message = ''; let rawMessage = ''; let boxClass = 'info';
+                let message = '', rawMessage = '', boxClass = 'info';
 
                 if (diffMins < 0) {
                     message = lang === 'en' ? '<strong>Error:</strong> Actual time cannot be before estimated time.' : '<strong>خطأ:</strong> الوقت الفعلي لا يمكن أن يكون قبل الوقت المتوقع.';
@@ -152,7 +159,6 @@
             });
         }
 
-        // ===== Initialization Function =====
         function init() {
             lazyLoadMedia();
             setupCalculator('en');
@@ -161,8 +167,7 @@
 
         init(); // Run all setup functions
 
-        // ====== EVENT LISTENERS (Delegated for performance) ======
-        document.addEventListener('click', function (e) {
+        document.body.addEventListener('click', function (e) {
             const target = e.target;
             
             if (target.closest('#lang-toggle-button')) {
@@ -175,8 +180,7 @@
                 const guide = toggleBtn.nextElementSibling;
                 if (guide && guide.classList.contains('visual-guide')) {
                     const isHidden = guide.style.display === 'none' || guide.style.display === '';
-                    const displayStyle = guide.classList.contains('image-grid-2') ? 'grid' : 'block';
-                    guide.style.display = isHidden ? displayStyle : 'none';
+                    guide.style.display = isHidden ? (guide.classList.contains('image-grid-2') ? 'grid' : 'block') : 'none';
                     if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
                 }
                 return;
@@ -193,7 +197,6 @@
                 return;
             }
             
-            // **SMARTER ANCHOR LINK LOGIC**
             const anchor = target.closest('a[href^="#"]');
             if (anchor) {
                 const href = anchor.getAttribute('href');
@@ -204,9 +207,7 @@
                             e.preventDefault();
                             targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
-                    } catch (err) {
-                        // This will now fail silently without breaking other scripts
-                    }
+                    } catch (err) {}
                 }
             }
             
@@ -218,30 +219,31 @@
                  if(activeLightbox) closeLightbox(activeLightbox.id);
             }
         });
+        
+        window.hasCaseLogicRun = true;
     }
     // --- End of Core Logic ---
 
 
-    // --- ROBUST INITIALIZATION (Waits for content to load) ---
+    // --- ROBUST INITIALIZATION ---
     // This watches for when the main content container is added to the page
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
     const config = { childList: true, subtree: true };
 
-    const callback = function(mutationsList, observer) {
+    const observer = new MutationObserver(function(mutationsList, observer) {
         for(const mutation of mutationsList) {
             if (mutation.type === 'childList') {
                 const kbAppNode = document.querySelector('.kb-app');
-                // If the main .kb-app container is found AND it hasn't been initialized yet
-                if (kbAppNode && !kbAppNode.dataset.initialized) {
-                    kbAppNode.dataset.initialized = 'true'; // Mark as initialized to prevent re-running
-                    runCaseLogic(); // Run the main script
-                    // We don't disconnect, allowing it to re-run if content is ever fully replaced
+                if (kbAppNode) {
+                    // Reset the flag if the kb-app node is detected
+                    window.hasCaseLogicRun = false;
+                    runCaseLogic();
+                    // We don't disconnect, it will re-run if content is replaced (e.g., navigating to another case)
                 }
             }
         }
-    };
+    });
 
-    const observer = new MutationObserver(callback);
     observer.observe(targetNode, config);
 
 })();
