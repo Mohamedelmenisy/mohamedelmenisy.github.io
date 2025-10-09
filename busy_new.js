@@ -151,7 +151,6 @@
     // ===== Initialization Function =====
     function init() {
         lazyLoadMedia();
-        // Attempt to set up calculator; it will do nothing if elements aren't found
         setupCalculator('en');
         setupCalculator('ar');
     }
