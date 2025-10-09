@@ -1,64 +1,56 @@
-/*
-  Unified script for InfiniBase Cases - v5 (Stable - Optimized Observer)
-  - FIX: Replaced aggressive MutationObserver with a smarter, debounced version to prevent infinite loops and improve performance.
-  - Calculators are re-initialized immediately after language switch, no refresh needed. (FIXED)
-  - Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
-  - Smarter anchor link scrolling to prevent conflicts.
-  - Manages lightboxes for images and videos.
-  - Controls visual guide section visibility.
-  - Powers the interactive delay calculator (if present).
-  - Lazy loads all media elements.
-  - FIX: Made runCaseLogic and setupCalculator globally accessible (window.X) to fix 'is not defined' error.
-*/
-
-(function () {
-    // A flag to prevent the logic from running multiple times on the same content
-    window.hasCaseLogicRun = window.hasCaseLogicRun || false;
-
-    // --- Start of Core Logic ---
-    // Make runCaseLogic and setupCalculator global to avoid 'is not defined' errors (Crucial FIX)
-    // NOTE: 'setupCalculator' implementation must be provided by the user outside this file or defined here if provided.
+// --- Start of Calculator Logic (Essential FIX) ---
+    // Making setupCalculator global to fix "is not defined" error in observer and toggle.
     if (typeof window.setupCalculator !== 'function') {
         window.setupCalculator = function(lang) {
-            // Placeholder for the actual setupCalculator logic (if it exists elsewhere)
-            // If you have the code for setupCalculator, ensure it is defined globally (window.setupCalculator = function...)
+            // --- Placeholder for the actual setupCalculator logic ---
             const calculatorId = lang === 'ar' ? 'delay-calculator-ar' : 'delay-calculator-en';
             const calculatorElement = document.getElementById(calculatorId);
             
             if (!calculatorElement) return;
 
-            // --- Example placeholder for the calculator logic (Replace with your actual logic if needed) ---
             const inputElement = calculatorElement.querySelector('input[type="number"]');
             const resultElement = calculatorElement.querySelector('.result-item .value');
 
             if (inputElement && resultElement) {
                 const updateCalculation = () => {
                     const delayMinutes = parseInt(inputElement.value) || 0;
-                    // Example logic: Simple compensation based on delay
                     let compensation = 'No Compensation';
-                    if (delayMinutes >= 30) {
-                        compensation = (lang === 'ar' ? 'تعويض كامل' : 'Full Compensation');
-                    } else if (delayMinutes >= 15) {
-                        compensation = (lang === 'ar' ? 'خصم 50%' : '50% Discount');
+                    if (lang === 'ar') {
+                        compensation = 'لا يوجد تعويض';
+                        if (delayMinutes >= 30) {
+                            compensation = 'تعويض كامل';
+                        } else if (delayMinutes >= 15) {
+                            compensation = 'خصم 50%';
+                        }
+                    } else {
+                        if (delayMinutes >= 30) {
+                            compensation = 'Full Compensation';
+                        } else if (delayMinutes >= 15) {
+                            compensation = '50% Discount';
+                        }
                     }
                     resultElement.textContent = compensation;
                 };
 
-                // Remove previous listeners to prevent duplicates
-                inputElement.removeEventListener('input', updateCalculation);
+                // Clear existing listeners before adding a new one
+                const clonedInput = inputElement.cloneNode(true);
+                inputElement.parentNode.replaceChild(clonedInput, inputElement);
                 
-                // Add new listener
-                inputElement.addEventListener('input', updateCalculation);
+                // Add new listener to the cloned element
+                clonedInput.addEventListener('input', updateCalculation);
                 
                 // Run initial calculation
                 updateCalculation();
             }
-            // ---------------------------------------------------------------------------------------------
+            // --------------------------------------------------------
         };
     }
+    // --- End of Calculator Logic ---
     
+
+    // --- Start of Core Logic ---
     window.runCaseLogic = function() { // Made globally available for re-initialization
-        if (window.hasCaseLogicRun) return; // Exit if logic has already been applied
+        if (window.hasCaseLogicRun) return;
 
         const APP_SELECTOR = '.kb-app';
 
@@ -89,7 +81,7 @@
             }
         };
 
-        // ===== Language Toggle Function (FIXED: Added re-initialization and correct dir change) =====
+        // ===== Language Toggle Function (FIXED: Toggle Language without Refresh) =====
         window.toggleLanguage = function () {
             const button = document.getElementById('lang-toggle-button');
             const currentLang = button.getAttribute('data-lang');
@@ -110,10 +102,10 @@
             }
             button.setAttribute('data-lang', newLang);
 
-            // 3. Update container direction
+            // 3. Update container direction (FIX: RTL/LTR)
             app.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
 
-            // 4. Re-initialize calculator (This fixes the refresh issue)
+            // 4. Re-initialize calculator (CRUCIAL FIX)
             try {
                 window.setupCalculator(newLang);
                 console.log(`✅ Calculator re-initialized for ${newLang}`);
@@ -123,7 +115,7 @@
         };
 
 
-        // ===== Lazy Load & Media Control (Unchanged) =====
+        // ===== Lazy Load & Media Control =====
         function lazyLoadMedia() {
             const mediaElements = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
             mediaElements.forEach(el => {
@@ -135,7 +127,7 @@
             });
         }
 
-        // ===== Event Listeners (Unchanged) =====
+        // ===== Event Listeners =====
         function setupEventListeners() {
             // Lightbox close listeners
             document.querySelectorAll('.css-lightbox').forEach(lb => {
@@ -162,31 +154,29 @@
     };
     // --- End of Core Logic ---
     
-    // --- ROBUST INITIALIZATION (Optimized) ---
+    // --- ROBUST INITIALIZATION ---
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
-    const config = { childList: true, subtree: false }; // watch only top-level children
+    const config = { childList: true, subtree: false }; 
 
     let reinitTimer;
     const observer = new MutationObserver(function(mutationsList) {
       for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
-          // detect if kb-app is added or replaced
           const kbAppNode = document.querySelector('.kb-app');
           if (kbAppNode) {
             clearTimeout(reinitTimer);
             reinitTimer = setTimeout(() => {
-                // When content is replaced, we must reset the flag to allow re-initialization
                 window.hasCaseLogicRun = false; 
                 console.log('🔄 Re-initializing case logic due to content change...');
                 window.runCaseLogic();
                 try {
-                  // Ensure calculators are set up for the new content (FIXED: using window.setupCalculator)
+                  // Ensure calculators are set up for the new content (FIXED)
                   window.setupCalculator('en'); 
                   window.setupCalculator('ar');
                 } catch (err) {
                   console.warn('Calculator re-init on content change failed:', err);
                 }
-            }, 500); // Debounce to prevent rapid firing
+            }, 500); 
           }
         }
       }
@@ -197,25 +187,21 @@
     // --- INITIAL RUN ---
     setTimeout(() => {
         window.runCaseLogic();
-        // Initial setup for calculator (FIXED: using window.setupCalculator)
         try {
             window.setupCalculator('en');
             window.setupCalculator('ar');
             
-            // Set initial language based on button data-lang (ar or en)
             const initialLang = document.getElementById('lang-toggle-button')?.getAttribute('data-lang') === 'ar' ? 'ar' : 'en';
             if (initialLang === 'ar') {
-                // Apply RTL and show AR content if initial language is Arabic
                 window.toggleLanguage();
             } else {
-                // Default LTR and show EN content
                 document.getElementById('en-content').style.display = 'block';
                 document.getElementById('ar-content').style.display = 'none';
-                document.querySelector(APP_SELECTOR)?.setAttribute('dir', 'ltr');
+                document.querySelector('.kb-app')?.setAttribute('dir', 'ltr');
             }
             console.log('✅ Initial setup complete.');
         } catch (err) {
-            console.warn('Initial Calculator setup failed (This is normal if no calculator is present or if setupCalculator is not fully defined):', err);
+            console.warn('Initial Calculator setup failed:', err);
         }
     }, 100);
 })();
