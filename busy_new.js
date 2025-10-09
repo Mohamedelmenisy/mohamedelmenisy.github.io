@@ -159,7 +159,7 @@
         });
     }
     
-    // ====== EVENT LISTENERS (Delegated for performance) ======
+    // ====== EVENT LISTENERS ======
     document.addEventListener('click', function (e) {
         const target = e.target;
         
@@ -185,15 +185,15 @@
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
-            if (!href || href === '#') return;
+            if (!href || href === '#' || href.includes('/')) return;
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
                     e.preventDefault();
-                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             } catch (err) {
-                console.error("Could not scroll to anchor:", err);
+                console.warn("⚠️ Invalid anchor ignored:", href);
             }
             return;
         }
@@ -208,11 +208,23 @@
         }
     });
 
-    // Fix: Initialize functions on page load
+    // --- Initialize functions on page load ---
     document.addEventListener("DOMContentLoaded", () => {
       lazyLoadMedia();
       setupCalculator('en');
       setupCalculator('ar');
+    });
+
+    // --- Safety fallback for lazy load ---
+    window.addEventListener("load", () => {
+      document.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
+        const src = media.getAttribute('data-src');
+        if (src && !media.src) {
+          media.src = src;
+          media.removeAttribute('data-src');
+          if (media.tagName === 'VIDEO') media.load();
+        }
+      });
     });
 
 })();
