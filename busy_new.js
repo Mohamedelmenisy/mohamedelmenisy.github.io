@@ -42,18 +42,25 @@
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const media = entry.target;
-                        media.src = media.getAttribute('data-src');
-                        media.removeAttribute('data-src');
-                        if (media.tagName === 'VIDEO') media.load();
+                        const dataSrc = media.getAttribute('data-src');
+                        if (dataSrc) {
+                           media.src = dataSrc;
+                           media.removeAttribute('data-src');
+                           if (media.tagName === 'VIDEO') media.load();
+                        }
                         observer.unobserve(media);
                     }
                 });
             });
             lazyMedia.forEach(media => mediaObserver.observe(media));
         } else {
+            // Fallback for older browsers
             lazyMedia.forEach(media => {
-                media.src = media.getAttribute('data-src');
-                media.removeAttribute('data-src');
+                const dataSrc = media.getAttribute('data-src');
+                if (dataSrc) {
+                    media.src = dataSrc;
+                    media.removeAttribute('data-src');
+                }
             });
         }
     }
@@ -151,17 +158,12 @@
     // ===== Initialization Function =====
     function init() {
         lazyLoadMedia();
-        // Attempt to set up calculator; it will do nothing if elements aren't found
         setupCalculator('en');
         setupCalculator('ar');
     }
 
     // Run init on load
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(init, 0);
-    } else {
-        document.addEventListener('DOMContentLoaded', init);
-    }
+    document.addEventListener("DOMContentLoaded", init);
 
     // ====== EVENT LISTENERS (Delegated for performance) ======
     document.addEventListener('click', function (e) {
@@ -170,19 +172,6 @@
         // --- Language Toggle Button ---
         if (target.closest('#lang-toggle-button')) {
             toggleLanguage();
-            return;
-        }
-
-        // --- Visual guide toggle buttons ---
-        const toggleBtn = target.closest('.toggle-visual');
-        if (toggleBtn) {
-            const guide = toggleBtn.nextElementSibling;
-            if (guide && guide.classList.contains('visual-guide')) {
-                const isHidden = guide.style.display === 'none' || guide.style.display === '';
-                const displayStyle = guide.classList.contains('image-grid-2') ? 'grid' : 'block';
-                guide.style.display = isHidden ? displayStyle : 'none';
-                 if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
-            }
             return;
         }
 
@@ -224,5 +213,19 @@
              if(activeLightbox) closeLightbox(activeLightbox.id);
         }
     });
+
+    // --- Lazy Loading Fallback ---
+    window.addEventListener("load", lazyLoadMedia);
+    setTimeout(() => {
+      document.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
+        if (!media.src || media.src.endsWith(media.getAttribute('data-src'))) {
+          const dataSrc = media.getAttribute('data-src');
+          if (dataSrc) {
+            media.src = dataSrc;
+            media.removeAttribute('data-src');
+          }
+        }
+      });
+    }, 3000);
 
 })();
