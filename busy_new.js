@@ -1,9 +1,10 @@
 /*
-  Unified script for InfiniBase Cases - v3 (Stable)
-  - NEW: Persistent MutationObserver to handle content reloads/refreshes reliably.
+  Unified script for InfiniBase Cases - v4 (Stable - Patched)
+  - FIX: Persistent MutationObserver now also watches for 'dir' attribute changes to handle language toggles.
+  - FIX: Calculators are now re-initialized immediately after language switch, no refresh needed.
+  - FIX: Lightbox no longer uses scrollIntoView, relies on pure CSS for perfect centering.
   - Smarter anchor link scrolling to prevent conflicts.
-  - Handles language toggling without needing a refresh.
-  - Manages lightboxes for images and videos, ensuring they center correctly.
+  - Manages lightboxes for images and videos.
   - Controls visual guide section visibility.
   - Powers the interactive delay calculator (if present).
   - Lazy loads all media elements.
@@ -31,8 +32,7 @@
                 video.currentTime = 0;
                 video.play().catch(() => {});
             }
-            // Center the lightbox on open
-            lb.scrollIntoView({ behavior: "instant", block: "center" });
+            // FIX: Removed scrollIntoView; CSS now handles perfect centering.
         };
 
         window.closeLightbox = function (targetId) {
@@ -91,7 +91,12 @@
             appWrapper.setAttribute('dir', 'rtl');
             button.textContent = "Switch to English";
           }
-          // No scroll needed, just re-aligns content
+          
+          // FIX: Re-initialize calculators after a short delay to ensure the DOM is updated.
+          setTimeout(() => {
+              setupCalculator('en');
+              setupCalculator('ar');
+          }, 50);
         }
 
         // ===== Delay Calculator Logic (Compensation Case) =====
@@ -106,7 +111,10 @@
             const recommendationTextElem = document.getElementById(`recommendationText${langSuffix}`);
             const copyBtn = document.getElementById(`copyBtn${langSuffix}`);
 
-            if (!actInput || !recommendationBox || !copyBtn) return;
+            // This check is crucial because this function can be called multiple times.
+            if (!actInput || !recommendationBox || !copyBtn || copyBtn.dataset.initialized === 'true') {
+                return;
+            }
 
             let currentRecommendationText = '';
             if (recommendationTextElem) recommendationTextElem.parentElement.classList.add('info');
@@ -116,7 +124,10 @@
                 const actTime = actInput.value;
                 if (!estTime || !actTime) return;
 
-                const orderType = document.querySelector(`input[name="orderType${langSuffix}"]:checked`).value;
+                const orderTypeEl = document.querySelector(`input[name="orderType${langSuffix}"]:checked`);
+                if (!orderTypeEl) return; // Exit if no order type is selected
+                const orderType = orderTypeEl.value;
+                
                 const time1 = new Date(`1970-01-01T${estTime}:00`);
                 const time2 = new Date(`1970-01-01T${actTime}:00`);
                 const diffMins = Math.round((time2 - time1) / 60000);
@@ -144,19 +155,26 @@
                 if(recommendationTextElem) recommendationTextElem.innerHTML = message;
                 currentRecommendationText = rawMessage;
                 if(recommendationBox) {
-                    recommendationBox.className = 'recommendation-box';
+                    recommendationBox.className = 'recommendation-box'; // Reset classes
                     recommendationBox.classList.add(boxClass);
                 }
             };
-
-            [estInput, actInput, ...orderTypeRadios].forEach(el => el.addEventListener('input', calculateDelay));
-            copyBtn.addEventListener('click', () => {
+            
+            // Mark elements as initialized to prevent re-attaching listeners
+            [estInput, actInput, ...orderTypeRadios].forEach(el => {
+              el.removeEventListener('input', calculateDelay); // Remove old listener if any
+              el.addEventListener('input', calculateDelay);
+            });
+            copyBtn.removeEventListener('click', copyBtn.handler); // Remove old listener
+            copyBtn.handler = () => { // Attach new one
                 navigator.clipboard.writeText(currentRecommendationText).then(() => {
                     const originalText = copyBtn.innerHTML;
                     copyBtn.innerHTML = lang === 'en' ? 'Copied!' : 'تم النسخ!';
                     setTimeout(() => { copyBtn.innerHTML = originalText; }, 1500);
                 });
-            });
+            };
+            copyBtn.addEventListener('click', copyBtn.handler);
+            copyBtn.dataset.initialized = 'true';
         }
 
         function init() {
@@ -226,19 +244,35 @@
 
 
     // --- ROBUST INITIALIZATION ---
-    // This watches for when the main content container is added to the page
+    // This watches for when the main content container is added or changed.
     const targetNode = document.getElementById('itemDetailViewPlaceholder') || document.body;
-    const config = { childList: true, subtree: true };
+    // FIX: Observer now also watches for attribute changes on the target node.
+    const config = { childList: true, subtree: true, attributes: true };
 
     const observer = new MutationObserver(function(mutationsList, observer) {
         for(const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
+            // If new nodes are added OR if attributes (like 'dir') change on existing ones
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
                 const kbAppNode = document.querySelector('.kb-app');
                 if (kbAppNode) {
-                    // Reset the flag if the kb-app node is detected
+                    // Reset the flag if the kb-app node is detected to allow re-running logic
                     window.hasCaseLogicRun = false;
                     runCaseLogic();
-                    // We don't disconnect, it will re-run if content is replaced (e.g., navigating to another case)
+                    
+                    // FIX: After content changes, re-initialize the calculators
+                    // Use a timeout to ensure the DOM has settled after the mutation.
+                    setTimeout(() => {
+                        try {
+                            // Un-mark calculators to allow re-initialization
+                            document.querySelectorAll('#copyBtnEn, #copyBtnAr').forEach(btn => btn.dataset.initialized = 'false');
+                            setupCalculator('en');
+                            setupCalculator('ar');
+                        } catch (err) {
+                            console.warn('Calculator re-init failed:', err);
+                        }
+                    }, 300);
+                    // We don't disconnect; it will re-run if content is replaced again.
+                    return; // Exit after first valid detection to avoid multiple runs for the same change
                 }
             }
         }
