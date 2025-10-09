@@ -16,10 +16,6 @@
         if (!lb) return;
         lb.classList.add('active');
         document.body.style.overflow = 'hidden';
-        
-        // Fix: Scroll lightbox into center view
-        lb.scrollIntoView({ behavior: "instant", block: "center" });
-
         const video = lb.querySelector('video');
         if (video && typeof video.play === 'function') {
             video.currentTime = 0;
@@ -46,25 +42,18 @@
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const media = entry.target;
-                        const dataSrc = media.getAttribute('data-src');
-                        if (dataSrc) {
-                           media.src = dataSrc;
-                           media.removeAttribute('data-src');
-                           if (media.tagName === 'VIDEO') media.load();
-                        }
+                        media.src = media.getAttribute('data-src');
+                        media.removeAttribute('data-src');
+                        if (media.tagName === 'VIDEO') media.load();
                         observer.unobserve(media);
                     }
                 });
             });
             lazyMedia.forEach(media => mediaObserver.observe(media));
         } else {
-            // Fallback for older browsers
             lazyMedia.forEach(media => {
-                const dataSrc = media.getAttribute('data-src');
-                if (dataSrc) {
-                    media.src = dataSrc;
-                    media.removeAttribute('data-src');
-                }
+                media.src = media.getAttribute('data-src');
+                media.removeAttribute('data-src');
             });
         }
     }
@@ -158,14 +147,42 @@
             });
         });
     }
-    
-    // ====== EVENT LISTENERS ======
+
+    // ===== Initialization Function =====
+    function init() {
+        lazyLoadMedia();
+        // Attempt to set up calculator; it will do nothing if elements aren't found
+        setupCalculator('en');
+        setupCalculator('ar');
+    }
+
+    // Run init on load
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(init, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
+    }
+
+    // ====== EVENT LISTENERS (Delegated for performance) ======
     document.addEventListener('click', function (e) {
         const target = e.target;
         
         // --- Language Toggle Button ---
         if (target.closest('#lang-toggle-button')) {
             toggleLanguage();
+            return;
+        }
+
+        // --- Visual guide toggle buttons ---
+        const toggleBtn = target.closest('.toggle-visual');
+        if (toggleBtn) {
+            const guide = toggleBtn.nextElementSibling;
+            if (guide && guide.classList.contains('visual-guide')) {
+                const isHidden = guide.style.display === 'none' || guide.style.display === '';
+                const displayStyle = guide.classList.contains('image-grid-2') ? 'grid' : 'block';
+                guide.style.display = isHidden ? displayStyle : 'none';
+                 if (isHidden) guide.scrollIntoView({ behavior:'smooth', block: 'center' });
+            }
             return;
         }
 
@@ -185,15 +202,15 @@
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
-            if (!href || href === '#' || href.includes('/')) return;
+            if (!href || href === '#') return;
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
                     e.preventDefault();
-                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             } catch (err) {
-                console.warn("⚠️ Invalid anchor ignored:", href);
+                console.error("Could not scroll to anchor:", err);
             }
             return;
         }
@@ -206,25 +223,6 @@
              const activeLightbox = document.querySelector('.css-lightbox.active');
              if(activeLightbox) closeLightbox(activeLightbox.id);
         }
-    });
-
-    // --- Initialize functions on page load ---
-    document.addEventListener("DOMContentLoaded", () => {
-      lazyLoadMedia();
-      setupCalculator('en');
-      setupCalculator('ar');
-    });
-
-    // --- Safety fallback for lazy load ---
-    window.addEventListener("load", () => {
-      document.querySelectorAll('img[data-src], video[data-src]').forEach(media => {
-        const src = media.getAttribute('data-src');
-        if (src && !media.src) {
-          media.src = src;
-          media.removeAttribute('data-src');
-          if (media.tagName === 'VIDEO') media.load();
-        }
-      });
     });
 
 })();
