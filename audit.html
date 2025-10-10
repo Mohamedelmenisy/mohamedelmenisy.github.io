@@ -72,8 +72,8 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.2); transition: all 0.3s ease;
     }
     .card:hover {
-        box-shadow: 0 8px 30px rgba(0,0,0,0.3), 0 0 15px var(--primary-glow);
-        border-color: var(--primary-color);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        border-color: rgba(99, 102, 241, 0.5);
     }
 
     h2.section-title {
@@ -104,19 +104,24 @@
     .kpi-card .info .value { font-size: 2rem; font-weight: 700; color: white; }
     .kpi-card .info .label { font-size: 1rem; color: var(--text-color-muted); }
     
-    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 2rem; }
-    .chart-wrapper { position: relative; min-height: 450px; width: 100%; }
-    .chart-wrapper-full { grid-column: 1 / -1; min-height: 400px; }
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+    .chart-wrapper { position: relative; min-height: 350px; width: 100%; }
+    .chart-wrapper-full { grid-column: 1 / -1; min-height: 380px; }
 
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table { width: 100%; border-collapse: collapse; }
     th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
     tbody tr:hover { background-color: #2a3546; }
     td.details-cell, td.case-cell { white-space: normal; word-break: break-word; }
-    .badge { padding: 0.3em 0.8em; font-size: 0.85rem; font-weight: 600; border-radius: 20px; color: white; display: inline-flex; align-items: center; gap: 0.4rem; text-transform: capitalize; }
+    .badge { padding: 0.3em 0.8em; font-size: 0.8rem; font-weight: 600; border-radius: 20px; color: white; display: inline-flex; align-items: center; gap: 0.4rem; text-transform: capitalize; }
+    .badge i { font-size: 0.8em; }
     .badge.Create { background-color: var(--success-color); }
     .badge.Update { background-color: var(--warning-color); }
     .badge.Delete { background-color: var(--danger-color); }
+    .badge.viewed { background-color: #3b82f6; } /* Blue for viewed */
+    .badge.commented { background-color: #a855f7; } /* Purple for commented */
+    .badge.positive_feedback { background-color:var(--success-color); }
+.badge.negative_feedback { background-color: var(--danger-color); }
 
     .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; }
     
@@ -152,6 +157,7 @@
 
     .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100vh; }
     .access-restricted-container .card { max-width: 450px; padding: 3rem; }
+    .access-restricted-container .icon { font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem; }
   </style>
 </head>
 <body>
@@ -238,12 +244,12 @@
     import { supabase } from './supabase.js';
 
     let auditStore = [], filteredStore = [];
-    let pageSize = 5;
+    let pageSize = 10;
     let currentPage = 1;
     let charts = {};
 
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
-    const formatTime = (ts, options) => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', ...options }) : '-';
+    const formatTime = (ts) => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
     
     const showOverlay = (show = true) => document.getElementById('overlay').classList.toggle('show', show);
 
@@ -278,18 +284,21 @@
       const start = (currentPage - 1) * pageSize;
       const end = start + pageSize;
       
+      const actionIcons = { Create: 'fa-plus', Update: 'fa-pencil-alt', Delete: 'fa-trash' };
+      
       auditBody.innerHTML = '';
       if (!filteredStore.length) {
         auditBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem;">No records match filters.</td></tr>`;
       } else {
         filteredStore.slice(start, end).forEach(r => {
           const tr = document.createElement('tr');
+          const iconHtml = actionIcons[r.action] ? `<i class="fas ${actionIcons[r.action]}"></i>` : '';
           tr.innerHTML = `
-            <td>${formatTime(r.modified_at_egypt || r.modified_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' })}</td>
-            <td>${escapeHtml(r.user_name || r.modified_by_name || '—')}</td>
+            <td>${formatTime(r.modified_at_egypt)}</td>
+            <td>${escapeHtml(r.user_name || '—')}</td>
             <td>${escapeHtml(r.user_email)}</td>
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
-            <td><span class="badge ${r.action}">${r.action}</span></td>
+            <td><span class="badge ${r.action}">${iconHtml} ${r.action}</span></td>
             <td class="details-cell">${escapeHtml(r.details)}</td>
             <td><button class="button-secondary view-timeline-btn" data-case-id="${r.case_id}" title="View Timeline"><i class="fas fa-stream"></i></button></td>
           `;
@@ -300,7 +309,7 @@
       document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
       document.getElementById('prevBtn').disabled = currentPage === 1;
       document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-      document.getElementById('totalRecords').textContent = `${filteredStore.length} records`;
+      document.getElementById('totalRecords').textContent = `${filteredStore.length} records found`;
     };
 
     const applyFiltersAndRender = () => {
@@ -341,7 +350,7 @@
         document.getElementById('kpi-active-section').textContent = mostActive ? mostActive[0] : '-';
 
         const lastUpdate = auditStore[0]?.modified_at_egypt;
-        document.getElementById('kpi-last-update').textContent = lastUpdate ? formatTime(lastUpdate, { hour: '2-digit', minute: '2-digit' }) : '-';
+        document.getElementById('kpi-last-update').textContent = lastUpdate ? new Date(lastUpdate).toLocaleTimeString('en-GB', {timeZone: 'Africa/Cairo', hour:'2-digit', minute:'2-digit'}) : '-';
     };
     
     const createChart = (id, type, data, options) => {
@@ -351,62 +360,52 @@
     };
     
     const buildCharts = () => {
-        const textColor = '#fff';
+        const textColor = '#d1d5db';
         const gridColor = '#374151';
 
-        const baseOptions = {
+        const baseOptions = (title) => ({
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: textColor, font: { size: 14, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } } },
-                title: { display: true, color: textColor, font: { size: 18, weight: 'bold', family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } },
+                legend: { labels: { color: textColor, font: { size: 14 } } },
+                title: { display: true, text: title, color: textColor, font: { size: 18, weight: 'bold' } },
                 tooltip: { 
-                    backgroundColor: '#111827', 
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    titleFont: { size: 16 }, bodyFont: { size: 14 },
+                    backgroundColor: '#111827', titleColor: '#fff', bodyColor: '#fff',
                     borderColor: gridColor, borderWidth: 1, padding: 10,
                     callbacks: { label: (context) => `${context.label}: ${context.raw.toLocaleString()}` }
                 }
             },
             scales: {
-                y: { ticks: { color: textColor, font: { size: 12 } }, grid: { color: gridColor } },
-                x: { ticks: { color: textColor, font: { size: 12 } }, grid: { color: gridColor } }
+                y: { ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
             }
-        };
+        });
 
         // Daily Activity
         const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_egypt.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
         createChart('dailyActivityChart', 'line', {
             labels: Object.keys(daily).sort(),
-            datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointHoverRadius: 7, pointHoverBorderWidth: 2 }]
-        }, { ...baseOptions, plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Daily Modification Trend'}}, scales: { ...baseOptions.scales, x: { ...baseOptions.scales.x, type: 'time', time: { unit: 'day' }, grid: { display: false } } } });
+            datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: 'var(--primary-color)', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.4, fill: true }]
+        }, { ...baseOptions('Daily Modification Trend'), scales: { ...baseOptions().scales, x: { type: 'time', time: { unit: 'day' }, grid: { display: false } } } });
         
         // Action Types
         const actions = { Create: 0, Update: 0, Delete: 0 };
-        filteredStore.forEach(r => {
-            const act = (r.action || '').toLowerCase();
-            if (act.includes('create')) actions.Create++;
-            else if (act.includes('update')) actions.Update++;
-            else if (act.includes('delete')) actions.Delete++;
-        });
-
+        filteredStore.forEach(r => actions[r.action] = (actions[r.action] || 0) + 1);
         createChart('actionsPieChart', 'doughnut', {
             labels: ['Create', 'Update', 'Delete'],
             datasets: [{
                 data: [actions.Create, actions.Update, actions.Delete],
-                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                backgroundColor: ['var(--success-color)', 'var(--warning-color)', 'var(--danger-color)'],
                 borderColor: '#1f2937', borderWidth: 4, hoverOffset: 8
             }]
-        }, { ...baseOptions, cutout: '65%', plugins: { ...baseOptions.plugins, title: {...baseOptions.plugins.title, text: 'Action Types'}} });
-
+        }, { ...baseOptions('Action Types'), cutout: '65%' });
 
         // Top 5 Edited Cases
         const cases = filteredStore.reduce((acc, r) => { if (r.case_title) acc[r.case_title] = (acc[r.case_title] || 0) + 1; return acc; }, {});
         const topCases = Object.entries(cases).sort((a, b) => b[1] - a[1]).slice(0, 5);
         createChart('topCasesChart', 'bar', {
             labels: topCases.map(e => e[0].length > 45 ? e[0].substring(0, 42) + '...' : e[0]),
-            datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#a78bfa', '#f87171', '#fb923c', '#4ade80'], borderRadius: 5 }]
-        }, { ...baseOptions, indexAxis: 'y', plugins: { ...baseOptions.plugins, legend: {display: false}, title: {...baseOptions.plugins.title, text: 'Top 5 Most Edited Cases'}}, scales: { ...baseOptions.scales, y: { ...baseOptions.scales.y, grid: { display: false } } } });
+            datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'], borderRadius: 5 }]
+        }, { ...baseOptions('Top 5 Most Edited Cases'), indexAxis: 'y', plugins: { ...baseOptions().plugins, legend: {display: false}}, scales: { ...baseOptions().scales, y: { grid: { display: false } } } });
     };
     
     const showTimeline = (caseId) => {
@@ -419,11 +418,9 @@
             <div class="timeline-item">
                 <div class="timeline-icon ${r.action}"><i class="fas ${iconMap[r.action]}"></i></div>
                 <div class="timeline-content">
-                    <div class="timestamp">${formatTime(r.modified_at_egypt, { dateStyle: 'medium', timeStyle: 'medium' })}</div>
-                    <div class="details" title="Old: ${escapeHtml(r.old_value)} \nNew: ${escapeHtml(r.new_value)}">
-                        ${escapeHtml(r.details)}
-                    </div>
-                    <div class="user">by ${escapeHtml(r.user_name || r.modified_by_name || 'Unknown')}</div>
+                    <div class="timestamp">${formatTime(r.modified_at_egypt)}</div>
+                    <div class="details">${escapeHtml(r.details)}</div>
+                    <div class="user">by ${escapeHtml(r.user_name || 'Unknown')}</div>
                 </div>
             </div>`).join('');
         document.getElementById('timelineModal').classList.add('show');
@@ -435,10 +432,8 @@
         const toast = document.getElementById('toast');
         const action = payload.new.action || 'modified';
         const colorMap = { Create: '--success-color', Update: '--warning-color', Delete: '--danger-color'};
-        const iconMap = { Create: 'fa-plus-circle', Update: 'fa-pencil-alt', Delete: 'fa-trash-alt' };
-        
         toast.style.background = `var(${colorMap[action] || '--primary-color'})`;
-        toast.innerHTML = `<i class="fas ${iconMap[action] || 'fa-info-circle'}"></i><span>A record was just ${action.toLowerCase()}. Updating...</span>`;
+        toast.innerHTML = `<span>A record was just ${action.toLowerCase()}. Refreshing...</span>`;
         toast.classList.add('show');
         toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
     };
@@ -456,35 +451,28 @@
         supabase.channel('public:case_history')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'case_history' }, payload => {
                 showToastNotification(payload);
-                // Smart update without full refetch
-                auditStore.unshift(payload.new);
+                auditStore.unshift(payload.new); // Smart update
                 applyFiltersAndRender();
             }).subscribe();
             
       } catch (e) {
-        console.error('Access check failed:', e.message);
         document.getElementById('restricted-card').style.display = 'flex';
       }
     }
     
     function exportToCsv() {
-        const headers = ['Date & Time', 'User', 'Email', 'Case', 'Section', 'Action', 'Details'];
+        const headers = ['Date & Time (Cairo)', 'User', 'Email', 'Case', 'Section', 'Action', 'Details'];
         const rows = filteredStore.map(r => [
-            formatTime(r.modified_at_egypt),
-            r.user_name,
-            r.user_email,
-            `"${(r.case_title || '').replace(/"/g, '""')}"`,
-            r.section,
-            r.action,
+            formatTime(r.modified_at_egypt), r.user_name, r.user_email,
+            `"${(r.case_title || '').replace(/"/g, '""')}"`, r.section, r.action,
             `"${(r.details || '').replace(/"/g, '""')}"`
         ]);
         
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
             
         const link = document.createElement('a');
-        link.setAttribute('href', encodeURI(csvContent));
-        link.setAttribute('download', `audit_log_${new Date().toISOString().slice(0,10)}.csv`);
+        link.href = encodeURI(csvContent);
+        link.download = `audit_log_${new Date().toISOString().slice(0,10)}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -518,9 +506,7 @@
     timelineModal.addEventListener('click', e => { if (e.target === timelineModal) timelineModal.classList.remove('show'); });
     timelineModal.querySelector('.close-btn').addEventListener('click', () => timelineModal.classList.remove('show'));
 
-    document.addEventListener('DOMContentLoaded', () => {
-        checkAdminAccess();
-    });
+    document.addEventListener('DOMContentLoaded', checkAdminAccess);
 </script>
 
 </body>
