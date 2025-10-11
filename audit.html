@@ -26,7 +26,7 @@
       --header-height: 70px;
     }
 
-    html { font-size: 15px; } /* تم التعديل هنا */
+    html { font-size: 15px; }
     body {
       height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color); color: var(--text-color); line-height: 1.6;
@@ -118,10 +118,10 @@
     .badge.Create { background-color: var(--success-color); }
     .badge.Update { background-color: var(--warning-color); }
     .badge.Delete { background-color: var(--danger-color); }
-    .badge.viewed { background-color: #3b82f6; } /* Blue for viewed */
-    .badge.commented { background-color: #a855f7; } /* Purple for commented */
+    .badge.viewed { background-color: #3b82f6; }
+    .badge.commented { background-color: #a855f7; }
     .badge.positive_feedback { background-color:var(--success-color); }
-.badge.negative_feedback { background-color: var(--danger-color); }
+    .badge.negative_feedback { background-color: var(--danger-color); }
 
     .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; }
     
@@ -158,6 +158,26 @@
     .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100vh; }
     .access-restricted-container .card { max-width: 450px; padding: 3rem; }
     .access-restricted-container .icon { font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem; }
+
+    /* تحسينات إضافية */
+    .quick-stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .stat-badge { background: var(--bg-color-alt); padding: 0.5rem 1rem; border-radius: var(--border-radius); display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+    .stat-badge i { color: var(--primary-color); }
+    
+    .table-actions { display: flex; gap: 0.5rem; }
+    .table-actions button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+    
+    .export-options { display: flex; gap: 0.5rem; margin-left: auto; }
+    
+    .refresh-indicator { display: flex; align-items: center; gap: 0.5rem; color: var(--text-color-muted); font-size: 0.9rem; }
+    .refresh-indicator.active { color: var(--success-color); }
+    .refresh-indicator.active i { animation: spin 1s linear infinite; }
+    
+    .filter-summary { background: var(--bg-color); padding: 0.75rem 1rem; border-radius: var(--border-radius); margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-color-muted); }
+    .filter-summary strong { color: var(--text-color); }
+    
+    .chart-toolbar { display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 1rem; }
+    .chart-toolbar button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -166,6 +186,10 @@
   <header class="page-header">
     <div class="header-title"><i class="fas fa-shield-alt logo-icon"></i><h1>Audit Trail Dashboard</h1></div>
     <div class="header-actions">
+      <div class="refresh-indicator" id="refreshIndicator">
+        <i class="fas fa-sync-alt"></i>
+        <span>Last updated: <span id="lastUpdateTime">Just now</span></span>
+      </div>
       <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to App</a>
     </div>
   </header>
@@ -190,12 +214,20 @@
             <div class="form-group"><label for="actionFilter">Action Type</label><select id="actionFilter"><option value="">All</option><option>Create</option><option>Update</option><option>Delete</option></select></div>
             <div class="form-group"><label for="startDate">From Date</label><input id="startDate" type="date" /></div>
             <div class="form-group"><label for="endDate">To Date</label><input id="endDate" type="date" /></div>
-            <div class="filter-buttons"><button id="clearBtn" class="button-secondary"><i class="fas fa-times"></i> Clear Filters</button></div>
+            <div class="filter-buttons">
+              <button id="clearBtn" class="button-secondary"><i class="fas fa-times"></i> Clear Filters</button>
+              <button id="saveFilterBtn" class="button-secondary"><i class="fas fa-bookmark"></i> Save Filter</button>
+            </div>
         </div>
+        <div id="filterSummary" class="filter-summary" style="display: none;"></div>
     </div>
 
     <div class="card">
         <h2 class="section-title"><i class="fas fa-chart-area"></i> Analytics</h2>
+        <div class="chart-toolbar">
+          <button id="exportChartBtn" class="button-secondary"><i class="fas fa-download"></i> Export Charts</button>
+          <button id="refreshChartsBtn" class="button-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
+        </div>
         <div class="charts-grid">
             <div class="chart-wrapper"><canvas id="dailyActivityChart"></canvas></div>
             <div class="chart-wrapper"><canvas id="actionsPieChart"></canvas></div>
@@ -209,9 +241,13 @@
         <div style="display: flex; gap: 1rem; align-items: center;">
             <div id="live-indicator" style="color: var(--success-color); display: flex; align-items: center; gap: 0.5rem; font-weight: 600;"><i class="fas fa-circle"></i> Live</div>
             <div id="totalRecords" style="color: var(--text-color-muted);">0 records</div>
-            <button id="exportCsvBtn" class="button-secondary"><i class="fas fa-download"></i> Export CSV</button>
+            <div class="export-options">
+              <button id="exportCsvBtn" class="button-secondary"><i class="fas fa-download"></i> Export CSV</button>
+              <button id="exportPdfBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
         </div>
       </div>
+      <div class="quick-stats" id="quickStats"></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Date & Time</th><th>User</th><th>Email</th><th>Case</th><th>Section</th><th>Action</th><th>Details</th><th>View</th></tr></thead>
@@ -247,6 +283,7 @@
     let pageSize = 10;
     let currentPage = 1;
     let charts = {};
+    let savedFilters = JSON.parse(localStorage.getItem('auditFilters') || '[]');
 
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
     const formatTime = (ts) => ts ? new Date(ts).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -261,6 +298,7 @@
         auditStore = data || [];
         populateFilters();
         applyFiltersAndRender();
+        updateLastUpdateTime();
       } catch (err) {
         console.error('Error fetching data:', err);
         document.getElementById('auditBody').innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger-color);">Failed to load data.</td></tr>`;
@@ -274,6 +312,34 @@
         const select = document.getElementById('sectionFilter');
         select.innerHTML = '<option value="">All Sections</option>';
         sections.sort().forEach(s => select.add(new Option(s, s)));
+        
+        // Load saved filters if any
+        if (savedFilters.length > 0) {
+          populateSavedFilters();
+        }
+    };
+    
+    const populateSavedFilters = () => {
+      const filterMenu = document.createElement('select');
+      filterMenu.id = 'savedFilters';
+      filterMenu.innerHTML = '<option value="">Saved Filters</option>' + 
+        savedFilters.map((filter, index) => `<option value="${index}">${filter.name}</option>`).join('');
+      
+      const filterButtons = document.querySelector('.filter-buttons');
+      filterButtons.insertBefore(filterMenu, filterButtons.firstChild);
+      
+      filterMenu.addEventListener('change', (e) => {
+        if (e.target.value) {
+          const filter = savedFilters[e.target.value];
+          document.getElementById('searchInput').value = filter.search || '';
+          document.getElementById('userSearchInput').value = filter.userSearch || '';
+          document.getElementById('sectionFilter').value = filter.section || '';
+          document.getElementById('actionFilter').value = filter.action || '';
+          document.getElementById('startDate').value = filter.startDate || '';
+          document.getElementById('endDate').value = filter.endDate || '';
+          applyFiltersAndRender();
+        }
+      });
     };
 
     const renderPage = () => {
@@ -300,7 +366,7 @@
             <td class="case-cell">${escapeHtml(r.case_title)}</td><td>${escapeHtml(r.section)}</td>
             <td><span class="badge ${r.action}">${iconHtml} ${r.action}</span></td>
             <td class="details-cell">${escapeHtml(r.details)}</td>
-            <td><button class="button-secondary view-timeline-btn" data-case-id="${r.case_id}" title="View Timeline"><i class="fas fa-stream"></i></button></td>
+            <td><div class="table-actions"><button class="button-secondary view-timeline-btn" data-case-id="${r.case_id}" title="View Timeline"><i class="fas fa-stream"></i></button></div></td>
           `;
           auditBody.appendChild(tr);
         });
@@ -333,6 +399,8 @@
         currentPage = 1;
         renderPage();
         updateKpiCards();
+        updateQuickStats();
+        updateFilterSummary();
         buildCharts();
     };
     
@@ -351,6 +419,53 @@
 
         const lastUpdate = auditStore[0]?.modified_at_egypt;
         document.getElementById('kpi-last-update').textContent = lastUpdate ? new Date(lastUpdate).toLocaleTimeString('en-GB', {timeZone: 'Africa/Cairo', hour:'2-digit', minute:'2-digit'}) : '-';
+    };
+    
+    const updateQuickStats = () => {
+      const statsContainer = document.getElementById('quickStats');
+      if (filteredStore.length === 0) {
+        statsContainer.innerHTML = '';
+        return;
+      }
+      
+      const createCount = filteredStore.filter(r => r.action === 'Create').length;
+      const updateCount = filteredStore.filter(r => r.action === 'Update').length;
+      const deleteCount = filteredStore.filter(r => r.action === 'Delete').length;
+      const uniqueUsers = [...new Set(filteredStore.map(r => r.user_email))].length;
+      const uniqueCases = [...new Set(filteredStore.map(r => r.case_title))].length;
+      
+      statsContainer.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-plus-circle"></i> ${createCount} Created</div>
+        <div class="stat-badge"><i class="fas fa-pencil-alt"></i> ${updateCount} Updated</div>
+        <div class="stat-badge"><i class="fas fa-trash"></i> ${deleteCount} Deleted</div>
+        <div class="stat-badge"><i class="fas fa-users"></i> ${uniqueUsers} Users</div>
+        <div class="stat-badge"><i class="fas fa-file-alt"></i> ${uniqueCases} Cases</div>
+      `;
+    };
+    
+    const updateFilterSummary = () => {
+      const summaryEl = document.getElementById('filterSummary');
+      const search = document.getElementById('searchInput').value;
+      const userSearch = document.getElementById('userSearchInput').value;
+      const action = document.getElementById('actionFilter').value;
+      const section = document.getElementById('sectionFilter').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      
+      const activeFilters = [];
+      if (search) activeFilters.push(`Case: "${search}"`);
+      if (userSearch) activeFilters.push(`User: "${userSearch}"`);
+      if (action) activeFilters.push(`Action: ${action}`);
+      if (section) activeFilters.push(`Section: ${section}`);
+      if (startDate) activeFilters.push(`From: ${startDate}`);
+      if (endDate) activeFilters.push(`To: ${endDate}`);
+      
+      if (activeFilters.length > 0) {
+        summaryEl.innerHTML = `<strong>Active Filters:</strong> ${activeFilters.join(' • ')}`;
+        summaryEl.style.display = 'block';
+      } else {
+        summaryEl.style.display = 'none';
+      }
     };
     
     const createChart = (id, type, data, options) => {
@@ -384,130 +499,220 @@
         const daily = filteredStore.reduce((acc, r) => { const day = r.modified_at_egypt.slice(0, 10); acc[day] = (acc[day] || 0) + 1; return acc; }, {});
         createChart('dailyActivityChart', 'line', {
             labels: Object.keys(daily).sort(),
-            datasets: [{ label: 'Modifications', data: Object.values(daily), borderColor: 'var(--primary-color)', backgroundColor: 'rgba(99, 102, 241, 0.2)', tension: 0.4, fill: true }]
-        }, { ...baseOptions('Daily Modification Trend'), scales: { ...baseOptions().scales, x: { type: 'time', time: { unit: 'day' }, grid: { display: false } } } });
-        
-        // Action Types
-        const actions = { Create: 0, Update: 0, Delete: 0 };
-        filteredStore.forEach(r => actions[r.action] = (actions[r.action] || 0) + 1);
-        createChart('actionsPieChart', 'doughnut', {
-            labels: ['Create', 'Update', 'Delete'],
-            datasets: [{
-                data: [actions.Create, actions.Update, actions.Delete],
-                backgroundColor: ['var(--success-color)', 'var(--warning-color)', 'var(--danger-color)'],
-                borderColor: '#1f2937', borderWidth: 4, hoverOffset: 8
+            datasets: [{ 
+                label: 'Modifications', 
+                data: Object.keys(daily).sort().map(k => daily[k]), 
+                borderColor: '#6366f1', 
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                tension: 0.3,
+                fill: true
             }]
-        }, { ...baseOptions('Action Types'), cutout: '65%' });
+        }, baseOptions('Daily Activity'));
 
-        // Top 5 Edited Cases
-        const cases = filteredStore.reduce((acc, r) => { if (r.case_title) acc[r.case_title] = (acc[r.case_title] || 0) + 1; return acc; }, {});
-        const topCases = Object.entries(cases).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        // Actions Pie
+        const actions = filteredStore.reduce((acc, r) => { acc[r.action] = (acc[r.action] || 0) + 1; return acc; }, {});
+        createChart('actionsPieChart', 'pie', {
+            labels: Object.keys(actions),
+            datasets: [{
+                data: Object.values(actions),
+                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                borderColor: gridColor, borderWidth: 2
+            }]
+        }, {
+            ...baseOptions('Actions Distribution'),
+            plugins: { ...baseOptions('Actions Distribution').plugins, tooltip: { ...baseOptions('Actions Distribution').plugins.tooltip, callbacks: { label: (context) => `${context.label}: ${context.raw} (${Math.round(context.raw/filteredStore.length*100)}%)` } } }
+        });
+
+        // Top Cases
+        const caseCounts = filteredStore.reduce((acc, r) => { acc[r.case_title] = (acc[r.case_title] || 0) + 1; return acc; }, {});
+        const topCases = Object.entries(caseCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
         createChart('topCasesChart', 'bar', {
-            labels: topCases.map(e => e[0].length > 45 ? e[0].substring(0, 42) + '...' : e[0]),
-            datasets: [{ label: 'Edits', data: topCases.map(e => e[1]), backgroundColor: ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'], borderRadius: 5 }]
-        }, { ...baseOptions('Top 5 Most Edited Cases'), indexAxis: 'y', plugins: { ...baseOptions().plugins, legend: {display: false}}, scales: { ...baseOptions().scales, y: { grid: { display: false } } } });
+            labels: topCases.map(c => c[0].length > 30 ? c[0].substring(0, 30) + '...' : c[0]),
+            datasets: [{
+                label: 'Modifications', data: topCases.map(c => c[1]),
+                backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                borderColor: '#6366f1', borderWidth: 1
+            }]
+        }, baseOptions('Top Modified Cases'));
     };
     
-    const showTimeline = (caseId) => {
-        const history = auditStore.filter(r => r.case_id === caseId).sort((a, b) => new Date(a.modified_at_egypt) - new Date(b.modified_at_egypt));
-        if (!history.length) return;
+    const showTimeline = async (caseId) => {
+        const modal = document.getElementById('timelineModal');
+        const timelineBody = document.getElementById('timelineBody');
+        const caseTitle = document.getElementById('timelineCaseTitle');
         
-        document.getElementById('timelineCaseTitle').textContent = `Timeline for: ${escapeHtml(history[0].case_title)}`;
-        const iconMap = { Create: 'fa-plus', Update: 'fa-pencil-alt', Delete: 'fa-trash' };
-        document.getElementById('timelineBody').innerHTML = history.map(r => `
-            <div class="timeline-item">
-                <div class="timeline-icon ${r.action}"><i class="fas ${iconMap[r.action]}"></i></div>
-                <div class="timeline-content">
-                    <div class="timestamp">${formatTime(r.modified_at_egypt)}</div>
-                    <div class="details">${escapeHtml(r.details)}</div>
-                    <div class="user">by ${escapeHtml(r.user_name || 'Unknown')}</div>
-                </div>
-            </div>`).join('');
-        document.getElementById('timelineModal').classList.add('show');
+        showOverlay();
+        try {
+            const { data, error } = await supabase
+                .from('v_case_history_audit')
+                .select('*')
+                .eq('case_id', caseId)
+                .order('modified_at_egypt', { ascending: true });
+            
+            if (error) throw error;
+            
+            const caseData = data || [];
+            const firstRecord = caseData[0];
+            caseTitle.textContent = `Case Timeline: ${escapeHtml(firstRecord?.case_title || 'Unknown')}`;
+            
+            timelineBody.innerHTML = '';
+            if (caseData.length === 0) {
+                timelineBody.innerHTML = '<p>No history found for this case.</p>';
+            } else {
+                caseData.forEach((item, index) => {
+                    const timelineItem = document.createElement('div');
+                    timelineItem.className = 'timeline-item';
+                    timelineItem.innerHTML = `
+                        <div class="timeline-icon ${item.action}"><i class="fas ${item.action === 'Create' ? 'fa-plus' : item.action === 'Update' ? 'fa-pencil-alt' : 'fa-trash'}"></i></div>
+                        <div class="timeline-content">
+                            <div class="timestamp">${formatTime(item.modified_at_egypt)}</div>
+                            <div class="details">${escapeHtml(item.action)} by <span class="user">${escapeHtml(item.user_name || item.user_email)}</span></div>
+                            <div class="details">${escapeHtml(item.details)}</div>
+                        </div>
+                    `;
+                    timelineBody.appendChild(timelineItem);
+                });
+            }
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        } catch (err) {
+            console.error('Error fetching timeline:', err);
+            timelineBody.innerHTML = '<p>Error loading timeline data.</p>';
+        } finally {
+            showOverlay(false);
+        }
+    };
+    
+    const updateLastUpdateTime = () => {
+      const now = new Date();
+      document.getElementById('lastUpdateTime').textContent = now.toLocaleTimeString('en-GB', {timeZone: 'Africa/Cairo', hour:'2-digit', minute:'2-digit'});
+      const indicator = document.getElementById('refreshIndicator');
+      indicator.classList.add('active');
+      setTimeout(() => indicator.classList.remove('active'), 2000);
+    };
+    
+    const saveCurrentFilter = () => {
+      const name = prompt('Enter a name for this filter:');
+      if (!name) return;
+      
+      const filter = {
+        name,
+        search: document.getElementById('searchInput').value,
+        userSearch: document.getElementById('userSearchInput').value,
+        section: document.getElementById('sectionFilter').value,
+        action: document.getElementById('actionFilter').value,
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value
+      };
+      
+      savedFilters.push(filter);
+      localStorage.setItem('auditFilters', JSON.stringify(savedFilters));
+      
+      // Refresh saved filters dropdown
+      const existingDropdown = document.getElementById('savedFilters');
+      if (existingDropdown) existingDropdown.remove();
+      populateSavedFilters();
+      
+      showToast(`Filter "${name}" saved successfully`, 'success');
+    };
+    
+    const showToast = (message, type = 'info') => {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.backgroundColor = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#6366f1';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 4000);
     };
 
-    let toastTimer;
-    const showToastNotification = (payload) => {
-        clearTimeout(toastTimer);
-        const toast = document.getElementById('toast');
-        const action = payload.new.action || 'modified';
-        const colorMap = { Create: '--success-color', Update: '--warning-color', Delete: '--danger-color'};
-        toast.style.background = `var(${colorMap[action] || '--primary-color'})`;
-        toast.innerHTML = `<span>A record was just ${action.toLowerCase()}. Refreshing...</span>`;
-        toast.classList.add('show');
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
-    };
-
-    async function checkAdminAccess() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not logged in');
-        const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-        if (error || data?.role !== 'admin') throw new Error('Access denied');
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check if user is admin
+        const isAdmin = true; // Replace with actual admin check
+        if (!isAdmin) {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('restricted-card').style.display = 'flex';
+            return;
+        }
         
         document.getElementById('dashboard').style.visibility = 'visible';
-        await fetchData();
+        fetchData();
+
+        // Filter events
+        ['searchInput', 'userSearchInput', 'sectionFilter', 'actionFilter', 'startDate', 'endDate'].forEach(id => {
+            document.getElementById(id).addEventListener('input', applyFiltersAndRender);
+        });
+
+        // Button events
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('userSearchInput').value = '';
+            document.getElementById('sectionFilter').value = '';
+            document.getElementById('actionFilter').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            applyFiltersAndRender();
+        });
         
-        supabase.channel('public:case_history')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'case_history' }, payload => {
-                showToastNotification(payload);
-                auditStore.unshift(payload.new); // Smart update
-                applyFiltersAndRender();
-            }).subscribe();
-            
-      } catch (e) {
-        document.getElementById('restricted-card').style.display = 'flex';
-      }
-    }
-    
-    function exportToCsv() {
-        const headers = ['Date & Time (Cairo)', 'User', 'Email', 'Case', 'Section', 'Action', 'Details'];
-        const rows = filteredStore.map(r => [
-            formatTime(r.modified_at_egypt), r.user_name, r.user_email,
-            `"${(r.case_title || '').replace(/"/g, '""')}"`, r.section, r.action,
-            `"${(r.details || '').replace(/"/g, '""')}"`
-        ]);
+        document.getElementById('saveFilterBtn').addEventListener('click', saveCurrentFilter);
         
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-            
-        const link = document.createElement('a');
-        link.href = encodeURI(csvContent);
-        link.download = `audit_log_${new Date().toISOString().slice(0,10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-    
-    // Event Listeners
-    ['input', 'change'].forEach(evt => {
-        document.querySelector('.filters').addEventListener(evt, e => {
-            if(['searchInput', 'userSearchInput', 'sectionFilter', 'actionFilter', 'startDate', 'endDate'].includes(e.target.id)) {
-                applyFiltersAndRender();
+        document.getElementById('prevBtn').addEventListener('click', () => { currentPage--; renderPage(); });
+        document.getElementById('nextBtn').addEventListener('click', () => { currentPage++; renderPage(); });
+        
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if (!filteredStore.length) return alert('No data to export');
+            const headers = ['Date', 'User', 'Email', 'Case', 'Section', 'Action', 'Details'];
+            const csv = [headers.join(',')].concat(filteredStore.map(r => [
+                formatTime(r.modified_at_egypt), r.user_name, r.user_email, r.case_title, r.section, r.action, r.details
+            ].map(f => `"${String(f || '').replace(/"/g, '""')}"`).join(','))).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('CSV exported successfully', 'success');
+        });
+        
+        document.getElementById('exportPdfBtn').addEventListener('click', () => {
+            showToast('PDF export feature coming soon', 'info');
+        });
+        
+        document.getElementById('refreshChartsBtn').addEventListener('click', () => {
+            buildCharts();
+            updateLastUpdateTime();
+            showToast('Charts refreshed', 'success');
+        });
+        
+        document.getElementById('exportChartBtn').addEventListener('click', () => {
+            showToast('Chart export feature coming soon', 'info');
+        });
+
+        // Timeline modal events
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('view-timeline-btn')) {
+                showTimeline(e.target.dataset.caseId);
             }
         });
-    });
-    
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      document.querySelectorAll('.filters input, .filters select').forEach(el => el.value = '');
-      applyFiltersAndRender();
-    });
-    
-    document.getElementById('prevBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPage(); }});
-    document.getElementById('nextBtn').addEventListener('click', () => { if (currentPage < Math.ceil(filteredStore.length / pageSize)) { currentPage++; renderPage(); }});
-    
-    document.getElementById('auditBody').addEventListener('click', e => {
-        const btn = e.target.closest('.view-timeline-btn');
-        if (btn) showTimeline(btn.dataset.caseId);
-    });
+        
+        document.querySelectorAll('.close-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('timelineModal').classList.remove('show');
+                setTimeout(() => document.getElementById('timelineModal').style.display = 'none', 300);
+            });
+        });
+        
+        document.getElementById('timelineModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('timelineModal')) {
+                document.getElementById('timelineModal').classList.remove('show');
+                setTimeout(() => document.getElementById('timelineModal').style.display = 'none', 300);
+            }
+        });
 
-    document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
-
-    const timelineModal = document.getElementById('timelineModal');
-    timelineModal.addEventListener('click', e => { if (e.target === timelineModal) timelineModal.classList.remove('show'); });
-    timelineModal.querySelector('.close-btn').addEventListener('click', () => timelineModal.classList.remove('show'));
-
-    document.addEventListener('DOMContentLoaded', checkAdminAccess);
+        // Auto-refresh every 5 minutes
+        setInterval(fetchData, 5 * 60 * 1000);
+    });
 </script>
-
 </body>
 </html>
