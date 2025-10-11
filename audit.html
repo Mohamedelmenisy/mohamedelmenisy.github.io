@@ -625,18 +625,43 @@
       setTimeout(() => toast.classList.remove('show'), 4000);
     };
 
-    // Event Listeners
-    document.addEventListener('DOMContentLoaded', () => {
-        // Check if user is admin
-        const isAdmin = true; // Replace with actual admin check
-        if (!isAdmin) {
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('restricted-card').style.display = 'flex';
-            return;
-        }
+    let toastTimer;
+    const showToastNotification = (payload) => {
+        clearTimeout(toastTimer);
+        const toast = document.getElementById('toast');
+        const action = payload.new.action || 'modified';
+        const colorMap = { Create: '--success-color', Update: '--warning-color', Delete: '--danger-color'};
+        toast.style.background = `var(${colorMap[action] || '--primary-color'})`;
+        toast.innerHTML = `<span>A record was just ${action.toLowerCase()}. Refreshing...</span>`;
+        toast.classList.add('show');
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+    };
+
+    async function checkAdminAccess() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not logged in');
+        const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (error || data?.role !== 'admin') throw new Error('Access denied');
         
         document.getElementById('dashboard').style.visibility = 'visible';
-        fetchData();
+        await fetchData();
+        
+        supabase.channel('public:case_history')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'case_history' }, payload => {
+                showToastNotification(payload);
+                auditStore.unshift(payload.new); // Smart update
+                applyFiltersAndRender();
+            }).subscribe();
+            
+      } catch (e) {
+        document.getElementById('restricted-card').style.display = 'flex';
+      }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAdminAccess();
 
         // Filter events
         ['searchInput', 'userSearchInput', 'sectionFilter', 'actionFilter', 'startDate', 'endDate'].forEach(id => {
