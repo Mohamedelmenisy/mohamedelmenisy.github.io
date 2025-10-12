@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
 <head>
@@ -2008,20 +2009,11 @@
 
 <div id="toastContainer"></div>
 
-<!-- ========== START: JAVASCRIPT MODIFICATION ========== -->
 <script type="module">
-    // --- 1. تم حذف سطر import { supabase } from './supabase.js'; ---
-
-    // --- 2. تم إضافة كود الاتصال بـ Supabase هنا مباشرة ---
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // --- نهاية الإضافة ---
-
     // =================================================================================
     // SUPABASE & APP LOGIC - FULLY INTEGRATED & CORRECTED
     // =================================================================================
+    import { supabase } from './supabase.js';
 
     // --- Supabase Logic Layer (Functions to interact with the database) ---
     
@@ -2125,37 +2117,30 @@
         }
     }
     
+    // MODIFICATION: Fetch all required dashboard data from new views
     async function fetchDashboardData() {
         const [
             activity, 
             insights, 
             growth, 
             weeklyActivity,
-            feedbackKpis,
+            feedbackKpis, // New for feedback chart
             topUsers
         ] = await Promise.all([
             supabase.from('v_recent_activity').select('*'),
             supabase.from('v_overall_insights').select('*').single(),
             supabase.from('v_growth_trends').select('*'),
             supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
-            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(),
+            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(), // Fetch feedback data
             supabase.from('v_user_insights').select('*').order('total_articles_viewed', { ascending: false }).limit(5)
         ]);
         
-        // Check for errors in the responses
-        if (activity.error) console.error("Error fetching recent activity:", activity.error);
-        if (insights.error) console.error("Error fetching overall insights:", insights.error);
-        if (growth.error) console.error("Error fetching growth trends:", growth.error);
-        if (weeklyActivity.error) console.error("Error fetching weekly activity:", weeklyActivity.error);
-        if (feedbackKpis.error) console.error("Error fetching feedback KPIs:", feedbackKpis.error);
-        if (topUsers.error) console.error("Error fetching top users:", topUsers.error);
-
         return {
             activityLog: activity.data || [],
             overallInsights: insights.data || {},
             growthTrends: growth.data || [],
             weeklyActivity: weeklyActivity.data || [],
-            feedbackKpis: feedbackKpis.data || {},
+            feedbackKpis: feedbackKpis.data || {}, // Add feedback data to return object
             topUsers: topUsers.data || []
         };
     }
@@ -2184,7 +2169,8 @@
     let currentUser = null;
     let currentOpenItem = null;
     
-    let activityChartInstance, feedbackChartInstance;
+    // MODIFICATION: Chart instances
+    let activityChartInstance, feedbackChartInstance, topUsersChartInstance;
 
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
     let activityLogPage = 1;
@@ -2253,7 +2239,7 @@
     function formatReadableDate(isoString) {
         if (!isoString) return 'N/A';
         const date = new Date(isoString);
-        if (isNaN(date.getTime())) return isoString;
+        if (isNaN(date.getTime())) return isoString; // Fallback for pre-formatted strings
         return date.toLocaleString('en-EG', {
             day: '2-digit', month: 'short', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: true,
@@ -2328,6 +2314,7 @@
         articles.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
+                // Ensure slug exists, create if not
                 article.slug = article.slug || createSlug(article.title_en);
                 parentSection.items.push({ ...article });
             } else {
@@ -2352,7 +2339,9 @@
         
         const groupedSections = sectionsFromDB.reduce((acc, section) => {
             const sectionId = section.section_id || 'knowledge_areas';
-            if (!acc[sectionId]) acc[sectionId] = [];
+            if (!acc[sectionId]) {
+                acc[sectionId] = [];
+            }
             acc[sectionId].push(section);
             return acc;
         }, {});
@@ -2382,7 +2371,8 @@
         });
         
         if (sectionsFromDB.length === 0) {
-            menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div><div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
+            menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+            menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
         }
         
         navigationMenu.innerHTML = menuHTML;
@@ -2403,11 +2393,12 @@
 
     function updateAdminToolbar(page) {
         document.querySelectorAll('.admin-toolbar a').forEach(link => link.classList.remove('active'));
-        const activeLink = document.getElementById(`admin-link-${page}`);
-        if (activeLink) {
-            activeLink.classList.add('active');
-        } else if (page.startsWith('#home') || page === 'dashboard') {
+        if (page === 'dashboard' || page.startsWith('#home')) {
             document.getElementById('admin-link-dashboard').classList.add('active');
+        } else if (page === 'audit.html') {
+            document.getElementById('admin-link-audit').classList.add('active');
+        } else if (page === 'insights.html') {
+            document.getElementById('admin-link-insights').classList.add('active');
         }
     }
     
@@ -2425,12 +2416,12 @@
 
     function renderItemCard(item, sectionData) {
         let itemIconClass = 'fas fa-file-alt';
-        if (item.type === 'article') itemIconClass = 'fas fa-newspaper';
-        else if (item.type === 'case') itemIconClass = 'fas fa-briefcase';
-        else if (item.type === 'form_sheet') itemIconClass = 'fas fa-file-invoice';
-        else if (item.type === 'design') itemIconClass = 'fas fa-palette';
-        else if (item.type === 'guide') itemIconClass = 'fas fa-book-open';
-        else if (item.type === 'policy') itemIconClass = 'fas fa-gavel';
+        if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; }
+        else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; }
+        else if (item.type === 'form_sheet') { itemIconClass = 'fas fa-file-invoice'; }
+        else if (item.type === 'design') { itemIconClass = 'fas fa-palette'; }
+        else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
+        else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
 
         const isAdmin = isCurrentUserAdmin();
 
@@ -2438,28 +2429,49 @@
         const editButton = isAdmin ? `<button class="button button-secondary" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
         const deleteButton = isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
         
-        const tagsHTML = item.tags && item.tags.length > 0 ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : '';
+        const tagsHTML = item.tags && item.tags.length > 0
+            ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
+            : '';
         
         let updatedBadgeHTML = '';
-        if (item.last_modified && new Date(item.last_modified) > new Date(item.created_at)) {
+        const createdAt = new Date(item.created_at);
+        const lastModified = new Date(item.last_modified || item.created_at);
+        if (lastModified.getTime() > createdAt.getTime() + 60000) {
             updatedBadgeHTML = `<div class="updated-badge">Updated</div>`;
         }
 
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
                 <div class="card-header-icon">
-                    <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
-                    <div class="card-title-group"><h3>${escapeHTML(item.title_en)}</h3>${updatedBadgeHTML}</div>
+                    <div class="card-icon-container">
+                        <i class="${itemIconClass}"></i>
+                    </div>
+                    <div class="card-title-group">
+                        <h3>${escapeHTML(item.title_en)}</h3>
+                        ${updatedBadgeHTML}
+                    </div>
                 </div>
                 ${tagsHTML}
                 <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
-                <div class="card-actions">${viewButton}${editButton}${deleteButton}</div>
+                <div class="card-actions">
+                    ${viewButton}
+                    ${editButton}
+                    ${deleteButton}
+                </div>
             </div>`;
     }
     
+    // MODIFICATION: Renders the dynamic dashboard with dynamic data
     async function renderDynamicDashboard() {
         if (!isCurrentUserAdmin()) {
-            dashboardOverviewContainer.innerHTML = `<div class="viewer-dashboard-message"><div class="card"><i class="fas fa-columns"></i><h2>Welcome to the Knowledge Base</h2><p>Use the sidebar to navigate through different sections and find the information you need.</p></div></div>`;
+            dashboardOverviewContainer.innerHTML = `
+                <div class="viewer-dashboard-message">
+                    <div class="card">
+                        <i class="fas fa-columns"></i>
+                        <h2>Welcome to the Knowledge Base</h2>
+                        <p>Use the sidebar to navigate through different sections and find the information you need.</p>
+                    </div>
+                </div>`;
             return;
         }
 
@@ -2477,21 +2489,63 @@
         
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-grid">
-                <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-newspaper"></i></div><div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Total Articles</span></div>${getGrowthHTML('articles')}</div>
-                <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-eye"></i></div><div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>${getGrowthHTML('views')}</div>
-                <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-users"></i></div><div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div></div>
-                <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-star"></i></div><div class="stat-info"><span class="stat-value">${(insights.avg_feedback_rating || 0).toFixed(2)}</span><span class="stat-label">Avg. Feedback</span></div></div>
-                <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-edit"></i></div><div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div></div>
-                <div class="chart-container grid-col-span-2"><canvas id="activityChart"></canvas></div>
-                <div class="chart-container grid-col-span-2" style="max-width: 500px; margin: auto;"><canvas id="feedbackChart"></canvas></div>
-<div class="dashboard-table-card grid-col-span-5"><h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Activity</h3><div id="recentActivity"></div><div class="pagination-controls-activity"><span id="activityPageInfo"></span><button id="prevActivityBtn" class="button-secondary"><i class="fas fa-arrow-left"></i></button><button id="nextActivityBtn" class="button-secondary"><i class="fas fa-arrow-right"></i></button></div></div>
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-newspaper"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Total Articles</span></div>
+                    ${getGrowthHTML('articles')}
+                </div>
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-eye"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>
+                    ${getGrowthHTML('views')}
+                </div>
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-users"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div>
+                </div>
+                <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-star"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating || 0}</span><span class="stat-label">Avg. Feedback</span></div>
+                </div>
+                 <div class="dashboard-stat-card">
+                    <div class="icon-container"><i class="fas fa-edit"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
+                </div>
+
+                <div class="chart-container grid-col-span-2">
+                    <canvas id="activityChart"></canvas>
+                </div>
+                <div class="chart-container grid-col-span-2" style="max-width: 500px; margin: auto;">
+                    <canvas id="feedbackChart"></canvas>
+                </div>
+
+                <div class="dashboard-table-card grid-col-span-5">
+                    <h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Activity</h3>
+                    <div id="recentActivity"></div>
+                    <div class="pagination-controls-activity">
+                         <span id="activityPageInfo"></span>
+                        <button id="prevActivityBtn" class="button-secondary"><i class="fas fa-arrow-left"></i></button>
+                        <button id="nextActivityBtn" class="button-secondary"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
             </div>`;
         
         renderDashboardCharts(dashboardData);
         renderPaginatedActivityLog();
 
-        document.getElementById('prevActivityBtn').addEventListener('click', () => { if (activityLogPage > 1) { activityLogPage--; renderPaginatedActivityLog(); } });
-        document.getElementById('nextActivityBtn').addEventListener('click', () => { const totalPages = Math.ceil(dashboardData.activityLog.length / ACTIVITY_LOG_PAGE_SIZE); if (activityLogPage < totalPages) { activityLogPage++; renderPaginatedActivityLog(); } });
+        document.getElementById('prevActivityBtn').addEventListener('click', () => {
+            if (activityLogPage > 1) {
+                activityLogPage--;
+                renderPaginatedActivityLog();
+            }
+        });
+        document.getElementById('nextActivityBtn').addEventListener('click', () => {
+             const totalPages = Math.ceil(dashboardData.activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
+            if (activityLogPage < totalPages) {
+                activityLogPage++;
+                renderPaginatedActivityLog();
+            }
+        });
     }
 
     async function displayDashboard() {
@@ -2506,10 +2560,18 @@
             updateAdminToolbar('dashboard');
             await renderDynamicDashboard();
         } else {
-             dashboardOverviewContainer.innerHTML = `<div class="viewer-dashboard-message"><div class="card"><i class="fas fa-shield-alt"></i><h2>Welcome to the InfiniBase Knowledge Center</h2><p>Your central hub for information and resources. Use the navigation on the left to explore different topics.</p></div></div>`;
+             dashboardOverviewContainer.innerHTML = `
+                <div class="viewer-dashboard-message">
+                    <div class="card">
+                        <i class="fas fa-shield-alt"></i>
+                        <h2>Welcome to the InfiniBase Knowledge Center</h2>
+                        <p>Your central hub for information and resources. Use the navigation on the left to explore different topics.</p>
+                    </div>
+                </div>`;
         }
     }
 
+    // MODIFICATION: Renders the paginated activity log on the dashboard
     function renderPaginatedActivityLog() {
         const container = document.getElementById('recentActivity');
         if (!container) return;
@@ -2518,42 +2580,105 @@
         const pageInfo = document.getElementById('activityPageInfo');
 
         const totalPages = Math.ceil(dashboardData.activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
-        activityLogPage = Math.max(1, Math.min(activityLogPage, totalPages || 1));
+        activityLogPage = Math.max(1, Math.min(activityLogPage, totalPages));
 
         const start = (activityLogPage - 1) * ACTIVITY_LOG_PAGE_SIZE;
-        const pageItems = dashboardData.activityLog.slice(start, start + ACTIVITY_LOG_PAGE_SIZE);
+        const end = start + ACTIVITY_LOG_PAGE_SIZE;
+        const pageItems = dashboardData.activityLog.slice(start, end);
 
         container.innerHTML = pageItems.map(log => `
-            <div class="activity-item"><div class="activity-item-content"><p><strong>${escapeHTML(log.user_name)}</strong> ${escapeHTML(log.action.replace(/_/g, ' ').toLowerCase())} <em>${escapeHTML(log.item_title || 'an item')}</em> in ${escapeHTML(log.section)}</p><p class="activity-timestamp">${escapeHTML(log.activity_time_egypt)}</p></div></div>`).join('') || '<p>No activity found.</p>';
+            <div class="activity-item">
+                <div class="activity-item-content">
+                    <p>
+                        <strong>${escapeHTML(log.user_name)}</strong> 
+                        ${escapeHTML(log.action.replace(/_/g, ' ').toLowerCase())} 
+                        <em>${escapeHTML(log.item_title || 'an item')}</em> 
+                        in ${escapeHTML(log.section)}
+                    </p>
+                    <p class="activity-timestamp">${escapeHTML(log.activity_time_egypt)}</p>
+                </div>
+            </div>
+        `).join('') || '<p>No activity found.</p>';
 
         pageInfo.textContent = `Page ${activityLogPage} of ${totalPages}`;
         prevBtn.disabled = activityLogPage === 1;
         nextBtn.disabled = activityLogPage >= totalPages;
     }
     
+    // MODIFICATION: Renders all dynamic charts for the dashboard
     function renderDashboardCharts(data) {
         const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
+        // 1. Weekly Activity Chart (Combined Bar/Line)
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx && data.weeklyActivity.length > 0) {
-            const labels = data.weeklyActivity.map(d => new Date(d.activity_date_egypt).toLocaleDateString('en-US', {weekday: 'short'}));
+            const labels = data.weeklyActivity.map(d => d.activity_date_egypt);
             activityChartInstance = new Chart(activityCtx, {
                 type: 'bar',
-                data: { labels, datasets: [ { label: 'Total Views', data: data.weeklyActivity.map(d => d.total_views), backgroundColor: 'rgba(99, 102, 241, 0.6)' }, { label: 'Active Users', data: data.weeklyActivity.map(d => d.active_users), type: 'line', borderColor: '#22c55e', yAxisID: 'y1', tension: 0.3, fill: true } ] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Content Activity (Last 7 Days)', color: legendColor, font: {size: 16} } }, scales: { y: { title: { display: true, text: 'Total Views', color: ticksColor }, ticks: {color: ticksColor}, grid: {color: gridColor} }, y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor, stepSize: 1 } } } }
+                data: {
+                    labels,
+                    datasets: [
+                      {
+                        label: 'Total Views',
+                        data: data.weeklyActivity.map(d => d.total_views),
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                      },
+                      {
+                        label: 'Active Users',
+                        data: data.weeklyActivity.map(d => d.active_users),
+                        type: 'line',
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        yAxisID: 'y1',
+                        tension: 0.3,
+                        fill: true,
+                      }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: 'Content Activity (Last 7 Days)', color: legendColor, font: {size: 16} } },
+                    scales: {
+                        y: { position: 'left', title: { display: true, text: 'Total Views', color: ticksColor }, ticks: {color: ticksColor}, grid: {color: gridColor} },
+                        y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor, stepSize: 1 } }
+                    }
+                }
             });
         }
         
+        // 2. Helpful Feedback Ratio Chart
         if (feedbackChartInstance) feedbackChartInstance.destroy();
         const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
         if (feedbackCtx && data.feedbackKpis) {
+            const helpful = data.feedbackKpis.helpful_ratings || 0;
+            const notHelpful = data.feedbackKpis.not_helpful_ratings || 0;
             feedbackChartInstance = new Chart(feedbackCtx, {
                 type: 'doughnut',
-                data: { labels: ['Helpful', 'Not Helpful'], datasets: [{ data: [data.feedbackKpis.helpful_ratings || 0, data.feedbackKpis.not_helpful_ratings || 0], backgroundColor: [getComputedStyle(document.documentElement).getPropertyValue('--yes-color').trim(), getComputedStyle(document.documentElement).getPropertyValue('--no-color').trim()], borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(), borderWidth: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { title: { display: true, text: 'Helpful Feedback Ratio', color: legendColor, font: {size: 16} }, legend: { position: 'bottom', labels: { color: legendColor, font: {size: 14}} } } }
+                data: {
+                    labels: ['Helpful', 'Not Helpful'],
+                    datasets: [{
+                        data: [helpful, notHelpful],
+                        backgroundColor: [
+                            getComputedStyle(document.documentElement).getPropertyValue('--yes-color').trim(),
+                            getComputedStyle(document.documentElement).getPropertyValue('--no-color').trim()
+                        ],
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+                        borderWidth: 4,
+                        hoverOffset: 8,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        title: { display: true, text: 'Helpful Feedback Ratio', color: legendColor, font: {size: 16} },
+                        legend: { position: 'bottom', labels: { color: legendColor, font: {size: 14}} }
+                    }
+                }
             });
         }
     }
@@ -2567,6 +2692,7 @@
         pageBody.classList.remove('item-view-active');
         if (isCurrentUserAdmin()) updateAdminToolbar('');
 
+
         const sectionData = kbSystemData.sections.find(s => s.slug === sectionSlug);
         if (!sectionData) {
             standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: red;">Section not found: ${escapeHTML(sectionSlug)}</h2></div>`;
@@ -2578,16 +2704,30 @@
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
 
         let contentHTML = `<div>`;
+        
         if (isCurrentUserAdmin() && sectionSlug !== 'home') {
-             contentHTML += `<div style="text-align: left; margin-bottom: 1.5rem;"><button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}"><i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}</button></div>`;
+             contentHTML += `<div style="text-align: left; margin-bottom: 1.5rem;">
+                <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
+                    <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
+                </button>
+            </div>`;
         }
 
         const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
-        contentHTML += itemsToDisplay.length > 0 ? `<div class="cards-grid">${itemsToDisplay.map(item => renderItemCard(item, sectionData)).join('')}</div>` : `<div class="card" style="text-align: center; padding: 40px 20px; min-height: auto;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
+        
+        if (itemsToDisplay.length > 0) {
+            contentHTML += `<div class="cards-grid">`;
+            itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
+            contentHTML += `</div>`;
+        } else {
+             contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px; min-height: auto;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
+        }
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
-        document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => openAddContentModal(e.currentTarget.dataset.sectionId));
+        document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
+            openAddContentModal(e.currentTarget.dataset.sectionId);
+        });
     }
     
     function findItem(itemId) {
@@ -2625,7 +2765,10 @@
         pageBody.classList.add('item-view-active');
         if (isCurrentUserAdmin()) updateAdminToolbar('');
         
-        breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <a href="#${itemData.sectionSlug}">${escapeHTML(itemData.sectionName)}</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title_en)}</span>`;
+        breadcrumbsContainer.innerHTML = `
+            <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
+            <a href="#${itemData.sectionSlug}">${escapeHTML(itemData.sectionName)}</a> <span style="margin: 0 5px;">›</span>
+            <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(itemData.title_en)}</span>`;
         currentSectionTitleEl.textContent = itemData.title_en;
 
         let itemIconClass = 'fas fa-file-alt';
@@ -2638,10 +2781,14 @@
         const backLinkHref = parentItemInfo ? `#${parentItemInfo.sectionSlug}/${parentItemInfo.slug}` : `#${sectionSlug}`;
         const backLinkText = parentItemInfo ? `Back to: ${escapeHTML(truncateText(parentItemInfo.title_en, 25))}` : 'Back to Section';
         
-        let detailHTML = `<div class="item-actions-bar"><a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
+        let detailHTML = `<div class="item-actions-bar">
+            <a href="${backLinkHref}" class="button button-secondary"><i class="fas fa-arrow-left"></i> ${backLinkText}</a>`;
+
         if (isCurrentUserAdmin()) {
-             detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button><button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
+             detailHTML += `<button id="editItemBtn" class="button"><i class="fas fa-edit"></i> Edit Item</button>`;
+             detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
+        
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
@@ -2651,27 +2798,74 @@
         const content_ar = itemData.content_ar || '<p style="text-align:right;">لا يتوفر محتوى مفصل.</p>';
         const hasCustomContainer_en = content_en.includes('class="kb-container"');
         
-        let contentDisplayHTML = `<div id="en-content" lang="en">${content_en}</div><div id="ar-content" class="hidden" lang="ar">${content_ar}</div>`;
+        // Always render both EN and AR content, but hide AR by default
+        let contentDisplayHTML = `
+            <div id="en-content" lang="en">${content_en}</div>
+            <div id="ar-content" class="hidden" lang="ar">${content_ar}</div>
+        `;
 
         if (hasCustomContainer_en) {
              detailHTML += `<div class="kb-content">${contentDisplayHTML}</div>`;
         } else {
-            detailHTML += `<div class="card"><div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div><p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}<hr class="title-content-divider">${lastUpdatedHTML}<div class="kb-content">${contentDisplayHTML}</div></div>`;
+            detailHTML += `<div class="card">
+                <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div>
+                <p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>
+                ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                <hr class="title-content-divider">${lastUpdatedHTML}
+                <div class="kb-content">${contentDisplayHTML}</div>
+            </div>`;
         }
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
         if (childItems.length > 0) {
-            detailHTML += `<div class="card" style="margin-top: 1.5rem;"><h3>Related Topics</h3><ul class="child-items-list">${childItems.map(child => `<li><a href="#${findItem(child.id)?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title_en)}</a></li>`).join('')}</ul></div>`;
+            detailHTML += `<div class="card" style="margin-top: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight:600; margin-bottom:1rem; margin-top:0;">Related Topics</h3>
+                <ul class="child-items-list">${childItems.map(child => {
+                     const childSection = findItem(child.id);
+                     return `<li><a href="#${childSection?.sectionSlug || sectionSlug}/${child.slug}"><i class="fas fa-angle-right"></i> ${escapeHTML(child.title_en)}</a></li>`
+                    }).join('')}</ul>
+            </div>`;
         }
 
         const userAvatarHtml = `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name||'U')}&background=random&color=fff&rounded=true&size=36" alt="User Avatar">`;
-        detailHTML += `<div class="item-feedback-section"><h4 id="feedbackPrompt">Was this article helpful?</h4><div id="feedbackInteractionContainer"><div class="rating-prompt"><div class="rating-buttons" id="ratingButtons"><button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button><button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button></div></div><form id="negativeFeedbackForm" class="hidden"><div class="form-group"><textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea></div><button type="submit" class="button">Submit Feedback</button><button type="button" id="cancelNegativeFeedbackBtn" class="button-secondary">Cancel</button></form></div><div class="read-stats" id="readStatsContainer"></div></div>`;
-        detailHTML += `<div class="comments-section"><h4><i class="fas fa-comments"></i> Management Notes</h4><div class="comment-post-area">${userAvatarHtml}<div class="comment-input-wrapper"><textarea id="newCommentText" placeholder="Add an internal note..."></textarea><div class="comment-post-actions"><button id="postCommentBtn" class="button">Post Note</button></div></div></div><div class="comment-display-area" id="commentDisplayAreaForItem"></div></div>`;
+        detailHTML += `<div class="item-feedback-section">
+            <h4 id="feedbackPrompt">Was this article helpful?</h4>
+            <div id="feedbackInteractionContainer">
+                <div class="rating-prompt"><div class="rating-buttons" id="ratingButtons">
+                    <button id="rateYesBtn"><i class="fas fa-thumbs-up"></i> Yes</button>
+                    <button id="rateNoBtn"><i class="fas fa-thumbs-down"></i> No</button>
+                </div></div>
+                <form id="negativeFeedbackForm" class="hidden">
+                    <div class="form-group"><textarea id="feedbackReason" rows="3" placeholder="Your feedback is valuable to us..."></textarea></div>
+                    <button type="submit" class="button">Submit Feedback</button>
+                    <button type="button" id="cancelNegativeFeedbackBtn" class="button-secondary">Cancel</button>
+                </form>
+            </div>
+            <div class="read-stats" id="readStatsContainer">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>`;
+        detailHTML += `<div class="comments-section">
+            <h4><i class="fas fa-comments"></i> Management Notes</h4>
+            <div class="comment-post-area">
+                ${userAvatarHtml}
+                <div class="comment-input-wrapper">
+                    <textarea id="newCommentText" placeholder="Add an internal note..."></textarea>
+                    <div class="comment-post-actions"><button id="postCommentBtn" class="button">Post Note</button></div>
+                </div>
+            </div>
+            <div class="comment-display-area" id="commentDisplayAreaForItem"></div>
+        </div>`;
 
         itemDetailViewPlaceholder.innerHTML = detailHTML;
 
-        setTimeout(() => { if (window.initBusyNew) window.initBusyNew(); }, 500);
+        // *** START: MODIFICATION AS REQUESTED ***
+        setTimeout(() => {
+          if (window.initBusyNew) window.initBusyNew();
+        }, 500);
+        // *** END: MODIFICATION AS REQUESTED ***
         
+        // Initial data load for item page
         renderComments(itemData.id);
         displayItemStats(itemData.id);
 
@@ -2690,7 +2884,21 @@
             return;
         }
 
-        container.innerHTML = comments.map(comment => `<div class="comment" data-comment-id="${comment.id}"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author_name || 'A')}&background=random&color=fff&rounded=true&font-size=0.5" alt="${escapeHTML(comment.author_name)}'s avatar"><div class="comment-content"><div class="comment-header"><span class="comment-author">${escapeHTML(comment.author_name)}</span><span class="comment-timestamp">${formatReadableDate(comment.created_at)}</span></div><div class="comment-text">${escapeHTML(comment.body).replace(/\n/g, '<br>')}</div></div></div>`).join('');
+        container.innerHTML = comments.map(comment => {
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author_name || 'A')}&background=random&color=fff&rounded=true&font-size=0.5`;
+            return `
+                <div class="comment" data-comment-id="${comment.id}">
+                    <img src="${avatarUrl}" alt="${escapeHTML(comment.author_name)}'s avatar">
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <span class="comment-author">${escapeHTML(comment.author_name)}</span>
+                            <span class="comment-timestamp">${formatReadableDate(comment.created_at)}</span>
+                        </div>
+                        <div class="comment-text">${escapeHTML(comment.body).replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
     
     async function displayItemStats(itemId) {
@@ -2702,17 +2910,24 @@
             supabase.from('kb_feedback').select('rating').eq('item_id', itemId)
         ]);
 
-        if (activityRes.error || feedbackRes.error) {
-             console.error('Error fetching stats:', activityRes.error || feedbackRes.error);
+        const { data: activityData, error: activityError } = activityRes;
+        const { data: feedbackData, error: feedbackError } = feedbackRes;
+        
+        if (activityError || feedbackError) {
+             console.error('Error fetching stats:', activityError || feedbackError);
              statsContainer.innerHTML = '<span>Stats unavailable.</span>';
              return;
         }
         
-        const totalViews = new Set(activityRes.data.filter(log => log.action === 'viewed').map(log => log.user_name)).size;
-        const helpfulCount = feedbackRes.data.filter(f => f.rating === 1).length;
-        const notHelpfulCount = feedbackRes.data.filter(f => f.rating === 0).length;
+        const totalViews = new Set(activityData.filter(log => log.action === 'viewed').map(log => log.user_name)).size;
+        const helpfulCount = feedbackData.filter(f => f.rating === 1).length;
+        const notHelpfulCount = feedbackData.filter(f => f.rating === 0).length;
         
-        statsContainer.innerHTML = `<span><i class="fas fa-eye"></i> Total Views: <strong class="stat-value">${totalViews}</strong></span><span><i class="fas fa-thumbs-up" style="color: var(--yes-color);"></i> Helpful: <strong class="stat-value">${helpfulCount}</strong></span><span><i class="fas fa-thumbs-down" style="color: var(--no-color);"></i> Not Helpful: <strong class="stat-value">${notHelpfulCount}</strong></span>`;
+        statsContainer.innerHTML = `
+            <span><i class="fas fa-eye"></i> Total Views: <strong class="stat-value">${totalViews}</strong></span>
+            <span><i class="fas fa-thumbs-up" style="color: var(--yes-color);"></i> Helpful: <strong class="stat-value">${helpfulCount}</strong></span>
+            <span><i class="fas fa-thumbs-down" style="color: var(--no-color);"></i> Not Helpful: <strong class="stat-value">${notHelpfulCount}</strong></span>
+        `;
     }
 
     const contentTemplates = {
@@ -2737,7 +2952,16 @@
     }
     
     function addQuillTooltips() {
-        const tooltips = { 'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough', 'ql-blockquote': 'Blockquote', 'ql-code-block': 'Code Block', 'ql-header[value="1"]': 'Heading 1', 'ql-header[value="2"]': 'Heading 2', 'ql-list[value="ordered"]': 'Ordered List', 'ql-list[value="bullet"]': 'Bulleted List', 'ql-indent[value="-1"]': 'Decrease Indent', 'ql-indent[value="+1"]': 'Increase Indent', 'ql-direction': 'Text Direction', 'ql-script[value="sub"]': 'Subscript', 'ql-script[value="super"]': 'Superscript', 'ql-link': 'Insert Link', 'ql-image': 'Insert Image', 'ql-video': 'Insert Video', 'ql-clean': 'Clear Formatting', 'ql-html': 'Insert HTML' };
+        const tooltips = {
+            'ql-bold': 'Bold', 'ql-italic': 'Italic', 'ql-underline': 'Underline', 'ql-strike': 'Strikethrough',
+            'ql-blockquote': 'Blockquote', 'ql-code-block': 'Code Block',
+            'ql-header[value="1"]': 'Heading 1', 'ql-header[value="2"]': 'Heading 2',
+            'ql-list[value="ordered"]': 'Ordered List', 'ql-list[value="bullet"]': 'Bulleted List',
+            'ql-indent[value="-1"]': 'Decrease Indent', 'ql-indent[value="+1"]': 'Increase Indent',
+            'ql-direction': 'Text Direction', 'ql-script[value="sub"]': 'Subscript', 'ql-script[value="super"]': 'Superscript',
+            'ql-link': 'Insert Link', 'ql-image': 'Insert Image', 'ql-video': 'Insert Video',
+            'ql-clean': 'Clear Formatting', 'ql-html': 'Insert HTML'
+        };
         Object.keys(tooltips).forEach(selector => {
             const el = document.querySelector(`.ql-toolbar .${selector}`);
             if (el) el.setAttribute('title', tooltips[selector]);
@@ -2752,11 +2976,36 @@
         if (!mainQuillEditor) {
             Quill.register('modules/imageResize', window.ImageResize.default);
             const quillToolbarOptions = {
-                container: [ [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], [{ 'script': 'sub'}, { 'script': 'super' }], [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }], [{ 'direction': 'rtl' }, { 'align': [] }], ['link', 'image', 'video', 'html'], ['clean'] ],
-                handlers: { 'html': () => { htmlTextarea.value = ''; insertHtmlModalOverlay.classList.remove('hidden'); } }
+                container: [
+                    [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'direction': 'rtl' }, { 'align': [] }],
+                    ['link', 'image', 'video', 'html'],
+                    ['clean']
+                ],
+                handlers: {
+                    'html': function() {
+                        htmlTextarea.value = '';
+                        insertHtmlModalOverlay.classList.remove('hidden');
+                    }
+                }
             };
-            mainQuillEditor = new Quill('#quillEditor', { theme: 'snow', modules: { toolbar: quillToolbarOptions, imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] } }, placeholder: 'Enter detailed content here...' });
+
+            mainQuillEditor = new Quill('#quillEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: quillToolbarOptions,
+                    imageResize: { modules: [ 'Resize', 'DisplaySize', 'Toolbar' ] }
+                },
+                placeholder: 'Enter detailed content here...'
+            });
+            
             addQuillTooltips();
+
             document.getElementById('imageFile').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file?.type.startsWith('image/')) {
@@ -2790,7 +3039,8 @@
             contentTypeSelect.value = itemToEdit.type;
             if (itemToEdit.url) document.getElementById('contentUrl').value = itemToEdit.url;
             if (itemToEdit.parent_id) parentItemSelect.value = itemToEdit.parent_id;
-            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, itemToEdit.content_en || '<p><br></p>');
+            const contentToPaste = itemToEdit.content_en || '<p><br></p>';
+            mainQuillEditor.clipboard.dangerouslyPasteHTML(0, contentToPaste);
             contentTagsInput.value = (itemToEdit.tags || []).join(', ');
             templateSelectionContainer.classList.add('hidden');
             addContentForm.classList.remove('hidden');
@@ -2805,9 +3055,13 @@
         addContentModalOverlay.classList.remove('hidden');
     }
 
-    document.querySelectorAll('.template-button').forEach(button => button.addEventListener('click', () => applyTemplate(button.dataset.template)));
+    document.querySelectorAll('.template-button').forEach(button => {
+        button.addEventListener('click', () => applyTemplate(button.dataset.template));
+    });
 
-    function closeAddContentModal() { addContentModalOverlay.classList.add('hidden'); }
+    function closeAddContentModal() {
+        addContentModalOverlay.classList.add('hidden');
+    }
 
     contentTypeSelect.addEventListener('change', (e) => {
         const type = e.target.value;
@@ -2818,6 +3072,7 @@
 
     addContentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
         await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id, is_local: true });
         await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
@@ -2826,32 +3081,68 @@
         const title = document.getElementById('contentTitle').value.trim();
 
         const itemData = {
-            title_en: title, slug: createSlug(title), description_en: document.getElementById('contentSummary').value.trim(), content_en: mainQuillEditor.root.innerHTML, tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean), type: contentTypeSelect.value, url: document.getElementById('contentUrl').value.trim() || null, sub_category_id: sectionId, parent_id: document.getElementById('parentItem').value || null, last_modified: new Date().toISOString(), author_id: currentUser.id,
+            title_en: title,
+            slug: createSlug(title),
+            description_en: document.getElementById('contentSummary').value.trim(),
+            content_en: mainQuillEditor.root.innerHTML,
+            tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
+            type: contentTypeSelect.value,
+            url: document.getElementById('contentUrl').value.trim() || null,
+            sub_category_id: sectionId,
+            parent_id: document.getElementById('parentItem').value || null,
+            last_modified: new Date().toISOString(),
+            author_id: currentUser.id,
         };
 
         if (editingId) {
             itemData.id = editingId;
             const originalItem = findItem(editingId);
-            if(originalItem) { itemData.title_ar = originalItem.title_ar; itemData.description_ar = originalItem.description_ar; itemData.content_ar = originalItem.content_ar; }
+            if(originalItem) {
+                // Preserve Arabic content if it exists
+                itemData.title_ar = originalItem.title_ar;
+                itemData.description_ar = originalItem.description_ar;
+                itemData.content_ar = originalItem.content_ar;
+            }
         }
 
-        if (!itemData.title_en || !itemData.description_en) { showToast('Title and Summary/Description are required.', 'error'); return; }
+        if (!itemData.title_en || !itemData.description_en) {
+            showToast('Title and Summary/Description are required.', 'error');
+            return;
+        }
 
         const { data: savedItem, error } = await supabase.from('cases').upsert(itemData).select().single();
-        if (error) { console.error("Error saving content:", error); showToast(`Failed to save content: ${error.message}`, 'error'); return; }
+        if (error) {
+            console.error("Error saving content:", error);
+            showToast(`Failed to save content: ${error.message}`, 'error');
+            return;
+        }
 
-        await logActivity(currentUser, savedItem.id, savedItem.type, editingId ? 'updated' : 'created');
+        if(!editingId) {
+            await logActivity(currentUser, savedItem.id, savedItem.type, 'created');
+        } else {
+             await logActivity(currentUser, savedItem.id, savedItem.type, 'updated');
+        }
+        
         showToast(`Content '${savedItem.title_en}' saved successfully!`, 'success');
         closeAddContentModal();
-        await loadAndStructureData();
+        await loadAndStructureData(); // Full reload to get all fresh data
         
+        // Navigate to the newly created/edited item
         const itemFull = findItem(savedItem.id);
-        if (itemFull) window.location.hash = `#${itemFull.sectionSlug}/${itemFull.slug}`;
-        else handleNavigation();
+        if (itemFull) {
+            window.location.hash = `#${itemFull.sectionSlug}/${itemFull.slug}`;
+        } else {
+            handleNavigation(); // Fallback to refresh current view
+        }
     });
 
-    window.openEditModal = (sectionId, itemId) => { const item = findItem(itemId); if (item) openAddContentModal(sectionId, item); };
-    window.openDeleteModal = (sectionId, itemId, itemTitle) => { openDeleteConfirmModal(sectionId, itemId, itemTitle); };
+    window.openEditModal = (sectionId, itemId) => {
+        const item = findItem(itemId);
+        if (item) openAddContentModal(sectionId, item);
+    };
+    window.openDeleteModal = (sectionId, itemId, itemTitle) => {
+        openDeleteConfirmModal(sectionId, itemId, itemTitle);
+    };
 
     function openDeleteConfirmModal(sectionId, itemId, itemTitle) {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
@@ -2862,19 +3153,36 @@
     confirmDeleteItemBtn.addEventListener('click', async () => {
         const itemId = confirmDeleteItemBtn.dataset.itemId;
         const { error } = await supabase.from('cases').delete().eq('id', itemId);
-        if (error) { showToast(`Error deleting item: ${error.message}`, 'error'); return; }
+        
+        if (error) {
+            showToast(`Error deleting item: ${error.message}`, 'error');
+            return;
+        }
+
         showToast(`Item deleted.`, 'success');
         deleteConfirmModalOverlay.classList.add('hidden');
-        if(window.location.hash.includes(itemId)) window.location.hash = `#home`;
-        else { await loadAndStructureData(); handleNavigation(); }
+        
+        const currentHash = window.location.hash;
+        if(currentHash.includes(itemId)) { // crude check, slug would be better
+             window.location.hash = `#home`;
+        } else {
+            await loadAndStructureData();
+            handleNavigation();
+        }
     });
 
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim().toLowerCase();
         searchResultsContainer.innerHTML = '';
-        if (query.length < 2) { searchResultsContainer.classList.add('hidden'); return; }
+
+        if (query.length < 2) {
+            searchResultsContainer.classList.add('hidden');
+            return;
+        }
+        
         const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
         const results = allItems.filter(i => i.title_en.toLowerCase().includes(query) || stripHtml(i.description_en).toLowerCase().includes(query));
+        
         if (results.length > 0) {
             results.slice(0, 7).forEach(r => {
                 const linkEl = document.createElement('a');
@@ -2892,25 +3200,46 @@
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
         const [sectionSlug, itemSlug] = hash.split('/');
+        
         highlightSidebarLink(sectionSlug);
-        if (!itemSlug) { itemDetailViewPlaceholder.classList.add('hidden'); currentOpenItem = null; }
-        if (sectionSlug === 'home') displayDashboard();
-        else if (itemSlug) displayItemDetail(sectionSlug, itemSlug);
-        else if (sectionSlug) displaySectionContent(sectionSlug);
-        else displayDashboard();
+
+        if (!itemSlug) {
+            itemDetailViewPlaceholder.classList.add('hidden');
+            currentOpenItem = null;
+        }
+
+        if (sectionSlug === 'home') {
+             displayDashboard();
+        } else if (itemSlug) {
+             displayItemDetail(sectionSlug, itemSlug);
+        } else if (sectionSlug) {
+             displaySectionContent(sectionSlug);
+        } else {
+             displayDashboard();
+        }
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
     async function initializeApp() {
         currentUser = await getCurrentUserProfile();
-        if (!currentUser) { window.location.href = "login.html"; return; }
+        if (!currentUser) {
+            window.location.href = "login.html";
+            return;
+        }
 
         userNameDisplayHeader.textContent = currentUser.name;
-        userAvatar.textContent = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        userAvatar.textContent = initials;
         currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        
+        // Admin toolbar is now always visible via HTML, this only handles the 'active' state logic
+        if (isCurrentUserAdmin()) {
+            // Future admin-specific UI setup can go here
+        }
 
         await loadAndStructureData();
         populateSidebar();
+        
         handleNavigation();
         window.addEventListener('hashchange', handleNavigation);
         
@@ -2920,16 +3249,39 @@
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
-        returnHomeFromAccessDeniedBtn.addEventListener('click', () => { accessDeniedModalOverlay.classList.add('hidden'); window.location.hash = '#home'; });
-        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => insertHtmlModalOverlay.classList.add('hidden')));
-        confirmInsertHtmlBtn.addEventListener('click', () => { if (mainQuillEditor) mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, htmlTextarea.value); insertHtmlModalOverlay.classList.add('hidden'); });
-        closeDiffModalBtn.addEventListener('click', () => { diffModal.style.display = 'none'; diffModal.classList.add('hidden'); });
+        
+        returnHomeFromAccessDeniedBtn.addEventListener('click', () => {
+            accessDeniedModalOverlay.classList.add('hidden');
+            window.location.hash = '#home';
+        });
+
+        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => {
+            insertHtmlModalOverlay.classList.add('hidden');
+        }));
+        confirmInsertHtmlBtn.addEventListener('click', () => {
+            if (mainQuillEditor) {
+                const html = htmlTextarea.value;
+                mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, html);
+            }
+            insertHtmlModalOverlay.classList.add('hidden');
+        });
+
+        closeDiffModalBtn.addEventListener('click', () => {
+            diffModal.style.display = 'none';
+            diffModal.classList.add('hidden');
+        });
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+            
+            // Handle admin link access
             if (e.target.closest('.admin-toolbar a')) {
                 const link = e.target.closest('.admin-toolbar a');
-                if (!isCurrentUserAdmin()) { e.preventDefault(); accessDeniedMessage.textContent = 'This section is restricted to administrators only.'; accessDeniedModalOverlay.classList.remove('hidden'); }
+                if (!isCurrentUserAdmin()) {
+                    e.preventDefault();
+                    accessDeniedMessage.textContent = 'This section is restricted to administrators only.';
+                    accessDeniedModalOverlay.classList.remove('hidden');
+                }
             }
         });
         
@@ -2938,32 +3290,48 @@
             const itemData = findItem(currentOpenItem.itemId);
             if (!itemData) return;
 
-            if (e.target.closest('#rateYesBtn')) {
+            if (e.target.id === 'rateYesBtn' || e.target.closest('#rateYesBtn')) {
                 const { error } = await submitFeedback(itemData.id, 1, null, currentUser);
-                if (!error) { await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback'); document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4>'; showToast('Feedback received!', 'success'); }
-                else showToast('Failed to submit feedback.', 'error');
-            } else if (e.target.closest('#rateNoBtn')) {
+                if (!error) {
+                    await logActivity(currentUser, itemData.id, itemData.type, 'positive_feedback');
+                    document.getElementById('ratingButtons').innerHTML = 'Thank you for your feedback!';
+                    showToast('Feedback received!', 'success');
+                } else showToast('Failed to submit feedback.', 'error');
+            }
+
+            if (e.target.id === 'rateNoBtn' || e.target.closest('#rateNoBtn')) {
                 document.getElementById('ratingButtons')?.classList.add('hidden');
                 document.getElementById('negativeFeedbackForm')?.classList.remove('hidden');
-            } else if (e.target.id === 'cancelNegativeFeedbackBtn') {
+            }
+            
+            if (e.target.id === 'cancelNegativeFeedbackBtn') {
                 document.getElementById('negativeFeedbackForm')?.classList.add('hidden');
                 document.getElementById('ratingButtons')?.classList.remove('hidden');
-            } else if (e.target.id === 'postCommentBtn') {
+            }
+
+            if (e.target.id === 'postCommentBtn') {
                 const commentTextEl = document.getElementById('newCommentText');
-                if (!commentTextEl.value.trim()) { showToast('Please enter a note.', 'error'); return; }
-                const { data: newComment, error } = await addComment(itemData.id, commentTextEl.value.trim(), currentUser);
-                 if (error) { showToast('Failed to post note.', 'error'); return; }
+                const commentText = commentTextEl.value.trim();
+                if (!commentText) { showToast('Please enter a note.', 'error'); return; }
+
+                const { data: newComment, error } = await addComment(itemData.id, commentText, currentUser);
+                if (error) { showToast('Failed to post note.', 'error'); return; }
 
                 await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
+                // Let realtime handle the update
                 commentTextEl.value = '';
-            } else if (e.target.id === 'editItemBtn') {
-                openAddContentModal(itemData.sub_category_id, itemData);
-            } else if (e.target.id === 'deleteItemBtn') {
-                openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title_en);
-            } else if (e.target.id === 'downloadPdfItemBtn') {
+            }
+
+            if (e.target.id === 'editItemBtn') openAddContentModal(itemData.sub_category_id, itemData);
+            if (e.target.id === 'deleteItemBtn') openDeleteConfirmModal(itemData.sub_category_id, itemData.id, itemData.title_en);
+            if (e.target.id === 'downloadPdfItemBtn') {
                 const contentCard = document.querySelector('#itemDetailViewPlaceholder .card .kb-content')?.closest('.card');
-                if (contentCard) { showToast('Generating PDF...', 'info'); html2pdf().set({ margin: 0.5, filename: `${itemData.title_en.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(contentCard).save(); }
-                else showToast('Could not find content to export.', 'error');
+                if (contentCard) {
+                    showToast('Generating PDF...', 'info');
+                    html2pdf().set({ margin: 0.5, filename: `${itemData.title_en.replace(/[^a-z0-9]/gi, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(contentCard).save();
+                } else {
+                    showToast('Could not find content to export.', 'error');
+                }
             }
         });
         
@@ -2971,33 +3339,65 @@
             if (e.target.id === 'negativeFeedbackForm') {
                 e.preventDefault();
                 if (!currentOpenItem) return;
+
                 const itemData = findItem(currentOpenItem.itemId);
                 if (!itemData) return;
+
                 const reason = document.getElementById('feedbackReason').value.trim();
                 if (reason) {
                     const { error } = await submitFeedback(itemData.id, 0, reason, currentUser);
-                    if (!error) { await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason }); document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4>'; }
-                    else showToast('Failed to submit feedback.', 'error');
+                    if (!error) {
+                        await logActivity(currentUser, itemData.id, itemData.type, 'negative_feedback', { reason });
+                        document.getElementById('feedbackInteractionContainer').innerHTML = '<h4>Thank you for your feedback!</h4>';
+                    } else showToast('Failed to submit feedback.', 'error');
                 } else showToast('Please provide a reason.', 'error');
             }
         });
 
         showToast(`Welcome back, ${currentUser.name}!`, 'success');
 
-        const reloadAndRender = async () => { await loadAndStructureData(); handleNavigation(); };
-        supabase.channel('public:cases').on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender).subscribe();
-        supabase.channel('public:kb_comments').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_comments' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) renderComments(currentOpenItem.itemId); }).subscribe();
-        supabase.channel('public:activity_log_and_feedback').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) displayItemStats(currentOpenItem.itemId); }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_feedback' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) displayItemStats(currentOpenItem.itemId); }).subscribe();
+        // REALTIME SUBSCRIPTIONS
+        const reloadAndRender = async () => {
+            await loadAndStructureData();
+            const hash = window.location.hash.substring(1) || 'home';
+            if (hash === 'home' && isCurrentUserAdmin()) {
+                await renderDynamicDashboard();
+            } else {
+                handleNavigation();
+            }
+        };
 
-        // ========== 3. إضافة سطرين لإجبار الصفحة على الظهور ==========
-        document.querySelector('.container-fluid').style.visibility = 'visible';
-        document.querySelector('.container-fluid').style.opacity = '1';
+        supabase.channel('public:cases')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender)
+          .subscribe();
+
+        supabase.channel('public:kb_comments')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_comments' }, payload => {
+                if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) {
+                    renderComments(currentOpenItem.itemId);
+                }
+            }).subscribe();
+
+        supabase.channel('public:activity_log_and_feedback')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, payload => {
+                 if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) {
+                    displayItemStats(currentOpenItem.itemId);
+                }
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_feedback' }, payload => {
+                 if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) {
+                    displayItemStats(currentOpenItem.itemId);
+                }
+            })
+            .subscribe();
+
     }
 
     window.openEditModal = openAddContentModal;
     window.openDeleteModal = openDeleteConfirmModal;
     initializeApp();
 </script>
+
 <!-- ======== MODIFICATION: ADDED SCRIPT FOR NEW CASE ======== -->
 <script src="busy_new.js" defer></script>
 </body>
