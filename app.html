@@ -2010,12 +2010,14 @@
 
 <!-- ========== START: JAVASCRIPT MODIFICATION ========== -->
 <script type="module">
-    // --- Supabase Client Setup (Merged from supabase.js) ---
+    // --- 1. تم حذف سطر import { supabase } from './supabase.js'; ---
+
+    // --- 2. تم إضافة كود الاتصال بـ Supabase هنا مباشرة ---
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
     const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // --- End of Merged Code ---
+    // --- نهاية الإضافة ---
 
     // =================================================================================
     // SUPABASE & APP LOGIC - FULLY INTEGRATED & CORRECTED
@@ -2949,8 +2951,11 @@
             } else if (e.target.id === 'postCommentBtn') {
                 const commentTextEl = document.getElementById('newCommentText');
                 if (!commentTextEl.value.trim()) { showToast('Please enter a note.', 'error'); return; }
-                const { error } = await addComment(itemData.id, commentTextEl.value.trim(), currentUser);
+                const { data: newComment, error } = await addComment(itemData.id, commentTextEl.value.trim(), currentUser);
                 if (error) { showToast('Failed to post note.', 'error'); return; }
+
+                await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
+                // Let realtime handle the update
                 commentTextEl.value = '';
             } else if (e.target.id === 'editItemBtn') {
                 openAddContentModal(itemData.sub_category_id, itemData);
