@@ -299,6 +299,11 @@
       text-align: left; 
       white-space: nowrap; 
     }
+
+    td:nth-child(2) { /* Description Column */
+      white-space: normal;
+      max-width: 300px;
+    }
     
     thead th { 
         background: linear-gradient(to bottom, var(--bg-color-darker), var(--bg-color));
@@ -607,12 +612,11 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Article Title (EN)</th>
-                        <th>Article Title (AR)</th>
+                        <th>Article Title</th>
+                        <th>Description</th>
                         <th>Sub-Category</th>
                         <th>Category</th>
-                        <th>Views</th>
-                        <th>Created At</th>
+                        <th>Created At (Egypt Time)</th>
                     </tr>
                 </thead>
                 <tbody id="kbInsightsTable"></tbody>
@@ -700,7 +704,12 @@
     
     function escapeHtml(unsafe) {
       if (unsafe === null || unsafe === undefined) return '';
-      return String(unsafe).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+      // Truncate long descriptions for display
+      const text = String(unsafe);
+      if (text.length > 70) {
+        return text.substring(0, 70).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]) + '...';
+      }
+      return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
     }
     
     function formatToEgyptTime(dateString) {
@@ -1095,47 +1104,38 @@
     async function loadKnowledgeBaseInsights() {
         try {
             const { data, error } = await supabase
-                .from('v_kb_articles_structure')
+                .from('v_articles_detailed')
                 .select(`
-                    case_id,
-                    article_title_en,
-                    article_title_ar,
-                    article_description_en,
-                    created_at,
-                    is_published,
-                    views,
+                    article_id,
+                    article_title,
+                    article_description,
+                    created_at_egypt,
                     sub_category_title,
-                    sub_category_display_name,
                     category_title
                 `)
-                .order('created_at', { ascending: false })
+                .order('created_at_egypt', { ascending: false })
                 .limit(50);
 
             if (error) {
                 console.error('Error loading KB Insights:', error);
                 document.getElementById('kbInsightsTable').innerHTML = `
-                    <tr><td colspan="6" style="text-align:center; color: #ef4444;">⚠️ Error loading insights</td></tr>`;
+                    <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ Error loading insights: ${error.message}</td></tr>`;
                 return;
             }
 
             if (!data || data.length === 0) {
                 document.getElementById('kbInsightsTable').innerHTML = `
-                    <tr><td colspan="6" style="text-align:center;">No articles found</td></tr>`;
+                    <tr><td colspan="5" style="text-align:center;">No articles found</td></tr>`;
                 return;
             }
 
             const rows = data.map(row => `
                 <tr>
-                    <td>${escapeHtml(row.article_title_en) || '—'}</td>
-                    <td>${escapeHtml(row.article_title_ar) || '—'}</td>
-                    <td>${escapeHtml(row.sub_category_display_name) || 'General'}</td>
-                    <td>${escapeHtml(row.category_title) || 'General'}</td>
-                    <td style="text-align: center;">${row.views ?? 0}</td>
-                    <td>${new Date(row.created_at).toLocaleString('en-EG', {
-                        timeZone: 'Africa/Cairo',
-                        dateStyle: 'short',
-                        timeStyle: 'short'
-                    })}</td>
+                    <td>${escapeHtml(row.article_title)}</td>
+                    <td>${escapeHtml(row.article_description)}</td>
+                    <td>${escapeHtml(row.sub_category_title)}</td>
+                    <td>${escapeHtml(row.category_title)}</td>
+                    <td>${escapeHtml(row.created_at_egypt)}</td>
                 </tr>
             `).join('');
 
@@ -1143,6 +1143,8 @@
 
         } catch (err) {
             console.error('Unexpected error loading KB Insights:', err);
+             document.getElementById('kbInsightsTable').innerHTML = `
+                    <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ An unexpected error occurred.</td></tr>`;
         }
     }
 
