@@ -1253,5 +1253,38 @@
 })();
 </script>
 
+
+<!-- Role-Based Access Script (Copied from Employees) -->
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabaseUrl = "https://your-project.supabase.co";
+const supabaseKey = "public-anon-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function checkAccess() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("role, is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (error || (!data?.is_admin && data?.role !== "admin")) {
+    document.getElementById("accessDeniedModal").style.display = "flex";
+    document.getElementById("dashboard").style.display = "none";
+  } else {
+    document.getElementById("dashboard").style.visibility = "visible";
+  }
+}
+
+checkAccess();
+</script>
+
 </body>
 </html>
