@@ -104,7 +104,6 @@
     }
 
     /* ========== أنماط CSS الأساسية ========== */
-    /* (جميع الأنماط الحالية محفوظة هنا) */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     
@@ -197,7 +196,7 @@
         align-items: center;
         padding: 0.75rem;
         border-radius: var(--border-radius);
-        transition: background-color: 0.2s ease, color: 0.2s ease;
+        transition: background-color 0.2s ease, color 0.2s ease;
         font-weight: 500;
         color: var(--text-color-subtle);
         text-decoration: none;
@@ -388,7 +387,7 @@
         padding: 1.5rem;
         margin-bottom: 1.5rem;
         box-shadow: var(--card-shadow);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background-color: 0.3s ease, border-color: 0.3s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
         display: flex;
         flex-direction: column;
         min-height: 150px;
@@ -472,7 +471,7 @@
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 500;
-        transition: background-color: 0.2s, border-color: 0.2s, color: 0.2s;
+        transition: background-color 0.2s, border-color 0.2s, color 0.2s;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
@@ -529,7 +528,7 @@
         overflow-y: auto;
         transform: scale(0.95);
         opacity: 0;
-        transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color: 0.3s ease, border-color: 0.3s ease;
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out, background-color 0.3s ease, border-color 0.3s ease;
     }
     .modal-overlay:not(.hidden) .modal-content { transform: scale(1); opacity: 1; }
     .modal-header {
@@ -1285,16 +1284,28 @@
         <span class="toast-message"></span>
     </div>
 
-    <!-- كود Supabase المدمج مباشرة في الصفحة -->
+    <!-- كود التطبيق المدمج مباشرة في الصفحة -->
     <script>
-        // ========== تهيئة Supabase ==========
-        const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-        
-        // تهيئة عميل Supabase
-        const { createClient } = window.supabase;
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
+        // ========== تهيئة التطبيق ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            // إخفاء شاشة التحميل بعد تحميل الصفحة
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }, 500);
+            }, 1500);
+            
+            // تهيئة المحرر
+            initializeEditor();
+            
+            // تحميل البيانات الأساسية
+            loadInitialData();
+            
+            // إعداد معالجات الأحداث
+            setupEventListeners();
+        });
+
         // ========== المتغيرات العامة ==========
         let currentUser = null;
         let sections = [];
@@ -1302,26 +1313,6 @@
         let currentSectionId = null;
         let currentArticleId = null;
         let editor = null;
-
-        // ========== تهيئة التطبيق ==========
-        document.addEventListener('DOMContentLoaded', async function() {
-            // تهيئة المحرر
-            initializeEditor();
-            
-            // تحميل البيانات الأساسية
-            await loadInitialData();
-            
-            // إعداد معالجات الأحداث
-            setupEventListeners();
-            
-            // إخفاء شاشة التحميل
-            setTimeout(() => {
-                document.getElementById('loadingOverlay').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                }, 500);
-            }, 1000);
-        });
 
         // ========== وظائف التهيئة ==========
         
@@ -1349,43 +1340,64 @@
         }
         
         // تحميل البيانات الأولية
-        async function loadInitialData() {
-            try {
-                // جلب بيانات المستخدم
-                const { data: { user }, error: userError } = await supabase.auth.getUser();
-                if (userError) throw userError;
-                
-                currentUser = user;
-                document.getElementById('userAvatar').textContent = user.email ? user.email.charAt(0).toUpperCase() : 'م';
-                document.getElementById('userNameDisplayHeader').textContent = user.email || 'مدير النظام';
-                
-                // جلب الأقسام
-                const { data: sectionsData, error: sectionsError } = await supabase
-                    .from('sections')
-                    .select('*')
-                    .order('created_at', { ascending: true });
-                    
-                if (sectionsError) throw sectionsError;
-                sections = sectionsData || [];
-                
-                // جلب المقالات
-                const { data: articlesData, error: articlesError } = await supabase
-                    .from('articles')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                    
-                if (articlesError) throw articlesError;
-                articles = articlesData || [];
-                
-                // تحديث واجهة المستخدم
-                updateSidebar();
-                showDashboard();
-                populateSectionDropdown();
-                
-            } catch (error) {
-                console.error('خطأ في تحميل البيانات:', error);
-                showToast('حدث خطأ في تحميل البيانات', 'error');
-            }
+        function loadInitialData() {
+            // بيانات تجريبية للأقسام
+            sections = [
+                { id: 1, name: 'التقارير والإحصائيات', description: 'جميع التقارير والإحصائيات الخاصة بالنظام', icon: 'fas fa-chart-bar' },
+                { id: 2, name: 'إدارة المستخدمين', description: 'إدارة حسابات المستخدمين والصلاحيات', icon: 'fas fa-users' },
+                { id: 3, name: 'قاعدة المعرفة', description: 'المقالات والأدلة والموارد التعليمية', icon: 'fas fa-book' },
+                { id: 4, name: 'الإعدادات', description: 'إعدادات النظام والتخصيصات', icon: 'fas fa-cog' }
+            ];
+            
+            // بيانات تجريبية للمقالات
+            articles = [
+                { 
+                    id: 1, 
+                    title: 'دليل استخدام النظام', 
+                    section_id: 3, 
+                    summary: 'دليل شامل لاستخدام نظام InfiniBase', 
+                    content: '<h2>مقدمة</h2><p>مرحباً بك في نظام InfiniBase. هذا النظام مصمم لإدارة المحتوى والمعرفة في المؤسسات.</p><h2>الميزات الرئيسية</h2><ul><li>إدارة المحتوى</li><li>التقارير والإحصائيات</li><li>إدارة المستخدمين</li><li>الإعدادات المتقدمة</li></ul>',
+                    tags: 'دليل, استخدام, نظام',
+                    created_at: '2023-10-15',
+                    views: 150,
+                    rating: 4.5
+                },
+                { 
+                    id: 2, 
+                    title: 'تقرير الأداء الشهري', 
+                    section_id: 1, 
+                    summary: 'تقرير شامل عن أداء النظام خلال الشهر الماضي', 
+                    content: '<h2>ملخص الأداء</h2><p>شهد النظام نمواً ملحوظاً في عدد المستخدمين والمحتوى خلال الشهر الماضي.</p><h2>الإحصائيات</h2><ul><li>عدد المستخدمين: 150</li><li>عدد المقالات: 45</li><li>المشاهدات: 1200</li></ul>',
+                    tags: 'تقرير, أداء, شهري',
+                    created_at: '2023-10-10',
+                    views: 89,
+                    rating: 4.2
+                },
+                { 
+                    id: 3, 
+                    title: 'إضافة مستخدم جديد', 
+                    section_id: 2, 
+                    summary: 'خطوات إضافة مستخدم جديد إلى النظام', 
+                    content: '<h2>خطوات إضافة مستخدم</h2><ol><li>انتقل إلى قسم إدارة المستخدمين</li><li>انقر على زر إضافة مستخدم</li><li>املأ البيانات المطلوبة</li><li>انقر على حفظ</li></ol>',
+                    tags: 'مستخدم, إضافة, جديد',
+                    created_at: '2023-10-05',
+                    views: 67,
+                    rating: 4.0
+                }
+            ];
+            
+            // بيانات المستخدم الحالي
+            currentUser = {
+                id: 1,
+                name: 'مدير النظام',
+                email: 'admin@infnibase.com',
+                role: 'admin'
+            };
+            
+            // تحديث واجهة المستخدم
+            updateSidebar();
+            showDashboard();
+            populateSectionDropdown();
         }
         
         // إعداد معالجات الأحداث
@@ -1728,13 +1740,13 @@
         
         // عرض قسم معين
         function showSection(sectionId) {
-            const section = sections.find(s => s.id === sectionId);
+            const section = sections.find(s => s.id == sectionId);
             if (!section) return;
             
             const pageContent = document.getElementById('pageContentArea');
             pageContent.className = '';
             
-            const sectionArticles = articles.filter(article => article.section_id === sectionId);
+            const sectionArticles = articles.filter(article => article.section_id == sectionId);
             
             let html = `
                 <div class="section-header">
@@ -2074,10 +2086,10 @@
         
         // عرض مقال
         function viewArticle(articleId) {
-            const article = articles.find(a => a.id === articleId);
+            const article = articles.find(a => a.id == articleId);
             if (!article) return;
             
-            const section = sections.find(s => s.id === article.section_id) || { name: 'غير محدد' };
+            const section = sections.find(s => s.id == article.section_id) || { name: 'غير محدد' };
             const date = new Date(article.created_at).toLocaleDateString('ar-EG');
             const tags = article.tags || 'لا توجد كلمات مفتاحية';
             
@@ -2094,7 +2106,7 @@
         // ========== وظائف CRUD ==========
         
         // حفظ قسم جديد
-        async function saveSection() {
+        function saveSection() {
             const name = document.getElementById('sectionName').value;
             const description = document.getElementById('sectionDescription').value;
             const icon = document.getElementById('sectionIcon').value;
@@ -2104,35 +2116,27 @@
                 return;
             }
             
-            try {
-                const { data, error } = await supabase
-                    .from('sections')
-                    .insert([
-                        { 
-                            name, 
-                            description, 
-                            icon,
-                            created_by: currentUser.id
-                        }
-                    ])
-                    .select();
-                    
-                if (error) throw error;
-                
-                showToast('تم إضافة القسم بنجاح', 'success');
-                hideModal('addSectionModal');
-                
-                // إعادة تحميل البيانات
-                await loadInitialData();
-                
-            } catch (error) {
-                console.error('خطأ في حفظ القسم:', error);
-                showToast('حدث خطأ في حفظ القسم', 'error');
-            }
+            // إضافة القسم الجديد
+            const newSection = {
+                id: sections.length + 1,
+                name,
+                description,
+                icon,
+                created_at: new Date().toISOString().split('T')[0]
+            };
+            
+            sections.push(newSection);
+            
+            showToast('تم إضافة القسم بنجاح', 'success');
+            hideModal('addSectionModal');
+            
+            // إعادة تحميل البيانات
+            updateSidebar();
+            populateSectionDropdown();
         }
         
         // حفظ مقال جديد
-        async function saveArticle() {
+        function saveArticle() {
             const title = document.getElementById('articleTitle').value;
             const sectionId = document.getElementById('articleSection').value;
             const tags = document.getElementById('articleTags').value;
@@ -2143,60 +2147,44 @@
                 return;
             }
             
-            try {
-                const { data, error } = await supabase
-                    .from('articles')
-                    .insert([
-                        { 
-                            title, 
-                            section_id: sectionId,
-                            tags,
-                            content,
-                            created_by: currentUser.id
-                        }
-                    ])
-                    .select();
-                    
-                if (error) throw error;
-                
-                showToast('تم إضافة المقال بنجاح', 'success');
-                hideModal('addArticleModal');
-                
-                // إعادة تحميل البيانات
-                await loadInitialData();
-                
-            } catch (error) {
-                console.error('خطأ في حفظ المقال:', error);
-                showToast('حدث خطأ في حفظ المقال', 'error');
-            }
+            // إضافة المقال الجديد
+            const newArticle = {
+                id: articles.length + 1,
+                title,
+                section_id: parseInt(sectionId),
+                tags,
+                content,
+                summary: content.substring(0, 100) + '...',
+                created_at: new Date().toISOString().split('T')[0],
+                views: 0,
+                rating: 0
+            };
+            
+            articles.push(newArticle);
+            
+            showToast('تم إضافة المقال بنجاح', 'success');
+            hideModal('addArticleModal');
+            
+            // إعادة تحميل البيانات
+            showDashboard();
         }
         
         // تأكيد الحذف
-        async function confirmDelete() {
+        function confirmDelete() {
             if (!currentArticleId) return;
             
-            try {
-                const { error } = await supabase
-                    .from('articles')
-                    .delete()
-                    .eq('id', currentArticleId);
-                    
-                if (error) throw error;
-                
-                showToast('تم حذف المقال بنجاح', 'success');
-                hideModal('deleteConfirmModal');
-                
-                // إعادة تحميل البيانات
-                await loadInitialData();
-                
-            } catch (error) {
-                console.error('خطأ في حذف المقال:', error);
-                showToast('حدث خطأ في حذف المقال', 'error');
-            }
+            // حذف المقال
+            articles = articles.filter(article => article.id != currentArticleId);
+            
+            showToast('تم حذف المقال بنجاح', 'success');
+            hideModal('deleteConfirmModal');
+            
+            // إعادة تحميل البيانات
+            showDashboard();
         }
         
         // حفظ الإعدادات
-        async function saveSettings() {
+        function saveSettings() {
             // في التطبيق الحقيقي، سيتم حفظ الإعدادات في قاعدة البيانات
             showToast('تم حفظ الإعدادات بنجاح', 'success');
             hideModal('settingsModal');
@@ -2279,7 +2267,8 @@
         
         // رسم مخطط المقالات حسب الشهر
         function renderArticlesChart() {
-            const ctx = document.getElementById('articlesChart').getContext('2d');
+            const ctx = document.getElementById('articlesChart');
+            if (!ctx) return;
             
             // بيانات نموذجية
             const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -2333,7 +2322,8 @@
         
         // رسم مخطط توزيع المقالات على الأقسام
         function renderSectionsChart() {
-            const ctx = document.getElementById('sectionsChart').getContext('2d');
+            const ctx = document.getElementById('sectionsChart');
+            if (!ctx) return;
             
             // تجميع المقالات حسب الأقسام
             const sectionCounts = {};
@@ -2370,7 +2360,8 @@
         
         // رسم مخطط نشاط المستخدمين
         function renderActivityChart() {
-            const ctx = document.getElementById('activityChart').getContext('2d');
+            const ctx = document.getElementById('activityChart');
+            if (!ctx) return;
             
             // بيانات نموذجية
             const days = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
@@ -2462,8 +2453,5 @@
             }, 5000);
         }
     </script>
-
-    <!-- مكتبة Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
