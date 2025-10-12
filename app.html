@@ -1404,26 +1404,37 @@
         /* Dashboard Styles */
         .dashboard-grid {
             display: grid;
-            gap: 1.5rem;
+            gap: 1.5rem; /* MODIFICATION: Increased gap */
             grid-template-columns: 1fr;
             padding: 1.5rem;
         }
         @media(min-width: 640px) {
-            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         @media(min-width: 1024px) {
-            .dashboard-grid { grid-template-columns: repeat(4, 1fr); }
-        }
-        @media(min-width: 1280px) { /* Added for better spacing on large screens */
-             .dashboard-grid { grid-template-columns: repeat(5, 1fr); }
+            .dashboard-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
 
-        .dashboard-grid .grid-col-span-2 { grid-column: span 1; }
-        @media(min-width: 1024px) { .dashboard-grid .grid-col-span-2 { grid-column: span 2; } }
-        .dashboard-grid .grid-col-span-4 { grid-column: span 1; }
-        @media(min-width: 1024px) { .dashboard-grid .grid-col-span-4 { grid-column: span 4; } }
-        .dashboard-grid .grid-col-span-5 { grid-column: span 1; }
-        @media(min-width: 1280px) { .dashboard-grid .grid-col-span-5 { grid-column: span 5; } }
+        .dashboard-grid .grid-col-span-2 {
+            grid-column: span 1;
+        }
+        @media(min-width: 1024px) {
+            .dashboard-grid .grid-col-span-2 {
+                grid-column: span 2;
+            }
+        }
+        .dashboard-grid .grid-col-span-4 {
+            grid-column: span 1;
+        }
+        @media(min-width: 1024px) {
+            .dashboard-grid .grid-col-span-4 {
+                grid-column: span 4;
+            }
+        }
 
 
         .dashboard-stat-card {
@@ -1435,7 +1446,7 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            position: relative;
+            position: relative; /* For growth indicator */
         }
         .dashboard-stat-card .icon-container {
             font-size: 1.5rem;
@@ -1459,6 +1470,7 @@
             font-size: 0.85rem;
             color: var(--text-color-muted);
         }
+        /* NEW: Growth Indicator Style */
         .stat-growth {
             position: absolute;
             top: 0.75rem;
@@ -1492,11 +1504,32 @@
             transform: none;
             background-color: var(--bg-color);
         }
-        .viewer-dashboard-message .card:hover { transform: none; box-shadow: none; }
-        .viewer-dashboard-message .card i { font-size: 3rem; color: var(--primary-color); margin-bottom: 1.5rem; }
-        .viewer-dashboard-message .card h2 { font-size: 1.75rem; margin-bottom: 0.75rem; color: var(--text-color); }
-        .viewer-dashboard-message .card p { font-size: 1.05rem; color: var(--text-color-muted); margin-bottom: 0; max-width: 650px; margin-left: auto; margin-right: auto; }
-        .viewer-dashboard-message .card p.subtle-note { font-size: 0.9rem; margin-top: 1.5rem; }
+        .viewer-dashboard-message .card:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        .viewer-dashboard-message .card i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+        .viewer-dashboard-message .card h2 {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-color);
+        }
+        .viewer-dashboard-message .card p {
+            font-size: 1.05rem;
+            color: var(--text-color-muted);
+            margin-bottom: 0;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .viewer-dashboard-message .card p.subtle-note {
+             font-size: 0.9rem;
+             margin-top: 1.5rem;
+        }
 
         .dashboard-table-card {
             background-color: var(--bg-color-alt);
@@ -1531,10 +1564,9 @@
         .activity-item-content .activity-timestamp { font-size: 0.75rem; color: var(--text-color-muted); }
         .pagination-controls-activity {
             display: flex;
-            justify-content: flex-end; /* Aligned to the right */
+            justify-content: space-between;
             align-items: center;
             margin-top: 1rem;
-            gap: 0.75rem; /* Added gap between buttons */
         }
         
         #viewHistorySection table {
@@ -2123,14 +2155,14 @@
             insights, 
             growth, 
             weeklyActivity,
-            feedbackKpis, // New for feedback chart
+            topSections,
             topUsers
         ] = await Promise.all([
             supabase.from('v_recent_activity').select('*'),
             supabase.from('v_overall_insights').select('*').single(),
             supabase.from('v_growth_trends').select('*'),
             supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
-            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(), // Fetch feedback data
+            supabase.from('v_section_insights').select('*').order('total_views', { ascending: false }).limit(5),
             supabase.from('v_user_insights').select('*').order('total_articles_viewed', { ascending: false }).limit(5)
         ]);
         
@@ -2139,7 +2171,7 @@
             overallInsights: insights.data || {},
             growthTrends: growth.data || [],
             weeklyActivity: weeklyActivity.data || [],
-            feedbackKpis: feedbackKpis.data || {}, // Add feedback data to return object
+            topSections: topSections.data || [],
             topUsers: topUsers.data || []
         };
     }
@@ -2169,10 +2201,10 @@
     let currentOpenItem = null;
     
     // MODIFICATION: Chart instances
-    let activityChartInstance, feedbackChartInstance, topUsersChartInstance;
+    let activityChartInstance, contentDistChartInstance, topUsersChartInstance, topSectionsChartInstance;
 
-    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
-    let activityLogPage = 1;
+    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], topSections: [], topUsers: [] };
+    let activityLogPage = 0;
     const ACTIVITY_LOG_PAGE_SIZE = 5;
 
     const pageBody = document.getElementById('pageBody');
@@ -2506,25 +2538,20 @@
                     <div class="icon-container"><i class="fas fa-star"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating || 0}</span><span class="stat-label">Avg. Feedback</span></div>
                 </div>
-                 <div class="dashboard-stat-card">
-                    <div class="icon-container"><i class="fas fa-edit"></i></div>
-                    <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
-                </div>
 
                 <div class="chart-container grid-col-span-2">
                     <canvas id="activityChart"></canvas>
                 </div>
-                <div class="chart-container grid-col-span-2" style="max-width: 500px; margin: auto;">
-                    <canvas id="feedbackChart"></canvas>
+                <div class="chart-container grid-col-span-2">
+                    <canvas id="topUsersChart"></canvas>
                 </div>
 
-                <div class="dashboard-table-card grid-col-span-5">
+                <div class="dashboard-table-card grid-col-span-4">
                     <h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Activity</h3>
                     <div id="recentActivity"></div>
                     <div class="pagination-controls-activity">
-                         <span id="activityPageInfo"></span>
-                        <button id="prevActivityBtn" class="button-secondary"><i class="fas fa-arrow-left"></i></button>
-                        <button id="nextActivityBtn" class="button-secondary"><i class="fas fa-arrow-right"></i></button>
+                        <button id="prevActivityBtn" class="button-secondary">Previous</button>
+                        <button id="nextActivityBtn" class="button-secondary">Next</button>
                     </div>
                 </div>
             </div>`;
@@ -2533,14 +2560,14 @@
         renderPaginatedActivityLog();
 
         document.getElementById('prevActivityBtn').addEventListener('click', () => {
-            if (activityLogPage > 1) {
+            if (activityLogPage > 0) {
                 activityLogPage--;
                 renderPaginatedActivityLog();
             }
         });
         document.getElementById('nextActivityBtn').addEventListener('click', () => {
-             const totalPages = Math.ceil(dashboardData.activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
-            if (activityLogPage < totalPages) {
+             // Basic check to prevent going too far
+            if (dashboardData.activityLog.slice((activityLogPage + 1) * ACTIVITY_LOG_PAGE_SIZE).length > 0) {
                 activityLogPage++;
                 renderPaginatedActivityLog();
             }
@@ -2576,12 +2603,8 @@
         if (!container) return;
         const prevBtn = document.getElementById('prevActivityBtn');
         const nextBtn = document.getElementById('nextActivityBtn');
-        const pageInfo = document.getElementById('activityPageInfo');
 
-        const totalPages = Math.ceil(dashboardData.activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
-        activityLogPage = Math.max(1, Math.min(activityLogPage, totalPages));
-
-        const start = (activityLogPage - 1) * ACTIVITY_LOG_PAGE_SIZE;
+        const start = activityLogPage * ACTIVITY_LOG_PAGE_SIZE;
         const end = start + ACTIVITY_LOG_PAGE_SIZE;
         const pageItems = dashboardData.activityLog.slice(start, end);
 
@@ -2599,9 +2622,8 @@
             </div>
         `).join('') || '<p>No activity found.</p>';
 
-        pageInfo.textContent = `Page ${activityLogPage} of ${totalPages}`;
-        prevBtn.disabled = activityLogPage === 1;
-        nextBtn.disabled = activityLogPage >= totalPages;
+        prevBtn.disabled = activityLogPage === 0;
+        nextBtn.disabled = end >= dashboardData.activityLog.length;
     }
     
     // MODIFICATION: Renders all dynamic charts for the dashboard
@@ -2643,39 +2665,34 @@
                     plugins: { title: { display: true, text: 'Content Activity (Last 7 Days)', color: legendColor, font: {size: 16} } },
                     scales: {
                         y: { position: 'left', title: { display: true, text: 'Total Views', color: ticksColor }, ticks: {color: ticksColor}, grid: {color: gridColor} },
-                        y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor, stepSize: 1 } }
+                        y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor} }
                     }
                 }
             });
         }
         
-        // 2. Helpful Feedback Ratio Chart
-        if (feedbackChartInstance) feedbackChartInstance.destroy();
-        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
-        if (feedbackCtx && data.feedbackKpis) {
-            const helpful = data.feedbackKpis.helpful_ratings || 0;
-            const notHelpful = data.feedbackKpis.not_helpful_ratings || 0;
-            feedbackChartInstance = new Chart(feedbackCtx, {
-                type: 'doughnut',
+        // 2. Top Active Users Chart (Bar)
+        if (topUsersChartInstance) topUsersChartInstance.destroy();
+        const topUsersCtx = document.getElementById('topUsersChart')?.getContext('2d');
+        if(topUsersCtx && data.topUsers.length > 0) {
+            topUsersChartInstance = new Chart(topUsersCtx, {
+                type: 'bar',
                 data: {
-                    labels: ['Helpful', 'Not Helpful'],
+                    labels: data.topUsers.map(u => u.user_name),
                     datasets: [{
-                        data: [helpful, notHelpful],
-                        backgroundColor: [
-                            getComputedStyle(document.documentElement).getPropertyValue('--yes-color').trim(),
-                            getComputedStyle(document.documentElement).getPropertyValue('--no-color').trim()
-                        ],
-                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-                        borderWidth: 4,
-                        hoverOffset: 8,
+                        label: 'Articles Viewed',
+                        data: data.topUsers.map(u => u.total_articles_viewed),
+                        backgroundColor: 'rgba(236, 72, 153, 0.6)',
+                        borderColor: 'rgba(236, 72, 153, 1)',
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        title: { display: true, text: 'Helpful Feedback Ratio', color: legendColor, font: {size: 16} },
-                        legend: { position: 'bottom', labels: { color: legendColor, font: {size: 14}} }
+                    indexAxis: 'y', // Horizontal bar chart
+                    plugins: { title: { display: true, text: 'Most Active Users', color: legendColor, font: {size: 16} } },
+                    scales: {
+                        x: { ticks: { color: ticksColor }, grid: {color: gridColor} },
+                        y: { ticks: { color: ticksColor }, grid: {display: false} }
                     }
                 }
             });
