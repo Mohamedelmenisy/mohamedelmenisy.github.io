@@ -3291,5 +3291,44 @@
 
 <!-- ======== MODIFICATION: ADDED SCRIPT FOR NEW CASE ======== -->
 <script src="busy_new.js" defer></script>
+
+<!-- ROLE CHECK FOR ADMIN ONLY SECTIONS -->
+<script type="module">
+(async function(){
+  try {
+    // Use existing Supabase client if available
+    let supabase = window.supabase;
+    if (!supabase) {
+      const text = document.documentElement.innerHTML;
+      const urlMatch = text.match(/createClient\(['"]([^'"]+)['"]/);
+      const keyMatch = text.match(/createClient\([^,]+,\s*['"]([^'"]+)['"]\)/);
+      if (urlMatch && keyMatch) {
+        const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        supabase = mod.createClient(urlMatch[1], keyMatch[1]);
+        window.supabase = supabase;
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
+    if (error || !data) return;
+    const isAdmin = !!data.is_admin;
+
+    if (!isAdmin) {
+      const modal = document.getElementById('accessDeniedModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      } else {
+        alert("Access Denied — This section is for administrators only.");
+        window.location.href = "core-flow.html";
+      }
+    }
+  } catch (err) { console.error('Role check error', err); }
+})();
+</script>
+
 </body>
 </html>
