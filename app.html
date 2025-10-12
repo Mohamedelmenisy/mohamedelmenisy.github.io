@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon -->
-<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
 <!-- CDNs -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"/>
@@ -1955,7 +1955,9 @@
     <span class="sidebar-logo-text">InfiniBase</span>
 </div>
 <nav class="sidebar-nav" id="navigationMenu">
-    <!-- Sidebar links will be populated by JavaScript -->
+    <div id="sidebarLoader" style="padding: 1rem; text-align: center; color: var(--text-color-muted);">
+        <i class="fas fa-spinner fa-spin"></i> Loading Areas...
+    </div>
 </nav>
 <div class="sidebar-footer">
 <button class="button button-danger" id="logoutButton">
@@ -2119,7 +2121,6 @@
         }
     }
     
-    // ✅ IMPROVEMENT: Made data fetching robust with Promise.allSettled
     async function fetchDashboardData() {
         const results = await Promise.allSettled([
             supabase.from('v_recent_activity').select('*'),
@@ -2305,38 +2306,32 @@
         }, duration);
     }
     
-    // ✅ FIX: Added try/catch to prevent script halt on data loading failure.
     async function loadAndStructureData() {
         console.log("Loading core data from Supabase...");
-        try {
-            const [categories, articles] = await Promise.all([
-                fetchSubCategories(),
-                fetchArticles()
-            ]);
+        // This function now throws an error on failure, which will be caught by initializeApp
+        const [categories, articles] = await Promise.all([
+            fetchSubCategories(),
+            fetchArticles()
+        ]);
 
-            const sections = categories.map(cat => ({
-                ...cat,
-                slug: createSlug(cat.name),
-                items: []
-            }));
+        const sections = categories.map(cat => ({
+            ...cat,
+            slug: createSlug(cat.name),
+            items: []
+        }));
 
-            articles.forEach(article => {
-                const parentSection = sections.find(s => s.id === article.sub_category_id);
-                if (parentSection) {
-                    article.slug = article.slug || createSlug(article.title_en);
-                    parentSection.items.push({ ...article });
-                } else {
-                    console.warn(`Article "${article.title_en}" has an unknown sub_category_id: ${article.sub_category_id}`);
-                }
-            });
-            
-            kbSystemData.sections = sections;
-            console.log("Core data loaded successfully:", kbSystemData);
-        } catch (error) {
-            console.error("CRITICAL: Failed to load core data for sidebar/articles.", error);
-            showToast('Could not load knowledge base sections.', 'error');
-            kbSystemData.sections = []; // Ensure it's an empty array so populateSidebar doesn't crash
-        }
+        articles.forEach(article => {
+            const parentSection = sections.find(s => s.id === article.sub_category_id);
+            if (parentSection) {
+                article.slug = article.slug || createSlug(article.title_en);
+                parentSection.items.push({ ...article });
+            } else {
+                console.warn(`Article "${article.title_en}" has an unknown sub_category_id: ${article.sub_category_id}`);
+            }
+        });
+        
+        kbSystemData.sections = sections;
+        console.log("Core data loaded successfully:", kbSystemData);
     }
     
     function populateSidebar() {
@@ -2387,7 +2382,7 @@
             menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
         }
         
-        navigationMenu.innerHTML = menuHTML;
+        navigationMenu.innerHTML = menuHTML; // Replace loader with content
     }
     
     // --- UI Rendering & Event Handlers ---
@@ -2457,7 +2452,6 @@
             </div>`;
     }
     
-    // ✅ IMPROVEMENT: Renders the redesigned dashboard with dynamic data
     async function renderDynamicDashboard() {
         pageContentArea.classList.add('is-dashboard');
         
@@ -3033,8 +3027,6 @@
         addContentModalOverlay.classList.add('hidden');
     }
     
-    // --- Global Event Listeners & App Initialization ---
-
     function handleNavigation() {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
@@ -3053,39 +3045,30 @@
         }
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
-    
-    async function initializeApp() {
-        currentUser = await getCurrentUserProfile();
-        if (!currentUser) {
-            window.location.href = "login.html";
-            return;
-        }
 
-        userNameDisplayHeader.textContent = currentUser.name || currentUser.email;
-        const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-        userAvatar.textContent = initials;
-        currentUserRoleSpan.textContent = currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'Viewer';
-        
-        await loadAndStructureData();
-        populateSidebar(); // This will now run even if data loading partially fails
-        
-        handleNavigation();
+    function setupEventListeners() {
         window.addEventListener('hashchange', handleNavigation);
         
-        // --- Modal & Button Event Listeners ---
+        mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
+                sidebar.classList.add('closed');
+            }
+        });
+        
         logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
-        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
+        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn?.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
         confirmLogoutBtn.addEventListener('click', logout);
         
-        [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn.addEventListener('click', closeAddContentModal));
-        [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
+        [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn?.addEventListener('click', closeAddContentModal));
+        [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn?.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
         
         returnHomeFromAccessDeniedBtn.addEventListener('click', () => {
             accessDeniedModalOverlay.classList.add('hidden');
             window.location.hash = '#home';
         });
 
-        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn.addEventListener('click', () => insertHtmlModalOverlay.classList.add('hidden')));
+        [closeInsertHtmlModalBtn, cancelInsertHtmlBtn].forEach(btn => btn?.addEventListener('click', () => insertHtmlModalOverlay.classList.add('hidden')));
         confirmInsertHtmlBtn.addEventListener('click', () => {
             if (mainQuillEditor) {
                 mainQuillEditor.clipboard.dangerouslyPasteHTML(mainQuillEditor.getSelection(true).index, htmlTextarea.value);
@@ -3153,8 +3136,8 @@
             closeAddContentModal();
             await loadAndStructureData();
             
-            const itemFull = findItem(savedItem.id);
-            window.location.hash = itemFull ? `#${itemFull.sectionSlug}/${itemFull.slug}` : `#${findItem(itemData.sub_category_id)?.sectionSlug}`;
+            const section = kbSystemData.sections.find(s => s.id === savedItem.sub_category_id);
+            window.location.hash = section ? `#${section.slug}/${savedItem.slug}` : '#home';
         });
         
         confirmDeleteItemBtn.addEventListener('click', async () => {
@@ -3168,12 +3151,14 @@
             }
             showToast(`Item deleted.`, 'success');
             deleteConfirmModalOverlay.classList.add('hidden');
-            window.location.hash = window.location.hash.includes(itemToDelete.slug) ? `#${sectionSlug}`: window.location.hash;
-            await loadAndStructureData();
-            handleNavigation();
+            if (window.location.hash.includes(itemToDelete?.slug)) {
+                window.location.hash = `#${sectionSlug}`;
+            } else {
+                await loadAndStructureData();
+                handleNavigation();
+            }
         });
 
-        // Event delegation for clicks inside main content area
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
@@ -3241,13 +3226,12 @@
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
         });
-        
-        showToast(`Welcome back, ${currentUser.name}!`, 'success');
+    }
 
-        // --- REALTIME SUBSCRIPTIONS ---
+    function setupRealtimeSubscriptions() {
         const reloadAndRender = async () => {
             await loadAndStructureData();
-            handleNavigation(); // This handles both dashboard and other pages correctly
+            handleNavigation(); 
         };
 
         supabase.channel('public:cases').on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender).subscribe();
@@ -3260,8 +3244,41 @@
             if (currentOpenItem?.itemId === payload.new.item_id) displayItemStats(currentOpenItem.itemId);
         }).subscribe();
     }
+    
+    async function initializeApp() {
+        try {
+            currentUser = await getCurrentUserProfile();
+            if (!currentUser) {
+                window.location.href = "login.html";
+                return;
+            }
 
-    // --- Make functions globally accessible for inline event handlers ---
+            userNameDisplayHeader.textContent = currentUser.name || currentUser.email;
+            const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            userAvatar.textContent = initials;
+            currentUserRoleSpan.textContent = currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'Viewer';
+
+            await loadAndStructureData();
+            
+            populateSidebar();
+            
+            handleNavigation();
+
+            setupEventListeners();
+            
+            setupRealtimeSubscriptions();
+
+            showToast(`Welcome back, ${currentUser.name}!`, 'success');
+
+        } catch (error) {
+            console.error("A critical error occurred during app initialization:", error);
+            showToast('Failed to initialize the application.', 'error');
+            pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
+            const sidebarLoader = document.getElementById('sidebarLoader');
+            if (sidebarLoader) sidebarLoader.innerHTML = 'Failed to load.';
+        }
+    }
+
     window.openEditModal = (sectionId, itemId) => openAddContentModal(sectionId, findItem(itemId));
     window.openDeleteModal = (sectionId, itemId, itemTitle) => {
         deleteConfirmMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHTML(itemTitle)}</strong>"? This cannot be undone.`;
@@ -3269,7 +3286,6 @@
         deleteConfirmModalOverlay.classList.remove('hidden');
     };
 
-    // --- Start the application ---
     initializeApp();
 </script>
 
