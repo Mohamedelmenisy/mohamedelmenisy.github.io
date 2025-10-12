@@ -1,1 +1,2018 @@
+<!DOCTYPE html>
+<html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>InfiniBase - Polished Dashboard</title>
+<!-- Cairo Font for Arabic -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<!-- Favicon -->
+<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+<!-- CDNs -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"/>
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Spotlight.js for Lightbox Effect -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/spotlight.js/dist/css/spotlight.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/spotlight.js/dist/js/spotlight.min.js" defer></script>
+<!-- Diff2HTML for Version History -->
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
 
+<style>
+    /* ========== Loading Screen ========== */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+    }
+
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(99, 102, 241, 0.3);
+        border-top: 4px solid #6366f1;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .loading-text {
+        color: #d1d5db;
+        font-size: 1.2rem;
+        font-weight: 500;
+        letter-spacing: 1px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    /* ========== CSS Variables ========== */
+    :root {
+        --primary-color: #6366f1;
+        --primary-color-hover: #4f46e5;
+        --secondary-color: #9ca3af;
+
+        --text-color: #d1d5db;
+        --text-color-muted: #9ca3af;
+        --text-color-inverted: #ffffff;
+        --text-color-subtle: #9ca3af;
+
+        --bg-color: #111827;
+        --bg-color-alt: #1f2937;
+        --bg-color-sidebar: #1f2937;
+        --bg-color-header: rgba(31, 41, 55, 0.95);
+        --bg-color-modal: #1f2937;
+        --bg-color-hover: #374151;
+        --bg-color-active: var(--primary-color);
+
+        --border-color: #374151;
+        --border-color-darker: #4b5563;
+
+        --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -1px rgba(0,0,0,0.2);
+        --card-hover-shadow: 0 20px 25px -5px rgba(0,0,0,0.3), 0 10px 10px -5px rgba(0,0,0,0.2);
+        
+        --border-radius: 0.75rem;
+        --border-radius-lg: 1rem;
+        --header-height: 70px;
+        --sidebar-width: 280px;
+
+        --yes-color: #22c55e;
+        --no-color: #ef4444;
+        --rating-color: #fbbf24;
+    }
+
+    /* ========== Base Styles ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        line-height: 1.6;
+        font-size: 16px;
+        overflow-x: hidden;
+    }
+
+    .container-fluid {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    /* ========== Sidebar Styles ========== */
+    .sidebar {
+        width: var(--sidebar-width);
+        background: linear-gradient(180deg, var(--bg-color-sidebar) 0%, #111827 100%);
+        padding: 1.5rem;
+        border-right: 1px solid var(--border-color);
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        overflow-y: auto;
+        transition: transform 0.3s ease-in-out;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    }
+    .sidebar.closed {
+        transform: translateX(-100%);
+    }
+    @media (min-width: 768px) {
+        .sidebar.closed { transform: translateX(0); }
+    }
+
+    .sidebar-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        color: #F9FAFB;
+        padding: 1rem 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .sidebar-header img {
+        height: 40px;
+        width: auto;
+        border-radius: 8px;
+        margin-right: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .sidebar-logo-text {
+         color: var(--text-color);
+         background: linear-gradient(135deg, #6366f1, #8b5cf6);
+         -webkit-background-clip: text;
+         -webkit-text-fill-color: transparent;
+         font-weight: 800;
+    }
+
+    .sidebar-nav { 
+        flex-grow: 1;
+        margin: 1rem 0;
+    }
+
+    .sidebar-section-title {
+        padding: 0.75rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-color-muted);
+        border-left: 3px solid var(--primary-color);
+        background: rgba(99, 102, 241, 0.05);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .sidebar-link {
+        display: flex;
+        align-items: center;
+        padding: 0.85rem 1rem;
+        border-radius: var(--border-radius);
+        transition: all 0.3s ease;
+        font-weight: 500;
+        color: var(--text-color-subtle);
+        text-decoration: none;
+        margin-bottom: 0.5rem;
+        border: 1px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+    .sidebar-link::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 3px;
+        background: var(--primary-color);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+    .sidebar-link i {
+        margin-right: 0.75rem;
+        width: 1.5rem;
+        font-size: 1.3rem;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    .sidebar-link:hover {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.05));
+        color: var(--text-color);
+        border-color: var(--primary-color);
+        transform: translateX(5px);
+    }
+    .sidebar-link:hover::before {
+        transform: scaleY(1);
+    }
+    .sidebar-link:hover i {
+        transform: scale(1.1);
+        color: var(--primary-color);
+    }
+    .sidebar-link.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: var(--text-color-inverted) !important;
+        font-weight: 600;
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .sidebar-link.active::before {
+        transform: scaleY(1);
+        background: white;
+    }
+    .sidebar-link.active i {
+        color: var(--text-color-inverted) !important;
+        transform: scale(1.1);
+    }
+
+    .sidebar-footer {
+        margin-top: auto;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .sidebar-footer button {
+        width: 100%;
+        margin-top: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    .sidebar-footer button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .sidebar-footer button i { margin-right: 0.5rem; }
+
+    /* ========== Content Wrapper ========== */
+    .content-wrapper {
+        flex-grow: 1;
+        padding: 0;
+        transition: margin-left 0.3s ease-in-out;
+        height: 100vh;
+        overflow-y: auto;
+        background: var(--bg-color);
+    }
+    @media (min-width: 768px) {
+         .content-wrapper { margin-left: var(--sidebar-width); }
+         .sidebar.closed + .content-wrapper { margin-left: 0; }
+    }
+
+    .content-header {
+        background: var(--bg-color-header);
+        padding: 1.25rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        height: var(--header-height);
+        z-index: 50;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+     @media (max-width: 767px) {
+        .content-header {
+            left: 0;
+        }
+    }
+    .header-left-content { 
+        display: flex; 
+        align-items: center;
+        gap: 1rem;
+    }
+    #currentSectionTitle {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin: 0;
+        background: linear-gradient(135deg, var(--text-color), var(--primary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    #breadcrumbs {
+        font-size: 0.875rem;
+        color: var(--text-color-muted);
+        margin-top: 0.25rem;
+    }
+    #breadcrumbs a { 
+        color: var(--primary-color); 
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    #breadcrumbs a:hover { 
+        color: var(--primary-color-hover);
+        text-decoration: underline;
+    }
+
+    .header-right-content { 
+        display: flex; 
+        align-items: center; 
+        gap: 1.5rem;
+    }
+    
+    /* Admin Toolbar */
+    .admin-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--bg-color-alt);
+        padding: 0.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+    }
+    .admin-toolbar a {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-color-muted);
+        text-decoration: none;
+        border-radius: var(--border-radius);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .admin-toolbar a:hover {
+        background: var(--bg-color-hover);
+        color: var(--text-color);
+        transform: translateY(-1px);
+    }
+    .admin-toolbar a.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: var(--text-color-inverted);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .search-container { 
+        position: relative;
+    }
+    .search-container input[type="search"] {
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        border: 1px solid var(--border-color-darker);
+        border-radius: 50px;
+        min-width: 300px;
+        background: var(--bg-color-alt);
+        color: var(--text-color);
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-shadow: var(--card-shadow);
+    }
+    .search-container input[type="search"]:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        transform: scale(1.02);
+    }
+    .search-container input[type="search"]::placeholder {
+        color: var(--text-color-muted);
+        opacity: 0.8;
+    }
+    .search-container .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-color-muted);
+        font-size: 1rem;
+    }
+    #searchResultsContainer {
+        position: absolute;
+        background: var(--bg-color-alt);
+        border: 1px solid var(--border-color);
+        border-top: none;
+        width: 100%;
+        max-height: 400px;
+        overflow-y: auto;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 60;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
+    #searchResultsContainer a {
+        display: block;
+        padding: 1rem;
+        text-decoration: none;
+        color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+    #searchResultsContainer a:hover { 
+        background: var(--bg-color-hover);
+        padding-left: 1.5rem;
+    }
+    #searchResultsContainer a:last-child {
+        border-bottom: none;
+    }
+    #searchResultsContainer mark { 
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: #1f2937;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .user-profile { 
+        display: flex; 
+        align-items: center; 
+        gap: 0.75rem;
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .user-profile:hover {
+        background: var(--bg-color-hover);
+    }
+    #userAvatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: var(--text-color-inverted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #userNameDisplayHeader { 
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    @media (max-width: 640px) {
+        #userNameDisplayHeader { display: none; }
+        .search-container { display: none; }
+    }
+
+    main { 
+        padding: 2rem;
+        min-height: calc(100vh - var(--header-height));
+    }
+
+    main#pageContentArea.is-dashboard {
+        padding: 0 !important;
+    }
+    
+    /* ========== Card Styles ========== */
+    .card {
+        background: linear-gradient(135deg, var(--bg-color-alt), #111827);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--card-shadow);
+        transition: all 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        min-height: 180px;
+        position: relative;
+        overflow: hidden;
+    }
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-color-hover));
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
+    }
+    .card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--card-hover-shadow);
+        border-color: var(--primary-color);
+    }
+    .card:hover::before {
+        transform: scaleX(1);
+    }
+    .card-header-icon {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .card-icon-container {
+        padding: 1rem;
+        border-radius: 50%;
+        margin-right: 1.5rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        transition: all 0.3s ease;
+    }
+    .card:hover .card-icon-container {
+        transform: scale(1.1) rotate(5deg);
+    }
+    .card-icon-container i {
+        font-size: 1.5rem;
+        color: var(--text-color-inverted);
+    }
+    .card-title-group {
+        flex-grow: 1;
+    }
+    .card h3 { 
+        margin-top: 0; 
+        font-size: 1.25rem; 
+        font-weight: 700; 
+        color: var(--text-color); 
+        line-height: 1.3;
+        margin-bottom: 0.5rem;
+    }
+    .card p { 
+        margin-bottom: 1rem; 
+        font-size: 0.95rem; 
+        color: var(--text-color-subtle); 
+        flex-grow: 1;
+        line-height: 1.6;
+    }
+    
+    .updated-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+        border: 1px solid rgba(34, 197, 94, 0.4);
+        color: #22c55e;
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+    }
+    .card-tags {
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .card-tags .tag {
+        background: linear-gradient(135deg, var(--bg-color), var(--border-color));
+        border: 1px solid var(--border-color);
+        color: var(--text-color-muted);
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        transition: all 0.3s ease;
+    }
+    .card:hover .tag {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+    }
+    .card-actions .button {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    .card-actions .button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* ========== Button Styles ========== */
+    .button, button {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: var(--text-color-inverted);
+        border: 1px solid transparent;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+    .button:hover, button:hover {
+        background: linear-gradient(135deg, var(--primary-color-hover), var(--primary-color));
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+    .button-secondary {
+        background: transparent;
+        color: var(--text-color-subtle);
+        border-color: var(--border-color-darker);
+        box-shadow: none;
+    }
+    .button-secondary:hover { 
+        background: var(--bg-color-hover); 
+        color: var(--text-color);
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .button-danger {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    }
+    .button-danger:hover { 
+        background: linear-gradient(135deg, #b91c1c, #991b1b);
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+    }
+    input:focus, button:focus, select:focus, textarea:focus, a:focus {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    }
+    button:disabled {
+        background: var(--border-color);
+        color: var(--text-color-muted);
+        cursor: not-allowed;
+        border-color: transparent;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    /* ========== Dashboard Styles ========== */
+    .dashboard-grid {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: 1fr;
+        padding: 2rem;
+        background: var(--bg-color);
+    }
+    @media(min-width: 640px) {
+        .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media(min-width: 1024px) {
+        .dashboard-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media(min-width: 1280px) {
+         .dashboard-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+
+    .dashboard-grid .grid-col-span-2 { grid-column: span 1; }
+    @media(min-width: 1024px) { .dashboard-grid .grid-col-span-2 { grid-column: span 2; } }
+    .dashboard-grid .grid-col-span-4 { grid-column: span 1; }
+    @media(min-width: 1024px) { .dashboard-grid .grid-col-span-4 { grid-column: span 4; } }
+    .dashboard-grid .grid-col-span-5 { grid-column: span 1; }
+    @media(min-width: 1280px) { .dashboard-grid .grid-col-span-5 { grid-column: span 5; } }
+
+    .dashboard-stat-card {
+        background: linear-gradient(135deg, var(--bg-color-alt), #111827);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--card-shadow);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s ease;
+    }
+    .dashboard-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-color-hover));
+    }
+    .dashboard-stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+        border-color: var(--primary-color);
+    }
+    .dashboard-stat-card .icon-container {
+        font-size: 2rem;
+        color: var(--primary-color);
+        background: rgba(99, 102, 241, 0.1);
+        height: 70px;
+        width: 70px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    .dashboard-stat-card:hover .icon-container {
+        transform: scale(1.1);
+        background: rgba(99, 102, 241, 0.2);
+    }
+    .dashboard-stat-card .stat-info .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        display: block;
+        line-height: 1;
+        background: linear-gradient(135deg, var(--text-color), var(--primary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .dashboard-stat-card .stat-info .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-color-muted);
+        margin-top: 0.5rem;
+        font-weight: 600;
+    }
+    .stat-growth {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .stat-growth.positive {
+        color: var(--yes-color);
+        background: rgba(34, 197, 94, 0.15);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .stat-growth.negative {
+        color: var(--no-color);
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .chart-container {
+        position: relative;
+        padding: 2rem;
+        border-radius: var(--border-radius-lg);
+        background: linear-gradient(135deg, var(--bg-color-alt), #111827);
+        border: 1px solid var(--border-color);
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+    .chart-container:hover {
+        border-color: var(--primary-color);
+        box-shadow: var(--card-hover-shadow);
+    }
+    .chart-container canvas {
+        max-width: 100%;
+        max-height: 100%;
+        flex-grow: 1;
+    }
+    .chart-container h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 1.5rem 0;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        text-align: left;
+        color: var(--text-color);
+    }
+
+    .dashboard-table-card {
+        background: linear-gradient(135deg, var(--bg-color-alt), #111827);
+        padding: 2rem;
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .dashboard-table-card:hover {
+        border-color: var(--primary-color);
+        box-shadow: var(--card-hover-shadow);
+    }
+    .dashboard-table-card h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 1.5rem 0;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    #recentActivity {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+    .activity-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-radius: var(--border-radius);
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+    .activity-item:hover {
+        background: var(--bg-color-hover);
+        transform: translateX(5px);
+        border-color: var(--primary-color);
+    }
+    .activity-item:last-child { margin-bottom: 0; }
+    .activity-item-content { flex-grow: 1; }
+    .activity-item-content p { 
+        margin: 0; 
+        line-height: 1.5; 
+        font-size: 0.95rem;
+    }
+    .activity-item-content .activity-timestamp { 
+        font-size: 0.8rem; 
+        color: var(--text-color-muted);
+        margin-top: 0.5rem;
+    }
+    .pagination-controls-activity {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+        padding: 1rem 0;
+    }
+
+    /* ========== Toast Notification ========== */
+    .toast-notification {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 1rem 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 2000;
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.4s ease;
+        display: flex;
+        align-items: center;
+        background: var(--bg-color-alt);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        min-width: 300px;
+        backdrop-filter: blur(10px);
+    }
+    .toast-notification.show { 
+        opacity: 1; 
+        transform: translateY(0) scale(1);
+    }
+    .toast-icon { 
+        margin-right: 12px; 
+        font-size: 1.3rem;
+    }
+    .toast-success { 
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-color: #059669;
+    }
+    .toast-error { 
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border-color: #dc2626;
+    }
+    .toast-info { 
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border-color: #2563eb;
+    }
+
+    .mobile-sidebar-toggle {
+        display: block;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 101;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-color-hover));
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: var(--border-radius);
+        font-size: 1.25rem;
+        line-height: 1;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        transition: all 0.3s ease;
+    }
+    .mobile-sidebar-toggle:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+    @media (min-width: 768px) {
+        .mobile-sidebar-toggle { display: none; }
+    }
+
+    footer {
+        text-align: center;
+        padding: 2rem;
+        font-size: 0.9rem;
+        color: var(--text-color-muted);
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+        background: var(--bg-color-alt);
+    }
+
+    /* ========== Responsive Design ========== */
+    @media (max-width: 767px) {
+        .content-header { 
+            padding: 1rem;
+            flex-direction: column;
+            gap: 1rem;
+            height: auto;
+            min-height: var(--header-height);
+        }
+        .header-right-content {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .admin-toolbar {
+            display: none;
+        }
+        .dashboard-grid {
+            padding: 1rem;
+            gap: 1rem;
+        }
+        .cards-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        main {
+            padding: 1rem;
+        }
+    }
+</style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Initializing InfiniBase...</div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-fluid">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" alt="InfiniBase Logo">
+                <span class="sidebar-logo-text">InfiniBase</span>
+            </div>
+            
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar-nav" id="navigationMenu">
+                <!-- Will be populated dynamically -->
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="button button-danger" id="logoutButton">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <div id="userRoleDisplaySidebar" style="font-size: 0.8rem; color: var(--text-color-muted); text-align: center; margin-top: 0.5rem;">
+                    Role: <span id="currentUserRoleSpan">Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Sidebar Toggle -->
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper" id="contentWrapper">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-left-content">
+                    <div>
+                        <h1 id="currentSectionTitle">Dashboard</h1>
+                        <div id="breadcrumbs">Home</div>
+                    </div>
+                </div>
+                
+                <div class="header-right-content">
+                    <!-- Admin Toolbar -->
+                    <div class="admin-toolbar" id="adminToolbar">
+                        <a href="#home" id="admin-link-dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        <a href="#audit" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
+                        <a href="#insights" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
+                        <a href="#employees" class="nav-link"><i class="fas fa-users"></i> Employees</a>
+                    </div>
+                    
+                    <!-- Search Bar -->
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="search" id="globalSearchInput" placeholder="Search the knowledge base...">
+                        <div id="searchResultsContainer" class="hidden"></div>
+                    </div>
+                    
+                    <!-- User Profile -->
+                    <div class="user-profile" id="userProfileContainer">
+                        <div id="userAvatar">A</div>
+                        <span id="userNameDisplayHeader">Admin User</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main id="pageContentArea">
+                <div id="dashboardOverviewContainer"></div>
+                <div id="standardSectionContentPlaceholder" class="hidden"></div>
+                <div id="itemDetailViewPlaceholder" class="hidden"></div>
+            </main>
+
+            <footer class="mt-auto p-6 text-center text-sm">
+                <span>© <script>document.write(new Date().getFullYear())</script> InfiniBase. All rights reserved.</span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // ========== Global Variables ==========
+        let currentUser = null;
+        let kbSystemData = { sections: [] };
+        let currentOpenItem = null;
+        let dashboardData = { 
+            activityLog: [], 
+            overallInsights: {}, 
+            growthTrends: [], 
+            weeklyActivity: [], 
+            feedbackKpis: {}, 
+            topUsers: [] 
+        };
+
+        // ========== DOM Elements ==========
+        const sidebar = document.getElementById('sidebar');
+        const navigationMenu = document.getElementById('navigationMenu');
+        const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+        const currentSectionTitleEl = document.getElementById('currentSectionTitle');
+        const breadcrumbsContainer = document.getElementById('breadcrumbs');
+        const pageContentArea = document.getElementById('pageContentArea');
+        const dashboardOverviewContainer = document.getElementById('dashboardOverviewContainer');
+        const standardSectionContentPlaceholder = document.getElementById('standardSectionContentPlaceholder');
+        const itemDetailViewPlaceholder = document.getElementById('itemDetailViewPlaceholder');
+        const userNameDisplayHeader = document.getElementById('userNameDisplayHeader');
+        const userAvatar = document.getElementById('userAvatar');
+        const currentUserRoleSpan = document.getElementById('currentUserRoleSpan');
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        const adminToolbar = document.getElementById('adminToolbar');
+
+        // ========== Utility Functions ==========
+        function escapeHTML(str) {
+            if (typeof str !== 'string' && typeof str !== 'number') return '';
+            const el = document.createElement('div');
+            el.textContent = str;
+            return el.innerHTML;
+        }
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            let iconClass = 'fas fa-info-circle';
+            if (type === 'success') iconClass = 'fas fa-check-circle';
+            else if (type === 'error') iconClass = 'fas fa-times-circle';
+            toast.innerHTML = `<i class="toast-icon ${iconClass}"></i> <span>${escapeHTML(message)}</span>`;
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, duration);
+        }
+
+        function stripHtml(html){
+           if (!html) return "";
+           let tmp = document.createElement("DIV");
+           tmp.innerHTML = html;
+           return tmp.textContent || tmp.innerText || "";
+        }
+
+        function truncateText(text, len) {
+            if (!text || text.length <= len) return text;
+            return text.substring(0, len) + '...';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ========== Data Loading Functions ==========
+        async function loadInitialData() {
+            try {
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Mock user data
+                currentUser = {
+                    id: 1,
+                    name: 'Admin User',
+                    email: 'admin@infnibase.com',
+                    role: 'admin'
+                };
+
+                // Mock knowledge base data
+                kbSystemData.sections = [
+                    {
+                        id: 1,
+                        name: 'Knowledge Base',
+                        slug: 'knowledge-base',
+                        icon: 'fas fa-book',
+                        color: '#6366f1',
+                        items: [
+                            {
+                                id: 1,
+                                title_en: 'Getting Started Guide',
+                                description_en: 'Complete guide to get started with InfiniBase and understand its core features',
+                                content_en: '<h2>Welcome to InfiniBase</h2><p>This is your comprehensive knowledge management solution.</p><h3>Key Features</h3><ul><li>Content Management</li><li>Advanced Search</li><li>Analytics Dashboard</li><li>User Management</li></ul>',
+                                type: 'article',
+                                tags: ['guide', 'getting-started', 'documentation'],
+                                created_at: '2023-10-15T10:30:00Z',
+                                last_modified: '2023-10-20T14:45:00Z',
+                                slug: 'getting-started-guide',
+                                views: 156,
+                                rating: 4.8
+                            },
+                            {
+                                id: 2,
+                                title_en: 'Troubleshooting Common Issues',
+                                description_en: 'Comprehensive solutions for frequently encountered problems and error resolution',
+                                content_en: '<h2>Common Issues & Solutions</h2><p>Here are solutions to common problems you might encounter...</p><h3>Performance Issues</h3><p>Check system requirements and clear cache.</p>',
+                                type: 'case',
+                                tags: ['troubleshooting', 'help', 'support'],
+                                created_at: '2023-10-10T09:15:00Z',
+                                last_modified: '2023-10-18T16:20:00Z',
+                                slug: 'troubleshooting-common-issues',
+                                views: 89,
+                                rating: 4.5
+                            },
+                            {
+                                id: 3,
+                                title_en: 'API Integration Guide',
+                                description_en: 'Complete documentation for integrating with InfiniBase REST API',
+                                content_en: '<h2>API Integration</h2><p>Learn how to integrate your applications with our API.</p>',
+                                type: 'guide',
+                                tags: ['api', 'integration', 'development'],
+                                created_at: '2023-10-08T11:00:00Z',
+                                last_modified: '2023-10-08T11:00:00Z',
+                                slug: 'api-integration-guide',
+                                views: 67,
+                                rating: 4.7
+                            }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: 'Policies & Procedures',
+                        slug: 'policies-procedures',
+                        icon: 'fas fa-gavel',
+                        color: '#10b981',
+                        items: [
+                            {
+                                id: 4,
+                                title_en: 'Data Security Policy',
+                                description_en: 'Company data security guidelines, procedures, and compliance requirements',
+                                content_en: '<h2>Data Security Policy</h2><p>All employees must follow these security guidelines to protect company data.</p><h3>Password Requirements</h3><ul><li>Minimum 12 characters</li><li>Include special characters</li><li>Change every 90 days</li></ul>',
+                                type: 'policy',
+                                tags: ['security', 'policy', 'compliance'],
+                                created_at: '2023-10-05T08:00:00Z',
+                                last_modified: '2023-10-05T08:00:00Z',
+                                slug: 'data-security-policy',
+                                views: 234,
+                                rating: 4.9
+                            },
+                            {
+                                id: 5,
+                                title_en: 'Code of Conduct',
+                                description_en: 'Employee behavior guidelines and professional conduct expectations',
+                                content_en: '<h2>Code of Conduct</h2><p>Professional behavior expectations for all team members.</p>',
+                                type: 'policy',
+                                tags: ['conduct', 'hr', 'policy'],
+                                created_at: '2023-10-03T14:30:00Z',
+                                last_modified: '2023-10-10T09:45:00Z',
+                                slug: 'code-of-conduct',
+                                views: 178,
+                                rating: 4.6
+                            }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name: 'Technical Documentation',
+                        slug: 'technical-docs',
+                        icon: 'fas fa-code',
+                        color: '#f59e0b',
+                        items: [
+                            {
+                                id: 6,
+                                title_en: 'System Architecture',
+                                description_en: 'Detailed overview of InfiniBase system architecture and components',
+                                content_en: '<h2>System Architecture</h2><p>Technical overview of how InfiniBase is built and operates.</p>',
+                                type: 'article',
+                                tags: ['architecture', 'technical', 'documentation'],
+                                created_at: '2023-10-12T13:20:00Z',
+                                last_modified: '2023-10-19T15:10:00Z',
+                                slug: 'system-architecture',
+                                views: 92,
+                                rating: 4.4
+                            }
+                        ]
+                    }
+                ];
+
+                // Mock dashboard data
+                dashboardData = {
+                    activityLog: [
+                        {
+                            user_name: 'John Doe',
+                            action: 'created',
+                            item_title: 'New User Guide',
+                            section: 'Knowledge Base',
+                            activity_time_egypt: '2023-10-25 14:30'
+                        },
+                        {
+                            user_name: 'Jane Smith',
+                            action: 'updated',
+                            item_title: 'Security Policy',
+                            section: 'Policies & Procedures',
+                            activity_time_egypt: '2023-10-25 13:15'
+                        },
+                        {
+                            user_name: 'Admin User',
+                            action: 'viewed',
+                            item_title: 'Troubleshooting Guide',
+                            section: 'Knowledge Base',
+                            activity_time_egypt: '2023-10-25 12:00'
+                        },
+                        {
+                            user_name: 'Mike Johnson',
+                            action: 'commented',
+                            item_title: 'API Integration Guide',
+                            section: 'Knowledge Base',
+                            activity_time_egypt: '2023-10-25 11:45'
+                        },
+                        {
+                            user_name: 'Sarah Wilson',
+                            action: 'created',
+                            item_title: 'New Feature Documentation',
+                            section: 'Technical Documentation',
+                            activity_time_egypt: '2023-10-25 10:30'
+                        },
+                        {
+                            user_name: 'Admin User',
+                            action: 'updated',
+                            item_title: 'Code of Conduct',
+                            section: 'Policies & Procedures',
+                            activity_time_egypt: '2023-10-25 09:15'
+                        }
+                    ],
+                    overallInsights: {
+                        total_articles: 45,
+                        total_views_all: 1247,
+                        active_users_this_week: 24,
+                        avg_feedback_rating: 4.3,
+                        edits_this_week: 12,
+                        new_content_this_week: 8
+                    },
+                    growthTrends: [
+                        { metric: 'articles', percentage_change: 12 },
+                        { metric: 'views', percentage_change: 18 },
+                        { metric: 'users', percentage_change: 8 }
+                    ],
+                    weeklyActivity: [
+                        { activity_date_egypt: '2023-10-19', total_views: 150, active_users: 18 },
+                        { activity_date_egypt: '2023-10-20', total_views: 180, active_users: 20 },
+                        { activity_date_egypt: '2023-10-21', total_views: 120, active_users: 15 },
+                        { activity_date_egypt: '2023-10-22', total_views: 200, active_users: 22 },
+                        { activity_date_egypt: '2023-10-23', total_views: 220, active_users: 24 },
+                        { activity_date_egypt: '2023-10-24', total_views: 190, active_users: 21 },
+                        { activity_date_egypt: '2023-10-25', total_views: 210, active_users: 23 }
+                    ],
+                    feedbackKpis: {
+                        helpful_ratings: 85,
+                        not_helpful_ratings: 15
+                    },
+                    topUsers: [
+                        { user_name: 'Admin User', total_articles_viewed: 45 },
+                        { user_name: 'John Doe', total_articles_viewed: 32 },
+                        { user_name: 'Jane Smith', total_articles_viewed: 28 },
+                        { user_name: 'Mike Johnson', total_articles_viewed: 25 },
+                        { user_name: 'Sarah Wilson', total_articles_viewed: 22 }
+                    ]
+                };
+
+                // Update UI
+                updateUserInfo();
+                populateSidebar();
+                showDashboard();
+                
+                // Hide loading screen
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loadingOverlay').classList.add('hidden');
+                    }, 500);
+                }, 1000);
+                
+                showToast('Welcome back, ' + currentUser.name + '!', 'success');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showToast('Error loading data. Please try again.', 'error');
+            }
+        }
+
+        function updateUserInfo() {
+            userNameDisplayHeader.textContent = currentUser.name;
+            userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+            currentUserRoleSpan.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+        }
+
+        // ========== Sidebar Functions ==========
+        function populateSidebar() {
+            let menuHTML = '';
+            const homeSection = { id: 'home', name: 'Home', icon: 'fas fa-home', color: 'var(--primary-color)', slug: 'home' };
+
+            menuHTML += `<div class="sidebar-section-title">MAIN</div>`;
+            menuHTML += `<a href="#${homeSection.slug}" class="sidebar-link active" data-section-slug="${homeSection.slug}">
+                <i class="${homeSection.icon}" style="color: ${homeSection.color};"></i>${escapeHTML(homeSection.name)}
+            </a>`;
+
+            const sectionsFromDB = kbSystemData.sections;
+            
+            if (sectionsFromDB.length > 0) {
+                menuHTML += `<div class="sidebar-section-title">KNOWLEDGE AREAS</div>`;
+                
+                sectionsFromDB.forEach(section => {
+                    const iconStyle = section.color ? `style="color: ${section.color};"` : '';
+                    menuHTML += `<a href="#${section.slug}" class="sidebar-link" data-section-slug="${section.slug}">
+                        <i class="${section.icon || 'fas fa-folder'}" ${iconStyle}></i>${escapeHTML(section.name)}
+                    </a>`;
+                });
+            }
+            
+            // Add admin sections if user is admin
+            if (currentUser.role === 'admin') {
+                menuHTML += `<div class="sidebar-section-title">ADMINISTRATION</div>`;
+                menuHTML += `<a href="#users" class="sidebar-link" data-section-slug="users">
+                    <i class="fas fa-users"></i>User Management
+                </a>`;
+                menuHTML += `<a href="#reports" class="sidebar-link" data-section-slug="reports">
+                    <i class="fas fa-chart-bar"></i>Reports & Analytics
+                </a>`;
+                menuHTML += `<a href="#settings" class="sidebar-link" data-section-slug="settings">
+                    <i class="fas fa-cog"></i>System Settings
+                </a>`;
+            }
+            
+            // Apply the HTML to the navigation menu
+            if (navigationMenu) {
+                navigationMenu.innerHTML = menuHTML;
+            } else {
+                console.error('Navigation menu element not found!');
+            }
+        }
+
+        function highlightSidebarLink(sectionSlug) {
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.sidebar-link[data-section-slug="${sectionSlug}"]`);
+            if (activeLink) activeLink.classList.add('active');
+        }
+
+        // ========== Dashboard Functions ==========
+        function showDashboard() {
+            dashboardOverviewContainer.classList.remove('hidden');
+            standardSectionContentPlaceholder.classList.add('hidden');
+            itemDetailViewPlaceholder.classList.add('hidden');
+            pageContentArea.classList.add('is-dashboard');
+            currentSectionTitleEl.textContent = 'Dashboard';
+            breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
+            
+            renderDynamicDashboard();
+        }
+
+        function renderDynamicDashboard() {
+            const insights = dashboardData.overallInsights;
+            const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
+            
+            const getGrowthHTML = (metric) => {
+                const trend = growthTrends[metric];
+                if (!trend || trend.percentage_change === null || isNaN(trend.percentage_change)) return '';
+                const isPositive = trend.percentage_change >= 0;
+                const arrow = isPositive ? '↑' : '↓';
+                return `<span class="stat-growth ${isPositive ? 'positive' : 'negative'}">${arrow} ${Math.abs(trend.percentage_change)}%</span>`;
+            };
+            
+            dashboardOverviewContainer.innerHTML = `
+                <div class="dashboard-grid">
+                    <div class="dashboard-stat-card">
+                        <div class="icon-container"><i class="fas fa-newspaper"></i></div>
+                        <div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Total Articles</span></div>
+                        ${getGrowthHTML('articles')}
+                    </div>
+                    <div class="dashboard-stat-card">
+                        <div class="icon-container"><i class="fas fa-eye"></i></div>
+                        <div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>
+                        ${getGrowthHTML('views')}
+                    </div>
+                    <div class="dashboard-stat-card">
+                        <div class="icon-container"><i class="fas fa-users"></i></div>
+                        <div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div>
+                    </div>
+                    <div class="dashboard-stat-card">
+                        <div class="icon-container"><i class="fas fa-star"></i></div>
+                        <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating || 0}</span><span class="stat-label">Avg. Feedback</span></div>
+                    </div>
+                     <div class="dashboard-stat-card">
+                        <div class="icon-container"><i class="fas fa-edit"></i></div>
+                        <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
+                    </div>
+
+                    <div class="chart-container grid-col-span-2">
+                        <h3><i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>Content Activity (Last 7 Days)</h3>
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    <div class="chart-container grid-col-span-2">
+                        <h3><i class="fas fa-thumbs-up" style="margin-right: 0.5rem;"></i>Feedback Analysis</h3>
+                        <canvas id="feedbackChart"></canvas>
+                    </div>
+
+                    <div class="dashboard-table-card grid-col-span-5">
+                        <h3><i class="fas fa-history" style="margin-right: 0.5rem;"></i> Recent Activity</h3>
+                        <div id="recentActivity">
+                            ${dashboardData.activityLog.slice(0, 5).map(log => `
+                                <div class="activity-item">
+                                    <div class="activity-item-content">
+                                        <p>
+                                            <strong>${escapeHTML(log.user_name)}</strong> 
+                                            ${escapeHTML(log.action.replace(/_/g, ' ').toLowerCase())} 
+                                            <em>"${escapeHTML(log.item_title || 'an item')}"</em> 
+                                            in ${escapeHTML(log.section)}
+                                        </p>
+                                        <p class="activity-timestamp">${escapeHTML(log.activity_time_egypt)}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="dashboard-table-card grid-col-span-5">
+                        <h3><i class="fas fa-fire" style="margin-right: 0.5rem;"></i> Popular Content</h3>
+                        <div class="cards-grid">
+                            ${kbSystemData.sections.flatMap(s => s.items)
+                                .sort((a, b) => (b.views || 0) - (a.views || 0))
+                                .slice(0, 4)
+                                .map(item => `
+                                    <div class="card">
+                                        <div class="card-header-icon">
+                                            <div class="card-icon-container">
+                                                <i class="fas fa-${item.type === 'case' ? 'briefcase' : item.type === 'policy' ? 'gavel' : 'file-alt'}"></i>
+                                            </div>
+                                            <div class="card-title-group">
+                                                <h3>${escapeHTML(item.title_en)}</h3>
+                                                <div class="updated-badge">${item.views || 0} views</div>
+                                            </div>
+                                        </div>
+                                        <div class="card-tags">
+                                            ${(item.tags || []).slice(0, 2).map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}
+                                        </div>
+                                        <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
+                                        <div class="card-actions">
+                                            <a href="#${kbSystemData.sections.find(s => s.items.includes(item))?.slug || 'knowledge-base'}/${item.slug}" class="button button-secondary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            
+            renderDashboardCharts(dashboardData);
+        }
+
+        function renderDashboardCharts(data) {
+            const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+            const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+
+            // Weekly Activity Chart
+            const activityCtx = document.getElementById('activityChart')?.getContext('2d');
+            if (activityCtx && data.weeklyActivity.length > 0) {
+                const labels = data.weeklyActivity.map(d => {
+                    const date = new Date(d.activity_date_egypt);
+                    return date.toLocaleDateString('en-US', { weekday: 'short' });
+                });
+                
+                new Chart(activityCtx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                          {
+                            label: 'Total Views',
+                            data: data.weeklyActivity.map(d => d.total_views),
+                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 2,
+                            borderRadius: 8,
+                          },
+                          {
+                            label: 'Active Users',
+                            data: data.weeklyActivity.map(d => d.active_users),
+                            type: 'line',
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#22c55e',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            tension: 0.4,
+                            fill: true,
+                          }
+                        ]
+                    },
+                    options: {
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: {
+                                labels: {
+                                    color: legendColor,
+                                    font: { size: 12, weight: '600' }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: gridColor,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: ticksColor,
+                                    font: { size: 11 }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: gridColor,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: ticksColor,
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Helpful Feedback Ratio Chart
+            const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
+            if (feedbackCtx && data.feedbackKpis) {
+                const helpful = data.feedbackKpis.helpful_ratings || 0;
+                const notHelpful = data.feedbackKpis.not_helpful_ratings || 0;
+                
+                new Chart(feedbackCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Helpful', 'Not Helpful'],
+                        datasets: [{
+                            data: [helpful, notHelpful],
+                            backgroundColor: [
+                                '#22c55e',
+                                '#ef4444'
+                            ],
+                            borderColor: [
+                                '#16a34a',
+                                '#dc2626'
+                            ],
+                            borderWidth: 3,
+                            hoverOffset: 15,
+                        }]
+                    },
+                    options: {
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: { 
+                                position: 'bottom', 
+                                labels: { 
+                                    color: legendColor, 
+                                    font: { size: 12, weight: '600' },
+                                    padding: 20
+                                } 
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((context.parsed / total) * 100);
+                                        return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ========== Section Display Functions ==========
+        function displaySectionContent(sectionSlug) {
+            pageContentArea.classList.remove('is-dashboard');
+            currentOpenItem = null;
+            dashboardOverviewContainer.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.remove('hidden');
+            itemDetailViewPlaceholder.classList.add('hidden');
+
+            const sectionData = kbSystemData.sections.find(s => s.slug === sectionSlug);
+            if (!sectionData) {
+                standardSectionContentPlaceholder.innerHTML = `<div class="card" style="text-align: center;"><h2 style="color: #ef4444;">Section not found: ${escapeHTML(sectionSlug)}</h2></div>`;
+                currentSectionTitleEl.textContent = 'Not Found';
+                return;
+            }
+
+            currentSectionTitleEl.textContent = sectionData.name;
+            breadcrumbsContainer.innerHTML = `<a href="#home">Home</a> <span style="margin: 0 5px;">›</span> <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(sectionData.name)}</span>`;
+
+            let contentHTML = `<div style="margin-bottom: 2rem;">`;
+            
+            // Add content button for admins
+            if (currentUser.role === 'admin' && sectionSlug !== 'home') {
+                 contentHTML += `<div style="text-align: left; margin-bottom: 2rem;">
+                    <button class="button" onclick="showToast('Add content modal would open here', 'info')">
+                        <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
+                    </button>
+                </div>`;
+            }
+
+            const itemsToDisplay = (sectionData.items || []);
+            
+            if (itemsToDisplay.length > 0) {
+                contentHTML += `<div class="cards-grid">`;
+                itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
+                contentHTML += `</div>`;
+            } else {
+                 contentHTML += `<div class="card" style="text-align: center; padding: 3rem 2rem; min-height: auto;">
+                    <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--text-color-muted); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-color-muted); margin-bottom: 1rem;">No content in this section yet</h3>
+                    <p style="color: var(--text-color-muted); margin-bottom: 2rem;">Start by adding the first piece of content to this section</p>
+                    <button class="button" onclick="showToast('Add content functionality', 'info')">
+                        <i class="fas fa-plus"></i> Add New Content
+                    </button>
+                </div>`;
+            }
+            contentHTML += `</div>`;
+            standardSectionContentPlaceholder.innerHTML = contentHTML;
+        }
+
+        function renderItemCard(item, sectionData) {
+            let itemIconClass = 'fas fa-file-alt';
+            if (item.type === 'article') { itemIconClass = 'fas fa-newspaper'; }
+            else if (item.type === 'case') { itemIconClass = 'fas fa-briefcase'; }
+            else if (item.type === 'policy') { itemIconClass = 'fas fa-gavel'; }
+            else if (item.type === 'guide') { itemIconClass = 'fas fa-book-open'; }
+
+            const isAdmin = currentUser.role === 'admin';
+
+            const viewButton = `<a href="#${sectionData.slug}/${item.slug}" class="button button-secondary" title="View Item" onclick="viewItem('${sectionData.slug}', '${item.slug}')"><i class="fas fa-eye"></i> View</a>`;
+            const editButton = isAdmin ? `<button class="button button-secondary" onclick="editItem('${sectionData.id}', '${item.id}')" title="Edit Item"><i class="fas fa-edit"></i> Edit</button>` : '';
+            const deleteButton = isAdmin ? `<button class="button button-danger" onclick="deleteItem('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete Item"><i class="fas fa-trash-alt"></i></button>` : '';
+            
+            const tagsHTML = item.tags && item.tags.length > 0
+                ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
+                : '';
+            
+            let updatedBadgeHTML = '';
+            const createdAt = new Date(item.created_at);
+            const lastModified = new Date(item.last_modified || item.created_at);
+            if (lastModified.getTime() > createdAt.getTime() + 60000) {
+                updatedBadgeHTML = `<div class="updated-badge">Updated ${formatDate(item.last_modified)}</div>`;
+            }
+
+            return `
+                <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}">
+                    <div class="card-header-icon">
+                        <div class="card-icon-container">
+                            <i class="${itemIconClass}"></i>
+                        </div>
+                        <div class="card-title-group">
+                            <h3>${escapeHTML(item.title_en)}</h3>
+                            ${updatedBadgeHTML}
+                        </div>
+                    </div>
+                    ${tagsHTML}
+                    <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
+                    <div class="card-actions">
+                        ${viewButton}
+                        ${editButton}
+                        ${deleteButton}
+                    </div>
+                </div>`;
+        }
+
+        // ========== Navigation Handling ==========
+        function handleNavigation() {
+            if (!currentUser) return;
+            const hash = window.location.hash.substring(1) || 'home';
+            const [sectionSlug, itemSlug] = hash.split('/');
+            
+            highlightSidebarLink(sectionSlug);
+
+            if (!itemSlug) {
+                itemDetailViewPlaceholder.classList.add('hidden');
+                currentOpenItem = null;
+            }
+
+            if (sectionSlug === 'home') {
+                 showDashboard();
+            } else if (itemSlug) {
+                 displayItemDetail(sectionSlug, itemSlug);
+            } else if (sectionSlug) {
+                 displaySectionContent(sectionSlug);
+            } else {
+                 showDashboard();
+            }
+            document.getElementById('contentWrapper')?.scrollTo(0,0);
+        }
+
+        function displayItemDetail(sectionSlug, itemSlug) {
+            const section = kbSystemData.sections.find(s => s.slug === sectionSlug);
+            if (!section) {
+                showToast('Section not found', 'error');
+                return;
+            }
+
+            const item = section.items.find(i => i.slug === itemSlug);
+            if (!item) {
+                showToast('Item not found', 'error');
+                return;
+            }
+
+            currentOpenItem = { sectionId: section.id, itemId: item.id, title: item.title_en, type: item.type };
+            dashboardOverviewContainer.classList.add('hidden');
+            standardSectionContentPlaceholder.classList.add('hidden');
+            itemDetailViewPlaceholder.classList.remove('hidden');
+            pageContentArea.classList.remove('is-dashboard');
+            
+            breadcrumbsContainer.innerHTML = `
+                <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
+                <a href="#${section.slug}">${escapeHTML(section.name)}</a> <span style="margin: 0 5px;">›</span>
+                <span style="font-weight: bold; color: var(--primary-color);">${escapeHTML(item.title_en)}</span>`;
+            currentSectionTitleEl.textContent = item.title_en;
+
+            let itemIconClass = 'fas fa-file-alt';
+            if (item.type === 'case') itemIconClass = 'fas fa-briefcase';
+            else if (item.type === 'article') itemIconClass = 'fas fa-newspaper';
+            else if (item.type === 'guide') itemIconClass = 'fas fa-book-open';
+            else if (item.type === 'policy') itemIconClass = 'fas fa-gavel';
+
+            const detailHTML = `
+                <div class="card">
+                    <div class="card-header-icon">
+                        <div class="card-icon-container">
+                            <i class="${itemIconClass}"></i>
+                        </div>
+                        <div class="card-title-group">
+                            <h2>${escapeHTML(item.title_en)}</h2>
+                            <div class="updated-badge">Last updated: ${formatDate(item.last_modified)}</div>
+                        </div>
+                    </div>
+                    ${item.tags?.length ? `<div class="card-tags" style="margin-bottom: 1.5rem;">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+                    <div style="margin: 1.5rem 0;">
+                        <p style="font-size: 1.1rem; color: var(--text-color-subtle); font-style: italic;">${escapeHTML(stripHtml(item.description_en))}</p>
+                    </div>
+                    <hr style="border: none; height: 1px; background: var(--border-color); margin: 2rem 0;">
+                    <div class="kb-content">
+                        ${item.content_en || '<p style="text-align: center; color: var(--text-color-muted); padding: 2rem;">No detailed content available for this item.</p>'}
+                    </div>
+                    <div class="card-actions">
+                        <button class="button button-secondary" onclick="window.location.hash = '#${section.slug}'">
+                            <i class="fas fa-arrow-left"></i> Back to Section
+                        </button>
+                        ${currentUser.role === 'admin' ? `
+                            <button class="button button-secondary" onclick="editItem('${section.id}', '${item.id}')">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="button button-danger" onclick="deleteItem('${section.id}', '${item.id}', '${escapeHTML(item.title_en)}')">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        ` : ''}
+                        <button class="button" onclick="showToast('PDF export functionality', 'info')">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            itemDetailViewPlaceholder.innerHTML = detailHTML;
+        }
+
+        // ========== Item Management Functions ==========
+        function viewItem(sectionSlug, itemSlug) {
+            window.location.hash = `#${sectionSlug}/${itemSlug}`;
+        }
+
+        function editItem(sectionId, itemId) {
+            showToast(`Edit functionality for item ${itemId} in section ${sectionId} would open here`, 'info');
+        }
+
+        function deleteItem(sectionId, itemId, itemTitle) {
+            if (confirm(`Are you sure you want to delete "${itemTitle}"? This action cannot be undone.`)) {
+                showToast(`"${itemTitle}" has been deleted successfully`, 'success');
+                // In real implementation, this would call an API to delete the item
+                setTimeout(() => {
+                    handleNavigation();
+                }, 1000);
+            }
+        }
+
+        // ========== Search Functionality ==========
+        function handleSearch(e) {
+            const query = e.target.value.trim().toLowerCase();
+            searchResultsContainer.innerHTML = '';
+
+            if (query.length < 2) {
+                searchResultsContainer.classList.add('hidden');
+                return;
+            }
+            
+            // Search through all items
+            const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
+            const results = allItems.filter(i => 
+                i.title_en.toLowerCase().includes(query) || 
+                stripHtml(i.description_en).toLowerCase().includes(query) ||
+                (i.tags && i.tags.some(tag => tag.toLowerCase().includes(query)))
+            );
+            
+            if (results.length > 0) {
+                results.slice(0, 7).forEach(r => {
+                    const linkEl = document.createElement('a');
+                    linkEl.href = `#${r.sectionSlug}/${r.slug}`;
+                    linkEl.innerHTML = `
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">${escapeHTML(r.title_en)}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-color-muted);">
+                            ${escapeHTML(truncateText(stripHtml(r.description_en), 80))}
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--primary-color); margin-top: 0.25rem;">
+                            ${escapeHTML(r.sectionName)}
+                        </div>
+                    `;
+                    linkEl.addEventListener('click', () => {
+                        searchResultsContainer.classList.add('hidden');
+                        globalSearchInput.value = '';
+                    });
+                    searchResultsContainer.appendChild(linkEl);
+                });
+            } else {
+                searchResultsContainer.innerHTML = `
+                    <div style="padding: 1.5rem; text-align: center; color: var(--text-color-muted);">
+                        <i class="fas fa-search" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                        <div>No results found for "${escapeHTML(query)}"</div>
+                    </div>
+                `;
+            }
+            searchResultsContainer.classList.remove('hidden');
+        }
+
+        // ========== Event Listeners ==========
+        function setupEventListeners() {
+            // Sidebar toggle
+            mobileSidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('closed');
+            });
+            
+            // Search functionality
+            globalSearchInput.addEventListener('input', handleSearch);
+            
+            // Navigation
+            window.addEventListener('hashchange', handleNavigation);
+            
+            // Close search results when clicking outside
+            document.addEventListener('click', e => {
+                if (!globalSearchInput.contains(e.target) && !searchResultsContainer.contains(e.target)) {
+                    searchResultsContainer.classList.add('hidden');
+                }
+            });
+            
+            // Sidebar link clicks
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.sidebar-link')) {
+                    const link = e.target.closest('.sidebar-link');
+                    const sectionSlug = link.getAttribute('data-section-slug');
+                    
+                    if (sectionSlug && window.innerWidth < 768) {
+                        sidebar.classList.add('closed');
+                    }
+                }
+            });
+            
+            // Logout button
+            document.getElementById('logoutButton').addEventListener('click', () => {
+                if (confirm('Are you sure you want to logout?')) {
+                    showToast('Logging out...', 'info');
+                    setTimeout(() => {
+                        showToast('Logged out successfully', 'success');
+                        // In a real app, this would redirect to login page
+                    }, 1500);
+                }
+            });
+
+            // Admin toolbar links
+            document.querySelectorAll('.admin-toolbar a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('.admin-toolbar a').forEach(a => a.classList.remove('active'));
+                    this.classList.add('active');
+                    showToast(`Navigating to ${this.textContent}`, 'info');
+                });
+            });
+        }
+
+        // ========== Initialize Application ==========
+        function initializeApp() {
+            setupEventListeners();
+            loadInitialData();
+            handleNavigation();
+        }
+
+        // Start the application when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Make functions globally available for onclick handlers
+        window.viewItem = viewItem;
+        window.editItem = editItem;
+        window.deleteItem = deleteItem;
+        window.showToast = showToast;
+    </script>
+</body>
+</html>
