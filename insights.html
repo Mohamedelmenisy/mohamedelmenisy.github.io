@@ -299,7 +299,7 @@
       text-align: left; 
       white-space: nowrap; 
     }
-
+    
     td:nth-child(2) { /* Description Column */
       white-space: normal;
       max-width: 300px;
@@ -703,13 +703,10 @@
     }
     
     function escapeHtml(unsafe) {
-      if (unsafe === null || unsafe === undefined) return '';
-      // Truncate long descriptions for display
-      const text = String(unsafe);
-      if (text.length > 70) {
-        return text.substring(0, 70).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]) + '...';
-      }
-      return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+        if (unsafe === null || unsafe === undefined) return '';
+        const text = String(unsafe);
+        // Truncate only for the description field, handled in the rendering function
+        return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
     }
     
     function formatToEgyptTime(dateString) {
@@ -741,7 +738,8 @@
         const articleStats = document.getElementById('articleStats');
         const totalArticles = filteredInsights.articles.length;
         const totalArticleViews = filteredInsights.articles.reduce((sum, a) => sum + (a.total_views || 0), 0);
-        const avgArticleRating = filteredInsights.articles.reduce((sum, a) => sum + (a.avg_rating || 0), 0) / (totalArticles || 1);
+        const articlesWithRatings = filteredInsights.articles.filter(a => a.avg_rating != null);
+        const avgArticleRating = articlesWithRatings.reduce((sum, a) => sum + (a.avg_rating || 0), 0) / (articlesWithRatings.length || 1);
         
         articleStats.innerHTML = `
             <div class="stat-badge"><i class="fas fa-file-alt"></i> ${totalArticles} Articles</div>
@@ -765,7 +763,7 @@
         const totalSectionViews = filteredInsights.sections.reduce((sum, s) => sum + (s.total_views || 0), 0);
         
         sectionStats.innerHTML = `
-            <div class="stat-badge"><i class="fas fa-folder"></i> ${totalSections} Sections</div>
+            <div class="stat-badge"><i class="fas fa-folder"></i> ${totalSections} Categories</div>
             <div class="stat-badge"><i class="fas fa-eye"></i> ${totalSectionViews} Total Views</div>
         `;
     }
@@ -898,8 +896,8 @@
             `).join('');
         } else { // sections
             tableHtml = paginatedData.map(item => `
-                <tr class="${!item.section_name ? 'unassigned-row' : ''}">
-                    <td class="${!item.section_name ? 'unassigned' : ''}">${escapeHtml(item.section_name || 'Unassigned')}</td>
+                <tr>
+                    <td>${escapeHtml(item.section_name)}</td>
                     <td style="text-align: center;">${item.total_articles}</td>
                     <td style="text-align: center;">${item.total_views}</td>
                     <td style="text-align: center;">${item.average_rating ? item.average_rating.toFixed(2) : 'N/A'}</td>
@@ -942,16 +940,16 @@
     }
 
     function renderCharts() {
-        // Activity by Section Chart
+        // Activity by Category Chart
         if (activityBySectionChart) activityBySectionChart.destroy();
-        const sectionLabels = allInsights.sections.map(s => s.section_name || 'Unassigned');
-        const sectionViews = allInsights.sections.map(s => s.total_views);
+        const categoryLabels = allInsights.sections.map(s => s.section_name || 'Uncategorized');
+        const categoryViews = allInsights.sections.map(s => s.total_views);
         const sectionCtx = document.getElementById('activityBySectionChart').getContext('2d');
         activityBySectionChart = createChart(
             sectionCtx, 
             'doughnut', 
-            sectionLabels, 
-            sectionViews, 
+            categoryLabels, 
+            categoryViews, 
             'Total Views', 
             ['#6366F1', '#22C55E', '#FBBF24', '#EC4899', '#38BDF8', '#8B5CF6']
         );
@@ -1038,7 +1036,7 @@
             {key: 'avg_feedback_rating'}, {key: 'last_activity_egypt', formatter: formatToEgyptTime}
         ], filteredInsights.users);
         csvContent += generateCsvSection("Section Performance", [
-            {key: 'section_name'}, {key: 'total_articles'}, {key: 'total_views'}, {key: 'average_rating'}, 
+            {key: 'section_name', label: 'Category Name'}, {key: 'total_articles'}, {key: 'total_views'}, {key: 'average_rating'}, 
             {key: 'total_feedbacks'}, {key: 'last_activity_egypt', formatter: formatToEgyptTime}
         ], filteredInsights.sections);
         
@@ -1063,25 +1061,76 @@
         });
     }
 
+    /**
+     * Aggregates article performance data by category_title.
+     * @param {Array} articles - Data from v_article_insights.
+     * @returns {Array} - Aggregated data for each category.
+     */
+    function calculateCategoryPerformance(articles) {
+        const categories = {};
+
+        articles.forEach(article => {
+            const categoryName = article.category_title || 'Uncategorized'; // Fallback
+
+            if (!categories[categoryName]) {
+                categories[categoryName] = {
+                    section_name: categoryName, // Keep key name for compatibility
+                    total_articles: 0,
+                    total_views: 0,
+                    total_feedbacks: 0,
+                    last_activity_egypt: null,
+                    rating_sum: 0,
+                    rating_count: 0,
+                };
+            }
+
+            const category = categories[categoryName];
+            category.total_articles += 1;
+            category.total_views += article.total_views || 0;
+            category.total_feedbacks += article.total_feedbacks || 0;
+
+            if (article.avg_rating != null) {
+                category.rating_sum += article.avg_rating;
+                category.rating_count += 1;
+            }
+
+            const articleDate = article.last_view_egypt ? new Date(article.last_view_egypt) : null;
+            const lastDate = category.last_activity_egypt ? new Date(category.last_activity_egypt) : null;
+
+            if (articleDate && (!lastDate || articleDate > lastDate)) {
+                category.last_activity_egypt = article.last_view_egypt;
+            }
+        });
+
+        // Finalize calculations and convert to an array
+        return Object.values(categories).map(category => {
+            category.average_rating = category.rating_count > 0 ? (category.rating_sum / category.rating_count) : null;
+            delete category.rating_sum;
+            delete category.rating_count;
+            return category;
+        });
+    }
+
     async function fetchData() {
       showSpinner(true);
       try {
-        const [articles, users, sections, overall] = await Promise.all([
-            supabase.from('v_article_insights').select('*'),
+        const [articles, users, overall] = await Promise.all([
+            supabase.from('v_article_insights').select('*'), // This should contain category_title
             supabase.from('v_user_insights').select('*'),
-            supabase.from('v_section_insights').select('*'),
             supabase.from('v_overall_insights').select('*').single()
         ]);
 
         if (articles.error) throw new Error(`Article Insights: ${articles.error.message}`);
         if (users.error) throw new Error(`User Insights: ${users.error.message}`);
-        if (sections.error) throw new Error(`Section Insights: ${sections.error.message}`);
         if (overall.error) throw new Error(`Overall Insights: ${overall.error.message}`);
+        
+        // NEW: Calculate section performance from article data
+        const calculatedSections = calculateCategoryPerformance(articles.data || []);
         
         allInsights = {
             articles: articles.data || [],
             users: users.data || [],
-            sections: sections.data || [],
+            sections: calculatedSections, // Use the newly calculated data
             overall: overall.data || {}
         };
         
@@ -1100,19 +1149,11 @@
       }
     }
 
-    // Load Knowledge Base Insights (Articles + Categories)
     async function loadKnowledgeBaseInsights() {
         try {
             const { data, error } = await supabase
                 .from('v_articles_detailed')
-                .select(`
-                    article_id,
-                    article_title,
-                    article_description,
-                    created_at_egypt,
-                    sub_category_title,
-                    category_title
-                `)
+                .select('article_id, article_title, article_description, created_at_egypt, sub_category_title, category_title')
                 .order('created_at_egypt', { ascending: false })
                 .limit(50);
 
@@ -1129,15 +1170,19 @@
                 return;
             }
 
-            const rows = data.map(row => `
-                <tr>
-                    <td>${escapeHtml(row.article_title)}</td>
-                    <td>${escapeHtml(row.article_description)}</td>
-                    <td>${escapeHtml(row.sub_category_title)}</td>
-                    <td>${escapeHtml(row.category_title)}</td>
-                    <td>${escapeHtml(row.created_at_egypt)}</td>
-                </tr>
-            `).join('');
+            const rows = data.map(row => {
+                const description = row.article_description || '';
+                const truncatedDesc = description.length > 70 ? description.substring(0, 70) + '...' : description;
+                return `
+                    <tr>
+                        <td>${escapeHtml(row.article_title)}</td>
+                        <td title="${escapeHtml(description)}">${escapeHtml(truncatedDesc)}</td>
+                        <td>${escapeHtml(row.sub_category_title)}</td>
+                        <td>${escapeHtml(row.category_title)}</td>
+                        <td>${escapeHtml(row.created_at_egypt)}</td>
+                    </tr>
+                `;
+            }).join('');
 
             document.getElementById('kbInsightsTable').innerHTML = rows;
 
@@ -1158,7 +1203,7 @@
         
         document.getElementById('dashboard').style.visibility = 'visible';
         await fetchData();
-        await loadKnowledgeBaseInsights(); // Load the new KB data
+        await loadKnowledgeBaseInsights(); 
 
         supabase.channel('public-insights-realtime')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => fetchData())
