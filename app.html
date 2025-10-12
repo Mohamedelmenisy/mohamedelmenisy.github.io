@@ -2484,7 +2484,7 @@
                 <div class="dashboard-stat-card"><div class="icon-container"><i class="fas fa-edit"></i></div><div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div></div>
                 <div class="chart-container grid-col-span-2"><canvas id="activityChart"></canvas></div>
                 <div class="chart-container grid-col-span-2" style="max-width: 500px; margin: auto;"><canvas id="feedbackChart"></canvas></div>
-                <div class="dashboard-table-card grid-col-span-5"><h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Activity</h3><div id="recentActivity"></div><div class="pagination-controls-activity"><span id="activityPageInfo"></span><button id="prevActivityBtn" class="button-secondary"><i class="fas fa-arrow-left"></i></button><button id="nextActivityBtn" class="button-secondary"><i class="fas fa-arrow-right"></i></button></div></div>
+<div class="dashboard-table-card grid-col-span-5"><h3><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Recent Activity</h3><div id="recentActivity"></div><div class="pagination-controls-activity"><span id="activityPageInfo"></span><button id="prevActivityBtn" class="button-secondary"><i class="fas fa-arrow-left"></i></button><button id="nextActivityBtn" class="button-secondary"><i class="fas fa-arrow-right"></i></button></div></div>
             </div>`;
         
         renderDashboardCharts(dashboardData);
@@ -2952,10 +2952,9 @@
                 const commentTextEl = document.getElementById('newCommentText');
                 if (!commentTextEl.value.trim()) { showToast('Please enter a note.', 'error'); return; }
                 const { data: newComment, error } = await addComment(itemData.id, commentTextEl.value.trim(), currentUser);
-                if (error) { showToast('Failed to post note.', 'error'); return; }
+                 if (error) { showToast('Failed to post note.', 'error'); return; }
 
                 await logActivity(currentUser, itemData.id, itemData.type, 'commented', { commentId: newComment.id });
-                // Let realtime handle the update
                 commentTextEl.value = '';
             } else if (e.target.id === 'editItemBtn') {
                 openAddContentModal(itemData.sub_category_id, itemData);
@@ -2989,6 +2988,10 @@
         supabase.channel('public:cases').on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender).subscribe();
         supabase.channel('public:kb_comments').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_comments' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) renderComments(currentOpenItem.itemId); }).subscribe();
         supabase.channel('public:activity_log_and_feedback').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) displayItemStats(currentOpenItem.itemId); }).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kb_feedback' }, payload => { if (currentOpenItem && payload.new.item_id === currentOpenItem.itemId) displayItemStats(currentOpenItem.itemId); }).subscribe();
+
+        // ========== 3. إضافة سطرين لإجبار الصفحة على الظهور ==========
+        document.querySelector('.container-fluid').style.visibility = 'visible';
+        document.querySelector('.container-fluid').style.opacity = '1';
     }
 
     window.openEditModal = openAddContentModal;
