@@ -479,11 +479,12 @@
 
 <div id="accessDeniedModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 420px; text-align: center; padding: 2rem 2.5rem;">
-        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Restricted 🚫</h2>
+        <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i class="fas fa-ban"></i></div>
+        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Restricted</h2>
         <p style="color: var(--text-color-muted); margin-bottom: 2rem; font-size: 1rem;">
             This section is available for Admins and Managers only.
         </p>
-        <button id="accessDeniedOkayBtn" class="button" style="width: 100%;">Okay</button>
+        <button class="button" data-close-modal style="width: 100%;">Okay</button>
     </div>
 </div>
 
@@ -527,12 +528,14 @@
     let allEmployees = [], filteredEmployees = [];
     let rolesChart, deptsChart, activityChart, top5Chart = null;
     let currentUser = null;
+    let currentUserRole = null;
     let presenceInterval;
     let currentPage = 1;
     const rowsPerPage = 5;
 
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    const accessDeniedModal = document.getElementById('accessDeniedModal');
     
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
@@ -803,7 +806,15 @@
         updateTableSummary();
     }
     
+    function hasAdminAccess() {
+        return currentUserRole === 'admin' || currentUserRole === 'manager';
+    }
+
     function exportCSV() {
+        if (!hasAdminAccess()) {
+            accessDeniedModal.classList.add('show');
+            return;
+        }
         const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Seen (UTC)'];
         let csv = headers.join(',') + '\r\n';
         allEmployees.forEach(e => csv += [e.name, e.email, e.role, e.department, e.status, e.last_seen].map(v => `"${v}"`).join(',') + '\r\n');
@@ -814,9 +825,14 @@
         showToast('CSV exported successfully', 'success');
     }
 
-    function setupModals() {
+    function setupActionListeners() {
         document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show')));
+        
         document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+            if (!hasAdminAccess()) {
+                accessDeniedModal.classList.add('show');
+                return;
+            }
             document.getElementById('modal-title').textContent = 'Add New Employee';
             document.getElementById('employee-form').reset();
             document.getElementById('employee-id').value = '';
@@ -824,12 +840,22 @@
             document.querySelector('#employee-password').placeholder = 'Required for new user';
             employeeModal.classList.add('show');
         });
+
         document.getElementById('employeesTableBody').addEventListener('click', (e) => {
+            const actionButton = e.target.closest('.edit, .delete');
+            if (!actionButton) return;
+
+            if (!hasAdminAccess()) {
+                accessDeniedModal.classList.add('show');
+                return;
+            }
+
             const row = e.target.closest('tr');
             if (!row) return;
             const employee = allEmployees.find(emp => emp.id === row.dataset.userId);
             if (!employee) return;
-            if (e.target.closest('.edit')) {
+
+            if (actionButton.classList.contains('edit')) {
                 document.getElementById('modal-title').textContent = 'Edit Employee';
                 document.getElementById('employee-id').value = employee.id;
                 document.getElementById('employee-name').value = employee.name;
@@ -841,12 +867,13 @@
                 document.querySelector('#employee-password').placeholder = 'Leave blank to not change';
                 employeeModal.classList.add('show');
             }
-            if (e.target.closest('.delete')) {
+            if (actionButton.classList.contains('delete')) {
                 document.getElementById('delete-confirm-message').textContent = `Delete ${employee.name || employee.email}?`;
                 document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
                 deleteConfirmModal.classList.add('show');
             }
         });
+
         document.getElementById('employee-form').addEventListener('submit', handleFormSubmit);
         document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
     }
@@ -933,43 +960,36 @@
         updateLastUpdateTime();
     }
 
-    async function checkAccess() {
+    async function initializeDashboard() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not logged in');
-
-            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error) throw new Error('Could not verify user role.');
-
-            const userRole = data?.role;
-            const allowedRoles = ['admin', 'manager'];
-
-            if (!userRole || !allowedRoles.includes(userRole)) {
-                document.getElementById('accessDeniedModal').classList.add('show');
+            if (!user) {
+                window.location.href = '/login.html'; // Or show a login required message
                 return;
             }
             
             currentUser = user; 
             
+            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (error) throw new Error('Could not verify user role.');
+
+            currentUserRole = data?.role || 'agent';
+
             await refreshData();
-            setupModals();
+            setupActionListeners();
             await initPresence();
 
             supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
         
         } catch (e) {
-            console.error("Access check failed:", e.message);
-            document.getElementById('accessDeniedModal').classList.add('show');
+            console.error("Initialization failed:", e.message);
+            showToast('Could not load dashboard data.', 'error');
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        checkAccess();
+        initializeDashboard();
         
-        document.getElementById('accessDeniedOkayBtn').addEventListener('click', () => {
-            document.getElementById('accessDeniedModal').classList.remove('show');
-        });
-
         document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
         document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
         document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
