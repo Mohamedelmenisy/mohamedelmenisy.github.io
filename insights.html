@@ -54,8 +54,8 @@ body, html {
 }
 
 .page-wrapper {
-    padding: 2rem;
-    padding-top: calc(var(--header-height) + 2rem);
+    padding: 1.2rem;
+    padding-top: calc(var(--header-height) + 1.2rem);
     min-height: 100vh;
 }
 
@@ -518,16 +518,33 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
     text-align: center;
 }
 
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    display: none; align-items: center; justify-content: center;
+    background-color: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+}
+.modal-overlay.show {
+    display: flex;
+}
+.modal-content {
+    background: var(--bg-color-alt); color: var(--text-color);
+    border-radius: var(--border-radius-lg); padding: 2rem;
+    width: 90%; max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    text-align: center;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
 @media (max-width: 768px) {
     .insights-grid {
         grid-template-columns: 1fr;
     }
     .page-wrapper {
-        padding: 1.5rem;
-        padding-top: calc(var(--header-height) + 1.5rem);
+        padding: 1rem;
+        padding-top: calc(var(--header-height) + 1rem);
     }
     .page-header {
-        padding: 0 1.5rem;
+        padding: 0 1rem;
     }
     .page-header h1 {
         font-size: 1.25rem;
@@ -673,6 +690,17 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
     </div>
 </div>
 
+<div id="accessDeniedModal" class="modal-overlay">
+    <div class="modal-content">
+        <div style="font-size: 3.5rem; margin-bottom: 1rem; line-height: 1;">🚫</div>
+        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Denied</h2>
+        <p style="color: var(--text-color-muted); margin-bottom: 2rem; font-size: 1rem;">
+            This page is restricted to Administrators and Managers only.
+        </p>
+        <button id="accessDeniedOkayBtn" class="button" style="width: 100%;">Okay</button>
+    </div>
+</div>
+
 <footer style="padding: 2.5rem; text-align: center; color: var(--text-color-muted); font-size: 0.9rem;">
     <span>&copy; <script>document.write((new Date).getFullYear())</script> InfiniBase.Elmenisy.</span>
 </footer>
@@ -681,10 +709,6 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-document.addEventListener('DOMContentLoaded', async function() {
-    initializeInsightsDashboard();
-});
 
 let allInsights = { articles: [], users: [], sections: [], overall: {}, feedback: [] };
 let filteredInsights = { articles: [], users: [], sections: [] };
@@ -1248,7 +1272,6 @@ async function loadKnowledgeBaseInsights() {
 }
 
 async function initializeInsightsDashboard() {
-    document.getElementById('dashboard').style.visibility = 'visible';
     await fetchData();
     await loadKnowledgeBaseInsights();
 
@@ -1259,6 +1282,36 @@ async function initializeInsightsDashboard() {
         .subscribe();
 }
 
+async function checkAccess() {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            throw new Error("User not logged in");
+        }
+        
+        const { data: profile, error } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (error) throw error;
+
+        const allowedRoles = ['admin', 'manager'];
+        if (!profile || !allowedRoles.includes(profile.role)) {
+            throw new Error("Access Denied");
+        }
+
+        document.getElementById('dashboard').style.visibility = 'visible';
+        await initializeInsightsDashboard();
+
+    } catch (err) {
+        console.error("Access check failed:", err.message);
+        document.getElementById('accessDeniedModal').classList.add('show');
+    }
+}
+
+
 window.changePage = (tableName, direction) => {
     const totalPages = Math.ceil(filteredInsights[tableName].length / ROWS_PER_PAGE);
     let newPage = paginationState[tableName] + direction;
@@ -1268,15 +1321,24 @@ window.changePage = (tableName, direction) => {
     }
 };
 
-document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
-document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
-document.getElementById('exportPdfBtn').addEventListener('click', () => {
-    showToast("PDF export feature coming soon", false);
+document.addEventListener('DOMContentLoaded', async function() {
+    checkAccess();
+
+    document.getElementById('accessDeniedOkayBtn').addEventListener('click', () => {
+        document.getElementById('accessDeniedModal').classList.remove('show');
+    });
+
+    document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+        showToast("PDF export feature coming soon", false);
+    });
+    if (refreshDataBtn) {
+        refreshDataBtn.addEventListener('click', fetchData);
+    }
 });
-if (refreshDataBtn) {
-    refreshDataBtn.addEventListener('click', fetchData);
-}
+
 </script>
 
 </body>
