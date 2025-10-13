@@ -58,7 +58,7 @@
             --header-height: 70px;
             --sidebar-width: 260px;
 
-            --yes-color: #22c55e; /* Green 500 */
+            --yes-color: #22c5e; /* Green 500 */
             --no-color: #ef4444;   /* Red 500 */
             --rating-color: #fbbf24; /* Amber 400 for ratings */
         }
@@ -156,7 +156,7 @@
             align-items: center;
             padding: 0.75rem;
             border-radius: var(--border-radius);
-            transition: background-color: 0.2s ease, color: 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
             font-weight: 500;
             color: var(--text-color-subtle);
             text-decoration: none;
@@ -254,6 +254,7 @@
         }
         .admin-toolbar a:hover {
             color: var(--text-color);
+            background-color: var(--bg-color-hover);
         }
         .admin-toolbar a.active {
             background-color: var(--bg-color);
@@ -339,9 +340,10 @@
             display: flex;
             flex-direction: column;
             position: relative; /* For action buttons */
+            transform: scale(0.98); /* Slightly smaller cards */
         }
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-5px) scale(1);
             box-shadow: 0 8px 16px rgba(0,0,0,0.15);
             border-color: var(--primary-color);
         }
@@ -421,7 +423,7 @@
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 500;
-            transition: background-color: 0.2s, border-color: 0.2s, color: 0.2s;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -430,6 +432,7 @@
         }
         .button:hover, button:hover {
             background-color: var(--primary-color-hover);
+            transform: translateY(-2px);
         }
         .button-secondary {
             background-color: transparent;
@@ -700,6 +703,8 @@
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
+            max-height: 400px; 
+            overflow-y: auto;
         }
         .activity-log-item {
             display: flex;
@@ -830,6 +835,12 @@
         .restricted-notice p {
             font-size: 1rem;
             line-height: 1.6;
+        }
+        
+        /* ======== Internal Scroll for Tables ======== */
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
         }
 </style>
 
@@ -1071,7 +1082,7 @@
 <div class="header-right-content">
 <div class="admin-toolbar hidden" id="adminToolbar">
     <a href="#home" id="admin-link-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-    <a href="/insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
+    <a href="insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> View Full Insights</a>
     <a href="/employees.html" id="admin-link-employees" class="nav-link"><i class="fas fa-users"></i>Employees</a>
     <a href="/audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
 </div>
@@ -1210,7 +1221,7 @@
     
     async function fetchDashboardData() {
         const results = await Promise.allSettled([
-            supabase.from('v_recent_activity').select('*').limit(50),
+            supabase.from('activity_log_latest').select('user_name, action, item_title, activity_time_egypt').order('activity_time_egypt', { ascending: false }).limit(10),
             supabase.from('v_overall_insights').select('*').single(),
             supabase.from('v_growth_trends').select('*'),
             supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
@@ -1329,7 +1340,7 @@
     }
 
     function formatReadableDate(isoString) {
-        if (!isoString) return 'N/A';
+        if (!isoString) return 'Not Available';
         try {
             return new Date(isoString).toLocaleString('en-EG', {
                 day: '2-digit', month: 'short', year: 'numeric',
@@ -1545,14 +1556,13 @@
 
         let itemsHTML = pageItems.map(log => {
             const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
-            const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
             return `
                 <div class="activity-log-item">
                     <div class="activity-icon">${getIconForAction(log.action)}</div>
                     <div class="activity-details">
-                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
+                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}.
                     </div>
-                    <div class="activity-time">${formatReadableDate(log.timestamp || log.created_at_egypt)}</div>
+                    <div class="activity-time">${formatReadableDate(log.activity_time_egypt)}</div>
                 </div>
             `;
         }).join('');
