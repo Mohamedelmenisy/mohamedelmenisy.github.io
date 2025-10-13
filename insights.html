@@ -54,7 +54,7 @@ body, html {
 }
 
 .page-wrapper {
-    padding: 1.6rem;
+    padding: 1.6rem; /* Reduced padding */
     padding-top: calc(var(--header-height) + 2.2rem);
     min-height: 100vh;
 }
@@ -150,7 +150,6 @@ body, html {
     position: relative;
     overflow: hidden;
     animation: fadeIn 0.6s ease-out forwards;
-    transform: scale(0.97); /* Slightly smaller cards */
 }
 
 .card::before {
@@ -173,7 +172,7 @@ body, html {
 .card:hover {
     box-shadow: 0 12px 45px rgba(0,0,0,0.3);
     border-color: var(--primary-color);
-    transform: translateY(-5px) scale(1);
+    transform: translateY(-5px);
 }
 
 .card-header {
@@ -320,9 +319,9 @@ body, html {
     padding: 1.5rem;
 }
 
-.table-container { 
-    max-height: 400px; 
-    overflow-y: auto; 
+.table-wrap {
+    overflow-x: auto;
+    max-height: 480px; /* Reduced table height */
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     margin-top: 1.5rem;
@@ -567,8 +566,8 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
                 <i class="fas fa-check-circle"></i>
                 <span>Last updated: <span id="lastUpdateTime">Never</span></span>
             </div>
-            <a href="/app (11).html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
-        </div>
+            <button id="refreshDataBtn" class="button button-secondary"><i class="fas fa-sync-alt"></i><span>Refresh</span></button>
+            <a href="/app.html" class="button"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>        </div>
     </header>
 
     <div class="page-wrapper">
@@ -578,12 +577,46 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
         </div>
         <div id="spinner" class="spinner-overlay" style="display:none;"><div class="spinner"></div></div>
 
+        <div class="summary-metrics">
+            <div class="metric-card"><i class="fas fa-file-alt icon"></i><div><div id="metric-total-articles" class="value">-</div><div class="label">Total Articles</div></div></div>
+            <div class="metric-card"><i class="fas fa-eye icon"></i><div><div id="metric-total-views" class="value">-</div><div class="label">Total Views</div></div></div>
+            <div class="metric-card"><i class="fas fa-star-half-alt icon"></i><div><div id="metric-avg-rating" class="value">-</div><div class="label">Average Rating</div></div></div>
+            <div class="metric-card"><i class="fas fa-users icon"></i><div><div id="metric-active-users" class="value">-</div><div class="label">Active Users (Week)</div></div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-filter"></i> Filters</h2>
+            </div>
+            <div class="filters-container">
+                <div class="form-group"><label for="filterDateFrom">From Date</label><input id="filterDateFrom" type="date"></div>
+                <div class="form-group"><label for="filterDateTo">To Date</label><input id="filterDateTo" type="date"></div>
+                <div class="form-group"><label for="filterEmployee">Employee</label><select id="filterEmployee"><option value="">All Employees</option></select></div>
+                <div class="form-group"><label for="filterCase">Case / Article Title</label><input id="filterCase" placeholder="Enter title to search..."></div>
+                <div class="filter-actions">
+                    <button id="applyFiltersBtn" class="button"><i class="fas fa-check"></i> Apply Filters</button>
+                    <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
+                    <div class="export-options">
+                        <button id="exportCsvBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button id="exportPdfBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> PDF Report</button>
+                    </div>
+                </div>
+            </div>
+            <div id="filterSummary" class="table-summary" style="display:none; margin-top:1.5rem;"></div>
+        </div>
+
         <div class="insights-grid">
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-chart-bar"></i>Activity by Category</h2>
                 </div>
                 <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-fire"></i>Top 5 Viewed Articles</h2>
+                </div>
+                <div class="chart-wrapper"><canvas id="topArticlesChart"></canvas></div>
             </div>
              <div class="card">
                 <div class="card-header">
@@ -595,66 +628,64 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
 
         <div class="card">
             <div class="card-header">
-                <h2><i class="fas fa-book-open"></i> Articles Performance Insights</h2>
+                <h2><i class="fas fa-book-open"></i> Knowledge Base Articles</h2>
             </div>
-            <div class="table-container">
+            <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
                             <th>Article Title</th>
                             <th>Description</th>
-                            <th>Category</th>
                             <th>Sub-Category</th>
-                            <th>Created By</th>
-                            <th>Created At</th>
-                            <th>Total Views</th>
-                            <th>Unique Viewers</th>
-                            <th>Last Viewed</th>
-                            <th>Avg Rating</th>
-                            <th>Total Feedbacks</th>
+                            <th>Category</th>
+                            <th>Created At (Egypt Time)</th>
                         </tr>
                     </thead>
-                    <tbody id="articlesInsightsTable"></tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-crown"></i> Top Content Creators</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Creator Name</th>
-                            <th>Total Articles Created</th>
-                            <th>Total Views on Articles</th>
-                        </tr>
-                    </thead>
-                    <tbody id="topPerformersTable"></tbody>
+                    <tbody id="kbInsightsTable"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header">
-                <h2><i class="fas fa-folder-tree"></i> Sections Performance Summary</h2>
+                <h2><i class="fas fa-newspaper"></i> Article Performance</h2>
             </div>
-            <div class="table-container">
+            <div class="quick-stats" id="articleStats"></div>
+            <div class="table-wrap">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Section Title</th>
-                            <th>Total Articles</th>
-                            <th>Total Views</th>
-                            <th>Average Rating</th>
-                            <th>Last Activity</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sectionsSummaryTable"></tbody>
+                    <thead><tr><th>Article Title</th><th>Total Views</th><th>Avg Rating (out of 5)</th><th>Total Feedbacks</th><th>Last Viewed (Egypt Time)</th><th>Created By</th></tr></thead>
+                    <tbody id="articleInsightsTable"></tbody>
                 </table>
             </div>
+            <div class="pagination-controls" id="paginationArticles"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-users"></i> User Engagement</h2>
+            </div>
+            <div class="quick-stats" id="userStats"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>User Name</th><th>Email</th><th>Total Articles Viewed</th><th>Unique Articles Viewed</th><th>Last Activity (Egypt Time)</th></tr></thead>
+                    <tbody id="userInsightsTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationUsers"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-folder-tree"></i> Section Performance</h2>
+            </div>
+            <div class="quick-stats" id="sectionStats"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Category Name</th><th>Total Articles</th><th>Total Views</th><th>Average Rating</th><th>Total Feedbacks</th><th>Last Activity (Egypt Time)</th></tr></thead>
+                    <tbody id="sectionInsightsTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationSections"></div>
         </div>
     </div>
 </div>
@@ -668,11 +699,18 @@ const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+document.addEventListener('DOMContentLoaded', async function() {
+    initializeInsightsDashboard();
+});
+
+let allInsights = { articles: [], users: [], sections: [], overall: {}, feedback: [] };
+let filteredInsights = { articles: [], users: [], sections: [] };
+let paginationState = { articles: 1, users: 1, sections: 1 };
+const ROWS_PER_PAGE = 10;
 const toast = document.getElementById("toast");
 const spinner = document.getElementById("spinner");
-let activityBySectionChart, feedbackAnalysisChart = null;
-
-document.addEventListener('DOMContentLoaded', initializeInsightsDashboard);
+const refreshDataBtn = document.getElementById('refreshDataBtn');
+let activityBySectionChart, topArticlesChart, feedbackAnalysisChart = null;
 
 function showSpinner(show) {
     spinner.style.display = show ? "flex" : "none";
@@ -681,214 +719,577 @@ function showSpinner(show) {
 function showToast(message, isError = true) {
     const toastIcon = toast.querySelector('i');
     const toastMessage = toast.querySelector('span');
+
     toastMessage.textContent = message;
-    toast.style.backgroundColor = isError ? "#ef4444" : "#22c55e";
-    toastIcon.className = isError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
+    if (isError) {
+        toast.style.backgroundColor = "#ef4444";
+        toastIcon.className = 'fas fa-exclamation-circle';
+    } else {
+        toast.style.backgroundColor = "#22c55e";
+        toastIcon.className = 'fas fa-check-circle';
+    }
     toast.classList.add("show");
     setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
 function escapeHtml(str) {
-    if (str === null || str === undefined) return "Not Available";
-    return String(str).replace(/[&<>"']/g, match => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, (match) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
     }[match]));
 }
 
 function formatToEgyptTime(dateString) {
-    if (!dateString) return "Not Available";
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString;
-        return date.toLocaleString('en-EG', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Cairo'
-        });
-    } catch (e) {
-        return dateString;
-    }
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleString('en-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Africa/Cairo'
+    }) + ' (Cairo)';
 }
 
 function updateLastUpdateTime() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit' });
-    document.getElementById("lastUpdateTime").textContent = `${timeString} (Cairo)`;
+    document.getElementById("lastUpdateTime").textContent = now.toLocaleTimeString('en-GB', {
+        timeZone: 'Africa/Cairo',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
     const refreshIndicator = document.getElementById("refreshIndicator");
     refreshIndicator.classList.add("active");
     setTimeout(() => refreshIndicator.classList.remove("active"), 2000);
 }
 
-function renderArticlesTable(data) {
-    const tableBody = document.getElementById("articlesInsightsTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="11" style="text-align:center;">No article data available.</td></tr>`;
-        return;
-    }
-    const html = data.map(row => `
-        <tr>
-            <td>${escapeHtml(row.article_title)}</td>
-            <td title="${escapeHtml(row.article_description)}">${escapeHtml(row.article_description)}</td>
-            <td>${escapeHtml(row.section_title)}</td>
-            <td>${escapeHtml(row.sub_category_name)}</td>
-            <td>${escapeHtml(row.created_by)}</td>
-            <td>${formatToEgyptTime(row.created_at_egypt)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
-            <td style="text-align:center;">${escapeHtml(row.unique_viewers)}</td>
-            <td>${formatToEgyptTime(row.last_viewed_egypt) || 'Not Viewed Yet'}</td>
-            <td style="text-align:center;">${row.avg_rating ? Number(row.avg_rating).toFixed(2) : 'Not Available'}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_feedbacks)}</td>
-        </tr>
-    `).join('');
-    tableBody.innerHTML = html;
+function updateQuickStats() {
+    const articleStats = document.getElementById('articleStats');
+    const totalArticles = filteredInsights.articles.length;
+    const totalViews = filteredInsights.articles.reduce((sum, article) => sum + (article.total_views || 0), 0);
+    const articlesWithRating = filteredInsights.articles.filter(a => a.avg_rating !== null && a.avg_rating > 0);
+    const avgRating = articlesWithRating.reduce((sum, article) => sum + (article.avg_rating || 0), 0) / (articlesWithRating.length || 1);
+    articleStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-file-alt"></i> ${totalArticles} Articles</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalViews} Total Views</div>
+        <div class="stat-badge"><i class="fas fa-star"></i> ${avgRating.toFixed(2)} Avg Rating</div>
+    `;
+
+    const userStats = document.getElementById('userStats');
+    const totalUsers = filteredInsights.users.length;
+    const totalUserViews = filteredInsights.users.reduce((sum, user) => sum + (user.total_articles_viewed || 0), 0);
+    userStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-users"></i> ${totalUsers} Users</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalUserViews} Total Views</div>
+    `;
+
+    const sectionStats = document.getElementById('sectionStats');
+    const totalSections = filteredInsights.sections.length;
+    const totalSectionViews = filteredInsights.sections.reduce((sum, section) => sum + (section.total_views || 0), 0);
+    sectionStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-folder"></i> ${totalSections} Categories</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalSectionViews} Total Views</div>
+    `;
 }
 
-function renderTopPerformers(data) {
-    const tableBody = document.getElementById("topPerformersTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No performer data available.</td></tr>`;
-        return;
-    }
-    const html = data.map(row => `
-        <tr>
-            <td>${escapeHtml(row.created_by)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_articles)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
-        </tr>
-    `).join('');
-    tableBody.innerHTML = html;
-}
+function updateFilterSummary() {
+    const summaryEl = document.getElementById('filterSummary');
+    const fromDate = document.getElementById('filterDateFrom').value;
+    const toDate = document.getElementById('filterDateTo').value;
+    const employee = document.getElementById('filterEmployee').value;
+    const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
 
-function renderSectionsTable(data) {
-    const tableBody = document.getElementById("sectionsSummaryTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No section data available.</td></tr>`;
-        return;
+    const filtersApplied = [];
+    if (fromDate) filtersApplied.push(`From: <strong>${fromDate}</strong>`);
+    if (toDate) filtersApplied.push(`To: <strong>${toDate}</strong>`);
+    if (employee) {
+        const select = document.getElementById('filterEmployee');
+        const selectedText = select.options[select.selectedIndex].text;
+        filtersApplied.push(`Employee: <strong>${selectedText}</strong>`);
     }
-    const html = data.map(row => `
-        <tr>
-            <td>${escapeHtml(row.section_title)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_articles)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
-            <td style="text-align:center;">${row.avg_rating ? Number(row.avg_rating).toFixed(2) : 'Not Available'}</td>
-            <td>${formatToEgyptTime(row.last_activity_egypt)}</td>
-        </tr>
-    `).join('');
-    tableBody.innerHTML = html;
-}
+    if (caseTitle) filtersApplied.push(`Case: <strong>"${caseTitle}"</strong>`);
 
-function renderFeedbackCharts(data) {
-    if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
-    const ctx = document.getElementById('feedbackAnalysisChart').getContext('2d');
-    if (!data || data.length === 0) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.font = "16px Segoe UI";
-        ctx.fillStyle = "grey";
-        ctx.textAlign = "center";
-        ctx.fillText("No feedback data to display.", ctx.canvas.width / 2, ctx.canvas.height / 2);
-        return;
+    if (filtersApplied.length > 0) {
+        summaryEl.innerHTML = `<strong>Active Filters:</strong> ${filtersApplied.join(' &bull; ')}`;
+        summaryEl.style.display = 'block';
+    } else {
+        summaryEl.style.display = 'none';
     }
-    
-    const labels = data.map(f => f.feedback_type || 'N/A');
-    const counts = data.map(f => f.total_feedbacks);
-    const chartColors = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
-    
-    feedbackAnalysisChart = createChart(ctx, 'pie', labels, counts, 'Feedback Distribution', chartColors);
 }
 
 function createChart(ctx, type, labels, data, label, backgroundColors) {
+    if (!ctx) return null;
+
     const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+    const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
     const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
-    return new Chart(ctx, {
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 1200,
+            easing: 'easeInOutQuart'
+        },
+        plugins: {
+            legend: {
+                position: type === 'doughnut' || type === 'pie' ? 'right' : 'top',
+                labels: { color: textColor, font: { size: 14 } }
+            },
+            tooltip: {
+                bodyFont: { size: 14 },
+                titleFont: { size: 16 },
+                backgroundColor: '#111827',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: borderColor,
+                borderWidth: 1
+            }
+        }
+    };
+    
+    let chartConfig = {
         type: type,
         data: {
-            labels,
+            labels: labels,
             datasets: [{
-                label,
-                data,
+                label: label,
+                data: data,
                 backgroundColor: backgroundColors,
                 borderColor: type === 'bar' ? 'transparent' : borderColor,
                 borderWidth: 2,
                 borderRadius: type === 'bar' ? 6 : 0,
             }]
         },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'right', labels: { color: textColor, font: { size: 14 } } },
-                tooltip: {
-                    backgroundColor: '#111827', titleColor: '#fff', bodyColor: '#fff',
-                    borderColor: borderColor, borderWidth: 1
-                }
+        options: commonOptions,
+    };
+
+    if (type === 'bar') {
+        chartConfig.options.scales = {
+            y: {
+                beginAtZero: true,
+                ticks: { color: mutedColor, precision: 0 },
+                grid: { color: borderColor }
+            },
+            x: {
+                ticks: { color: mutedColor },
+                grid: { display: false }
             }
-        }
+        };
+    }
+    
+    return new Chart(ctx, chartConfig);
+}
+
+function renderPaginatedTable(tableName, data, tableBodyId, paginationId) {
+    const currentPage = paginationState[tableName];
+    const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    const endIndex = startIndex + ROWS_PER_PAGE;
+    const paginatedData = data.slice(startIndex, endIndex);
+
+    const tableBody = document.getElementById(tableBodyId);
+    let html;
+
+    if (tableName === 'articles') {
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.article_title)}</td>
+                <td style="text-align: center;">${item.total_views || 0}</td>
+                <td style="text-align: center;">${(item.avg_rating || 0).toFixed(2)}</td>
+                <td style="text-align: center;">${item.total_feedbacks || 0}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_viewed_egypt))}</td>
+                <td>${escapeHtml(item.created_by) || 'N/A'}</td>
+            </tr>
+        `).join('');
+    } else if (tableName === 'users') {
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.user_name)}</td>
+                <td>${escapeHtml(item.user_email)}</td>
+                <td style="text-align: center;">${item.total_articles_viewed || 0}</td>
+                <td style="text-align: center;">${item.unique_articles_viewed || 0}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td>
+            </tr>
+        `).join('');
+    } else { // sections
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.section_name)}</td>
+                <td style="text-align: center;">${item.total_articles}</td>
+                <td style="text-align: center;">${item.total_views}</td>
+                <td style="text-align: center;">${item.average_rating ? item.average_rating.toFixed(2) : 'N/A'}</td>
+                <td style="text-align: center;">${item.total_feedbacks}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td>
+            </tr>
+        `).join('');
+    }
+
+    tableBody.innerHTML = html || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
+
+    document.getElementById(paginationId).innerHTML = `
+        <span>Page ${currentPage} of ${totalPages || 1}</span>
+        <button class="button-secondary" onclick="window.changePage('${tableName}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+        <button class="button-secondary" onclick="window.changePage('${tableName}', 1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+    `;
+}
+
+
+function renderAllTables() {
+    renderPaginatedTable('articles', filteredInsights.articles, 'articleInsightsTable', 'paginationArticles');
+    renderPaginatedTable('users', filteredInsights.users, 'userInsightsTable', 'paginationUsers');
+    renderPaginatedTable('sections', filteredInsights.sections, 'sectionInsightsTable', 'paginationSections');
+    updateQuickStats();
+}
+
+function renderSummaryMetrics(data) {
+    document.getElementById("metric-total-articles").textContent = data.total_articles || 0;
+    document.getElementById("metric-total-views").textContent = data.total_views || 0;
+    document.getElementById("metric-avg-rating").textContent = data.average_rating ? data.average_rating.toFixed(2) : "N/A";
+    document.getElementById("metric-active-users").textContent = data.active_users_week || 0;
+}
+
+function renderCharts() {
+    const chartColors = ["#8b5cf6", "#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#f97316"];
+
+    if (activityBySectionChart) activityBySectionChart.destroy();
+    const sectionLabels = allInsights.sections.map(s => s.section_name || 'Uncategorized');
+    const sectionViews = allInsights.sections.map(s => s.total_views);
+    const activityCtx = document.getElementById('activityBySectionChart').getContext('2d');
+    activityBySectionChart = createChart(activityCtx, 'doughnut', sectionLabels, sectionViews, 'Total Views', chartColors);
+
+    if (topArticlesChart) topArticlesChart.destroy();
+    const topArticles = [...allInsights.articles].sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 5);
+    const articleLabels = topArticles.map(a => a.article_title.length > 35 ? a.article_title.substring(0, 35) + '...' : a.article_title);
+    const articleViews = topArticles.map(a => a.total_views);
+    const topArticlesCtx = document.getElementById('topArticlesChart').getContext('2d');
+    topArticlesChart = createChart(topArticlesCtx, 'bar', articleLabels, articleViews, 'Total Views', chartColors);
+    
+    if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
+    const feedbackLabels = allInsights.feedback.map(f => f.feedback_type || 'N/A');
+    const feedbackCounts = allInsights.feedback.map(f => f.total_feedbacks);
+    const feedbackCtx = document.getElementById('feedbackAnalysisChart').getContext('2d');
+    feedbackAnalysisChart = createChart(feedbackCtx, 'pie', feedbackLabels, feedbackCounts, 'Feedback Distribution', chartColors.slice().reverse());
+}
+
+function applyFilters() {
+    const fromDateStr = document.getElementById('filterDateFrom').value;
+    const toDateStr = document.getElementById('filterDateTo').value;
+    const employeeName = document.getElementById('filterEmployee').value;
+    const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
+
+    const fromDate = fromDateStr ? new Date(fromDateStr) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    const toDate = toDateStr ? new Date(toDateStr) : null;
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+
+    const isDateInRange = (dateStr) => {
+        if (!dateStr) return false;
+        const date = new Date(dateStr);
+        if (fromDate && date < fromDate) return false;
+        if (toDate && date > toDate) return false;
+        return true;
+    };
+
+    filteredInsights.articles = allInsights.articles.filter(article => {
+        const titleMatch = !caseTitle || article.article_title.toLowerCase().includes(caseTitle);
+        const employeeMatch = !employeeName || article.created_by === employeeName;
+        const dateMatch = (!fromDate && !toDate) || isDateInRange(article.last_viewed_egypt) || isDateInRange(article.created_at_egypt);
+        return titleMatch && dateMatch && employeeMatch;
+    });
+
+    filteredInsights.users = allInsights.users.filter(user => {
+        const employeeMatch = !employeeName || user.user_name === employeeName;
+        const dateMatch = (!fromDate && !toDate) || isDateInRange(user.last_activity_egypt);
+        return employeeMatch && dateMatch;
+    });
+
+    filteredInsights.sections = calculateCategoryPerformance(filteredInsights.articles);
+
+    paginationState = { articles: 1, users: 1, sections: 1 };
+    renderAllTables();
+    updateFilterSummary();
+}
+
+function clearFilters() {
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    document.getElementById("filterEmployee").value = "";
+    document.getElementById("filterCase").value = "";
+
+    filteredInsights = JSON.parse(JSON.stringify(allInsights));
+    filteredInsights.sections = calculateCategoryPerformance(allInsights.articles);
+    
+    paginationState = { articles: 1, users: 1, sections: 1 };
+    renderAllTables();
+    updateFilterSummary();
+}
+
+function exportCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    const generateSection = (title, headers, data) => {
+        let section = `${title}\n`;
+        section += headers.map(h => h.label || h.key).join(',') + '\n';
+        data.forEach(item => {
+            const row = headers.map(header => {
+                let value = item[header.key] || '';
+                if (header.formatter) value = header.formatter(value);
+                return `"${String(value).replace(/"/g, '""')}"`;
+            });
+            section += row.join(',') + '\n';
+        });
+        return section + '\n';
+    };
+
+    csvContent += generateSection('Article Performance', [
+        { key: 'article_title' }, { key: 'total_views' }, { key: 'avg_rating' },
+        { key: 'total_feedbacks' }, { key: 'last_viewed_egypt', formatter: formatToEgyptTime }, { key: 'created_by' }
+    ], filteredInsights.articles);
+
+    csvContent += generateSection('User Engagement', [
+        { key: 'user_name' }, { key: 'user_email' }, { key: 'total_articles_viewed' },
+        { key: 'unique_articles_viewed' }, { key: 'last_activity_egypt', formatter: formatToEgyptTime }
+    ], filteredInsights.users);
+
+    csvContent += generateSection('Section Performance', [
+        { key: 'section_name', label: 'Category Name' }, { key: 'total_articles' }, { key: 'total_views' },
+        { key: 'average_rating' }, { key: 'total_feedbacks' }, { key: 'last_activity_egypt', formatter: formatToEgyptTime }
+    ], filteredInsights.sections);
+
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = 'infinibase_insights_report.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("CSV exported successfully", false);
+}
+
+function populateUserFilter(articles, users) {
+    const select = document.getElementById('filterEmployee');
+    select.innerHTML = '<option value="">All Employees</option>';
+    
+    const userNames = new Set();
+    articles.forEach(article => article.created_by && userNames.add(article.created_by));
+    users.forEach(user => user.user_name && userNames.add(user.user_name));
+    
+    const sortedUsers = Array.from(userNames).sort((a, b) => a.localeCompare(b));
+
+    sortedUsers.forEach(userName => {
+        const option = document.createElement('option');
+        option.value = userName;
+        option.textContent = userName;
+        select.appendChild(option);
     });
 }
 
-async function loadArticlesInsights() {
-  const { data, error } = await supabase.from('v_kb_insights').select('*');
-  if (error) {
-      console.error("Error loading Article Insights:", error);
-      showToast(`Error loading articles: ${error.message}`);
-  } else {
-      renderArticlesTable(data);
-  }
+function calculateCategoryPerformance(articles) {
+    const categoryMap = {};
+    articles.forEach(article => {
+        const categoryName = article.section_title || 'Uncategorized';
+        if (!categoryMap[categoryName]) {
+            categoryMap[categoryName] = {
+                section_name: categoryName,
+                total_articles: 0,
+                total_views: 0,
+                total_feedbacks: 0,
+                last_activity_egypt: null,
+                rating_sum: 0,
+                rating_count: 0
+            };
+        }
+        const category = categoryMap[categoryName];
+        category.total_articles += 1;
+        category.total_views += article.total_views || 0;
+        category.total_feedbacks += article.total_feedbacks || 0;
+        if (article.avg_rating !== null && article.total_feedbacks > 0) {
+            category.rating_sum += article.avg_rating * article.total_feedbacks;
+            category.rating_count += article.total_feedbacks;
+        }
+        const articleDate = article.last_viewed_egypt ? new Date(article.last_viewed_egypt) : null;
+        const categoryDate = category.last_activity_egypt ? new Date(category.last_activity_egypt) : null;
+        if (articleDate && (!categoryDate || articleDate > categoryDate)) {
+            category.last_activity_egypt = article.last_viewed_egypt;
+        }
+    });
+
+    return Object.values(categoryMap).map(category => {
+        category.average_rating = category.rating_count > 0 ? category.rating_sum / category.rating_count : null;
+        return category;
+    });
 }
 
-async function loadTopPerformers() {
-  const { data, error } = await supabase.from('v_kb_top_performers').select('*');
-  if (error) {
-      console.error("Error loading Top Performers:", error);
-      showToast(`Error loading performers: ${error.message}`);
-  } else {
-      renderTopPerformers(data);
-  }
+function processUserLogs(logs) {
+    const userMap = {};
+    logs.forEach(log => {
+        if (!log.user_name) return;
+        if (!userMap[log.user_name]) {
+            userMap[log.user_name] = {
+                user_name: log.user_name,
+                user_email: log.user_email,
+                total_articles_viewed: 0,
+                unique_articles: new Set(),
+                last_activity_egypt: null
+            };
+        }
+        const user = userMap[log.user_name];
+        user.total_articles_viewed += 1;
+        user.unique_articles.add(log.article_id);
+
+        const logDate = new Date(log.viewed_at_egypt);
+        const userDate = user.last_activity_egypt ? new Date(user.last_activity_egypt) : null;
+        if (!userDate || logDate > userDate) {
+            user.last_activity_egypt = log.viewed_at_egypt;
+        }
+    });
+
+    return Object.values(userMap).map(user => {
+        user.unique_articles_viewed = user.unique_articles.size;
+        delete user.unique_articles;
+        return user;
+    });
 }
 
-async function loadFeedbackAnalysis() {
-  const { data, error } = await supabase.from('v_kb_feedback_analysis').select('*');
-  if (error) {
-      console.error("Error loading Feedback Analysis:", error);
-      showToast(`Error loading feedback: ${error.message}`);
-  } else {
-      renderFeedbackCharts(data);
-  }
+async function fetchData() {
+    if (refreshDataBtn) {
+        refreshDataBtn.disabled = true;
+        const icon = refreshDataBtn.querySelector('i');
+        const text = refreshDataBtn.querySelector('span');
+        if (icon) icon.classList.add('fa-spin');
+        if (text) text.textContent = 'Refreshing...';
+    }
+    showSpinner(true);
+
+    try {
+        const [articlesRes, userLogsRes, overallRes, feedbackRes] = await Promise.all([
+            supabase.from('v_kb_top_performers').select('*'),
+            supabase.from('v_article_logs').select('user_name, user_email, viewed_at_egypt, article_id'),
+            supabase.from('v_kb_dashboard_overview').select('*').single(),
+            supabase.from('v_feedback_distribution').select('*')
+        ]);
+
+        if (articlesRes.error) throw new Error(`Article Performance: ${articlesRes.error.message}`);
+        if (userLogsRes.error) throw new Error(`User Logs: ${userLogsRes.error.message}`);
+        if (overallRes.error) throw new Error(`Dashboard Overview: ${overallRes.error.message}`);
+        if (feedbackRes.error) throw new Error(`Feedback Distribution: ${feedbackRes.error.message}`);
+
+        const articlesData = articlesRes.data || [];
+        const userLogs = userLogsRes.data || [];
+        
+        const sectionsData = calculateCategoryPerformance(articlesData);
+        const usersData = processUserLogs(userLogs);
+
+        allInsights = {
+            articles: articlesData,
+            users: usersData,
+            sections: sectionsData,
+            overall: overallRes.data || {},
+            feedback: feedbackRes.data || []
+        };
+
+        filteredInsights = JSON.parse(JSON.stringify(allInsights));
+        filteredInsights.sections = calculateCategoryPerformance(filteredInsights.articles);
+
+        populateUserFilter(allInsights.articles, allInsights.users);
+        renderSummaryMetrics(allInsights.overall);
+        renderAllTables();
+        renderCharts();
+        updateLastUpdateTime();
+
+    } catch (error) {
+        showToast(`Failed to load data: ${error.message}`);
+    } finally {
+        if (refreshDataBtn) {
+            refreshDataBtn.disabled = false;
+            const icon = refreshDataBtn.querySelector('i');
+            const text = refreshDataBtn.querySelector('span');
+            if (icon) icon.classList.remove('fa-spin');
+            if (text) text.textContent = 'Refresh';
+        }
+        showSpinner(false);
+    }
 }
 
-async function loadSectionsSummary() {
-  const { data, error } = await supabase.from('v_kb_sections_summary').select('*');
-  if (error) {
-      console.error("Error loading Sections Summary:", error);
-      showToast(`Error loading sections: ${error.message}`);
-  } else {
-      renderSectionsTable(data);
-      // For the category chart
-      if (activityBySectionChart) activityBySectionChart.destroy();
-      const ctx = document.getElementById('activityBySectionChart').getContext('2d');
-      const labels = data.map(s => s.section_title);
-      const views = data.map(s => s.total_views);
-      const chartColors = ["#8b5cf6", "#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#f97316"];
-      activityBySectionChart = createChart(ctx, 'doughnut', labels, views, 'Total Views by Section', chartColors);
-  }
+async function loadKnowledgeBaseInsights() {
+    try {
+        const { data, error } = await supabase
+            .from('v_articles_detailed')
+            .select('article_id, article_title, article_description, created_at_egypt, sub_category_name, section_title')
+            .order('created_at_egypt', { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error("Error loading KB Insights:", error);
+            document.getElementById("kbInsightsTable").innerHTML = `
+                <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ Error loading insights: ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            document.getElementById("kbInsightsTable").innerHTML = `
+                <tr><td colspan="5" style="text-align:center;">No articles found</td></tr>`;
+            return;
+        }
+
+        const tableHtml = data.map(row => {
+            const description = row.article_description || "";
+            return `
+                <tr>
+                    <td>${escapeHtml(row.article_title)}</td>
+                    <td title="${escapeHtml(description)}">${escapeHtml(description)}</td>
+                    <td>${escapeHtml(row.sub_category_name)}</td>
+                    <td>${escapeHtml(row.section_title)}</td>
+                    <td>${escapeHtml(formatToEgyptTime(row.created_at_egypt))}</td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById("kbInsightsTable").innerHTML = tableHtml;
+
+    } catch (err) {
+        console.error("Unexpected error loading KB Insights:", err);
+        document.getElementById("kbInsightsTable").innerHTML = `
+            <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ An unexpected error occurred.</td></tr>`;
+    }
 }
 
 async function initializeInsightsDashboard() {
-  showSpinner(true);
-  document.getElementById('dashboard').style.visibility = 'visible';
-  
-  await Promise.all([
-      loadArticlesInsights(),
-      loadTopPerformers(),
-      loadFeedbackAnalysis(),
-      loadSectionsSummary()
-  ]);
-  
-  updateLastUpdateTime();
-  setInterval(updateLastUpdateTime, 60000);
-  
-  showSpinner(false);
+    document.getElementById('dashboard').style.visibility = 'visible';
+    await fetchData();
+    await loadKnowledgeBaseInsights();
+
+    supabase.channel('public-insights-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, (payload) => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, (payload) => fetchData())
+        .subscribe();
 }
 
+window.changePage = (tableName, direction) => {
+    const totalPages = Math.ceil(filteredInsights[tableName].length / ROWS_PER_PAGE);
+    let newPage = paginationState[tableName] + direction;
+    if (newPage >= 1 && newPage <= totalPages) {
+        paginationState[tableName] = newPage;
+        renderAllTables();
+    }
+};
+
+document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+    showToast("PDF export feature coming soon", false);
+});
+if (refreshDataBtn) {
+    refreshDataBtn.addEventListener('click', fetchData);
+}
 </script>
 
 </body>
