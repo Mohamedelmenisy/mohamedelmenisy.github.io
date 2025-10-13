@@ -50,7 +50,6 @@
             padding: 0 2rem; background-color: rgba(31, 41, 55, 0.8);
             border-bottom: 1px solid var(--border-color);
             backdrop-filter: blur(8px); z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         .header-title { display: flex; align-items: center; gap: 1rem; }
         .header-title .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
@@ -151,7 +150,6 @@
         .user-email { font-size: 0.9rem; color: var(--text-color-muted); }
         .role-badge { padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
         .role-badge.admin { background-color: var(--role-admin-bg); color: var(--role-admin-text); }
-        .role-badge.manager { background-color: var(--role-admin-bg); color: var(--role-admin-text); }
         .role-badge.agent { background-color: var(--role-agent-bg); color: var(--role-agent-text); }
         
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
@@ -179,7 +177,6 @@
             display: flex; align-items: center; justify-content: center;
             padding: 1rem; z-index: 1000; opacity: 0; transition: opacity 0.2s ease-out;
             visibility: hidden;
-            backdrop-filter: blur(5px);
         }
         .modal-overlay.show { opacity: 1; visibility: visible; }
         .modal-content {
@@ -264,27 +261,80 @@
                 padding: 1rem;
                 padding-top: calc(var(--header-height) + 1rem);
             }
-            .page-header { padding: 0 1rem; }
-            .header-title h1 { font-size: 1.25rem; }
-            .table-controls, .search-filter-box { flex-direction: column; align-items: stretch; }
-            .quick-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-            table { display: block; }
-            thead { display: none; }
-            tbody, tr, td { display: block; width: 100% !important; box-sizing: border-box; }
-            tr { margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow: hidden; }
-            td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-align: right; position: relative; }
-            td:before { content: attr(data-label); position: absolute; left: 1rem; font-weight: 600; color: var(--text-color-muted); text-transform: uppercase; font-size: 0.8rem; }
-            .actions-cell { justify-content: flex-end; }
-            .user-info { justify-content: flex-end; }
-            .pagination-controls { justify-content: center; }
+            .page-header {
+                padding: 0 1rem;
+            }
+            .header-title h1 {
+                font-size: 1.25rem;
+            }
+            .table-controls, .search-filter-box {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .quick-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+            table {
+                display: block;
+            }
+            thead {
+                display: none;
+            }
+            tbody, tr, td {
+                display: block;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            tr {
+                margin-bottom: 1rem;
+                border: 1px solid var(--border-color);
+                border-radius: var(--border-radius);
+                overflow: hidden;
+            }
+            td {
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--border-color);
+                text-align: right;
+                position: relative;
+            }
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 1rem;
+                font-weight: 600;
+                color: var(--text-color-muted);
+                text-transform: uppercase;
+                font-size: 0.8rem;
+            }
+            .actions-cell {
+                justify-content: flex-end;
+            }
+            .user-info {
+                justify-content: flex-end;
+            }
+            .pagination-controls {
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
 
+<div id="accessDeniedModal" style="display:none;position:fixed;inset:0;z-index:9999;justify-content:center;align-items:center;background:rgba(17,24,39,0.85);backdrop-filter:blur(8px);">
+  <div style="background:#0f172a;border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:2rem 2.5rem;max-width:420px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.5);animation:fadeIn 0.3s ease;">
+    <div style="font-size:2.8rem;color:#6366f1;margin-bottom:0.5rem;">🔒</div>
+    <h2 style="color:white;margin-bottom:0.5rem;">Access Denied</h2>
+    <p style="color:#cbd5e1;margin-bottom:1.5rem;">This section is for administrators only.</p>
+    <button onclick="window.location.href='core-flow.html'" style="padding:0.6rem 1.2rem;background:linear-gradient(90deg,#4e8cff,#8b5cf6);color:white;font-weight:600;border:none;border-radius:8px;cursor:pointer;">Back to Core Flow</button>
+  </div>
+</div>
+<style>@keyframes fadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}</style>
+
 <div id="toast-container"></div>
 
-<div id="dashboard">
+<div id="dashboard" style="visibility: hidden;">
     <header class="page-header">
         <div class="header-title">
             <i class="fas fa-users-cog logo-icon"></i>
@@ -345,7 +395,6 @@
                     <select id="roleFilter">
                         <option value="all">All Roles</option>
                         <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
                         <option value="agent">Agent</option>
                     </select>
                     <select id="statusFilter">
@@ -404,6 +453,26 @@
                              <canvas id="deptsChart"></canvas>
                         </div>
                     </div>
+                    <div class="card">
+                         <h3>Monthly Activity</h3>
+                        <div class="chart-wrapper">
+                             <div id="activityChartPlaceholder" class="chart-placeholder hidden">
+                                 <i class="fas fa-chart-line"></i>
+                                 <p>Loading activity data...</p>
+                             </div>
+                             <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+                     <div class="card">
+                         <h3>Top 5 Active Employees</h3>
+                        <div class="chart-wrapper">
+                             <div id="top5ChartPlaceholder" class="chart-placeholder hidden">
+                                <i class="fas fa-medal"></i>
+                                <p>Loading ranking data...</p>
+                            </div>
+                             <canvas id="top5Chart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
@@ -414,14 +483,12 @@
     </div>
 </div>
 
-<div id="accessDeniedModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 420px; text-align: center; padding: 2rem 2.5rem;">
-        <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i class="fas fa-ban"></i></div>
-        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Restricted</h2>
-        <p style="color: var(--text-color-muted); margin-bottom: 2rem; font-size: 1rem;">
-            This section is available for Admins and Managers only.
-        </p>
-        <button class="button" data-close-modal style="width: 100%;">Okay</button>
+<div id="restricted-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align: center;">
+        <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
+        <h2>Access Restricted</h2>
+        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
+        <a href="app.html" class="button">Go Back to Dashboard</a>
     </div>
 </div>
 
@@ -436,7 +503,7 @@
             <div class="form-group"><label for="employee-name">Full Name</label><input type="text" id="employee-name" required></div>
             <div class="form-group"><label for="employee-email">Email</label><input type="email" id="employee-email" required></div>
             <div class="form-group"><label for="employee-department">Department</label><input type="text" id="employee-department" placeholder="e.g., Support, Technical"></div>
-            <div class="form-group"><label for="employee-role">Role</label><select id="employee-role" required><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div>
+            <div class="form-group"><label for="employee-role">Role</label><select id="employee-role" required><option value="agent">Agent</option><option value="admin">Admin</option></select></div>
             <div class="form-group"><label for="employee-password">Password</label><input type="password" id="employee-password" autocomplete="new-password" placeholder="Required for new user"></div>
             <div class="modal-actions"><button type="button" class="button button-secondary" data-close-modal>Cancel</button><button type="submit" class="button">Save Employee</button></div>
         </form>
@@ -463,16 +530,14 @@
     const EDGE_DELETE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/bright-responder';
 
     let allEmployees = [], filteredEmployees = [];
-    let rolesChart, deptsChart = null;
+    let rolesChart, deptsChart, activityChart, top5Chart = null;
     let currentUser = null;
-    let currentUserRole = null; // سيتم تخزين صلاحية المستخدم هنا
     let presenceInterval;
     let currentPage = 1;
     const rowsPerPage = 5;
 
     const employeeModal = document.getElementById('employee-modal');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-    const accessDeniedModal = document.getElementById('accessDeniedModal');
     
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
@@ -500,7 +565,7 @@
 
     function updateKPIs(employees) {
         document.getElementById('total-employees').textContent = employees.length;
-        document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin' || e.role === 'manager').length;
+        document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
         document.getElementById('agent-count').textContent = employees.filter(e => e.role === 'agent').length;
         document.getElementById('online-employees').textContent = employees.filter(e => e.status === 'ONLINE').length;
         
@@ -568,9 +633,16 @@
         setTimeout(() => indicator.classList.remove('active'), 2000);
     }
 
+    function showChart(canvasId, show = true) {
+        document.getElementById(canvasId).style.display = show ? 'block' : 'none';
+        document.getElementById(`${canvasId}Placeholder`).style.display = show ? 'none' : 'block';
+    }
+
     function renderAllCharts(employees) {
         renderRolesChart(employees);
         renderDeptsChart(employees);
+        renderActivityChart();
+        renderTop5Chart();
     }
     
     function renderRolesChart(employees) {
@@ -588,7 +660,19 @@
                     borderWidth: 4 
                 }] 
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: 'var(--text-color)', font: { size: 14 } } } } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { 
+                            color: 'var(--text-color)', 
+                            font: { size: 14 } 
+                        } 
+                    } 
+                } 
+            }
         });
     }
     
@@ -600,9 +684,106 @@
             type: 'bar',
             data: { 
                 labels: Object.keys(deptCounts), 
-                datasets: [{ label: 'Employees', data: Object.values(deptCounts), backgroundColor: 'var(--primary-color)', borderRadius: 4 }] 
+                datasets: [{ 
+                    label: 'Employees', 
+                    data: Object.values(deptCounts), 
+                    backgroundColor: 'var(--primary-color)', 
+                    borderRadius: 4 
+                }] 
             },
-            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: 'var(--text-color)' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'var(--text-color)' } } } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                indexAxis: 'y', 
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    y: { 
+                        ticks: { color: 'var(--text-color)' } 
+                    }, 
+                    x: { 
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                        ticks: { color: 'var(--text-color)' } 
+                    } 
+                } 
+            }
+        });
+    }
+
+    async function renderActivityChart() {
+        const { data, error } = await supabase.from('v_monthly_activity').select('*').limit(12);
+        if (error || !data || data.length === 0) { showChart('activityChart', false); return; }
+        showChart('activityChart', true);
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        if (activityChart) activityChart.destroy();
+        const labels = data.map(d => new Date(d.month).toLocaleString('en-US', { month: 'short' })).reverse();
+        const values = data.map(d => d.active_employees).reverse();
+        activityChart = new Chart(ctx, {
+            type: 'line',
+            data: { 
+                labels, 
+                datasets: [{ 
+                    label: 'Active Employees', 
+                    data: values, 
+                    borderColor: 'var(--primary-color)', 
+                    backgroundColor: 'var(--primary-color-transparent)', 
+                    tension: 0.3, 
+                    fill: true 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                scales: { 
+                    y: { 
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                        ticks: { color: 'var(--text-color)' } 
+                    }, 
+                    x: { 
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                        ticks: { color: 'var(--text-color)' } 
+                    } 
+                }, 
+                plugins: { 
+                    legend: { 
+                        labels: { color: 'var(--text-color)' } 
+                    } 
+                } 
+            }
+        });
+    }
+
+    async function renderTop5Chart() {
+        const { data, error } = await supabase.from('v_top5_employees').select('*');
+        if (error || !data || data.length === 0) { showChart('top5Chart', false); return; }
+        showChart('top5Chart', true);
+        const ctx = document.getElementById('top5Chart').getContext('2d');
+        if (top5Chart) top5Chart.destroy();
+        top5Chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(u => (u.user_name || u.user_email).split(' ')[0]),
+                datasets: [{ 
+                    label: 'Total Views', 
+                    data: data.map(u => u.total_views), 
+                    backgroundColor: ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'], 
+                    borderRadius: 4 
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                indexAxis: 'y', 
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    y: { 
+                        ticks: { color: 'var(--text-color)' } 
+                    }, 
+                    x: { 
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                        ticks: { color: 'var(--text-color)' } 
+                    } 
+                } 
+            }
         });
     }
 
@@ -626,11 +807,6 @@
         setupPagination();
         updateTableSummary();
     }
-
-    // هذه هي الدالة المحورية التي تتحقق من الصلاحية
-    function hasAdminAccess() {
-        return currentUserRole === 'admin' || currentUserRole === 'manager';
-    }
     
     function exportCSV() {
         const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Seen (UTC)'];
@@ -643,15 +819,9 @@
         showToast('CSV exported successfully', 'success');
     }
 
-    // هذه الدالة تربط الأوامر بالأزرار مع وضع شرط الصلاحية
-    function setupActionListeners() {
+    function setupModals() {
         document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show')));
-        
         document.getElementById('addEmployeeBtn').addEventListener('click', () => {
-            if (!hasAdminAccess()) {
-                accessDeniedModal.classList.add('show');
-                return;
-            }
             document.getElementById('modal-title').textContent = 'Add New Employee';
             document.getElementById('employee-form').reset();
             document.getElementById('employee-id').value = '';
@@ -659,30 +829,12 @@
             document.querySelector('#employee-password').placeholder = 'Required for new user';
             employeeModal.classList.add('show');
         });
-
-        document.getElementById('exportCsvBtn').addEventListener('click', () => {
-             if (!hasAdminAccess()) {
-                accessDeniedModal.classList.add('show');
-                return;
-            }
-            exportCSV();
-        });
-
         document.getElementById('employeesTableBody').addEventListener('click', (e) => {
-            const actionButton = e.target.closest('.edit, .delete');
-            if (!actionButton) return;
-
-            if (!hasAdminAccess()) {
-                accessDeniedModal.classList.add('show');
-                return;
-            }
-
             const row = e.target.closest('tr');
             if (!row) return;
             const employee = allEmployees.find(emp => emp.id === row.dataset.userId);
             if (!employee) return;
-
-            if (actionButton.classList.contains('edit')) {
+            if (e.target.closest('.edit')) {
                 document.getElementById('modal-title').textContent = 'Edit Employee';
                 document.getElementById('employee-id').value = employee.id;
                 document.getElementById('employee-name').value = employee.name;
@@ -694,13 +846,12 @@
                 document.querySelector('#employee-password').placeholder = 'Leave blank to not change';
                 employeeModal.classList.add('show');
             }
-            if (actionButton.classList.contains('delete')) {
+            if (e.target.closest('.delete')) {
                 document.getElementById('delete-confirm-message').textContent = `Delete ${employee.name || employee.email}?`;
                 document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
                 deleteConfirmModal.classList.add('show');
             }
         });
-
         document.getElementById('employee-form').addEventListener('submit', handleFormSubmit);
         document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
     }
@@ -787,43 +938,32 @@
         updateLastUpdateTime();
     }
 
-    async function initializePage() {
+    async function checkAdminAccess() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                window.location.href = '/login.html';
-                return;
-            }
+            if (!user) throw new Error('Not logged in');
+            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (error || data?.role !== 'admin') throw new Error('Access denied');
             
             currentUser = user; 
+            document.getElementById('dashboard').style.visibility = 'visible';
             
-            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error) throw new Error('Could not verify user role.');
-
-            currentUserRole = data?.role || 'agent';
-
             await refreshData();
-            setupActionListeners(); // الربط يتم هنا بعد معرفة الصلاحية
+            setupModals();
             await initPresence();
 
             supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
-        
         } catch (e) {
-            console.error("Initialization failed:", e.message);
-            showToast('Could not load dashboard data.', 'error');
-            // كإجراء احتياطي، حتى لو فشل جلب الصلاحية، نعرض الصفحة ونقيد الوصول
-            currentUserRole = 'agent';
-            await refreshData();
-            setupActionListeners();
+            document.getElementById('restricted-modal').classList.add('show');
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        initializePage();
-        
+        checkAdminAccess();
         document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
         document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
         document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
+        document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
         document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFilters(); } });
         document.getElementById('nextPageBtn').addEventListener('click', () => { if (currentPage < Math.ceil(filteredEmployees.length / rowsPerPage)) { currentPage++; applyFilters(); } });
         document.getElementById('refreshChartsBtn').addEventListener('click', () => {
@@ -832,6 +972,42 @@
         });
     });
 
+</script>
+
+<script type="module">
+(async function(){
+  try {
+    let supabase = window.supabase;
+    if (!supabase) {
+      const text = document.documentElement.innerHTML;
+      const urlMatch = text.match(/createClient\(['"]([^'"]+)['"]/);
+      const keyMatch = text.match(/createClient\([^,]+,\s*['"]([^'"]+)['"]\)/);
+      if (urlMatch && keyMatch) {
+        const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        supabase = mod.createClient(urlMatch[1], keyMatch[1]);
+        window.supabase = supabase;
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
+    if (error || !data) return;
+    const isAdmin = !!data.is_admin;
+
+    if (!isAdmin) {
+      const modal = document.getElementById('accessDeniedModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      } else {
+        alert("Access Denied — This section is for administrators only.");
+        window.location.href = "core-flow.html";
+      }
+    }
+  } catch (err) { console.error('Role check error', err); }
+})();
 </script>
 
 </body>
