@@ -264,62 +264,19 @@
                 padding: 1rem;
                 padding-top: calc(var(--header-height) + 1rem);
             }
-            .page-header {
-                padding: 0 1rem;
-            }
-            .header-title h1 {
-                font-size: 1.25rem;
-            }
-            .table-controls, .search-filter-box {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .quick-actions {
-                width: 100%;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
-            table {
-                display: block;
-            }
-            thead {
-                display: none;
-            }
-            tbody, tr, td {
-                display: block;
-                width: 100% !important;
-                box-sizing: border-box;
-            }
-            tr {
-                margin-bottom: 1rem;
-                border: 1px solid var(--border-color);
-                border-radius: var(--border-radius);
-                overflow: hidden;
-            }
-            td {
-                padding: 0.75rem 1rem;
-                border-bottom: 1px solid var(--border-color);
-                text-align: right;
-                position: relative;
-            }
-            td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 1rem;
-                font-weight: 600;
-                color: var(--text-color-muted);
-                text-transform: uppercase;
-                font-size: 0.8rem;
-            }
-            .actions-cell {
-                justify-content: flex-end;
-            }
-            .user-info {
-                justify-content: flex-end;
-            }
-            .pagination-controls {
-                justify-content: center;
-            }
+            .page-header { padding: 0 1rem; }
+            .header-title h1 { font-size: 1.25rem; }
+            .table-controls, .search-filter-box { flex-direction: column; align-items: stretch; }
+            .quick-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+            table { display: block; }
+            thead { display: none; }
+            tbody, tr, td { display: block; width: 100% !important; box-sizing: border-box; }
+            tr { margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow: hidden; }
+            td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-align: right; position: relative; }
+            td:before { content: attr(data-label); position: absolute; left: 1rem; font-weight: 600; color: var(--text-color-muted); text-transform: uppercase; font-size: 0.8rem; }
+            .actions-cell { justify-content: flex-end; }
+            .user-info { justify-content: flex-end; }
+            .pagination-controls { justify-content: center; }
         }
     </style>
 </head>
@@ -447,26 +404,6 @@
                              <canvas id="deptsChart"></canvas>
                         </div>
                     </div>
-                    <div class="card">
-                         <h3>Monthly Activity</h3>
-                        <div class="chart-wrapper">
-                             <div id="activityChartPlaceholder" class="chart-placeholder hidden">
-                                 <i class="fas fa-chart-line"></i>
-                                 <p>Loading activity data...</p>
-                             </div>
-                             <canvas id="activityChart"></canvas>
-                        </div>
-                    </div>
-                     <div class="card">
-                         <h3>Top 5 Active Employees</h3>
-                        <div class="chart-wrapper">
-                             <div id="top5ChartPlaceholder" class="chart-placeholder hidden">
-                                <i class="fas fa-medal"></i>
-                                <p>Loading ranking data...</p>
-                            </div>
-                             <canvas id="top5Chart"></canvas>
-                        </div>
-                    </div>
                 </div>
             </section>
         </main>
@@ -526,9 +463,9 @@
     const EDGE_DELETE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/bright-responder';
 
     let allEmployees = [], filteredEmployees = [];
-    let rolesChart, deptsChart, activityChart, top5Chart = null;
+    let rolesChart, deptsChart = null;
     let currentUser = null;
-    let currentUserRole = null;
+    let currentUserRole = null; // سيتم تخزين صلاحية المستخدم هنا
     let presenceInterval;
     let currentPage = 1;
     const rowsPerPage = 5;
@@ -631,16 +568,9 @@
         setTimeout(() => indicator.classList.remove('active'), 2000);
     }
 
-    function showChart(canvasId, show = true) {
-        document.getElementById(canvasId).style.display = show ? 'block' : 'none';
-        document.getElementById(`${canvasId}Placeholder`).style.display = show ? 'none' : 'block';
-    }
-
     function renderAllCharts(employees) {
         renderRolesChart(employees);
         renderDeptsChart(employees);
-        renderActivityChart();
-        renderTop5Chart();
     }
     
     function renderRolesChart(employees) {
@@ -658,19 +588,7 @@
                     borderWidth: 4 
                 }] 
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    legend: { 
-                        position: 'bottom', 
-                        labels: { 
-                            color: 'var(--text-color)', 
-                            font: { size: 14 } 
-                        } 
-                    } 
-                } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: 'var(--text-color)', font: { size: 14 } } } } }
         });
     }
     
@@ -682,106 +600,9 @@
             type: 'bar',
             data: { 
                 labels: Object.keys(deptCounts), 
-                datasets: [{ 
-                    label: 'Employees', 
-                    data: Object.values(deptCounts), 
-                    backgroundColor: 'var(--primary-color)', 
-                    borderRadius: 4 
-                }] 
+                datasets: [{ label: 'Employees', data: Object.values(deptCounts), backgroundColor: 'var(--primary-color)', borderRadius: 4 }] 
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                indexAxis: 'y', 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
-        });
-    }
-
-    async function renderActivityChart() {
-        const { data, error } = await supabase.from('v_monthly_activity').select('*').limit(12);
-        if (error || !data || data.length === 0) { showChart('activityChart', false); return; }
-        showChart('activityChart', true);
-        const ctx = document.getElementById('activityChart').getContext('2d');
-        if (activityChart) activityChart.destroy();
-        const labels = data.map(d => new Date(d.month).toLocaleString('en-US', { month: 'short' })).reverse();
-        const values = data.map(d => d.active_employees).reverse();
-        activityChart = new Chart(ctx, {
-            type: 'line',
-            data: { 
-                labels, 
-                datasets: [{ 
-                    label: 'Active Employees', 
-                    data: values, 
-                    borderColor: 'var(--primary-color)', 
-                    backgroundColor: 'var(--primary-color-transparent)', 
-                    tension: 0.3, 
-                    fill: true 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                scales: { 
-                    y: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                }, 
-                plugins: { 
-                    legend: { 
-                        labels: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
-        });
-    }
-
-    async function renderTop5Chart() {
-        const { data, error } = await supabase.from('v_top5_employees').select('*');
-        if (error || !data || data.length === 0) { showChart('top5Chart', false); return; }
-        showChart('top5Chart', true);
-        const ctx = document.getElementById('top5Chart').getContext('2d');
-        if (top5Chart) top5Chart.destroy();
-        top5Chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(u => (u.user_name || u.user_email).split(' ')[0]),
-                datasets: [{ 
-                    label: 'Total Views', 
-                    data: data.map(u => u.total_views), 
-                    backgroundColor: ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'], 
-                    borderRadius: 4 
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                indexAxis: 'y', 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: 'var(--text-color)' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'var(--text-color)' } } } }
         });
     }
 
@@ -805,16 +626,13 @@
         setupPagination();
         updateTableSummary();
     }
-    
+
+    // هذه هي الدالة المحورية التي تتحقق من الصلاحية
     function hasAdminAccess() {
         return currentUserRole === 'admin' || currentUserRole === 'manager';
     }
-
+    
     function exportCSV() {
-        if (!hasAdminAccess()) {
-            accessDeniedModal.classList.add('show');
-            return;
-        }
         const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Seen (UTC)'];
         let csv = headers.join(',') + '\r\n';
         allEmployees.forEach(e => csv += [e.name, e.email, e.role, e.department, e.status, e.last_seen].map(v => `"${v}"`).join(',') + '\r\n');
@@ -825,6 +643,7 @@
         showToast('CSV exported successfully', 'success');
     }
 
+    // هذه الدالة تربط الأوامر بالأزرار مع وضع شرط الصلاحية
     function setupActionListeners() {
         document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show')));
         
@@ -839,6 +658,14 @@
             document.getElementById('employee-email').disabled = false;
             document.querySelector('#employee-password').placeholder = 'Required for new user';
             employeeModal.classList.add('show');
+        });
+
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+             if (!hasAdminAccess()) {
+                accessDeniedModal.classList.add('show');
+                return;
+            }
+            exportCSV();
         });
 
         document.getElementById('employeesTableBody').addEventListener('click', (e) => {
@@ -960,11 +787,11 @@
         updateLastUpdateTime();
     }
 
-    async function initializeDashboard() {
+    async function initializePage() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                window.location.href = '/login.html'; // Or show a login required message
+                window.location.href = '/login.html';
                 return;
             }
             
@@ -976,7 +803,7 @@
             currentUserRole = data?.role || 'agent';
 
             await refreshData();
-            setupActionListeners();
+            setupActionListeners(); // الربط يتم هنا بعد معرفة الصلاحية
             await initPresence();
 
             supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
@@ -984,16 +811,19 @@
         } catch (e) {
             console.error("Initialization failed:", e.message);
             showToast('Could not load dashboard data.', 'error');
+            // كإجراء احتياطي، حتى لو فشل جلب الصلاحية، نعرض الصفحة ونقيد الوصول
+            currentUserRole = 'agent';
+            await refreshData();
+            setupActionListeners();
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        initializeDashboard();
+        initializePage();
         
         document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
         document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
         document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
-        document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
         document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFilters(); } });
         document.getElementById('nextPageBtn').addEventListener('click', () => { if (currentPage < Math.ceil(filteredEmployees.length / rowsPerPage)) { currentPage++; applyFilters(); } });
         document.getElementById('refreshChartsBtn').addEventListener('click', () => {
