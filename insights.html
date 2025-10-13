@@ -54,7 +54,7 @@ body, html {
 }
 
 .page-wrapper {
-    padding: 2.2rem; /* Reduced padding */
+    padding: 1.6rem; /* Reduced padding */
     padding-top: calc(var(--header-height) + 2.2rem);
     min-height: 100vh;
 }
@@ -340,10 +340,9 @@ td, th {
     white-space: nowrap;
 }
 
-th:first-child, td:first-child {
+td:nth-child(2) {
     white-space: normal;
     max-width: 350px;
-    min-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -533,13 +532,9 @@ tbody tr:hover {
     font-size: 0.9rem;
 }
 
-th, td {
+td:nth-child(3), td:nth-child(4), td:nth-child(5) {
     text-align: center;
 }
-th:first-child, td:first-child {
-    text-align: left;
-}
-
 
 @media (max-width: 768px) {
     .insights-grid {
@@ -587,7 +582,7 @@ th:first-child, td:first-child {
             <div class="metric-card"><i class="fas fa-file-alt icon"></i><div><div id="metric-total-articles" class="value">-</div><div class="label">Total Articles</div></div></div>
             <div class="metric-card"><i class="fas fa-eye icon"></i><div><div id="metric-total-views" class="value">-</div><div class="label">Total Views</div></div></div>
             <div class="metric-card"><i class="fas fa-star-half-alt icon"></i><div><div id="metric-avg-rating" class="value">-</div><div class="label">Average Rating</div></div></div>
-            <div class="metric-card"><i class="fas fa-comments icon"></i><div><div id="metric-total-feedbacks" class="value">-</div><div class="label">Total Feedbacks</div></div></div>
+            <div class="metric-card"><i class="fas fa-users icon"></i><div><div id="metric-active-users" class="value">-</div><div class="label">Active Users (Week)</div></div></div>
         </div>
 
         <div class="card">
@@ -631,7 +626,27 @@ th:first-child, td:first-child {
                 <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
             </div>
         </div>
-        
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-book-open"></i> Knowledge Base Articles</h2>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Article Title</th>
+                            <th>Description</th>
+                            <th>Sub-Category</th>
+                            <th>Category</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kbInsightsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h2><i class="fas fa-newspaper"></i> Article Performance</h2>
@@ -639,7 +654,7 @@ th:first-child, td:first-child {
             <div class="quick-stats" id="articleStats"></div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>Article Title</th><th>Total Views</th><th>Avg Rating (out of 5)</th><th>Total Feedbacks</th><th>Last Viewed</th><th>Created By</th><th>Created At</th><th>Category</th><th>Sub-Category</th></tr></thead>
+                    <thead><tr><th>Article Title</th><th>Total Views</th><th>Avg Rating (out of 5)</th><th>Total Feedbacks</th><th>Last Viewed</th><th>Created By</th></tr></thead>
                     <tbody id="articleInsightsTable"></tbody>
                 </table>
             </div>
@@ -648,12 +663,12 @@ th:first-child, td:first-child {
 
         <div class="card">
             <div class="card-header">
-                <h2><i class="fas fa-users"></i> User Engagement</h2>
+                <h2><i class="fas fa-users"></i> Author Performance</h2>
             </div>
             <div class="quick-stats" id="userStats"></div>
             <div class="table-wrap">
                 <table>
-                    <thead><tr><th>User Name</th><th>Total Articles Viewed</th><th>Unique Articles Viewed</th><th>Last Activity</th></tr></thead>
+                    <thead><tr><th>Author Name</th><th>Total Views on Articles</th><th>Total Articles Created</th><th>Last Article Activity</th></tr></thead>
                     <tbody id="userInsightsTable"></tbody>
                 </table>
             </div>
@@ -689,7 +704,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeInsightsDashboard();
 });
 
-let allInsights = { articles: [], users: [], sections: [], feedback: [] };
+let allInsights = { articles: [], users: [], sections: [], overall: {}, feedback: [] };
 let filteredInsights = { articles: [], users: [], sections: [] };
 let paginationState = { articles: 1, users: 1, sections: 1 };
 const ROWS_PER_PAGE = 10;
@@ -729,28 +744,31 @@ function escapeHtml(str) {
     }[match]));
 }
 
-function formatCustomDateTime(dateString) {
-    if (!dateString) return null;
+function formatToYYYYMMDDHHMISS(dateString) {
+    if (!dateString || dateString === 'Not Viewed Yet') return null;
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return null;
+    if (isNaN(date.getTime())) return dateString;
 
     const pad = (num) => num.toString().padStart(2, '0');
-    
+
     const year = date.getFullYear();
     const month = pad(date.getMonth() + 1);
     const day = pad(date.getDate());
     const hours = pad(date.getHours());
     const minutes = pad(date.getMinutes());
     const seconds = pad(date.getSeconds());
-    
+
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function formatTableDate(dateString) {
+    const formatted = formatToYYYYMMDDHHMISS(dateString);
+    return formatted || "Not Viewed Yet";
+}
 
 function updateLastUpdateTime() {
     const now = new Date();
     document.getElementById("lastUpdateTime").textContent = now.toLocaleTimeString('en-GB', {
-        timeZone: 'Africa/Cairo',
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -775,7 +793,7 @@ function updateQuickStats() {
     const totalUsers = filteredInsights.users.length;
     const totalUserViews = filteredInsights.users.reduce((sum, user) => sum + (user.total_articles_viewed || 0), 0);
     userStats.innerHTML = `
-        <div class="stat-badge"><i class="fas fa-users"></i> ${totalUsers} Users</div>
+        <div class="stat-badge"><i class="fas fa-users"></i> ${totalUsers} Authors</div>
         <div class="stat-badge"><i class="fas fa-eye"></i> ${totalUserViews} Total Views</div>
     `;
 
@@ -801,7 +819,7 @@ function updateFilterSummary() {
     if (employee) {
         const select = document.getElementById('filterEmployee');
         const selectedText = select.options[select.selectedIndex].text;
-        filtersApplied.push(`Employee: <strong>${selectedText}</strong>`);
+        filtersApplied.push(`Author: <strong>${selectedText}</strong>`);
     }
     if (caseTitle) filtersApplied.push(`Case: <strong>"${caseTitle}"</strong>`);
 
@@ -888,44 +906,39 @@ function renderPaginatedTable(tableName, data, tableBodyId, paginationId) {
     let html;
 
     if (tableName === 'articles') {
-        html = paginatedData.map(item => {
-            const lastViewed = formatCustomDateTime(item.last_viewed_egypt) || 'Not Viewed Yet';
-            return `
+        html = paginatedData.map(item => `
             <tr>
                 <td>${escapeHtml(item.article_title)}</td>
-                <td>${item.total_views || 0}</td>
-                <td>${(item.avg_rating || 0).toFixed(2)}</td>
-                <td>${item.total_feedbacks || 0}</td>
-                <td>${escapeHtml(lastViewed)}</td>
+                <td style="text-align: center;">${item.total_views || 0}</td>
+                <td style="text-align: center;">${(item.avg_rating || 0).toFixed(2)}</td>
+                <td style="text-align: center;">${item.total_feedbacks || 0}</td>
+                <td>${formatTableDate(item.last_viewed_egypt)}</td>
                 <td>${escapeHtml(item.created_by) || 'N/A'}</td>
-                <td>${escapeHtml(formatCustomDateTime(item.created_at_egypt))}</td>
-                <td>${escapeHtml(item.section_title) || 'N/A'}</td>
-                <td>${escapeHtml(item.sub_category_name) || 'N/A'}</td>
             </tr>
-        `}).join('');
+        `).join('');
     } else if (tableName === 'users') {
         html = paginatedData.map(item => `
             <tr>
                 <td>${escapeHtml(item.user_name)}</td>
-                <td>${item.total_articles_viewed || 0}</td>
-                <td>${item.unique_articles_viewed || 0}</td>
-                <td>${escapeHtml(formatCustomDateTime(item.last_activity_egypt)) || 'N/A'}</td>
+                <td style="text-align: center;">${item.total_articles_viewed || 0}</td>
+                <td style="text-align: center;">${item.articles_created_count || 0}</td>
+                <td>${formatTableDate(item.last_activity_egypt)}</td>
             </tr>
         `).join('');
     } else { // sections
         html = paginatedData.map(item => `
             <tr>
                 <td>${escapeHtml(item.section_name)}</td>
-                <td>${item.total_articles}</td>
-                <td>${item.total_views}</td>
-                <td>${item.average_rating ? item.average_rating.toFixed(2) : '0.00'}</td>
-                <td>${item.total_feedbacks}</td>
-                <td>${escapeHtml(formatCustomDateTime(item.last_activity_egypt)) || 'N/A'}</td>
+                <td style="text-align: center;">${item.total_articles}</td>
+                <td style="text-align: center;">${item.total_views}</td>
+                <td style="text-align: center;">${item.average_rating ? item.average_rating.toFixed(2) : '0.00'}</td>
+                <td style="text-align: center;">${item.total_feedbacks}</td>
+                <td>${formatTableDate(item.last_activity_egypt)}</td>
             </tr>
         `).join('');
     }
 
-    tableBody.innerHTML = html || `<tr><td colspan="9" style="text-align:center;">No data to display.</td></tr>`;
+    tableBody.innerHTML = html || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
 
     document.getElementById(paginationId).innerHTML = `
         <span>Page ${currentPage} of ${totalPages || 1}</span>
@@ -945,7 +958,7 @@ function renderSummaryMetrics(data) {
     document.getElementById("metric-total-articles").textContent = data.total_articles || 0;
     document.getElementById("metric-total-views").textContent = data.total_views || 0;
     document.getElementById("metric-avg-rating").textContent = data.average_rating ? data.average_rating.toFixed(2) : "0.00";
-    document.getElementById("metric-total-feedbacks").textContent = data.total_feedbacks || 0;
+    document.getElementById("metric-active-users").textContent = data.active_users_week || 0;
 }
 
 function renderCharts() {
@@ -960,13 +973,13 @@ function renderCharts() {
     if (topArticlesChart) topArticlesChart.destroy();
     const topArticles = [...allInsights.articles].sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 5);
     const articleLabels = topArticles.map(a => a.article_title.length > 35 ? a.article_title.substring(0, 35) + '...' : a.article_title);
-    const articleViews = topArticles.map(a => a.total_views || 0);
+    const articleViews = topArticles.map(a => a.total_views);
     const topArticlesCtx = document.getElementById('topArticlesChart').getContext('2d');
     topArticlesChart = createChart(topArticlesCtx, 'bar', articleLabels, articleViews, 'Total Views', chartColors);
     
     if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
-    const feedbackLabels = allInsights.feedback.map(f => f.type);
-    const feedbackCounts = allInsights.feedback.map(f => f.count);
+    const feedbackLabels = allInsights.feedback.map(f => f.feedback_type || 'N/A');
+    const feedbackCounts = allInsights.feedback.map(f => f.total_feedbacks);
     const feedbackCtx = document.getElementById('feedbackAnalysisChart').getContext('2d');
     feedbackAnalysisChart = createChart(feedbackCtx, 'pie', feedbackLabels, feedbackCounts, 'Feedback Distribution', chartColors.slice().reverse());
 }
@@ -991,14 +1004,14 @@ function applyFilters() {
     };
 
     filteredInsights.articles = allInsights.articles.filter(article => {
-        const titleMatch = !caseTitle || (article.article_title && article.article_title.toLowerCase().includes(caseTitle));
+        const titleMatch = !caseTitle || (article.article_title || '').toLowerCase().includes(caseTitle);
         const employeeMatch = !employeeName || article.created_by === employeeName;
         const dateMatch = (!fromDate && !toDate) || isDateInRange(article.last_viewed_egypt) || isDateInRange(article.created_at_egypt);
         return titleMatch && dateMatch && employeeMatch;
     });
 
-    filteredInsights.users = calculateUserEngagement(filteredInsights.articles);
-    filteredInsights.sections = calculateSectionPerformance(filteredInsights.articles);
+    filteredInsights.users = processUserData(filteredInsights.articles);
+    filteredInsights.sections = calculateCategoryPerformance(filteredInsights.articles);
 
     paginationState = { articles: 1, users: 1, sections: 1 };
     renderAllTables();
@@ -1011,11 +1024,7 @@ function clearFilters() {
     document.getElementById("filterEmployee").value = "";
     document.getElementById("filterCase").value = "";
 
-    filteredInsights = {
-        articles: [...allInsights.articles],
-        users: [...allInsights.users],
-        sections: [...allInsights.sections]
-    };
+    filteredInsights = JSON.parse(JSON.stringify(allInsights));
     
     paginationState = { articles: 1, users: 1, sections: 1 };
     renderAllTables();
@@ -1031,9 +1040,6 @@ function exportCSV() {
             const row = headers.map(header => {
                 let value = item[header.key] || '';
                 if (header.formatter) value = header.formatter(value);
-                 if (header.key === 'last_viewed_egypt' && !item[header.key]) {
-                    value = 'Not Viewed Yet';
-                }
                 return `"${String(value).replace(/"/g, '""')}"`;
             });
             section += row.join(',') + '\n';
@@ -1043,19 +1049,17 @@ function exportCSV() {
 
     csvContent += generateSection('Article Performance', [
         { key: 'article_title' }, { key: 'total_views' }, { key: 'avg_rating' },
-        { key: 'total_feedbacks' }, { key: 'last_viewed_egypt', formatter: formatCustomDateTime }, 
-        { key: 'created_by' }, { key: 'created_at_egypt', formatter: formatCustomDateTime },
-        { key: 'section_title' }, { key: 'sub_category_name' }
+        { key: 'total_feedbacks' }, { key: 'last_viewed_egypt', formatter: formatTableDate }, { key: 'created_by' }
     ], filteredInsights.articles);
 
-    csvContent += generateSection('User Engagement', [
+    csvContent += generateSection('Author Performance', [
         { key: 'user_name' }, { key: 'total_articles_viewed' },
-        { key: 'unique_articles_viewed' }, { key: 'last_activity_egypt', formatter: formatCustomDateTime }
+        { key: 'articles_created_count' }, { key: 'last_activity_egypt', formatter: formatTableDate }
     ], filteredInsights.users);
 
     csvContent += generateSection('Section Performance', [
         { key: 'section_name', label: 'Category Name' }, { key: 'total_articles' }, { key: 'total_views' },
-        { key: 'average_rating' }, { key: 'total_feedbacks' }, { key: 'last_activity_egypt', formatter: formatCustomDateTime }
+        { key: 'average_rating' }, { key: 'total_feedbacks' }, { key: 'last_activity_egypt', formatter: formatTableDate }
     ], filteredInsights.sections);
 
     const link = document.createElement('a');
@@ -1069,7 +1073,7 @@ function exportCSV() {
 
 function populateUserFilter(articles) {
     const select = document.getElementById('filterEmployee');
-    select.innerHTML = '<option value="">All Employees</option>';
+    select.innerHTML = '<option value="">All Authors</option>';
     
     const userNames = new Set();
     articles.forEach(article => article.created_by && userNames.add(article.created_by));
@@ -1084,103 +1088,89 @@ function populateUserFilter(articles) {
     });
 }
 
-function calculateSummaryMetrics(articles) {
-    if (!articles || articles.length === 0) {
-        return { total_articles: 0, total_views: 0, average_rating: 0, total_feedbacks: 0 };
-    }
-    const total_articles = articles.length;
-    const total_views = articles.reduce((sum, item) => sum + (item.total_views || 0), 0);
-    const total_feedbacks = articles.reduce((sum, item) => sum + (item.total_feedbacks || 0), 0);
-    
-    const articlesWithRating = articles.filter(item => item.avg_rating !== null);
-    const average_rating = articlesWithRating.reduce((sum, item) => sum + (item.avg_rating || 0), 0) / (articlesWithRating.length || 1);
-
-    return { total_articles, total_views, average_rating, total_feedbacks };
-}
-
-function calculateSectionPerformance(articles) {
-    const sectionMap = {};
+function calculateCategoryPerformance(articles) {
+    const categoryMap = {};
     articles.forEach(article => {
-        const sectionName = article.section_title || 'Uncategorized';
-        if (!sectionMap[sectionName]) {
-            sectionMap[sectionName] = {
-                section_name: sectionName,
+        const categoryName = article.section_title || 'Uncategorized';
+        if (!categoryMap[categoryName]) {
+            categoryMap[categoryName] = {
+                section_name: categoryName,
                 total_articles: 0,
                 total_views: 0,
                 total_feedbacks: 0,
                 last_activity_egypt: null,
                 rating_sum: 0,
-                articles_with_feedback: 0
+                rating_count: 0
             };
         }
-        const section = sectionMap[sectionName];
-        section.total_articles += 1;
-        section.total_views += article.total_views || 0;
-        section.total_feedbacks += article.total_feedbacks || 0;
-        if (article.avg_rating !== null) {
-            section.rating_sum += article.avg_rating;
-            section.articles_with_feedback += 1;
+        const category = categoryMap[categoryName];
+        category.total_articles += 1;
+        category.total_views += (article.total_views || 0);
+        category.total_feedbacks += (article.total_feedbacks || 0);
+        
+        if ((article.avg_rating || 0) > 0 && (article.total_feedbacks || 0) > 0) {
+            category.rating_sum += article.avg_rating * article.total_feedbacks;
+            category.rating_count += article.total_feedbacks;
         }
+
         const articleDate = article.last_viewed_egypt ? new Date(article.last_viewed_egypt) : null;
-        const sectionDate = section.last_activity_egypt ? new Date(section.last_activity_egypt) : null;
-        if (articleDate && (!sectionDate || articleDate > sectionDate)) {
-            section.last_activity_egypt = article.last_viewed_egypt;
+        const categoryDate = category.last_activity_egypt ? new Date(category.last_activity_egypt) : null;
+        if (articleDate && (!categoryDate || articleDate > categoryDate)) {
+            category.last_activity_egypt = article.last_viewed_egypt;
         }
     });
 
-    return Object.values(sectionMap).map(section => {
-        section.average_rating = section.articles_with_feedback > 0 ? section.rating_sum / section.articles_with_feedback : 0;
-        return section;
+    return Object.values(categoryMap).map(category => {
+        category.average_rating = category.rating_count > 0 ? category.rating_sum / category.rating_count : null;
+        return category;
     });
 }
 
-function calculateUserEngagement(articles) {
+function processUserData(articles) {
     const userMap = {};
-    articles.forEach(log => {
-        if (!log.created_by) return;
-        if (!userMap[log.created_by]) {
-            userMap[log.created_by] = {
-                user_name: log.created_by,
+    articles.forEach(article => {
+        const userName = article.created_by || 'Unknown Author';
+        if (!userMap[userName]) {
+            userMap[userName] = {
+                user_name: userName,
                 total_articles_viewed: 0,
-                unique_articles: new Set(),
+                articles_created_count: 0,
                 last_activity_egypt: null
             };
         }
-        const user = userMap[log.created_by];
-        user.total_articles_viewed += (log.total_views || 0);
-        user.unique_articles.add(log.article_id);
+        const user = userMap[userName];
+        user.total_articles_viewed += (article.total_views || 0);
+        user.articles_created_count += 1;
 
-        const logDate = log.last_viewed_egypt ? new Date(log.last_viewed_egypt) : null;
+        const articleDate = article.last_viewed_egypt ? new Date(article.last_viewed_egypt) : null;
         const userDate = user.last_activity_egypt ? new Date(user.last_activity_egypt) : null;
-        if (logDate && (!userDate || logDate > userDate)) {
-            user.last_activity_egypt = log.last_viewed_egypt;
+
+        if (articleDate && (!userDate || articleDate > userDate)) {
+            user.last_activity_egypt = article.last_viewed_egypt;
         }
     });
-
-    return Object.values(userMap).map(user => {
-        user.unique_articles_viewed = user.unique_articles.size;
-        delete user.unique_articles;
-        return user;
-    });
+    return Object.values(userMap);
 }
 
 function calculateFeedbackDistribution(articles) {
-    const distribution = { Positive: 0, Neutral: 0, Negative: 0 };
+    const distribution = { 'Positive': 0, 'Neutral': 0, 'Negative': 0 };
     articles.forEach(article => {
-        if (article.avg_rating !== null && article.total_feedbacks > 0) {
-            if (article.avg_rating >= 4) {
-                distribution.Positive += article.total_feedbacks;
-            } else if (article.avg_rating >= 2.5) {
-                distribution.Neutral += article.total_feedbacks;
+        const rating = article.avg_rating || 0;
+        const feedbacks = article.total_feedbacks || 0;
+        if (feedbacks > 0) {
+            if (rating > 3.5) {
+                distribution['Positive'] += feedbacks;
+            } else if (rating < 2.5) {
+                distribution['Negative'] += feedbacks;
             } else {
-                distribution.Negative += article.total_feedbacks;
+                distribution['Neutral'] += feedbacks;
             }
         }
     });
     return [
-        { type: 'Positive', count: distribution.Positive },
-        { type: 'Neutral', count: distribution.Neutral },
-        { type: 'Negative', count: distribution.Negative }
+        { feedback_type: 'Positive', total_feedbacks: distribution['Positive'] },
+        { feedback_type: 'Neutral', total_feedbacks: distribution['Neutral'] },
+        { feedback_type: 'Negative', total_feedbacks: distribution['Negative'] }
     ];
 }
 
@@ -1195,30 +1185,40 @@ async function fetchData() {
     showSpinner(true);
 
     try {
-        const { data: articles, error } = await supabase.from('v_articles_detailed').select('*');
+        const { data: articlesData, error } = await supabase
+            .from('v_articles_detailed')
+            .select('*');
 
-        if (error) throw new Error(`Failed to fetch articles: ${error.message}`);
-        
-        const summaryMetrics = calculateSummaryMetrics(articles);
-        const sectionsData = calculateSectionPerformance(articles);
-        const usersData = calculateUserEngagement(articles);
-        const feedbackData = calculateFeedbackDistribution(articles);
+        if (error) throw new Error(`Failed to fetch from v_articles_detailed: ${error.message}`);
+
+        const total_articles = articlesData.length;
+        const total_views = articlesData.reduce((sum, item) => sum + (item.total_views || 0), 0);
+        const articlesWithFeedback = articlesData.filter(a => (a.avg_rating || 0) > 0 && (a.total_feedbacks || 0) > 0);
+        const average_rating = articlesWithFeedback.length > 0
+            ? articlesWithFeedback.reduce((sum, item) => sum + (item.avg_rating || 0) * (item.total_feedbacks || 0), 0) / articlesWithFeedback.reduce((sum, item) => sum + (item.total_feedbacks || 0), 0)
+            : 0;
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const activeUserSet = new Set(
+            articlesData
+                .filter(a => a.last_viewed_egypt && new Date(a.last_viewed_egypt) >= sevenDaysAgo)
+                .map(a => a.created_by)
+        );
+        const active_users_week = activeUserSet.size;
 
         allInsights = {
-            articles: articles || [],
-            users: usersData,
-            sections: sectionsData,
-            feedback: feedbackData
+            articles: articlesData,
+            users: processUserData(articlesData),
+            sections: calculateCategoryPerformance(articlesData),
+            overall: { total_articles, total_views, average_rating, active_users_week },
+            feedback: calculateFeedbackDistribution(articlesData)
         };
-
-        filteredInsights = {
-            articles: [...allInsights.articles],
-            users: [...allInsights.users],
-            sections: [...allInsights.sections]
-        };
+        
+        filteredInsights = JSON.parse(JSON.stringify(allInsights));
 
         populateUserFilter(allInsights.articles);
-        renderSummaryMetrics(summaryMetrics);
+        renderSummaryMetrics(allInsights.overall);
         renderAllTables();
         renderCharts();
         updateLastUpdateTime();
@@ -1237,14 +1237,50 @@ async function fetchData() {
     }
 }
 
+async function loadKnowledgeBaseInsights() {
+    try {
+        const { data, error } = await supabase
+            .from('v_articles_detailed')
+            .select('article_title, article_description, created_at_egypt, sub_category_name, section_title')
+            .order('created_at_egypt', { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error("Error loading KB Insights:", error);
+            document.getElementById("kbInsightsTable").innerHTML = `<tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ Error loading insights: ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            document.getElementById("kbInsightsTable").innerHTML = `<tr><td colspan="5" style="text-align:center;">No articles found</td></tr>`;
+            return;
+        }
+
+        const tableHtml = data.map(row => `
+            <tr>
+                <td>${escapeHtml(row.article_title)}</td>
+                <td title="${escapeHtml(row.article_description || "")}">${escapeHtml(row.article_description || "")}</td>
+                <td>${escapeHtml(row.sub_category_name)}</td>
+                <td>${escapeHtml(row.section_title)}</td>
+                <td>${formatTableDate(row.created_at_egypt)}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById("kbInsightsTable").innerHTML = tableHtml;
+
+    } catch (err) {
+        console.error("Unexpected error loading KB Insights:", err);
+        document.getElementById("kbInsightsTable").innerHTML = `<tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ An unexpected error occurred.</td></tr>`;
+    }
+}
+
 async function initializeInsightsDashboard() {
     document.getElementById('dashboard').style.visibility = 'visible';
     await fetchData();
+    await loadKnowledgeBaseInsights();
 
-    supabase.channel('public:v_articles_detailed:changes')
+    supabase.channel('public:cases')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, (payload) => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, (payload) => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => fetchData())
         .subscribe();
 }
 
@@ -1261,7 +1297,7 @@ document.getElementById('applyFiltersBtn').addEventListener('click', applyFilter
 document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
 document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
 document.getElementById('exportPdfBtn').addEventListener('click', () => {
-    showToast("PDF export feature coming soon", false);
+    showToast("PDF export feature coming soon.", false);
 });
 if (refreshDataBtn) {
     refreshDataBtn.addEventListener('click', fetchData);
