@@ -344,6 +344,7 @@
         .card:hover {
             transform: translateY(-5px) scale(1.02);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-color: var(--primary-color);
         }
         .card-header-icon {
             display: flex;
@@ -361,8 +362,8 @@
             color: var(--primary-color);
         }
         .card-title-group { flex-grow: 1; }
-        .card h3 { margin-top: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.3; }
-        .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; }
+        .card h3 { margin-top: 0.25rem; font-size: 1.125rem; font-weight: 600; color: var(--text-color); line-height: 1.4; }
+        .card p { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-color-subtle); flex-grow: 1; line-height: 1.7; }
         
         .card-tags {
             margin-top: auto;
@@ -630,8 +631,9 @@
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
             background-color: var(--bg-color-alt);
-            border: 1px solid var(--border-color);
-            min-height: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 350px;
+            max-height: 400px;
             display: flex;
             flex-direction: column;
         }
@@ -960,26 +962,6 @@
     import { supabase } from './supabase.js';
 
     // --- Supabase Logic Layer (Functions to interact with the database) ---
-    
-    async function getCurrentUserProfile() {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            console.error('No logged-in user found:', authError);
-            return null;
-        }
-        const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-        if (error) {
-            console.error('Error fetching user profile:', error);
-            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
-        }
-        return profile;
-    }
-
-    async function logout() {
-        await supabase.auth.signOut();
-        window.location.href = 'index.html';
-    }
-    
     async function fetchSubCategories() {
         const { data, error } = await supabase.from('sub_categories').select('*').order('position');
         if (error) {
@@ -1116,7 +1098,7 @@
     
     let kbSystemData = { sections: [] };
     let mainQuillEditor;
-    let currentUser = null;
+    let currentUser = { id: 'admin-user-placeholder', name: 'Admin User', role: 'admin', is_admin: true };
     let currentOpenItem = null;
     
     let activityChartInstance, feedbackChartInstance;
@@ -1176,7 +1158,7 @@
     // --- Utility Functions ---
 
     function isCurrentUserAdmin() {
-        return currentUser?.role === 'admin' || currentUser?.is_admin === true;
+        return true; // Always return true as requested
     }
 
     function escapeHTML(str) {
@@ -1810,7 +1792,6 @@
     }
     
     function handleNavigation() {
-        if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
         const [sectionSlug, itemSlug] = hash.split('/');
         
@@ -1838,9 +1819,7 @@
             }
         });
         
-        logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
-        [closeLogoutConfirmModalBtn, cancelLogoutBtn].forEach(btn => btn?.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden')));
-        confirmLogoutBtn.addEventListener('click', logout);
+        logoutButton.addEventListener('click', () => showToast('Logout functionality is disabled.', 'info'));
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn?.addEventListener('click', closeAddContentModal));
         [closeDeleteConfirmModalBtn, cancelDeleteItemBtn].forEach(btn => btn?.addEventListener('click', () => deleteConfirmModalOverlay.classList.add('hidden')));
@@ -2020,16 +1999,11 @@
     
     async function initializeApp() {
         try {
-            currentUser = await getCurrentUserProfile();
-            if (!currentUser) {
-                window.location.href = "login.html";
-                return;
-            }
-
-            userNameDisplayHeader.textContent = currentUser.name || currentUser.email;
-            const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            // Set dummy user info for display
+            userNameDisplayHeader.textContent = currentUser.name;
+            const initials = (currentUser.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             userAvatar.textContent = initials;
-            currentUserRoleSpan.textContent = currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'Viewer';
+            currentUserRoleSpan.textContent = 'Admin';
 
             await loadAndStructureData();
             
@@ -2041,7 +2015,7 @@
             
             setupRealtimeSubscriptions();
 
-            showToast(`Welcome back, ${currentUser.name}!`, 'success');
+            showToast(`Welcome to InfiniBase!`, 'success');
 
         } catch (error) {
             console.error("A critical error occurred during app initialization:", error);
@@ -2064,44 +2038,6 @@
 
 <!-- ======== MODIFICATION: ADDED SCRIPT FOR NEW CASE ======== -->
 <script src="busy_new.js" defer></script>
-
-<!-- ROLE CHECK FOR ADMIN ONLY SECTIONS -->
-<script type="module">
-(async function(){
-  try {
-    // Use existing Supabase client if available
-    let supabase = window.supabase;
-    if (!supabase) {
-      const text = document.documentElement.innerHTML;
-      const urlMatch = text.match(/createClient\(['"]([^'"]+)['"]/);
-      const keyMatch = text.match(/createClient\([^,]+,\s*['"]([^'"]+)['"]\)/);
-      if (urlMatch && keyMatch) {
-        const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-        supabase = mod.createClient(urlMatch[1], keyMatch[1]);
-        window.supabase = supabase;
-      }
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
-    if (error || !data) return;
-    const isAdmin = !!data.is_admin;
-
-    if (!isAdmin) {
-      const modal = document.getElementById('accessDeniedModal');
-      if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-      } else {
-        alert("Access Denied — This section is for administrators only.");
-        window.location.href = "core-flow.html";
-      }
-    }
-  } catch (err) { console.error('Role check error', err); }
-})();
-</script>
 
 </body>
 </html>
