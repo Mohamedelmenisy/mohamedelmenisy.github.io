@@ -347,14 +347,17 @@
         }
         .card-header-icon {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
+            justify-content: space-between;
             margin-bottom: 0.75rem;
+            gap: 1rem;
         }
         .card-icon-container {
             padding: 0.75rem;
             border-radius: 50%;
             margin-right: 1rem;
             background-color: rgba(99, 102, 241, 0.1); /* Primary color transparent */
+            flex-shrink: 0;
         }
         .card-icon-container i {
             font-size: 1.25rem;
@@ -381,13 +384,11 @@
             font-weight: 500;
         }
         .card-actions {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
             display: flex;
             gap: 0.5rem;
-            opacity: 0;
+            opacity: 0.6;
             transition: opacity 0.2s ease;
+            flex-shrink: 0;
         }
         .card:hover .card-actions {
             opacity: 1;
@@ -558,9 +559,9 @@
 
         .dashboard-main-grid {
             display: grid;
-            gap: 1.5rem;
+            gap: 2rem; /* Increased gap for better spacing */
             grid-template-columns: 1fr;
-            margin-top: 1.5rem;
+            margin-top: 2rem; /* Increased top margin */
         }
         @media(min-width: 1024px) {
             .dashboard-main-grid { grid-template-columns: 2fr 1fr; }
@@ -721,13 +722,9 @@
             font-weight: 600;
             color: var(--text-color);
         }
-        .activity-details .activity-item-link {
+        .activity-details .activity-item-title {
             color: var(--primary-color);
-            text-decoration: none;
             font-weight: 500;
-        }
-        .activity-details .activity-item-link:hover {
-            text-decoration: underline;
         }
         .activity-time {
             font-size: 0.8rem;
@@ -1028,9 +1025,9 @@
 <div class="header-right-content">
 <div class="admin-toolbar hidden" id="adminToolbar">
     <a href="#home" id="admin-link-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-    <a href="audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Dashboard</a>
-    <a href="insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
-    <a href="employees.html" class="nav-link"><i class="fas fa-users"></i>Employees</a>
+    <a href="/infini-base/insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
+    <a href="/infini-base/employees.html" id="admin-link-employees" class="nav-link"><i class="fas fa-users"></i>Employees</a>
+    <a href="/infini-base/audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
 </div>
 <div class="search-container">
 <span class="search-icon"><i class="fas fa-search"></i></span>
@@ -1456,20 +1453,25 @@
             ? `<div class="card-tags">${item.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>`
             : '';
 
+        const actionsHTML = isAdmin ? `
+            <div class="card-actions">
+                <button class="button" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+            </div>` : '';
+
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}" onclick="window.location.hash='#${sectionData.slug}/${item.slug}'" style="cursor: pointer;">
                 <div class="card-header-icon">
-                    <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
-                    <div class="card-title-group">
-                        <h3>${escapeHTML(item.title_en)}</h3>
+                    <div style="display: flex; align-items: center;">
+                        <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
+                        <div class="card-title-group">
+                            <h3>${escapeHTML(item.title_en)}</h3>
+                        </div>
                     </div>
+                    ${actionsHTML}
                 </div>
                 <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
                 ${tagsHTML}
-                 <div class="card-actions">
-                    ${isAdmin ? `<button class="button" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
-                    ${isAdmin ? `<button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete"><i class="fas fa-trash-alt"></i></button>` : ''}
-                </div>
             </div>`;
     }
 
@@ -1496,8 +1498,7 @@
         };
 
         let itemsHTML = pageItems.map(log => {
-            const itemLink = (log.section_slug && log.item_slug) ? `#${log.section_slug}/${log.item_slug}` : '#';
-            const itemTitle = log.item_title ? ` on <a href="${itemLink}" class="activity-item-link">${escapeHTML(truncateText(log.item_title, 30))}</a>` : '';
+            const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
 
             return `
                 <div class="activity-log-item">
@@ -1505,7 +1506,7 @@
                     <div class="activity-details">
                         <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}.
                     </div>
-                    <div class="activity-time">${formatReadableDate(log.created_at)}</div>
+                    <div class="activity-time">${formatReadableDate(log.created_at_egypt)}</div>
                 </div>
             `;
         }).join('');
@@ -1620,9 +1621,14 @@
     }
     
     function renderDashboardCharts(data) {
-        const legendColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
-        const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
-        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+        const rootStyles = getComputedStyle(document.documentElement);
+        const legendColor = rootStyles.getPropertyValue('--text-color').trim();
+        const ticksColor = rootStyles.getPropertyValue('--text-color-muted').trim();
+        const gridColor = rootStyles.getPropertyValue('--border-color').trim();
+        const primaryColor = rootStyles.getPropertyValue('--primary-color').trim();
+        const primaryColorTransparent = `rgba(${parseInt(primaryColor.slice(1,3),16)}, ${parseInt(primaryColor.slice(3,5),16)}, ${parseInt(primaryColor.slice(5,7),16)}, 0.6)`;
+        const yesColor = rootStyles.getPropertyValue('--yes-color').trim();
+        const yesColorTransparent = `rgba(${parseInt(yesColor.slice(1,3),16)}, ${parseInt(yesColor.slice(3,5),16)}, ${parseInt(yesColor.slice(5,7),16)}, 0.2)`;
 
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
@@ -1636,16 +1642,17 @@
                       {
                         label: 'Total Views',
                         data: data.weeklyActivity.map(d => d.total_views),
-                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                        borderColor: 'rgba(99, 102, 241, 1)',
+                        backgroundColor: primaryColorTransparent,
+                        borderColor: primaryColor,
                         borderRadius: 4,
+                        borderWidth: 2,
                       },
                       {
                         label: 'Active Users',
                         data: data.weeklyActivity.map(d => d.active_users),
                         type: 'line',
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderColor: yesColor,
+                        backgroundColor: yesColorTransparent,
                         yAxisID: 'y1',
                         tension: 0.3,
                         fill: true,
@@ -1654,8 +1661,9 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: legendColor } } },
+                    plugins: { legend: { labels: { color: legendColor, font: { size: 14 } } } },
                     scales: {
+                        x: { ticks: { color: ticksColor }, grid: { color: 'transparent' } },
                         y: { position: 'left', title: { display: true, text: 'Total Views', color: ticksColor }, ticks: {color: ticksColor}, grid: {color: gridColor} },
                         y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor, stepSize: 1 } }
                     }
@@ -1677,10 +1685,10 @@
                     datasets: [{
                         data: [helpful, notHelpful],
                         backgroundColor: [
-                            getComputedStyle(document.documentElement).getPropertyValue('--yes-color').trim(),
-                            getComputedStyle(document.documentElement).getPropertyValue('--no-color').trim()
+                            rootStyles.getPropertyValue('--yes-color').trim(),
+                            rootStyles.getPropertyValue('--no-color').trim()
                         ],
-                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+                        borderColor: rootStyles.getPropertyValue('--bg-color-alt').trim(),
                         borderWidth: 4,
                         hoverOffset: 8,
                     }]
