@@ -749,6 +749,38 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        /* ======== ROLE-BASED ACCESS STYLES ======== */
+        .restricted-notice {
+            text-align: center;
+            margin-top: 60px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .restricted-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            color: #ff4d4d;
+        }
+        .return-btn {
+            margin-top: 24px;
+            background-color: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .return-btn:hover {
+            background-color: #1d4ed8;
+        }
 </style>
 
 </head>
@@ -988,7 +1020,7 @@
 </div>
 <div class="header-right-content">
 <!-- NEW: Admin Toolbar -->
-<div class="admin-toolbar" id="adminToolbar">
+<div class="admin-toolbar hidden" id="adminToolbar">
     <a href="#home" id="admin-link-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
     <a href="audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
     <a href="insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
@@ -1498,19 +1530,6 @@
     window.renderActivityLog = renderActivityLog;
     
     async function renderDynamicDashboard() {
-        if (!isCurrentUserAdmin()) {
-            adminToolbar.classList.add('hidden');
-            dashboardOverviewContainer.innerHTML = `
-                <div class="viewer-dashboard-message">
-                    <div class="card">
-                        <h2>Welcome to the InfiniBase Knowledge Center</h2>
-                        <p>Your central hub for information and resources. Use the navigation on the left to explore different topics.</p>
-                    </div>
-                </div>`;
-            return;
-        }
-        
-        adminToolbar.classList.remove('hidden');
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
         const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
@@ -1575,10 +1594,25 @@
         currentSectionTitleEl.textContent = 'Dashboard';
         breadcrumbsContainer.innerHTML = `<a href="#home">Home</a>`;
         
-        if (isCurrentUserAdmin()) {
+        const userRole = currentUser?.role;
+
+        if (userRole === 'admin' || userRole === 'manager') {
+            adminToolbar.classList.remove('hidden');
             updateAdminToolbar('dashboard');
+            await renderDynamicDashboard();
+        } else {
+            adminToolbar.classList.add('hidden');
+            dashboardOverviewContainer.innerHTML = `
+                <div class="restricted-notice">
+                  <div class="restricted-icon">🚫</div>
+                  <h2>Dashboard Access Restricted</h2>
+                  <p>Hi ${escapeHTML(currentUser.name || 'Agent')}, this section is for <strong>Admins</strong> and <strong>Managers</strong> only.</p>
+                  <button class="return-btn" onclick="window.location.hash='#partner-care'">
+                    Go to Your Workspace
+                  </button>
+                </div>
+            `;
         }
-        await renderDynamicDashboard();
     }
     
     function renderDashboardCharts(data) {
@@ -1587,7 +1621,7 @@
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
         if (activityChartInstance) activityChartInstance.destroy();
-        const activityCtx = document.getElementById('activityChart')?.getContext('2d');
+        const activityCtx = document.getElementById('activityChart')?.getContext('d');
         if (activityCtx && data.weeklyActivity?.length > 0) {
             const labels = data.weeklyActivity.map(d => d.activity_date_egypt);
             activityChartInstance = new Chart(activityCtx, {
@@ -1626,7 +1660,7 @@
         }
         
         if (feedbackChartInstance) feedbackChartInstance.destroy();
-        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
+        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('d');
         if (feedbackCtx) {
             const kpis = data.feedbackKpis || {};
             const helpful = kpis.helpful_ratings || 0;
@@ -1957,7 +1991,7 @@
         cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
         confirmLogoutBtn.addEventListener('click', async () => {
             await supabase.auth.signOut();
-            window.location.href = "infini-base/login.html";
+            window.location.href = "/infini-base/login.html";
         });
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn?.addEventListener('click', closeAddContentModal));
@@ -2137,7 +2171,7 @@
         try {
             currentUser = await getCurrentUserProfile();
             if (!currentUser) {
-                window.location.href = "infini-base/login.html";
+                window.location.href = "/infini-base/login.html";
                 return;
             }
 
