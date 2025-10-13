@@ -750,36 +750,43 @@
             cursor: not-allowed;
         }
 
-        /* ======== ROLE-BASED ACCESS STYLES ======== */
+        /* ======== ROLE-BASED ACCESS STYLES (ENHANCED) ======== */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
         .restricted-notice {
             text-align: center;
             margin-top: 60px;
-            color: #fff;
-            background: rgba(255, 255, 255, 0.04);
+            color: #e5e7eb;
+            background: #1f2937;
             padding: 40px;
             border-radius: 16px;
-            box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
+            animation: fadeIn 0.5s ease-out forwards;
         }
         .restricted-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
-            color: #ff4d4d;
+            font-size: 56px;
+            margin-bottom: 20px;
+            color: var(--no-color);
         }
-        .return-btn {
-            margin-top: 24px;
-            background-color: #2563eb;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s;
+        .restricted-notice h2 {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
         }
-        .return-btn:hover {
-            background-color: #1d4ed8;
+        .restricted-notice p {
+            font-size: 1rem;
+            line-height: 1.6;
         }
 </style>
 
@@ -1019,10 +1026,9 @@
 </div>
 </div>
 <div class="header-right-content">
-<!-- NEW: Admin Toolbar -->
 <div class="admin-toolbar hidden" id="adminToolbar">
     <a href="#home" id="admin-link-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-    <a href="audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
+    <a href="audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Dashboard</a>
     <a href="insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
     <a href="employees.html" class="nav-link"><i class="fas fa-users"></i>Employees</a>
 </div>
@@ -1604,12 +1610,10 @@
             adminToolbar.classList.add('hidden');
             dashboardOverviewContainer.innerHTML = `
                 <div class="restricted-notice">
-                  <div class="restricted-icon">🚫</div>
+                  <div class="restricted-icon"><i class="fas fa-user-shield"></i></div>
                   <h2>Dashboard Access Restricted</h2>
-                  <p>Hi ${escapeHTML(currentUser.name || 'Agent')}, this section is for <strong>Admins</strong> and <strong>Managers</strong> only.</p>
-                  <button class="return-btn" onclick="window.location.hash='#partner-care'">
-                    Go to Your Workspace
-                  </button>
+                  <p>Hi ${escapeHTML(currentUser.name || 'User')}, this dashboard is reserved for <strong>Admins</strong> and <strong>Managers</strong>.</p>
+                  <p style="color: var(--text-color-muted); margin-top: 1rem;">Please use the sidebar to navigate to your designated areas.</p>
                 </div>
             `;
         }
@@ -1621,7 +1625,7 @@
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
         if (activityChartInstance) activityChartInstance.destroy();
-        const activityCtx = document.getElementById('activityChart')?.getContext('d');
+        const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx && data.weeklyActivity?.length > 0) {
             const labels = data.weeklyActivity.map(d => d.activity_date_egypt);
             activityChartInstance = new Chart(activityCtx, {
@@ -1660,7 +1664,7 @@
         }
         
         if (feedbackChartInstance) feedbackChartInstance.destroy();
-        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('d');
+        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
         if (feedbackCtx) {
             const kpis = data.feedbackKpis || {};
             const helpful = kpis.helpful_ratings || 0;
@@ -1698,7 +1702,13 @@
         standardSectionContentPlaceholder.classList.remove('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
         pageBody.classList.remove('item-view-active');
-        if (isCurrentUserAdmin()) updateAdminToolbar('');
+        
+        if (currentUser?.role === 'admin' || currentUser?.role === 'manager') {
+            adminToolbar.classList.remove('hidden');
+        } else {
+            adminToolbar.classList.add('hidden');
+        }
+        updateAdminToolbar('');
 
         const sectionData = kbSystemData.sections.find(s => s.slug === sectionSlug);
         if (!sectionData) {
@@ -1769,7 +1779,13 @@
         standardSectionContentPlaceholder.classList.add('hidden');
         itemDetailViewPlaceholder.classList.remove('hidden');
         pageBody.classList.add('item-view-active');
-        if (isCurrentUserAdmin()) updateAdminToolbar('');
+
+        if (currentUser?.role === 'admin' || currentUser?.role === 'manager') {
+            adminToolbar.classList.remove('hidden');
+        } else {
+            adminToolbar.classList.add('hidden');
+        }
+        updateAdminToolbar('');
         
         breadcrumbsContainer.innerHTML = `
             <a href="#home">Home</a> <span style="margin: 0 5px;">›</span>
