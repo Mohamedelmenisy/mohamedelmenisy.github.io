@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>InfiniBase - Polished Dashboard</title>
+<title>InfiniBase - Command Center</title>
 <!-- Cairo Font for Arabic -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -231,7 +231,6 @@
 
         .header-right-content { display: flex; align-items: center; gap: 1rem; }
         
-        /* NEW: Admin Toolbar - Styled as Tabs */
         .admin-toolbar {
             display: flex;
             align-items: center;
@@ -336,14 +335,14 @@
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: var(--card-shadow);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             display: flex;
             flex-direction: column;
             position: relative; /* For action buttons */
         }
         .card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
             border-color: var(--primary-color);
         }
         .card-header-icon {
@@ -631,7 +630,7 @@
             padding: 1.5rem;
             border-radius: var(--border-radius-lg);
             background-color: var(--bg-color-alt);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
             min-height: 350px;
             max-height: 400px;
             display: flex;
@@ -645,7 +644,6 @@
             border-bottom: 1px solid var(--border-color);
         }
         
-        /* Delete Modal Refinement */
         #deleteConfirmModalOverlay .modal-content {
             text-align: center;
             padding: 2.5rem;
@@ -666,11 +664,8 @@
             justify-content: center;
         }
 
-
         .hidden { display: none !important; }
 
-        /* Other styles as they were, for brevity in this example. 
-           In the final output, all original styles are retained and merged. */
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.625rem; border: 1px solid var(--border-color-darker); border-radius: var(--border-radius); background-color: var(--bg-color); color: var(--text-color); }
@@ -680,6 +675,80 @@
         .kb-content p { margin-bottom: 1em; line-height: 1.6; }
         .kb-content a { color: var(--primary-color); text-decoration: underline; }
         .item-actions-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        
+        /* ======== ACTIVITY LOG STYLES ======== */
+        #recentActivityContainer {
+            grid-column: 1 / -1; /* Span full width of the grid */
+            padding: 1.5rem;
+            background-color: var(--bg-color-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+        }
+        #recentActivityContainer h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1rem 0;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .activity-log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .activity-log-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 0.5rem;
+            border-radius: var(--border-radius);
+            transition: background-color 0.2s ease;
+        }
+        .activity-log-item:hover {
+            background-color: var(--bg-color-hover);
+        }
+        .activity-icon {
+            font-size: 1.1rem;
+            width: 24px;
+            text-align: center;
+        }
+        .activity-details {
+            flex-grow: 1;
+            font-size: 0.9rem;
+            color: var(--text-color-subtle);
+        }
+        .activity-details .activity-user {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .activity-details .activity-item-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .activity-details .activity-item-link:hover {
+            text-decoration: underline;
+        }
+        .activity-time {
+            font-size: 0.8rem;
+            color: var(--text-color-muted);
+            white-space: nowrap;
+        }
+        .activity-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        .activity-pagination button {
+            padding: 0.4rem 0.8rem;
+        }
+        .activity-pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 </style>
 
 </head>
@@ -785,19 +854,19 @@
 </div>
 <!-- Logout Confirmation Modal -->
 <div class="modal-overlay hidden" id="logoutConfirmModalOverlay">
-<div class="modal-content" style="max-width: 28rem;">
-<div class="modal-header">
-<h2 id="logoutConfirmModalTitle">Confirm Logout</h2>
-<button aria-label="Close" class="close-button" id="closeLogoutConfirmModalBtn">×</button>
-</div>
-<div class="modal-body">
-<p>Are you sure you want to logout from InfiniBase?</p>
-</div>
-<div class="modal-actions no-border">
-<button class="button button-danger" id="confirmLogoutBtn" type="button"><i class="fas fa-sign-out-alt"></i> Confirm Logout</button>
-<button class="button-secondary" id="cancelLogoutBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
-</div>
-</div>
+    <div class="modal-content" style="max-width: 28rem; text-align: center;">
+        <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
+            <h2 id="logoutConfirmModalTitle">Confirm Logout</h2>
+        </div>
+        <div class="modal-body">
+            <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"><i class="fas fa-question-circle"></i></div>
+            <p>Are you sure you want to logout from InfiniBase?</p>
+        </div>
+        <div class="modal-actions" style="justify-content: center; gap: 1rem; border-top: none; padding-top: 1rem;">
+            <button class="button-secondary" id="cancelLogoutBtn" type="button"><i class="fas fa-times"></i> Cancel</button>
+            <button class="button button-danger" id="confirmLogoutBtn" type="button"><i class="fas fa-sign-out-alt"></i> Confirm Logout</button>
+        </div>
+    </div>
 </div>
 <!-- Report Feedback Modal -->
 <div class="modal-overlay hidden" id="reportFeedbackModalOverlay">
@@ -962,6 +1031,21 @@
     import { supabase } from './supabase.js';
 
     // --- Supabase Logic Layer (Functions to interact with the database) ---
+    async function getCurrentUserProfile() {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            console.error('No logged-in user found:', authError);
+            return null;
+        }
+        const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+        if (error) {
+            console.error('Error fetching user profile:', error);
+            // Fallback for users who exist in auth but not in the 'users' table yet
+            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
+        }
+        return profile;
+    }
+
     async function fetchSubCategories() {
         const { data, error } = await supabase.from('sub_categories').select('*').order('position');
         if (error) {
@@ -1045,7 +1129,7 @@
     
     async function fetchDashboardData() {
         const results = await Promise.allSettled([
-            supabase.from('v_recent_activity').select('*'),
+            supabase.from('v_recent_activity').select('*').limit(50),
             supabase.from('v_overall_insights').select('*').single(),
             supabase.from('v_growth_trends').select('*'),
             supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
@@ -1098,15 +1182,14 @@
     
     let kbSystemData = { sections: [] };
     let mainQuillEditor;
-    let currentUser;
+    let currentUser = null;
     let currentOpenItem = null;
     
     let activityChartInstance, feedbackChartInstance;
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
     let activityLogPage = 1;
-    const ACTIVITY_LOG_PAGE_SIZE = 5;
+    const ACTIVITY_LOG_PAGE_SIZE = 7;
 
-    // --- DOM Element Cache ---
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
@@ -1135,7 +1218,6 @@
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     const logoutButton = document.getElementById('logoutButton');
     const logoutConfirmModalOverlay = document.getElementById('logoutConfirmModalOverlay');
-    const closeLogoutConfirmModalBtn = document.getElementById('closeLogoutConfirmModalBtn');
     const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
     const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
     const deleteConfirmModalOverlay = document.getElementById('deleteConfirmModalOverlay');
@@ -1151,14 +1233,11 @@
     const diffModal = document.getElementById('diffModal');
     const closeDiffModalBtn = document.getElementById('closeDiffModalBtn');
     const accessDeniedModalOverlay = document.getElementById('accessDeniedModalOverlay');
-    const accessDeniedMessage = document.getElementById('accessDeniedMessage');
     const returnHomeFromAccessDeniedBtn = document.getElementById('returnHomeFromAccessDeniedBtn');
     const adminToolbar = document.getElementById('adminToolbar');
     
-    // --- Utility Functions ---
-
     function isCurrentUserAdmin() {
-        return currentUser && currentUser.role === 'admin';
+        return currentUser?.role === 'admin' || currentUser?.is_admin === true;
     }
 
     function escapeHTML(str) {
@@ -1177,7 +1256,7 @@
                 timeZone: 'Africa/Cairo'
             });
         } catch (e) {
-            return isoString; // Fallback for invalid dates
+            return isoString;
         }
     }
 
@@ -1229,8 +1308,6 @@
     }
     
     async function loadAndStructureData() {
-        console.log("Loading core data from Supabase...");
-        // This function now throws an error on failure, which will be caught by initializeApp
         const [categories, articles] = await Promise.all([
             fetchSubCategories(),
             fetchArticles()
@@ -1247,13 +1324,10 @@
             if (parentSection) {
                 article.slug = article.slug || createSlug(article.title_en);
                 parentSection.items.push({ ...article });
-            } else {
-                console.warn(`Article "${article.title_en}" has an unknown sub_category_id: ${article.sub_category_id}`);
             }
         });
         
         kbSystemData.sections = sections;
-        console.log("Core data loaded successfully:", kbSystemData);
     }
     
     function populateSidebar() {
@@ -1300,16 +1374,9 @@
             }
         });
         
-        if (sectionsFromDB.length === 0) {
-            menuHTML += `<div class="sidebar-section-title">KNOWLEDGE BASE</div>`;
-            menuHTML += `<div class="sidebar-link" style="color: var(--text-color-muted); pointer-events: none; padding-left: 0.75rem;">No areas found.</div>`;
-        }
-        
-        navigationMenu.innerHTML = menuHTML; // Replace loader with content
+        navigationMenu.innerHTML = menuHTML;
     }
     
-    // --- UI Rendering & Event Handlers ---
-
     function highlightSidebarLink(sectionSlug) {
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
         const activeLink = document.querySelector(`.sidebar-link[data-section-slug="${sectionSlug}"]`);
@@ -1367,14 +1434,75 @@
                 </div>
             </div>`;
     }
+
+    function renderActivityLog(page = 1) {
+        const container = document.getElementById('recentActivityContainer');
+        if (!container) return;
+
+        const activityLog = dashboardData.activityLog || [];
+        const totalPages = Math.ceil(activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
+        activityLogPage = Math.max(1, Math.min(page, totalPages || 1));
+
+        const startIndex = (activityLogPage - 1) * ACTIVITY_LOG_PAGE_SIZE;
+        const endIndex = startIndex + ACTIVITY_LOG_PAGE_SIZE;
+        const pageItems = activityLog.slice(startIndex, endIndex);
+
+        const getIconForAction = (action) => {
+            switch (action) {
+                case 'created': return '<i class="fas fa-plus-circle" style="color: var(--yes-color);"></i>';
+                case 'updated': return '<i class="fas fa-pen" style="color: var(--rating-color);"></i>';
+                case 'deleted': return '<i class="fas fa-trash-alt" style="color: var(--no-color);"></i>';
+                case 'viewed': return '<i class="fas fa-eye" style="color: var(--primary-color);"></i>';
+                default: return '<i class="fas fa-history" style="color: var(--text-color-muted);"></i>';
+            }
+        };
+
+        let itemsHTML = pageItems.map(log => {
+            const itemLink = (log.section_slug && log.item_slug) ? `#${log.section_slug}/${log.item_slug}` : '#';
+            const itemTitle = log.item_title ? ` on <a href="${itemLink}" class="activity-item-link">${escapeHTML(truncateText(log.item_title, 30))}</a>` : '';
+
+            return `
+                <div class="activity-log-item">
+                    <div class="activity-icon">${getIconForAction(log.action)}</div>
+                    <div class="activity-details">
+                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}.
+                    </div>
+                    <div class="activity-time">${formatReadableDate(log.created_at)}</div>
+                </div>
+            `;
+        }).join('');
+
+        if (pageItems.length === 0) {
+            itemsHTML = `<div class="activity-log-item" style="justify-content: center;"><p>No recent activity found.</p></div>`;
+        }
+
+        let paginationHTML = '';
+        if (totalPages > 1) {
+            paginationHTML = `
+                <div class="activity-pagination">
+                    <button class="button-secondary" ${activityLogPage === 1 ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage - 1})">Prev</button>
+                    <span>Page ${activityLogPage} of ${totalPages}</span>
+                    <button class="button-secondary" ${activityLogPage === totalPages ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage + 1})">Next</button>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <h3>Recent Activity</h3>
+            <div class="activity-log-list">
+                ${itemsHTML}
+            </div>
+            ${paginationHTML}
+        `;
+    }
+    window.renderActivityLog = renderActivityLog;
     
     async function renderDynamicDashboard() {
         if (!isCurrentUserAdmin()) {
-            adminToolbar.classList.add('hidden'); // Hide admin toolbar for non-admins
+            adminToolbar.classList.add('hidden');
             dashboardOverviewContainer.innerHTML = `
                 <div class="viewer-dashboard-message">
                     <div class="card">
-                        <i class="fas fa-shield-alt"></i>
                         <h2>Welcome to the InfiniBase Knowledge Center</h2>
                         <p>Your central hub for information and resources. Use the navigation on the left to explore different topics.</p>
                     </div>
@@ -1383,7 +1511,6 @@
         }
         
         adminToolbar.classList.remove('hidden');
-
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
         const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
@@ -1430,9 +1557,13 @@
                      <h3>Feedback Analysis</h3>
                     <canvas id="feedbackChart"></canvas>
                 </div>
+                <div id="recentActivityContainer" class="card"></div>
             </div>`;
         
-        renderDashboardCharts(dashboardData);
+        setTimeout(() => {
+            renderDashboardCharts(dashboardData);
+            renderActivityLog(1);
+        }, 100);
     }
 
     async function displayDashboard() {
@@ -1455,7 +1586,6 @@
         const ticksColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
 
-        // Activity Chart
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx && data.weeklyActivity?.length > 0) {
@@ -1495,12 +1625,13 @@
             });
         }
         
-        // Feedback Chart
         if (feedbackChartInstance) feedbackChartInstance.destroy();
         const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
-        if (feedbackCtx && data.feedbackKpis) {
-            const helpful = data.feedbackKpis.helpful_ratings || 0;
-            const notHelpful = data.feedbackKpis.not_helpful_ratings || 0;
+        if (feedbackCtx) {
+            const kpis = data.feedbackKpis || {};
+            const helpful = kpis.helpful_ratings || 0;
+            const notHelpful = kpis.not_helpful_ratings || 0;
+            
             feedbackChartInstance = new Chart(feedbackCtx, {
                 type: 'doughnut',
                 data: {
@@ -1669,7 +1800,6 @@
         
         itemDetailViewPlaceholder.innerHTML = detailHTML;
 
-        // --- Execute scripts for injected content ---
         setTimeout(() => {
           if (window.initBusyNew) window.initBusyNew();
         }, 500);
@@ -1795,6 +1925,7 @@
     }
     
     function handleNavigation() {
+        if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
         const [sectionSlug, itemSlug] = hash.split('/');
         
@@ -1822,9 +1953,11 @@
             }
         });
         
-        logoutButton.addEventListener('click', async () => {
+        logoutButton.addEventListener('click', () => logoutConfirmModalOverlay.classList.remove('hidden'));
+        cancelLogoutBtn.addEventListener('click', () => logoutConfirmModalOverlay.classList.add('hidden'));
+        confirmLogoutBtn.addEventListener('click', async () => {
             await supabase.auth.signOut();
-            window.location.href = '/login.html'; // Or your login page
+            window.location.href = "infini-base/login.html";
         });
         
         [closeAddContentModalBtn, cancelAddContentBtn].forEach(btn => btn?.addEventListener('click', closeAddContentModal));
@@ -1924,12 +2057,11 @@
             showToast(`Item deleted.`, 'success');
             deleteConfirmModalOverlay.classList.add('hidden');
             
-            // Reload data and navigate
             await loadAndStructureData();
             if (window.location.hash.includes(itemToDelete.slug)) {
                 window.location.hash = `#${sectionSlug}`;
             } else {
-                handleNavigation(); // Refresh the current view
+                handleNavigation();
             }
         });
 
@@ -1961,7 +2093,6 @@
             const query = globalSearchInput.value.trim().toLowerCase();
             if (query.length < 2) { 
                 searchResultsContainer.classList.add('hidden');
-                // When search is cleared, show the main content again
                 if (query.length === 0) {
                    standardSectionContentPlaceholder.classList.remove('hidden');
                 }
@@ -1970,7 +2101,6 @@
             const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
             const results = allItems.filter(i => i.title_en.toLowerCase().includes(query) || stripHtml(i.description_en).toLowerCase().includes(query));
             
-            // Display search results in the main content area
             let resultsHTML = '<div class="cards-grid">';
             if(results.length > 0) {
                  results.forEach(item => {
@@ -1986,7 +2116,7 @@
             standardSectionContentPlaceholder.classList.remove('hidden');
             dashboardOverviewContainer.classList.add('hidden');
             itemDetailViewPlaceholder.classList.add('hidden');
-            searchResultsContainer.classList.add('hidden'); // We show results in the main view now
+            searchResultsContainer.classList.add('hidden');
         });
 
         document.addEventListener('click', e => {
@@ -2005,36 +2135,21 @@
     
     async function initializeApp() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile, error } = await supabase
-                    .from("users")
-                    .select("id, name, email, role")
-                    .eq("id", user.id)
-                    .single();
-                if(error || !profile) {
-                    throw new Error("Could not fetch user profile.");
-                }
-                currentUser = profile;
-            } else {
-                window.location.href = '/login.html'; // Redirect if no user
+            currentUser = await getCurrentUserProfile();
+            if (!currentUser) {
+                window.location.href = "infini-base/login.html";
                 return;
             }
 
-            // Set user info for display
-            userNameDisplayHeader.textContent = currentUser.name || 'User';
-            const initials = (currentUser.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            userNameDisplayHeader.textContent = currentUser.name || currentUser.email;
+            const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             userAvatar.textContent = initials;
-            currentUserRoleSpan.textContent = currentUser.role || 'user';
+            currentUserRoleSpan.textContent = currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'Viewer';
 
             await loadAndStructureData();
-            
             populateSidebar();
-            
             setupEventListeners();
-            
-            handleNavigation(); // Initial page load
-            
+            handleNavigation();
             setupRealtimeSubscriptions();
 
             showToast(`Welcome back, ${currentUser.name}!`, 'success');
@@ -2043,8 +2158,7 @@
             console.error("A critical error occurred during app initialization:", error);
             showToast('Failed to initialize the application.', 'error');
             pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
-            const sidebarLoader = document.getElementById('sidebarLoader');
-            if (sidebarLoader) sidebarLoader.innerHTML = 'Failed to load.';
+            document.getElementById('sidebarLoader').innerHTML = 'Failed to load.';
         }
     }
 
