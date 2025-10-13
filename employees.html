@@ -230,7 +230,6 @@
             color: var(--text-color-muted); font-size: 0.9rem;
         }
 
-        /* تحسينات إضافية */
         .refresh-indicator { 
             display: flex; align-items: center; gap: 0.5rem; 
             color: var(--text-color-muted); font-size: 0.9rem; 
@@ -256,11 +255,73 @@
             margin-bottom: 1rem; 
         }
         .chart-toolbar button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        @media screen and (max-width: 768px) {
+            .page-wrapper {
+                padding: 1rem;
+                padding-top: calc(var(--header-height) + 1rem);
+            }
+            .page-header {
+                padding: 0 1rem;
+            }
+            .header-title h1 {
+                font-size: 1.25rem;
+            }
+            .table-controls, .search-filter-box {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .quick-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+            table {
+                display: block;
+            }
+            thead {
+                display: none;
+            }
+            tbody, tr, td {
+                display: block;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            tr {
+                margin-bottom: 1rem;
+                border: 1px solid var(--border-color);
+                border-radius: var(--border-radius);
+                overflow: hidden;
+            }
+            td {
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--border-color);
+                text-align: right;
+                position: relative;
+            }
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 1rem;
+                font-weight: 600;
+                color: var(--text-color-muted);
+                text-transform: uppercase;
+                font-size: 0.8rem;
+            }
+            .actions-cell {
+                justify-content: flex-end;
+            }
+            .user-info {
+                justify-content: flex-end;
+            }
+            .pagination-controls {
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
 
-<!-- ACCESS DENIED MODAL -->
 <div id="accessDeniedModal" style="display:none;position:fixed;inset:0;z-index:9999;justify-content:center;align-items:center;background:rgba(17,24,39,0.85);backdrop-filter:blur(8px);">
   <div style="background:#0f172a;border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:2rem 2.5rem;max-width:420px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.5);animation:fadeIn 0.3s ease;">
     <div style="font-size:2.8rem;color:#6366f1;margin-bottom:0.5rem;">🔒</div>
@@ -270,7 +331,6 @@
   </div>
 </div>
 <style>@keyframes fadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}</style>
-
 
 <div id="toast-container"></div>
 
@@ -529,11 +589,11 @@
             const role = emp.role || 'agent';
 
             return `<tr data-user-id="${emp.id}">
-                    <td><div class="user-info"><div class="user-avatar">${initials}</div><div><div class="user-name">${emp.name || 'No Name'}</div><div class="user-email">${emp.email}</div></div></div></td>
-                    <td><span class="role-badge ${role}">${role}</span></td><td>${emp.department || 'N/A'}</td>
-                    <td><div class="status-indicator"><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span><span>${isOnline ? 'Online' : 'Offline'}</span></div></td>
-                    <td>${lastSeen}</td>
-                    <td class="actions-cell"><button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button><button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button></td>
+                    <td data-label="User"><div class="user-info"><div class="user-avatar">${initials}</div><div><div class="user-name">${emp.name || 'No Name'}</div><div class="user-email">${emp.email}</div></div></div></td>
+                    <td data-label="Role"><span class="role-badge ${role}">${role}</span></td><td data-label="Department">${emp.department || 'N/A'}</td>
+                    <td data-label="Status"><div class="status-indicator"><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span><span>${isOnline ? 'Online' : 'Offline'}</span></div></td>
+                    <td data-label="Last Seen">${lastSeen}</td>
+                    <td data-label="Actions" class="actions-cell"><button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button><button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button></td>
                 </tr>`;
         }).join('');
     }
@@ -818,11 +878,11 @@
         };
         
         try {
-            if (id) { // Update
+            if (id) { 
                 const { error } = await supabase.from('users').update({ name: payload.full_name, role: payload.role, department: payload.department }).eq('id', id);
                 if (error) throw error;
                 showToast('User updated successfully.', 'success');
-            } else { // Create
+            } else { 
                 const res = await fetch(EDGE_ADD_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) });
                 if (!res.ok) throw new Error(await res.text());
                 showToast('Employee created successfully!', 'success');
@@ -865,7 +925,7 @@
                 await channel.track({ user_id: currentUser.id });
                 await updateLastSeen();
                 if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000); // 5 minutes
+                presenceInterval = setInterval(updateLastSeen, 300000); 
             }
         });
     }
@@ -914,11 +974,9 @@
 
 </script>
 
-<!-- ROLE CHECK FOR ADMIN ONLY SECTIONS -->
 <script type="module">
 (async function(){
   try {
-    // Use existing Supabase client if available
     let supabase = window.supabase;
     if (!supabase) {
       const text = document.documentElement.innerHTML;
