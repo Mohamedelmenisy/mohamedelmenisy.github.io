@@ -50,6 +50,7 @@
             padding: 0 2rem; background-color: rgba(31, 41, 55, 0.8);
             border-bottom: 1px solid var(--border-color);
             backdrop-filter: blur(8px); z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         .header-title { display: flex; align-items: center; gap: 1rem; }
         .header-title .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
@@ -326,7 +327,7 @@
 
 <div id="toast-container"></div>
 
-<div id="dashboard" style="visibility: hidden;">
+<div id="dashboard">
     <header class="page-header">
         <div class="header-title">
             <i class="fas fa-users-cog logo-icon"></i>
@@ -478,10 +479,9 @@
 
 <div id="accessDeniedModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 420px; text-align: center; padding: 2rem 2.5rem;">
-        <div style="font-size: 3.5rem; margin-bottom: 1rem; line-height: 1;">🚫</div>
-        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Denied</h2>
+        <h2 style="font-size: 1.6rem; margin-bottom: 0.75rem; color: #fff;">Access Restricted 🚫</h2>
         <p style="color: var(--text-color-muted); margin-bottom: 2rem; font-size: 1rem;">
-            This page is restricted to Administrators and Managers only.
+            This section is available for Admins and Managers only.
         </p>
         <button id="accessDeniedOkayBtn" class="button" style="width: 100%;">Okay</button>
     </div>
@@ -937,21 +937,28 @@
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not logged in');
+
             const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (error) throw new Error('Could not verify user role.');
+
+            const userRole = data?.role;
             const allowedRoles = ['admin', 'manager'];
-            if (error || !data?.role || !allowedRoles.includes(data.role)) {
-                throw new Error('Access denied');
+
+            if (!userRole || !allowedRoles.includes(userRole)) {
+                document.getElementById('accessDeniedModal').classList.add('show');
+                return;
             }
             
             currentUser = user; 
-            document.getElementById('dashboard').style.visibility = 'visible';
             
             await refreshData();
             setupModals();
             await initPresence();
 
             supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
+        
         } catch (e) {
+            console.error("Access check failed:", e.message);
             document.getElementById('accessDeniedModal').classList.add('show');
         }
     }
