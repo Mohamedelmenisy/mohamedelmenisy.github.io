@@ -189,7 +189,7 @@
 
         .content-wrapper {
             flex-grow: 1;
-            padding: 1.5rem;
+            padding: 1.3rem; /* Reduced padding */
             transition: margin-left 0.3s ease-in-out;
             height: 100vh;
             overflow-y: auto;
@@ -637,12 +637,16 @@
             display: flex;
             flex-direction: column;
         }
-        .chart-container h3 {
+        .chart-container h3, #topUsersContainer h3 {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0 0 1rem 0;
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border-color);
+        }
+        #topUsersContainer {
+             min-height: 350px;
+             max-height: 400px;
         }
         
         #deleteConfirmModalOverlay .modal-content {
@@ -745,6 +749,48 @@
         .activity-pagination button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+        
+        /* New Top Users List Styles */
+        .top-users-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .top-user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .top-user-item:last-child {
+            border-bottom: none;
+        }
+        .top-user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .top-user-rank {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text-color-muted);
+            width: 20px;
+            text-align: center;
+        }
+        .top-user-name {
+            font-weight: 500;
+        }
+        .top-user-views {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            background-color: rgba(99, 102, 241, 0.1);
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
         }
 
         /* ======== ROLE-BASED ACCESS STYLES (ENHANCED) ======== */
@@ -1220,7 +1266,7 @@
     let currentUser = null;
     let currentOpenItem = null;
     
-    let activityChartInstance, feedbackChartInstance;
+    let activityChartInstance;
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
     let activityLogPage = 1;
     const ACTIVITY_LOG_PAGE_SIZE = 7;
@@ -1499,14 +1545,14 @@
 
         let itemsHTML = pageItems.map(log => {
             const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
-
+            const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
             return `
                 <div class="activity-log-item">
                     <div class="activity-icon">${getIconForAction(log.action)}</div>
                     <div class="activity-details">
-                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}.
+                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
                     </div>
-                    <div class="activity-time">${formatReadableDate(log.created_at_egypt)}</div>
+                    <div class="activity-time">${formatReadableDate(log.timestamp || log.created_at_egypt)}</div>
                 </div>
             `;
         }).join('');
@@ -1536,6 +1582,31 @@
     }
     window.renderActivityLog = renderActivityLog;
     
+    function renderTopUsers() {
+        const container = document.getElementById('topUsersContainer');
+        if (!container) return;
+        
+        const topUsers = dashboardData.topUsers || [];
+        
+        let usersHTML = '<ul class="top-users-list">';
+        if (topUsers.length > 0) {
+            usersHTML += topUsers.map((user, index) => `
+                <li class="top-user-item">
+                    <div class="top-user-info">
+                        <span class="top-user-rank">${index + 1}.</span>
+                        <span class="top-user-name">${escapeHTML(user.user_name)}</span>
+                    </div>
+                    <span class="top-user-views">${user.total_articles_viewed || 0} views</span>
+                </li>
+            `).join('');
+        } else {
+            usersHTML += `<li class="top-user-item" style="justify-content:center;">No user activity this week.</li>`;
+        }
+        usersHTML += '</ul>';
+        
+        container.innerHTML = `<h3>🔥 Most Active Users This Week</h3>${usersHTML}`;
+    }
+
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
@@ -1567,7 +1638,7 @@
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-star"></i></div>
-                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating || 0}</span><span class="stat-label">Avg. Feedback</span></div>
+                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating ? insights.avg_feedback_rating.toFixed(2) : 'N/A'}</span><span class="stat-label">Avg. Feedback</span></div>
                 </div>
                  <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-edit"></i></div>
@@ -1579,15 +1650,15 @@
                     <h3>Content Activity (Last 7 Days)</h3>
                     <canvas id="activityChart"></canvas>
                 </div>
-                <div class="chart-container">
-                     <h3>Feedback Analysis</h3>
-                    <canvas id="feedbackChart"></canvas>
+                <div id="topUsersContainer" class="card">
+                    <!-- Top Users content will be rendered here -->
                 </div>
                 <div id="recentActivityContainer" class="card"></div>
             </div>`;
         
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
+            renderTopUsers();
             renderActivityLog(1);
         }, 100);
     }
@@ -1633,7 +1704,7 @@
         if (activityChartInstance) activityChartInstance.destroy();
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx && data.weeklyActivity?.length > 0) {
-            const labels = data.weeklyActivity.map(d => d.activity_date_egypt);
+            const labels = data.weeklyActivity.map(d => new Date(d.activity_date_egypt).toLocaleDateString('en-US', { month: 'short', day: 'numeric'}));
             activityChartInstance = new Chart(activityCtx, {
                 type: 'bar',
                 data: {
@@ -1666,38 +1737,6 @@
                         x: { ticks: { color: ticksColor }, grid: { color: 'transparent' } },
                         y: { position: 'left', title: { display: true, text: 'Total Views', color: ticksColor }, ticks: {color: ticksColor}, grid: {color: gridColor} },
                         y1: { position: 'right', title: { display: true, text: 'Active Users', color: ticksColor }, grid: { drawOnChartArea: false }, ticks: {color: ticksColor, stepSize: 1 } }
-                    }
-                }
-            });
-        }
-        
-        if (feedbackChartInstance) feedbackChartInstance.destroy();
-        const feedbackCtx = document.getElementById('feedbackChart')?.getContext('2d');
-        if (feedbackCtx) {
-            const kpis = data.feedbackKpis || {};
-            const helpful = kpis.helpful_ratings || 0;
-            const notHelpful = kpis.not_helpful_ratings || 0;
-            
-            feedbackChartInstance = new Chart(feedbackCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Helpful', 'Not Helpful'],
-                    datasets: [{
-                        data: [helpful, notHelpful],
-                        backgroundColor: [
-                            rootStyles.getPropertyValue('--yes-color').trim(),
-                            rootStyles.getPropertyValue('--no-color').trim()
-                        ],
-                        borderColor: rootStyles.getPropertyValue('--bg-color-alt').trim(),
-                        borderWidth: 4,
-                        hoverOffset: 8,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: legendColor, font: {size: 14}} }
                     }
                 }
             });
