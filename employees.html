@@ -1,1097 +1,710 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr">
+<html lang="en" dir="ltr">
 <head>
-  <style>
-/* Shared design tokens and improvements */
-:root{
-  --brand-500: #0b5fff; /* primary */
-  --brand-600: #084fd6;
-  --muted-600: #6b7280;
-  --bg: #0f1724;
-  --card-bg: #0b1220;
-  --glass: rgba(255,255,255,0.04);
-  --success: #16a34a;
-  --danger: #ef4444;
-  --radius: 10px;
-  --gap: 12px;
-  --max-width: 1200px;
-  --mono: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
-}
-
-/* Reset small things */
-body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#071428 0%, #071727 100%); color: #e6eef8; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
-.container{ max-width: var(--max-width); margin: 0 auto; padding: 20px; }
-
-/* Sticky header */
-.app-header{
-  position: sticky; top:0; z-index:40; background: rgba(6,11,22,0.7); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(255,255,255,0.04);
-  display:flex; align-items:center; justify-content:space-between; padding: 10px 18px;
-}
-.app-header .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--brand-500); }
-.app-header nav{ display:flex; gap:10px; align-items:center; }
-.app-header a{ color: #dbeafe; text-decoration:none; padding:8px 12px; border-radius:8px; display:inline-block; font-size:14px; }
-.app-header a:hover{ background: rgba(255,255,255,0.03); transform: translateY(-1px); transition: all 120ms ease; }
-
-/* Protected link */
-.protected-link{ opacity:0.6; cursor: pointer; position:relative; outline:none; }
-.protected-link::after{ content: '🔒'; margin-left:6px; font-size:12px; opacity:0.7; }
-
-/* Sidebar */
-.app-layout{ display:flex; gap:18px; align-items:flex-start; padding-top:12px; }
-.sidebar{ width:260px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:14px; border-radius:12px; height: calc(100vh - 88px); position:sticky; top:76px; overflow:auto; box-shadow: 0 6px 20px rgba(2,6,23,0.6); }
-.main{ flex:1; min-height: calc(100vh - 120px); padding-bottom:60px; }
-
-/* Cards */
-.card{ background: var(--card-bg); padding:16px; border-radius:var(--radius); box-shadow: 0 8px 30px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03); margin-bottom: var(--gap); }
-
-/* Modal styles */
-.protected-modal{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); visibility:hidden; opacity:0; transition: all 180ms ease; z-index:80; }
-.protected-modal.open{ visibility:visible; opacity:1; }
-.protected-modal-card{ width:380px; background: linear-gradient(180deg, #071428, #041025); padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 8px 30px rgba(2,6,23,0.7); color:#dbeafe; }
-.protected-modal-card h3{ margin:0 0 8px 0; }
-.protected-modal-card p{ margin:0 0 16px 0; color:var(--muted-600); }
-.protected-modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
-.protected-modal button{ background:transparent; color:var(--brand-500); border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; cursor:pointer; }
-
-/* responsive */
-@media (max-width:900px){
-  .sidebar{ position:relative; width:100%; height:auto; top:0; }
-  .app-layout{ flex-direction:column; }
-  .app-header nav{ gap:6px; }
-}
-
-  </style>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employees Dashboard - InfiniBase</title>
-    <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'&gt;&lt;rect width='32' height='32' rx='4' fill='%236366f1'/&gt;&lt;text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'&gt;IB&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+    <title>InfiniBase — Employees Dashboard</title>
+
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js for interactive charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
+        /* --- 1. Global Styles & Theme Variables (Unified) --- */
         :root {
-            --primary-color: #6366f1;
-            --primary-color-hover: #4f46e5;
-            --primary-color-transparent: rgba(99, 102, 241, 0.2);
-            --text-color: #d1d5db;
-            --text-color-muted: #9ca3af;
-            --bg-color: #111827;
-            --bg-color-alt: #1f2937;
-            --border-color: #374151;
-            --border-radius: 0.5rem;
-            --border-radius-lg: 0.75rem;
-            --status-online: #22c55e;
-            --status-offline: #9ca3af;
-            --status-inactive: #f59e0b;
-            --role-admin-bg: rgba(167, 139, 250, 0.2);
-            --role-admin-text: #c4b5fd;
-            --role-agent-bg: rgba(59, 130, 246, 0.2);
-            --role-agent-text: #93c5fd;
-            --header-height: 70px;
-            --toast-success-bg: #22c55e;
-            --toast-error-bg: #ef4444;
+            --bg-dark: #0F1015;
+            --bg-card: #1A1C23;
+            --bg-header: #21242D;
+            --primary-accent: #6C5DD3;
+            --primary-accent-light: #8374FF;
+            --secondary-accent: #3F8CFF;
+            --secondary-accent-light: #5DA1FF;
+            --text-light: #F5F5F5;
+            --text-muted: #9CA3B3;
+            --border-color: #2A2D38;
+            --success: #00B69B;
+            --success-light: #00D6B5;
+            --warning: #FFC454;
+            --warning-light: #FFD27A;
+            --danger: #FF6A55;
+            --danger-light: #FF8A7A;
+            --font-family: 'Poppins', sans-serif;
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.35);
+            --gradient-primary: linear-gradient(135deg, #6C5DD3 0%, #8374FF 100%);
         }
-        html, body {
-            height: 100%; margin: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
-            font-size: 16px;
-        }
-        .hidden { display: none !important; }
 
-        .page-wrapper {
-            display: flex; flex-direction: column; min-height: 100vh;
-            padding: 1.5rem 2rem; padding-top: calc(var(--header-height) + 1.5rem);
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(63, 140, 255, 0.05) 0%, transparent 20%);
         }
-        main { flex-grow: 1; }
-        .page-header {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: var(--header-height);
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 2rem; background-color: rgba(31, 41, 55, 0.8);
-            border-bottom: 1px solid var(--border-color);
-            backdrop-filter: blur(8px); z-index: 100;
-        }
-        .header-title { display: flex; align-items: center; gap: 1rem; }
-        .header-title .logo-icon { font-size: 1.8rem; color: var(--primary-color); }
-        .header-title h1 { font-size: 1.75rem; font-weight: 700; color: white; margin: 0; }
-        .header-actions { display: flex; gap: 1rem; }
-
-        .button {
-            background-color: var(--primary-color); color: white; border: none;
-            padding: 0.75rem 1.25rem; border-radius: var(--border-radius);
-            cursor: pointer; font-size: 1rem; font-weight: 600;
-            transition: all 0.2s; text-decoration: none;
-            display: inline-flex; align-items: center; gap: 0.5rem;
-        }
-        .button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); }
-        .button:disabled { background-color: var(--border-color); cursor: not-allowed; transform: none; }
-        .button-secondary { background-color: var(--bg-color-alt); color: var(--text-color); border: 1px solid var(--border-color); }
-        .button-secondary:hover { background-color: var(--border-color); }
-        .button-danger { background-color: #ef4444; }
-        .button-danger:hover { background-color: #dc2626; }
         
-        .card {
-            background-color: var(--bg-color-alt); border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-lg); padding: 1.5rem; overflow: hidden;
-            display: flex; flex-direction: column;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
+        /* --- 2. Main Dashboard Layout --- */
+        .insights-dashboard {
+            padding: 24px;
+            display: grid;
+            gap: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
         }
-        .card:hover {
-            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-            border-color: rgba(99, 102, 241, 0.5);
-        }
-        .card h3 {
-            font-size: 1.25rem; font-weight: 600; margin: 0 0 1.5rem 0;
-            padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
-        }
-
-        .stats-container {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.5rem; margin-bottom: 2rem;
-        }
-        .stat-card {
-            background-color: var(--bg-color-alt); border-radius: var(--border-radius-lg);
-            padding: 1.5rem; display: flex; align-items: center; gap: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .stat-card:hover { transform: translateY(-4px); }
-        .stat-card i {
-            font-size: 1.8rem; background-color: var(--bg-color); padding: 1rem;
-            border-radius: 50%; width: 56px; height: 56px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .stat-info .value { font-size: 2.25rem; font-weight: 700; color: white; }
-        .stat-info .label { font-size: 1rem; color: var(--text-color-muted); }
         
-        .charts-section { margin-top: 2rem; }
-        .charts-section h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
-        .chart-wrapper { position: relative; height: 350px; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
-        .chart-placeholder { text-align: center; color: var(--text-color-muted); }
-        .chart-placeholder i { font-size: 2.5rem; margin-bottom: 1rem; }
-
-        .table-controls { 
-            display: flex; justify-content: space-between; align-items: center; 
-            flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; 
-        }
-        .search-filter-box { display: flex; gap: 1rem; flex-wrap: wrap; }
-        .search-filter-box input, .search-filter-box select {
-            padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);
-            background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
-            min-width: 200px;
-        }
-        .search-filter-box input:focus, .search-filter-box select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-            outline: none;
-        }
-
-        .table-container { overflow-x: auto; flex-grow: 1; border-radius: var(--border-radius); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); text-align: left; font-size: 1rem; vertical-align: middle; }
-        thead th { 
-            background-color: var(--bg-color); color: var(--text-color-muted); 
-            font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; 
-            position: sticky; top: 0; z-index: 10;
-        }
-        tbody tr { transition: background-color 0.2s; }
-        tbody tr:hover { background-color: #2a3546; }
-        tr:last-child td { border-bottom: none; }
-
-        .user-info { display: flex; align-items: center; gap: 1rem; }
-        .user-avatar { 
-            width: 40px; height: 40px; border-radius: 50%; 
-            background-color: var(--primary-color); color: white; 
-            display: flex; align-items: center; justify-content: center; 
-            font-weight: 600; flex-shrink: 0; 
-        }
-        .user-name { font-weight: 600; color: white; }
-        .user-email { font-size: 0.9rem; color: var(--text-color-muted); }
-        .role-badge { padding: 0.3rem 0.7rem; border-radius: 99px; font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
-        .role-badge.admin { background-color: var(--role-admin-bg); color: var(--role-admin-text); }
-        .role-badge.agent { background-color: var(--role-agent-bg); color: var(--role-agent-text); }
-        
-        .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; }
-        .status-dot.online { background-color: var(--status-online); box-shadow: 0 0 8px var(--status-online); }
-        .status-dot.offline { background-color: var(--status-offline); }
-        
-        .actions-cell { display: flex; gap: 0.5rem; }
-        .actions-cell button { 
-            background: none; border: none; font-size: 1.1rem; cursor: pointer; 
-            padding: 0.5rem; color: var(--text-color-muted); transition: all 0.2s; 
+        /* --- Header Section --- */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: var(--bg-header);
+            padding: 24px;
             border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
         }
-        .actions-cell button:hover { 
-            background-color: rgba(99, 102, 241, 0.1); 
-            color: var(--primary-color); 
+        .dashboard-header::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 120px; height: 120px; background: var(--gradient-primary);
+            opacity: 0.1; border-radius: 0 0 100% 0;
         }
-        .actions-cell button.delete:hover { 
-            background-color: rgba(239, 68, 68, 0.1);
-            color: #ef4444; 
+        .header-title h1 {
+            font-size: 32px; font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 8px; position: relative;
+        }
+        .header-title p { color: var(--text-muted); font-size: 15px; font-weight: 500; }
+        .header-actions { display: flex; gap: 12px; }
+        .action-btn {
+            background-color: var(--bg-card); color: var(--text-light);
+            border: 1px solid var(--border-color); padding: 12px 20px;
+            border-radius: 12px; font-family: var(--font-family);
+            cursor: pointer; transition: var(--transition);
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 600; font-size: 14px; box-shadow: var(--shadow);
+        }
+        .action-btn.primary { background: var(--gradient-primary); border: none; color: white; }
+        .action-btn:hover {
+            transform: translateY(-2px); box-shadow: var(--shadow-hover);
+            border-color: var(--primary-accent);
+        }
+        .action-btn.primary:hover { background: var(--gradient-primary); filter: brightness(1.1); }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* --- 3. KPI Cards Section --- */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+        }
+        .kpi-card {
+            background-color: var(--bg-card); padding: 28px 24px;
+            border-radius: var(--border-radius); border: 1px solid var(--border-color);
+            animation: fadeInUp 0.5s ease-out forwards; opacity: 0;
+            transition: var(--transition); box-shadow: var(--shadow);
+            position: relative; overflow: hidden;
+        }
+        .kpi-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 4px; background: var(--gradient-primary);
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary-accent-light); }
+        .kpi-card .card-title {
+            color: var(--text-muted); font-size: 14px; font-weight: 600;
+            margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+        }
+        .kpi-card .card-value { font-size: 36px; font-weight: 800; color: var(--text-light); line-height: 1.2; }
+        .kpi-card .card-title i {
+            font-size: 16px; width: 20px; text-align: center;
+            color: var(--primary-accent-light);
+        }
+
+        /* --- 4. Filters & Table Section --- */
+        .main-card {
+            background-color: var(--bg-card); padding: 24px;
+            border-radius: var(--border-radius); border: 1px solid var(--border-color);
+            box-shadow: var(--shadow); transition: var(--transition);
+        }
+        .main-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
+        
+        .table-controls {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+            padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color);
+        }
+        .filter-group {
+            display: flex; flex-direction: column; gap: 8px; flex-grow: 1; min-width: 180px;
+        }
+        .filter-group label { display:none; }
+        .filter-group input, .filter-group select {
+            background-color: var(--bg-dark); border: 1px solid var(--border-color);
+            color: var(--text-light); padding: 12px 16px;
+            border-radius: 12px; font-family: var(--font-family);
+            transition: var(--transition); font-size: 14px;
+        }
+        .filter-group input:focus, .filter-group select:focus {
+            outline: none; border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2);
         }
         
-        .modal-overlay {
-            position: fixed; inset: 0; background-color: rgba(0,0,0,0.75);
+        /* --- Table Styling --- */
+        .table-container { overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th {
+            background-color: var(--bg-header); color: var(--text-muted);
+            font-weight: 600; font-size: 12px; text-align: left;
+            padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .data-table td {
+            padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+            font-size: 14px; color: var(--text-light);
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover { background-color: rgba(255, 255, 255, 0.03); }
+
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--gradient-primary);
             display: flex; align-items: center; justify-content: center;
-            padding: 1rem; z-index: 1000; opacity: 0; transition: opacity 0.2s ease-out;
-            visibility: hidden;
+            color: white; font-weight: 600; font-size: 14px;
         }
-        .modal-overlay.show { opacity: 1; visibility: visible; }
-        .modal-content {
-            background-color: var(--bg-color-alt); padding: 1.5rem 2rem;
-            border-radius: var(--border-radius-lg); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-            width: 100%; max-width: 36rem; max-height: 90vh; overflow-y: auto;
-            transform: scale(0.95); transition: transform 0.2s ease-out;
+        .user-name { font-weight: 600; color: var(--text-light); }
+        .user-email { font-size: 12px; color: var(--text-muted); }
+
+        .role-badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .role-badge.admin { background: rgba(108, 93, 211, 0.2); color: var(--primary-accent-light); }
+        .role-badge.agent { background: rgba(63, 140, 255, 0.2); color: var(--secondary-accent-light); }
+        
+        .status-indicator { display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .status-dot.online { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-dot.offline { background-color: var(--text-muted); }
+
+        /* --- 5. Charts Section --- */
+        .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+        .chart-card {
+            background-color: var(--bg-card); padding: 24px; border-radius: var(--border-radius);
+            border: 1px solid var(--border-color); box-shadow: var(--shadow);
+            transition: var(--transition);
         }
-        .modal-overlay.show .modal-content { transform: scale(1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-        .modal-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; }
-        .modal-header .close-button { background: none; border: none; font-size: 1.5rem; color: var(--text-color-muted); cursor: pointer; }
+        .chart-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
+        .chart-card h3 {
+            font-size: 18px; margin-bottom: 20px; color: var(--text-light);
+            font-weight: 700; display: flex; align-items: center; gap: 10px;
+        }
+        .chart-card h3 i { background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .chart-placeholder { min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+
+        /* --- 6. Other Components (Pagination, Modals, etc.) --- */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; padding: 20px; }
+        .pagination-btn { background: var(--bg-header); border: 1px solid var(--border-color); color: var(--text-light); padding: 10px 16px; border-radius: 10px; cursor: pointer; transition: var(--transition); font-size: 14px; font-weight: 600; }
+        .pagination-btn:hover:not(:disabled) { background: var(--primary-accent); border-color: var(--primary-accent); }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination-info { color: var(--text-muted); font-size: 14px; margin: 0 16px; }
+
+        .toast { position: fixed; top: 24px; right: 24px; z-index: 1100; display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: var(--border-radius); color: #fff; box-shadow: var(--shadow-hover); opacity: 0; transform: translateX(20px); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .toast.show { opacity: 1; transform: translateX(0); }
+
+        .modal { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; background: rgba(15, 16, 21, 0.8); backdrop-filter: blur(10px); }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-card); color: var(--text-light); border-radius: var(--border-radius); padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); animation: modal-fade-in 0.3s ease-out forwards; }
+        @keyframes modal-fade-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; }
+        .modal h2 { margin: 0; color: #fff; font-size: 20px; }
+        .modal .close-btn { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; transition: color 0.2s ease; }
+        .modal .close-btn:hover { color: var(--primary-accent); }
         .modal-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-group input, .form-group select {
-            width: 100%; padding: 0.75rem;
-            border: 1px solid var(--border-color); border-radius: var(--border-radius);
-            background-color: var(--bg-color); color: var(--text-color); font-size: 1rem;
-            box-sizing: border-box;
-        }
-        .form-group input:focus, .form-group select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-            outline: none;
-        }
+        .form-group input, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-dark); color: var(--text-light); font-size: 14px; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2); outline: none; }
         
-        #toast-container {
-            position: fixed; top: 20px; right: 20px; z-index: 2000;
-            display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
-        }
-        .toast {
-            color: white; padding: 1rem 1.5rem; border-radius: var(--border-radius);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: 600; opacity: 0;
-            transform: translateX(100%); transition: all 0.4s ease-in-out;
-            display: flex; align-items: center; gap: 0.75rem;
-        }
-        .toast.show { opacity: 1; transform: translateX(0); }
-        .toast.success { background-color: var(--toast-success-bg); }
-        .toast.error { background-color: var(--toast-error-bg); }
+        /* --- Animations & Responsive --- */
+        @keyframes fadeInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .kpi-card:nth-child(1) { animation-delay: 0.1s; }
+        .kpi-card:nth-child(2) { animation-delay: 0.2s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.3s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.4s; }
+        .kpi-card:nth-child(5) { animation-delay: 0.5s; }
         
-        .pagination-controls {
-            display: flex; justify-content: flex-end; align-items: center;
-            padding: 1rem 0; margin-top: 1.5rem; gap: 1rem;
-            color: var(--text-color-muted);
-        }
-
-        footer {
-            text-align: center; padding: 1.5rem 0; margin-top: 2rem;
-            border-top: 1px solid var(--border-color);
-            color: var(--text-color-muted); font-size: 0.9rem;
-        }
-
-        .refresh-indicator { 
-            display: flex; align-items: center; gap: 0.5rem; 
-            color: var(--text-color-muted); font-size: 0.9rem; 
-        }
-        .refresh-indicator.active { color: var(--status-online); }
-        .refresh-indicator.active i { animation: spin 1s linear infinite; }
-        
-        .quick-actions { display: flex; gap: 0.5rem; margin-left: auto; }
-        
-        .table-summary {
-            background: var(--bg-color); padding: 0.75rem 1rem; 
-            border-radius: var(--border-radius); margin-bottom: 1rem; 
-            font-size: 0.9rem; color: var(--text-color-muted);
-        }
-        .table-summary strong { color: var(--text-color); }
-        
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
-
-        .chart-toolbar {
-            display: flex; justify-content: flex-end; gap: 0.5rem; 
-            margin-bottom: 1rem; 
-        }
-        .chart-toolbar button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-
-        @media screen and (max-width: 768px) {
-            .page-wrapper {
-                padding: 1rem;
-                padding-top: calc(var(--header-height) + 1rem);
-            }
-            .page-header {
-                padding: 0 1rem;
-            }
-            .header-title h1 {
-                font-size: 1.25rem;
-            }
-            .table-controls, .search-filter-box {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .quick-actions {
-                width: 100%;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
-            table {
-                display: block;
-            }
-            thead {
-                display: none;
-            }
-            tbody, tr, td {
-                display: block;
-                width: 100% !important;
-                box-sizing: border-box;
-            }
-            tr {
-                margin-bottom: 1rem;
-                border: 1px solid var(--border-color);
-                border-radius: var(--border-radius);
-                overflow: hidden;
-            }
-            td {
-                padding: 0.75rem 1rem;
-                border-bottom: 1px solid var(--border-color);
-                text-align: right;
-                position: relative;
-            }
-            td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 1rem;
-                font-weight: 600;
-                color: var(--text-color-muted);
-                text-transform: uppercase;
-                font-size: 0.8rem;
-            }
-            .actions-cell {
-                justify-content: flex-end;
-            }
-            .user-info {
-                justify-content: flex-end;
-            }
-            .pagination-controls {
-                justify-content: center;
-            }
+        @media (max-width: 768px) {
+            .dashboard-header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; justify-content: flex-start; }
+            .insights-dashboard { padding: 16px; }
+            .table-controls { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
 <body>
-<header class="app-header">
-  <div class="brand">Knowledge Base</div>
-  <nav>
-    <a href="app.html" id="link-dashboard" data-role-required="admin,manager">Dashboard</a>
-    <a href="insights.html" id="link-insights" data-role-required="admin,manager">Insights</a>
-    <a href="employees.html" id="link-employees" data-role-required="admin,manager">Employees</a>
-    <a href="audit.html" id="link-audit" data-role-required="admin,manager">Audit Log</a>
-    <span id="role-badge" style="margin-left:12px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:13px">guest</span>
-  </nav>
-</header>
 
+    <div id="toast-container"></div>
+    
+    <div class="insights-dashboard">
 
-
-<div id="accessDeniedModal" style="display:none;position:fixed;inset:0;z-index:9999;justify-content:center;align-items:center;background:rgba(17,24,39,0.85);backdrop-filter:blur(8px);">
-  <div style="background:#0f172a;border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:2rem 2.5rem;max-width:420px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.5);animation:fadeIn 0.3s ease;">
-    <div style="font-size:2.8rem;color:#6366f1;margin-bottom:0.5rem;">🔒</div>
-    <h2 style="color:white;margin-bottom:0.5rem;">Access Denied</h2>
-    <p style="color:#cbd5e1;margin-bottom:1.5rem;">This section is for administrators only.</p>
-    <button onclick="window.location.href='core-flow.html'" style="padding:0.6rem 1.2rem;background:linear-gradient(90deg,#4e8cff,#8b5cf6);color:white;font-weight:600;border:none;border-radius:8px;cursor:pointer;">Back to Core Flow</button>
-  </div>
-</div>
-<style>@keyframes fadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}</style>
-
-<div id="toast-container"></div>
-
-<div id="dashboard" style="visibility: hidden;">
-    <header class="page-header">
-        <div class="header-title">
-            <i class="fas fa-users-cog logo-icon"></i>
-            <h1>Employees Dashboard</h1>
-        </div>
-        <div class="header-actions">
-            <div class="refresh-indicator" id="refreshIndicator">
-                <i class="fas fa-sync-alt"></i>
-                <span>Last updated: <span id="lastUpdateTime">Just now</span></span>
+        <header class="dashboard-header">
+            <div class="header-title">
+                <h1><i class="fas fa-users-cog"></i> Employees Dashboard</h1>
+                <p>Manage and track all employee activities and roles.</p>
             </div>
-            <a href="app.html" class="button button-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-        </div>
-    </header>
-
-    <div class="page-wrapper">
-        <main>
-            <div class="stats-container">
-                 <div class="stat-card">
-                    <i class="fas fa-users" style="color: #6366f1;"></i>
-                    <div class="stat-info">
-                        <div class="value" id="total-employees">0</div>
-                        <div class="label">Total Employees</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-user-shield" style="color: var(--role-admin-text);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="admin-count">0</div>
-                        <div class="label">Admins</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-headset" style="color: var(--role-agent-text);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="agent-count">0</div>
-                        <div class="label">Agents</div>
-                    </div>
-                </div>
-                 <div class="stat-card">
-                    <i class="fas fa-user-check" style="color: var(--status-online);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="online-employees">0</div>
-                        <div class="label">Online Now</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-user-clock" style="color: var(--status-inactive);"></i>
-                    <div class="stat-info">
-                        <div class="value" id="inactive-employees">0</div>
-                        <div class="label">Inactive (7+ days)</div>
-                    </div>
-                </div>
+             <div class="header-actions">
+                <button id="exportCsvBtn" class="action-btn"><i class="fas fa-file-csv"></i> Export CSV</button>
+                <button id="addEmployeeBtn" class="action-btn primary"><i class="fas fa-plus"></i> Add Employee</button>
             </div>
+        </header>
 
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-users"></i>Total Employees</div>
+                <div class="card-value" id="total-employees">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-user-shield"></i>Admins</div>
+                <div class="card-value" id="admin-count">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-headset"></i>Agents</div>
+                <div class="card-value" id="agent-count">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-user-check"></i>Online Now</div>
+                <div class="card-value" id="online-employees">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-user-clock"></i>Inactive (7+ days)</div>
+                <div class="card-value" id="inactive-employees">0</div>
+            </div>
+        </div>
+
+        <div class="main-card">
             <div class="table-controls">
-                <div class="search-filter-box">
-                    <input type="text" id="searchInput" placeholder="Search by name, email, or dept...">
+                <div class="filter-group">
+                    <label for="searchInput">Search</label>
+                    <input type="text" id="searchInput" placeholder="Search by name, email, or department...">
+                </div>
+                <div class="filter-group">
+                    <label for="roleFilter">Role</label>
                     <select id="roleFilter">
                         <option value="all">All Roles</option>
                         <option value="admin">Admin</option>
                         <option value="agent">Agent</option>
                     </select>
+                </div>
+                <div class="filter-group">
+                     <label for="statusFilter">Status</label>
                     <select id="statusFilter">
                         <option value="all">All Status</option>
                         <option value="online">Online</option>
                         <option value="offline">Offline</option>
                     </select>
                 </div>
-                <div class="quick-actions">
-                    <button id="exportCsvBtn" class="button button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
-                    <button id="addEmployeeBtn" class="button"><i class="fas fa-plus"></i> Add Employee</button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                            <th>Last Seen (Africa/Cairo)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prevPageBtn" class="pagination-btn"><i class="fas fa-arrow-left"></i> Previous</button>
+                <span id="pageInfo">Page 1 of 1</span>
+                <button id="nextPageBtn" class="pagination-btn">Next <i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-card">
+                 <h3><i class="fas fa-chart-pie"></i>Role Distribution</h3>
+                <div class="chart-placeholder">
+                     <canvas id="rolesChart"></canvas>
                 </div>
             </div>
-    
-            <div class="card">
-                <div id="tableSummary" class="table-summary" style="display: none;"></div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Role</th>
-                                <th>Department</th>
-                                <th>Status</th>
-                                <th>Last Seen (Africa/Cairo)</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="employeesTableBody"></tbody>
-                    </table>
-                </div>
-                <div class="pagination-controls">
-                    <button id="prevPageBtn" class="button button-secondary"><i class="fas fa-arrow-left"></i> Previous</button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button id="nextPageBtn" class="button button-secondary">Next <i class="fas fa-arrow-right"></i></button>
+            <div class="chart-card">
+                 <h3><i class="fas fa-chart-bar"></i>Department Distribution</h3>
+                <div class="chart-placeholder">
+                     <canvas id="deptsChart"></canvas>
                 </div>
             </div>
-            
-            <section class="charts-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2>Analytics</h2>
-                    <div class="chart-toolbar">
-                        <button id="refreshChartsBtn" class="button-secondary"><i class="fas fa-sync-alt"></i> Refresh Charts</button>
-                    </div>
+            <div class="chart-card">
+                 <h3><i class="fas fa-medal"></i>Top 5 Active Employees</h3>
+                <div class="chart-placeholder">
+                     <canvas id="top5Chart"></canvas>
                 </div>
-                <div class="charts-grid">
-                    <div class="card">
-                         <h3>Role Distribution</h3>
-                        <div class="chart-wrapper">
-                             <canvas id="rolesChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                         <h3>Department Distribution</h3>
-                        <div class="chart-wrapper">
-                             <canvas id="deptsChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="card">
-                         <h3>Monthly Activity</h3>
-                        <div class="chart-wrapper">
-                             <div id="activityChartPlaceholder" class="chart-placeholder hidden">
-                                 <i class="fas fa-chart-line"></i>
-                                 <p>Loading activity data...</p>
-                             </div>
-                             <canvas id="activityChart"></canvas>
-                        </div>
-                    </div>
-                     <div class="card">
-                         <h3>Top 5 Active Employees</h3>
-                        <div class="chart-wrapper">
-                             <div id="top5ChartPlaceholder" class="chart-placeholder hidden">
-                                <i class="fas fa-medal"></i>
-                                <p>Loading ranking data...</p>
-                            </div>
-                             <canvas id="top5Chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-        
-        <footer>
-            © 2025 InfiniBase.Elmenisy
-        </footer>
-    </div>
-</div>
-
-<div id="restricted-modal" class="modal-overlay">
-    <div class="modal-content" style="text-align: center;">
-        <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔒</div>
-        <h2>Access Restricted</h2>
-        <p style="color: var(--text-color-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
-        <a href="app.html" class="button">Go Back to Dashboard</a>
-    </div>
-</div>
-
-<div id="employee-modal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="modal-title">Add New Employee</h2>
-            <button class="close-button" data-close-modal>&times;</button>
+            </div>
         </div>
-        <form id="employee-form">
-            <input type="hidden" id="employee-id">
-            <div class="form-group"><label for="employee-name">Full Name</label><input type="text" id="employee-name" required></div>
-            <div class="form-group"><label for="employee-email">Email</label><input type="email" id="employee-email" required></div>
-            <div class="form-group"><label for="employee-department">Department</label><input type="text" id="employee-department" placeholder="e.g., Support, Technical"></div>
-            <div class="form-group"><label for="employee-role">Role</label><select id="employee-role" required><option value="agent">Agent</option><option value="admin">Admin</option></select></div>
-            <div class="form-group"><label for="employee-password">Password</label><input type="password" id="employee-password" autocomplete="new-password" placeholder="Required for new user"></div>
-            <div class="modal-actions"><button type="button" class="button button-secondary" data-close-modal>Cancel</button><button type="submit" class="button">Save Employee</button></div>
-        </form>
-    </div>
-</div>
 
-<div id="delete-confirm-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 28rem; text-align: center;">
-         <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle"></i></div>
-        <h2>Confirm Deletion</h2>
-        <p id="delete-confirm-message" style="margin-bottom: 1.5rem; font-size: 1.1rem;"></p>
-        <div class="modal-actions" style="justify-content: center;">
-            <button type="button" class="button button-secondary" data-close-modal>Cancel</button>
-            <button type="button" id="confirm-delete-btn" class="button button-danger">Confirm Delete</button>
+    </div>
+
+    <!-- Modals -->
+    <div id="employee-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add New Employee</h2>
+                <button class="close-btn" data-close-modal>&times;</button>
+            </div>
+            <form id="employee-form">
+                <input type="hidden" id="employee-id">
+                <div class="form-group"><label for="employee-name">Full Name</label><input type="text" id="employee-name" required></div>
+                <div class="form-group"><label for="employee-email">Email</label><input type="email" id="employee-email" required></div>
+                <div class="form-group"><label for="employee-department">Department</label><input type="text" id="employee-department" placeholder="e.g., Support, Technical"></div>
+                <div class="form-group"><label for="employee-role">Role</label><select id="employee-role" required><option value="agent">Agent</option><option value="admin">Admin</option></select></div>
+                <div class="form-group"><label for="employee-password">Password</label><input type="password" id="employee-password" autocomplete="new-password" placeholder="Required for new user"></div>
+                <div class="modal-actions">
+                    <button type="button" class="action-btn" data-close-modal>Cancel</button>
+                    <button type="submit" class="action-btn primary">Save Employee</button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
 
-
-<script type="module">
-    import { supabase } from './supabase.js';
-
-    const EDGE_ADD_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/dynamic-endpoint';
-    const EDGE_DELETE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/bright-responder';
-
-    let allEmployees = [], filteredEmployees = [];
-    let rolesChart, deptsChart, activityChart, top5Chart = null;
-    let currentUser = null;
-    let presenceInterval;
-    let currentPage = 1;
-    const rowsPerPage = 5;
-
-    const employeeModal = document.getElementById('employee-modal');
-    const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    <div id="delete-confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle"></i></div>
+            <h2>Confirm Deletion</h2>
+            <p id="delete-confirm-message" style="margin-bottom: 1.5rem; font-size: 1.1rem;"></p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button type="button" class="action-btn" data-close-modal>Cancel</button>
+                <button type="button" id="confirm-delete-btn" class="action-btn" style="background:var(--danger); color:white;">Confirm Delete</button>
+            </div>
+        </div>
+    </div>
     
-    function showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-        toast.innerHTML = `<i class="fas ${iconClass}"></i> ${message}`;
-        container.appendChild(toast);
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-        }, 3000);
-    }
-    
-    async function fetchEmployees() {
-        const { data, error } = await supabase.from('v_users_with_last_seen').select('*').order('name', { ascending: true });
-        if (error) { 
-            console.error("Error fetching employees:", error);
-            showToast("Failed to fetch employees.", "error");
-            return [];
+    <div id="restricted-modal" class="modal show" style="display:none;">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div style="font-size: 3rem; color: var(--primary-accent); margin-bottom: 1rem;">🔒</div>
+            <h2>Access Restricted</h2>
+            <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
+            <a href="app.html" class="action-btn primary" style="text-decoration:none; justify-content:center;">Go Back to Dashboard</a>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { supabase } from './supabase.js';
+
+        const EDGE_ADD_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/dynamic-endpoint';
+        const EDGE_DELETE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co/functions/v1/bright-responder';
+
+        let allEmployees = [], filteredEmployees = [];
+        let charts = {};
+        let currentUser = null;
+        let presenceInterval;
+        let currentPage = 1;
+        const rowsPerPage = 10;
+
+        const employeeModal = document.getElementById('employee-modal');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return; // Exit if container not found
+            const toast = document.createElement('div');
+            toast.className = `toast`;
+            const colors = { "success": "var(--success)", "error": "var(--danger)", "info": "var(--primary-accent)" };
+            const icons = { "success": "fa-check-circle", "error": "fa-exclamation-circle", "info": "fa-info-circle" };
+            toast.style.backgroundColor = colors[type] || colors.info;
+            toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+            }, 3000);
         }
-        return data;
-    }
-
-    function updateKPIs(employees) {
-        document.getElementById('total-employees').textContent = employees.length;
-        document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
-        document.getElementById('agent-count').textContent = employees.filter(e => e.role === 'agent').length;
-        document.getElementById('online-employees').textContent = employees.filter(e => e.status === 'ONLINE').length;
         
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const inactiveCount = employees.filter(e => e.last_seen && new Date(e.last_seen) < sevenDaysAgo).length;
-        document.getElementById('inactive-employees').textContent = inactiveCount;
-    }
-
-    function renderEmployees(employeesToRender) {
-        const tableBody = document.getElementById('employeesTableBody');
-        if (employeesToRender.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`;
-            return;
+        async function fetchEmployees() {
+            const { data, error } = await supabase.from('v_users_with_last_seen').select('*').order('name', { ascending: true });
+            if (error) { 
+                console.error("Error fetching employees:", error);
+                showToast("Failed to fetch employees.", "error");
+                return [];
+            }
+            return data;
         }
 
-        tableBody.innerHTML = employeesToRender.map(emp => {
-            const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            const lastSeen = emp.last_seen_cairo ? new Date(emp.last_seen_cairo).toLocaleString('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'Never';
-            const isOnline = emp.status === 'ONLINE';
-            const role = emp.role || 'agent';
-
-            return `<tr data-user-id="${emp.id}">
-                    <td data-label="User"><div class="user-info"><div class="user-avatar">${initials}</div><div><div class="user-name">${emp.name || 'No Name'}</div><div class="user-email">${emp.email}</div></div></div></td>
-                    <td data-label="Role"><span class="role-badge ${role}">${role}</span></td><td data-label="Department">${emp.department || 'N/A'}</td>
-                    <td data-label="Status"><div class="status-indicator"><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span><span>${isOnline ? 'Online' : 'Offline'}</span></div></td>
-                    <td data-label="Last Seen">${lastSeen}</td>
-                    <td data-label="Actions" class="actions-cell"><button class="edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button><button class="delete" title="Delete User"><i class="fas fa-trash-alt"></i></button></td>
-                </tr>`;
-        }).join('');
-    }
-    
-    function setupPagination() {
-        const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
-        document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
-        document.getElementById('prevPageBtn').disabled = currentPage === 1;
-        document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
-    }
-    
-    function updateTableSummary() {
-        const summaryEl = document.getElementById('tableSummary');
-        const search = document.getElementById('searchInput').value;
-        const roleFilter = document.getElementById('roleFilter').value;
-        const statusFilter = document.getElementById('statusFilter').value;
-        
-        const activeFilters = [];
-        if (search) activeFilters.push(`Search: "${search}"`);
-        if (roleFilter !== 'all') activeFilters.push(`Role: ${roleFilter}`);
-        if (statusFilter !== 'all') activeFilters.push(`Status: ${statusFilter}`);
-        
-        if (activeFilters.length > 0) {
-            summaryEl.innerHTML = `<strong>Active Filters:</strong> ${activeFilters.join(' • ')} | <strong>Showing:</strong> ${filteredEmployees.length} of ${allEmployees.length} employees`;
-            summaryEl.style.display = 'block';
-        } else {
-            summaryEl.innerHTML = `<strong>Total Employees:</strong> ${allEmployees.length}`;
-            summaryEl.style.display = 'block';
-        }
-    }
-    
-    function updateLastUpdateTime() {
-        const now = new Date();
-        document.getElementById('lastUpdateTime').textContent = now.toLocaleTimeString('en-GB', {timeZone: 'Africa/Cairo', hour:'2-digit', minute:'2-digit'});
-        const indicator = document.getElementById('refreshIndicator');
-        indicator.classList.add('active');
-        setTimeout(() => indicator.classList.remove('active'), 2000);
-    }
-
-    function showChart(canvasId, show = true) {
-        document.getElementById(canvasId).style.display = show ? 'block' : 'none';
-        document.getElementById(`${canvasId}Placeholder`).style.display = show ? 'none' : 'block';
-    }
-
-    function renderAllCharts(employees) {
-        renderRolesChart(employees);
-        renderDeptsChart(employees);
-        renderActivityChart();
-        renderTop5Chart();
-    }
-    
-    function renderRolesChart(employees) {
-        const ctx = document.getElementById('rolesChart').getContext('2d');
-        const roleCounts = employees.reduce((acc, emp) => { acc[emp.role] = (acc[emp.role] || 0) + 1; return acc; }, {});
-        if (rolesChart) rolesChart.destroy();
-        rolesChart = new Chart(ctx, {
-            type: 'pie',
-            data: { 
-                labels: Object.keys(roleCounts).map(r => r.charAt(0).toUpperCase() + r.slice(1)), 
-                datasets: [{ 
-                    data: Object.values(roleCounts), 
-                    backgroundColor: ['var(--role-admin-text)', 'var(--role-agent-text)'], 
-                    borderColor: 'var(--bg-color-alt)', 
-                    borderWidth: 4 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    legend: { 
-                        position: 'bottom', 
-                        labels: { 
-                            color: 'var(--text-color)', 
-                            font: { size: 14 } 
-                        } 
-                    } 
-                } 
-            }
-        });
-    }
-    
-    function renderDeptsChart(employees) {
-        const ctx = document.getElementById('deptsChart').getContext('2d');
-        const deptCounts = employees.reduce((acc, emp) => { acc[emp.department || 'Unassigned'] = (acc[emp.department || 'Unassigned'] || 0) + 1; return acc; }, {});
-        if (deptsChart) deptsChart.destroy();
-        deptsChart = new Chart(ctx, {
-            type: 'bar',
-            data: { 
-                labels: Object.keys(deptCounts), 
-                datasets: [{ 
-                    label: 'Employees', 
-                    data: Object.values(deptCounts), 
-                    backgroundColor: 'var(--primary-color)', 
-                    borderRadius: 4 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                indexAxis: 'y', 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
-        });
-    }
-
-    async function renderActivityChart() {
-        const { data, error } = await supabase.from('v_monthly_activity').select('*').limit(12);
-        if (error || !data || data.length === 0) { showChart('activityChart', false); return; }
-        showChart('activityChart', true);
-        const ctx = document.getElementById('activityChart').getContext('2d');
-        if (activityChart) activityChart.destroy();
-        const labels = data.map(d => new Date(d.month).toLocaleString('en-US', { month: 'short' })).reverse();
-        const values = data.map(d => d.active_employees).reverse();
-        activityChart = new Chart(ctx, {
-            type: 'line',
-            data: { 
-                labels, 
-                datasets: [{ 
-                    label: 'Active Employees', 
-                    data: values, 
-                    borderColor: 'var(--primary-color)', 
-                    backgroundColor: 'var(--primary-color-transparent)', 
-                    tension: 0.3, 
-                    fill: true 
-                }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                scales: { 
-                    y: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                }, 
-                plugins: { 
-                    legend: { 
-                        labels: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
-        });
-    }
-
-    async function renderTop5Chart() {
-        const { data, error } = await supabase.from('v_top5_employees').select('*');
-        if (error || !data || data.length === 0) { showChart('top5Chart', false); return; }
-        showChart('top5Chart', true);
-        const ctx = document.getElementById('top5Chart').getContext('2d');
-        if (top5Chart) top5Chart.destroy();
-        top5Chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(u => (u.user_name || u.user_email).split(' ')[0]),
-                datasets: [{ 
-                    label: 'Total Views', 
-                    data: data.map(u => u.total_views), 
-                    backgroundColor: ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'], 
-                    borderRadius: 4 
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                indexAxis: 'y', 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { 
-                        ticks: { color: 'var(--text-color)' } 
-                    }, 
-                    x: { 
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
-                        ticks: { color: 'var(--text-color)' } 
-                    } 
-                } 
-            }
-        });
-    }
-
-    function applyFilters(resetPage = false) {
-        if(resetPage) currentPage = 1;
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const roleFilter = document.getElementById('roleFilter').value;
-        const statusFilter = document.getElementById('statusFilter').value;
-        
-        filteredEmployees = allEmployees.filter(emp => {
-            const searchCorpus = `${emp.name || ''} ${emp.email || ''} ${emp.department || ''}`.toLowerCase();
-            const roleMatch = roleFilter === 'all' || emp.role === roleFilter;
-            const statusMatch = statusFilter === 'all' || 
-                               (statusFilter === 'online' && emp.status === 'ONLINE') ||
-                               (statusFilter === 'offline' && emp.status !== 'ONLINE');
+        function updateKPIs(employees) {
+            document.getElementById('total-employees').textContent = employees.length;
+            document.getElementById('admin-count').textContent = employees.filter(e => e.role === 'admin').length;
+            document.getElementById('agent-count').textContent = employees.filter(e => e.role === 'agent').length;
+            document.getElementById('online-employees').textContent = employees.filter(e => e.status === 'ONLINE').length;
             
-            return searchCorpus.includes(searchTerm) && roleMatch && statusMatch;
-        });
-        const paginated = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-        renderEmployees(paginated);
-        setupPagination();
-        updateTableSummary();
-    }
-    
-    function exportCSV() {
-        const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Seen (UTC)'];
-        let csv = headers.join(',') + '\r\n';
-        allEmployees.forEach(e => csv += [e.name, e.email, e.role, e.department, e.status, e.last_seen].map(v => `"${v}"`).join(',') + '\r\n');
-        const link = document.createElement('a');
-        link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-        link.download = 'employees_export.csv';
-        link.click();
-        showToast('CSV exported successfully', 'success');
-    }
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const inactiveCount = employees.filter(e => e.last_seen && new Date(e.last_seen) < sevenDaysAgo).length;
+            document.getElementById('inactive-employees').textContent = inactiveCount;
+        }
 
-    function setupModals() {
-        document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal-overlay').classList.remove('show')));
-        document.getElementById('addEmployeeBtn').addEventListener('click', () => {
-            document.getElementById('modal-title').textContent = 'Add New Employee';
-            document.getElementById('employee-form').reset();
-            document.getElementById('employee-id').value = '';
-            document.getElementById('employee-email').disabled = false;
-            document.querySelector('#employee-password').placeholder = 'Required for new user';
-            employeeModal.classList.add('show');
-        });
-        document.getElementById('employeesTableBody').addEventListener('click', (e) => {
-            const row = e.target.closest('tr');
-            if (!row) return;
-            const employee = allEmployees.find(emp => emp.id === row.dataset.userId);
-            if (!employee) return;
-            if (e.target.closest('.edit')) {
-                document.getElementById('modal-title').textContent = 'Edit Employee';
-                document.getElementById('employee-id').value = employee.id;
-                document.getElementById('employee-name').value = employee.name;
-                document.getElementById('employee-email').value = employee.email;
-                document.getElementById('employee-email').disabled = true;
-                document.getElementById('employee-department').value = employee.department;
-                document.getElementById('employee-role').value = employee.role;
-                document.getElementById('employee-password').value = '';
-                document.querySelector('#employee-password').placeholder = 'Leave blank to not change';
-                employeeModal.classList.add('show');
-            }
-            if (e.target.closest('.delete')) {
-                document.getElementById('delete-confirm-message').textContent = `Delete ${employee.name || employee.email}?`;
-                document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
-                deleteConfirmModal.classList.add('show');
-            }
-        });
-        document.getElementById('employee-form').addEventListener('submit', handleFormSubmit);
-        document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
-    }
-    
-    async function getAuthHeader() {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { showToast('Authentication error.', 'error'); return null; }
-        return `Bearer ${session.access_token}`;
-    }
-
-    async function handleFormSubmit(e) {
-        e.preventDefault();
-        const id = document.getElementById('employee-id').value;
-        const password = document.getElementById('employee-password').value;
-        const authHeader = await getAuthHeader();
-        if (!authHeader) return;
-
-        const payload = {
-            full_name: document.getElementById('employee-name').value,
-            email: document.getElementById('employee-email').value,
-            department: document.getElementById('employee-department').value,
-            role: document.getElementById('employee-role').value,
-            password: password || undefined
+        function renderEmployees(employeesToRender) {
+            const tableBody = document.getElementById('employeesTableBody');
+            tableBody.innerHTML = employeesToRender.length === 0 
+                ? `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No employees found.</td></tr>`
+                : employeesToRender.map(emp => {
+                    const initials = (emp.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                    const lastSeen = emp.last_seen_cairo ? new Date(emp.last_seen_cairo).toLocaleString('en-US', { timeZone: 'Africa/Cairo', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
+                    const isOnline = emp.status === 'ONLINE';
+                    return `<tr data-user-id="${emp.id}">
+                            <td><div class="user-info"><div class="user-avatar">${initials}</div><div><div class="user-name">${emp.name || 'No Name'}</div><div class="user-email">${emp.email}</div></div></div></td>
+                            <td><span class="role-badge ${emp.role || 'agent'}">${emp.role || 'agent'}</span></td><td>${emp.department || 'N/A'}</td>
+                            <td><div class="status-indicator"><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span><span>${isOnline ? 'Online' : 'Offline'}</span></div></td>
+                            <td>${lastSeen}</td>
+                            <td>
+                                <button class="action-btn edit" title="Edit User"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="action-btn delete" title="Delete User"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>`;
+                }).join('');
+        }
+        
+        function setupPagination() {
+            const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / rowsPerPage));
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+        }
+        
+        const createChart = (chartId, type, data, options) => {
+            if (charts[chartId]) charts[chartId].destroy();
+            const ctx = document.getElementById(chartId).getContext("2d");
+            charts[chartId] = new Chart(ctx, { type, data, options });
         };
+
+        function renderAllCharts(employees) {
+            const textColor = "#F5F5F5";
+            const gridColor = "#2A2D38";
+            
+            const baseOptions = (title) => ({
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { color: textColor, font: { size: 14 }, padding: 20 }},
+                    title: { display: true, text: title, color: textColor, font: { size: 16, weight: "bold" }, padding: { bottom: 15 }},
+                },
+            });
+
+            const roleCounts = employees.reduce((acc, emp) => { acc[emp.role] = (acc[emp.role] || 0) + 1; return acc; }, {});
+            createChart('rolesChart', 'pie', {
+                labels: Object.keys(roleCounts).map(r => r.charAt(0).toUpperCase() + r.slice(1)),
+                datasets: [{ data: Object.values(roleCounts), backgroundColor: ['#8374FF', '#5DA1FF'], borderColor: '#1A1C23', borderWidth: 4 }]
+            }, { ...baseOptions(''), plugins: { ...baseOptions('').plugins, legend: { position: 'right' } } });
+
+            const deptCounts = employees.reduce((acc, emp) => { acc[emp.department || 'Unassigned'] = (acc[emp.department || 'Unassigned'] || 0) + 1; return acc; }, {});
+            createChart('deptsChart', 'bar', {
+                labels: Object.keys(deptCounts),
+                datasets: [{ label: 'Employees', data: Object.values(deptCounts), backgroundColor: "rgba(108, 93, 211, 0.7)", borderRadius: 4 }]
+            }, { ...baseOptions(''), indexAxis: 'y', plugins: { legend: { display: false } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } } });
+
+            renderTop5Chart();
+        }
+
+        async function renderTop5Chart() {
+            const { data, error } = await supabase.from('v_top5_employees').select('*');
+            if (error || !data || data.length === 0) return;
+            createChart('top5Chart', 'bar', {
+                labels: data.map(u => (u.user_name || u.user_email).split(' ')[0]),
+                datasets: [{ label: 'Total Views', data: data.map(u => u.total_views), backgroundColor: "rgba(0, 182, 155, 0.7)", borderRadius: 4 }]
+            }, { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: "#F5F5F5" } }, x: { ticks: { color: "#F5F5F5" }, grid: { color: "#2A2D38" } } } });
+        }
+
+        function applyFilters(resetPage = false) {
+            if(resetPage) currentPage = 1;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            filteredEmployees = allEmployees.filter(emp => {
+                const searchCorpus = `${emp.name || ''} ${emp.email || ''} ${emp.department || ''}`.toLowerCase();
+                const roleMatch = roleFilter === 'all' || emp.role === roleFilter;
+                const statusMatch = statusFilter === 'all' || (statusFilter === 'online' && emp.status === 'ONLINE') || (statusFilter === 'offline' && emp.status !== 'ONLINE');
+                return searchCorpus.includes(searchTerm) && roleMatch && statusMatch;
+            });
+            const paginated = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+            renderEmployees(paginated);
+            setupPagination();
+        }
         
-        try {
-            if (id) { 
-                const { error } = await supabase.from('users').update({ name: payload.full_name, role: payload.role, department: payload.department }).eq('id', id);
-                if (error) throw error;
-                showToast('User updated successfully.', 'success');
-            } else { 
-                const res = await fetch(EDGE_ADD_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) });
+        function exportCSV() {
+            const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Seen (UTC)'];
+            let csv = headers.join(',') + '\r\n';
+            allEmployees.forEach(e => csv += [e.name, e.email, e.role, e.department, e.status, e.last_seen].map(v => `"${v}"`).join(',') + '\r\n');
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            link.download = 'employees_export.csv';
+            link.click();
+            showToast('CSV exported successfully', 'success');
+        }
+
+        function setupModals() {
+            document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal').classList.remove('show')));
+            document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+                document.getElementById('modal-title').textContent = 'Add New Employee';
+                document.getElementById('employee-form').reset();
+                document.getElementById('employee-id').value = '';
+                document.getElementById('employee-email').disabled = false;
+                document.querySelector('#employee-password').placeholder = 'Required for new user';
+                employeeModal.classList.add('show');
+            });
+            document.getElementById('employeesTableBody').addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                if (!row) return;
+                const employee = allEmployees.find(emp => emp.id === row.dataset.userId);
+                if (!employee) return;
+                if (e.target.closest('.edit')) {
+                    document.getElementById('modal-title').textContent = 'Edit Employee';
+                    document.getElementById('employee-id').value = employee.id;
+                    document.getElementById('employee-name').value = employee.name;
+                    document.getElementById('employee-email').value = employee.email;
+                    document.getElementById('employee-email').disabled = true;
+                    document.getElementById('employee-department').value = employee.department;
+                    document.getElementById('employee-role').value = employee.role;
+                    document.getElementById('employee-password').value = '';
+                    document.querySelector('#employee-password').placeholder = 'Leave blank to not change';
+                    employeeModal.classList.add('show');
+                }
+                if (e.target.closest('.delete')) {
+                    document.getElementById('delete-confirm-message').textContent = `Delete ${employee.name || employee.email}?`;
+                    document.getElementById('confirm-delete-btn').dataset.userId = employee.id;
+                    deleteConfirmModal.classList.add('show');
+                }
+            });
+            document.getElementById('employee-form').addEventListener('submit', handleFormSubmit);
+            document.getElementById('confirm-delete-btn').addEventListener('click', handleDelete);
+        }
+        
+        async function getAuthHeader() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) { showToast('Authentication error.', 'error'); return null; }
+            return `Bearer ${session.access_token}`;
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('employee-id').value;
+            const password = document.getElementById('employee-password').value;
+            const authHeader = await getAuthHeader();
+            if (!authHeader) return;
+
+            const payload = {
+                full_name: document.getElementById('employee-name').value,
+                email: document.getElementById('employee-email').value,
+                department: document.getElementById('employee-department').value,
+                role: document.getElementById('employee-role').value,
+                password: password || undefined
+            };
+            
+            try {
+                if (id) {
+                    const { error } = await supabase.from('users').update({ name: payload.full_name, role: payload.role, department: payload.department }).eq('id', id);
+                    if (error) throw error;
+                    showToast('User updated successfully.', 'success');
+                } else {
+                    const res = await fetch(EDGE_ADD_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) });
+                    if (!res.ok) throw new Error(await res.text());
+                    showToast('Employee created successfully!', 'success');
+                }
+                employeeModal.classList.remove('show');
+                await refreshData();
+            } catch (err) {
+                showToast(`Error: ${err.message}`, 'error');
+            }
+        }
+
+        async function handleDelete(e) {
+            const userId = e.currentTarget.dataset.userId;
+            const authHeader = await getAuthHeader();
+            if (!authHeader) return;
+            try {
+                const res = await fetch(EDGE_DELETE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify({ user_id: userId }) });
                 if (!res.ok) throw new Error(await res.text());
-                showToast('Employee created successfully!', 'success');
+                showToast('Employee deleted successfully!', 'success');
+                deleteConfirmModal.classList.remove('show');
+                await refreshData();
+            } catch (err) {
+                showToast(`Error deleting employee: ${err.message}`, 'error');
             }
-            employeeModal.classList.remove('show');
-            await refreshData();
-        } catch (err) {
-            showToast(`Error: ${err.message}`, 'error');
         }
-    }
 
-    async function handleDelete(e) {
-        const userId = e.currentTarget.dataset.userId;
-        const authHeader = await getAuthHeader();
-        if (!authHeader) return;
-        try {
-            const res = await fetch(EDGE_DELETE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify({ user_id: userId }) });
-            if (!res.ok) throw new Error(await res.text());
-            showToast('Employee deleted successfully!', 'success');
-            deleteConfirmModal.classList.remove('show');
-            await refreshData();
-        } catch (err) {
-            showToast(`Error deleting employee: ${err.message}`, 'error');
+        async function updateLastSeen() {
+            if (currentUser) await supabase.from('users').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
         }
-    }
 
-    async function updateLastSeen() {
-        if (currentUser) await supabase.from('users').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
-    }
-
-    async function initPresence() {
-        const channel = supabase.channel('presence:employees', { config: { presence: { key: currentUser.id } } });
-        channel.on('presence', { event: 'sync' }, () => {
-            const onlineIds = Object.keys(channel.presenceState());
-            allEmployees = allEmployees.map(emp => ({...emp, status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE' }));
-            applyFilters(); 
+        async function initPresence() {
+            const channel = supabase.channel('presence:employees', { config: { presence: { key: currentUser.id } } });
+            channel.on('presence', { event: 'sync' }, () => {
+                const onlineIds = Object.keys(channel.presenceState());
+                allEmployees = allEmployees.map(emp => ({...emp, status: onlineIds.includes(emp.id) ? 'ONLINE' : 'OFFLINE' }));
+                applyFilters(); 
+                updateKPIs(allEmployees);
+            }).subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({ user_id: currentUser.id });
+                    await updateLastSeen();
+                    if (presenceInterval) clearInterval(presenceInterval);
+                    presenceInterval = setInterval(updateLastSeen, 300000); 
+                }
+            });
+        }
+        
+        async function refreshData() {
+            allEmployees = await fetchEmployees();
+            applyFilters(true);
             updateKPIs(allEmployees);
-        }).subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await channel.track({ user_id: currentUser.id });
-                await updateLastSeen();
-                if (presenceInterval) clearInterval(presenceInterval);
-                presenceInterval = setInterval(updateLastSeen, 300000); 
-            }
-        });
-    }
-    
-    async function refreshData() {
-        allEmployees = await fetchEmployees();
-        applyFilters(true);
-        updateKPIs(allEmployees);
-        renderAllCharts(allEmployees);
-        updateLastUpdateTime();
-    }
-
-    async function checkAdminAccess() {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not logged in');
-            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (error || data?.role !== 'admin') throw new Error('Access denied');
-            
-            currentUser = user; 
-            document.getElementById('dashboard').style.visibility = 'visible';
-            
-            await refreshData();
-            setupModals();
-            await initPresence();
-
-            supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
-        } catch (e) {
-            document.getElementById('restricted-modal').classList.add('show');
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        checkAdminAccess();
-        document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
-        document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
-        document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
-        document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
-        document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFilters(); } });
-        document.getElementById('nextPageBtn').addEventListener('click', () => { if (currentPage < Math.ceil(filteredEmployees.length / rowsPerPage)) { currentPage++; applyFilters(); } });
-        document.getElementById('refreshChartsBtn').addEventListener('click', () => {
             renderAllCharts(allEmployees);
-            showToast('Charts refreshed', 'success');
+        }
+
+        async function checkAdminAccess() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Not logged in');
+                const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+                if (error || data?.role !== 'admin') throw new Error('Access denied');
+                
+                currentUser = user;
+                await refreshData();
+                setupModals();
+                await initPresence();
+
+                supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
+            } catch (e) {
+                document.getElementById('restricted-modal').style.display = 'flex';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAdminAccess();
+            document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
+            document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
+            document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
+            document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+            document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFilters(); } });
+            document.getElementById('nextPageBtn').addEventListener('click', () => { if (currentPage < Math.ceil(filteredEmployees.length / rowsPerPage)) { currentPage++; applyFilters(); } });
         });
-    });
-
-</script>
-
-<script type="module">
-(async function(){
-  try {
-    let supabase = window.supabase;
-    if (!supabase) {
-      const text = document.documentElement.innerHTML;
-      const urlMatch = text.match(/createClient\(['"]([^'"]+)['"]/);
-      const keyMatch = text.match(/createClient\([^,]+,\s*['"]([^'"]+)['"]\)/);
-      if (urlMatch && keyMatch) {
-        const mod = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-        supabase = mod.createClient(urlMatch[1], keyMatch[1]);
-        window.supabase = supabase;
-      }
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
-    if (error || !data) return;
-    const isAdmin = !!data.is_admin;
-
-    if (!isAdmin) {
-      const modal = document.getElementById('accessDeniedModal');
-      if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-      } else {
-        alert("Access Denied — This section is for administrators only.");
-        window.location.href = "core-flow.html";
-      }
-    }
-  } catch (err) { console.error('Role check error', err); }
-})();
-</script>
-
-<script type="module">
-  import { getCurrentUserRole, applyNavVisibility } from './role-check.js';
-  (async function(){
-    const role = await getCurrentUserRole();
-    applyNavVisibility(role);
-    // allow sidebar links visible to agents (do not block), only protect header admin pages
-    // optional: attach open handlers if needed
-  })();
-</script>
-
+    </script>
 </body>
 </html>
