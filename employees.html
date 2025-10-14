@@ -62,6 +62,7 @@
             gap: 24px;
             max-width: 1600px;
             margin: 0 auto;
+            visibility: hidden; /* Hide by default */
         }
         
         /* --- Header Section --- */
@@ -237,6 +238,12 @@
         .form-group input, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-dark); color: var(--text-light); font-size: 14px; box-sizing: border-box; }
         .form-group input:focus, .form-group select:focus { border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2); outline: none; }
         
+        .access-restricted-container { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100vh; padding: 2rem; }
+        .access-restricted-card { max-width: 450px; padding: 3rem; background: var(--bg-card); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); }
+        .access-restricted-card .icon { font-size: 3rem; color: var(--primary-accent); margin-bottom: 1rem; }
+        .access-restricted-card h2 { font-size: 1.75rem; margin-bottom: 0.75rem; color: var(--text-light); }
+        .access-restricted-card p { color: var(--text-muted); margin-bottom: 2rem; }
+
         /* --- Animations & Responsive --- */
         @keyframes fadeInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .kpi-card:nth-child(1) { animation-delay: 0.1s; }
@@ -257,7 +264,7 @@
 
     <div id="toast-container"></div>
     
-    <div class="insights-dashboard">
+    <div id="dashboard-container" class="insights-dashboard">
 
         <header class="dashboard-header">
             <div class="header-title">
@@ -360,7 +367,15 @@
                 </div>
             </div>
         </div>
-
+    </div>
+    
+    <div id="restricted-container" class="access-restricted-container">
+        <div class="access-restricted-card">
+            <div class="icon">🔒</div>
+            <h2>Access Restricted</h2>
+            <p>You do not have the necessary permissions to view this page. This area is for administrators only.</p>
+            <a href="app.html" class="action-btn primary" style="text-decoration: none; display: inline-flex; justify-content: center;">Go to Dashboard</a>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -396,16 +411,6 @@
             </div>
         </div>
     </div>
-    
-    <div id="restricted-modal" class="modal show" style="display:none;">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <div style="font-size: 3rem; color: var(--primary-accent); margin-bottom: 1rem;">🔒</div>
-            <h2>Access Restricted</h2>
-            <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem;">This page is available for administrators only.</p>
-            <a href="app.html" class="action-btn primary" style="text-decoration:none; justify-content:center;">Go Back to Dashboard</a>
-        </div>
-    </div>
-
 
     <script type="module">
         import { supabase } from './supabase.js';
@@ -678,26 +683,35 @@
             renderAllCharts(allEmployees);
         }
 
-        async function checkAdminAccess() {
+        async function checkAccess() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error('Not logged in');
-                const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-                if (error || data?.role !== 'admin') throw new Error('Access denied');
+
+                const { data: userData, error } = await supabase.from('users').select('role').eq('id', user.id).single();
                 
-                currentUser = user;
+                // This page is for Admins only
+                if (error || userData?.role !== 'admin') {
+                    throw new Error('Access denied. Admin role required.');
+                }
+                
+                currentUser = user; 
+                document.getElementById('dashboard-container').style.visibility = 'visible';
+                
                 await refreshData();
                 setupModals();
                 await initPresence();
 
                 supabase.channel('public:users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, refreshData).subscribe();
+
             } catch (e) {
-                document.getElementById('restricted-modal').style.display = 'flex';
+                console.error(e.message);
+                document.getElementById('restricted-container').style.display = 'flex';
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            checkAdminAccess();
+            checkAccess();
             document.getElementById('searchInput').addEventListener('input', () => applyFilters(true));
             document.getElementById('roleFilter').addEventListener('change', () => applyFilters(true));
             document.getElementById('statusFilter').addEventListener('change', () => applyFilters(true));
