@@ -1,1419 +1,960 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="ltr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InfiniBase - Knowledge Base Insights</title>
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root {
-    --primary-color: #8b5cf6;
-    --primary-color-hover: #7c3aed;
-    --primary-color-light: rgba(139, 92, 246, 0.1);
-    --text-color: #e5e7eb;
-    --text-color-muted: #9ca3af;
-    --text-color-light: #f3f4f6;
-    --bg-color: #111827;
-    --bg-color-alt: #1f2937;
-    --bg-color-lighter: #374151;
-    --bg-color-darker: #0f172a;
-    --border-color: #374151;
-    --border-color-light: #4b5563;
-    --border-radius: 0.5rem;
-    --border-radius-lg: 0.75rem;
-    --header-height: 70px;
-    --accent-color: #38bdf8;
-    --accent-color-secondary: #67e8f9;
-    --success-color: #22c55e;
-    --warning-color: #f59e0b;
-    --danger-color: #ef4444;
-    --shadow-color: rgba(0, 0, 0, 0.25);
-    --shadow-color-primary: rgba(139, 92, 246, 0.25);
-    --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-    --gradient-bg: linear-gradient(to bottom right, var(--bg-color-darker), #131c31);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
-    }
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: -1000px 0;
-    }
-    100% {
-        background-position: 1000px 0;
-    }
-}
-
-body, html {
-    height: 100%;
-    margin: 0;
-    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    background-image: var(--gradient-bg);
-    color: var(--text-color);
-    font-size: 16px;
-    line-height: 1.6;
-    overflow-x: hidden;
-}
-
-.page-wrapper {
-    padding: 2.2rem;
-    padding-top: calc(var(--header-height) + 2.2rem);
-    min-height: 100vh;
-    animation: fadeIn 0.8s ease-out;
-}
-
-.page-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: var(--header-height);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 2.2rem;
-    background: rgba(15, 23, 42, 0.95);
-    border-bottom: 1px solid var(--border-color);
-    backdrop-filter: blur(12px);
-    z-index: 1000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.page-header .header-title {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.page-header .logo-icon {
-    font-size: 1.8rem;
-    color: var(--primary-color);
-    animation: pulse 2s infinite;
-}
-
-.page-header h1 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--text-color-light);
-    margin: 0;
-    text-shadow: 0 2px 10px var(--shadow-color);
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.button, button {
-    background-color: var(--primary-color);
-    color: #fff;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: all 0.25s ease-in-out;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2), 0 0 2px rgba(255,255,255,0.1) inset;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    position: relative;
-    overflow: hidden;
-}
-
-.button::before, button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
-
-.button:hover::before, button:hover::before {
-    left: 100%;
-}
-
-.button:hover, button:hover {
-    background-color: var(--primary-color-hover);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px var(--shadow-color-primary), 0 0 5px rgba(255,255,255,0.1) inset;
-}
-
-.button-secondary {
-    background-color: var(--bg-color-alt);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-
-.button-secondary:hover {
-    background-color: var(--border-color);
-    color: #fff;
-    border-color: var(--primary-color);
-}
-
-.button:disabled {
-    background-color: var(--border-color);
-    cursor: not-allowed;
-    opacity: 0.7;
-    transform: translateY(0);
-    box-shadow: none;
-}
-
-.card {
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    animation: fadeIn 0.6s ease-out forwards;
-}
-
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--gradient-primary);
-    transition: transform 0.4s ease;
-    transform: scaleX(0);
-    transform-origin: left;
-}
-
-.card:hover::before {
-    transform: scaleX(1);
-}
-
-.card:hover {
-    box-shadow: 0 12px 45px rgba(0,0,0,0.3);
-    border-color: var(--primary-color);
-    transform: translateY(-5px);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: -2rem -2rem 2rem -2rem;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(31, 41, 55, 0.5);
-}
-
-.card-header h2 {
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: #fff;
-}
-
-.card-header h2 i {
-    color: var(--accent-color);
-}
-
-.summary-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2.5rem;
-}
-
-.metric-card {
-    background: var(--bg-color-alt);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 1.75rem;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
-    position: relative;
-    overflow: hidden;
-    animation: fadeIn 0.5s ease-out forwards;
-}
-
-.metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: var(--gradient-primary);
-    transform: scaleX(0);
-    transition: transform 0.3s ease-in-out;
-    transform-origin: left;
-}
-
-.metric-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 10px 30px var(--shadow-color-primary);
-    border-color: var(--primary-color);
-}
-
-.metric-card:hover::before {
-    transform: scaleX(1);
-}
-
-.metric-card .icon {
-    font-size: 2rem;
-    color: var(--primary-color);
-    background: var(--primary-color-light);
-    padding: 1rem;
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.metric-card:hover .icon {
-    transform: scale(1.1);
-    color: var(--accent-color);
-}
-
-.metric-card .value {
-    font-size: 2.25rem;
-    font-weight: 800;
-    color: #fff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.metric-card .label {
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.filters-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 2rem;
-    align-items: flex-end;
-}
-
-.filters-container .form-group {
-    margin-bottom: 0;
-}
-
-.filters-container .form-group label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-muted);
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.filters-container input, .filters-container select {
-    width: 100%;
-    padding: 0.8rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    font-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.filters-container input:focus, .filters-container select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px var(--shadow-color-primary);
-    outline: none;
-}
-
-.filter-actions {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 1rem;
-    padding-top: 1.5rem;
-    justify-content: flex-start;
-}
-
-.insights-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2.5rem;
-}
-
-.chart-wrapper {
-    position: relative;
-    height: 400px;
-    padding: 1.5rem;
-}
-
-.table-wrap {
-    overflow-x: auto;
-    max-height: 480px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    margin-top: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-td, th {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.95rem;
-    text-align: left;
-    white-space: nowrap;
-}
-
-td:nth-child(2) {
-    white-space: normal;
-    max-width: 350px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-thead th {
-    background: linear-gradient(to bottom, var(--bg-color-lighter), var(--bg-color-alt));
-    color: var(--text-color);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    font-weight: 700;
-    padding: 1.25rem;
-}
-
-tbody tr {
-    transition: background-color 0.25s;
-}
-
-tbody tr:nth-child(even) {
-    background-color: rgba(31, 41, 55, 0.3);
-}
-
-tbody tr:hover {
-    background-color: rgba(139, 92, 246, 0.15);
-}
-
-.pagination-controls {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 1.25rem;
-    margin-top: 2rem;
-    font-size: 1rem;
-    color: var(--text-color-muted);
-}
-
-.pagination-controls button {
-    padding: 0.5rem 1rem;
-}
-
-.spinner-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
-
-.spinner {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 5px solid var(--border-color);
-    border-top-color: var(--primary-color);
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.toast {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    padding: 14px 20px;
-    border-radius: var(--border-radius);
-    color: #fff;
-    background-color: var(--danger-color);
-    z-index: 10100;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    opacity: 0;
-    transform: translateY(-15px);
-    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-    border-left: 4px solid rgba(255,255,255,0.3);
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.toast.success {
-    background-color: var(--success-color);
-}
-
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.refresh-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    background: var(--bg-color-alt);
-    padding: 0.6rem 1.2rem;
-    border-radius: 25px;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.refresh-indicator.active {
-    color: var(--success-color);
-    border-color: rgba(34, 197, 94, 0.4);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
-}
-
-.refresh-indicator.active i {
-    animation: spin 1.5s ease-in-out;
-}
-
-.quick-stats {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-}
-
-.stat-badge {
-    background: var(--bg-color-alt);
-    padding: 0.7rem 1.4rem;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.25s;
-}
-
-.stat-badge:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px var(--shadow-color);
-    border-color: var(--accent-color);
-}
-
-.stat-badge i {
-    color: var(--accent-color);
-    font-size: 1.1rem;
-}
-
-.table-summary {
-    background: var(--bg-color-darker);
-    padding: 1rem 1.5rem;
-    border-radius: var(--border-radius);
-    margin-bottom: 1.5rem;
-    font-size: 1rem;
-    color: var(--text-color-muted);
-    border: 1px solid var(--border-color);
-    animation: slideIn 0.4s ease-out;
-}
-
-.table-summary strong {
-    color: var(--text-color);
-}
-
-.chart-toolbar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-}
-
-.chart-toolbar button {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-}
-
-.export-options {
-    display: flex;
-    gap: 0.75rem;
-    margin-left: auto;
-}
-
-.export-options .button {
-    padding: 0.7rem 1.2rem;
-    font-size: 0.9rem;
-}
-
-.export-options .button i {
-    font-size: 0.9rem;
-}
-
-td:nth-child(3), td:nth-child(4), td:nth-child(5) {
-    text-align: center;
-}
-
-/* New styles for enhanced UI */
-.metric-trend {
-    font-size: 0.8rem;
-    margin-left: 0.5rem;
-    font-weight: 600;
-}
-
-.trend-up {
-    color: var(--success-color);
-}
-
-.trend-down {
-    color: var(--danger-color);
-}
-
-.trend-neutral {
-    color: var(--text-color-muted);
-}
-
-.loading-shimmer {
-    background: linear-gradient(90deg, var(--bg-color) 25%, var(--border-color) 50%, var(--bg-color) 75%);
-    background-size: 1000px 100%;
-    animation: shimmer 2s infinite linear;
-}
-
-.data-highlight {
-    background: linear-gradient(120deg, transparent, var(--primary-color-light), transparent);
-    border-left: 3px solid var(--primary-color);
-}
-
-.section-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 2rem 0;
-    opacity: 0.5;
-}
-
-.stats-comparison {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 1rem;
-    font-size: 0.85rem;
-    color: var(--text-color-muted);
-}
-
-.stats-comparison .comparison-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-.comparison-value {
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-top: 0.25rem;
-}
-
-@media (max-width: 768px) {
-    .insights-grid {
-        grid-template-columns: 1fr;
-    }
-    .page-wrapper {
-        padding: 1.5rem;
-        padding-top: calc(var(--header-height) + 1.5rem);
-    }
-    .page-header {
-        padding: 0 1.5rem;
-        flex-direction: column;
-        height: auto;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-    }
-    .page-header h1 {
-        font-size: 1.5rem;
-    }
-    .header-controls {
-        margin-top: 1rem;
-        width: 100%;
-        justify-content: space-between;
-    }
-    .summary-metrics {
-        grid-template-columns: 1fr;
-    }
-    .filters-container {
-        grid-template-columns: 1fr;
-    }
-    .filter-actions {
-        flex-direction: column;
-    }
-    .export-options {
-        margin-left: 0;
-        justify-content: space-between;
-        width: 100%;
-    }
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Tracking Dashboard</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js for interactive charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- 1. Global Styles & Theme Variables --- */
+        :root {
+            --bg-dark: #0F1015;
+            --bg-card: #1A1C23;
+            --bg-header: #21242D;
+            --primary-accent: #6C5DD3;
+            --primary-accent-light: #8A7EFF;
+            --secondary-accent: #3F8CFF;
+            --secondary-accent-light: #5DA1FF;
+            --text-light: #F5F5F5;
+            --text-muted: #9CA3B3;
+            --border-color: #2A2D38;
+            --success: #00B69B;
+            --success-light: #3CF3D8;
+            --warning: #FFC454;
+            --warning-light: #FFD27A;
+            --danger: #FF6A55;
+            --danger-light: #FF8A7A;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.25);
+            --gradient-primary: linear-gradient(135deg, #6C5DD3 0%, #8374FF 100%);
+            --gradient-secondary: linear-gradient(135deg, #3F8CFF 0%, #5DA1FF 100%);
+            --gradient-success: linear-gradient(135deg, #00B69B 0%, #00D6B5 100%);
+            --gradient-warning: linear-gradient(135deg, #FFC454 0%, #FFD27A 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.08) 0%, transparent 25%),
+                radial-gradient(circle at 90% 80%, rgba(63, 140, 255, 0.08) 0%, transparent 25%);
+        }
+        
+        /* --- 2. Main Dashboard Layout --- */
+        .insights-dashboard {
+            padding: 2rem;
+            display: grid;
+            gap: 1.5rem;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        /* Header Section */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: var(--bg-card);
+            padding: 1.5rem 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            width: 150px;
+            height: 150px;
+            background: var(--gradient-primary);
+            opacity: 0.1;
+            filter: blur(20px);
+            border-radius: 0 0 100% 0;
+        }
+
+        .header-title h1 {
+            font-size: 32px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+        
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .action-btn {
+            background-color: var(--bg-header);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-family: var(--font-family);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .action-btn.primary {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-accent);
+        }
+        
+        .action-btn.primary:hover {
+            background: var(--gradient-primary);
+            filter: brightness(1.15);
+        }
+
+        /* --- 3. KPI Cards Section --- */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-accent-light);
+        }
+        
+        .kpi-card .card-title {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kpi-card .card-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-light);
+            line-height: 1.2;
+        }
+        
+        #total-articles .card-title::before { 
+            content: '\f15c'; 
+            font-family: 'Font Awesome 6 Free'; 
+            font-weight: 900; 
+            font-size: 16px;
+            background: var(--gradient-secondary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #total-views .card-title::before { 
+            content: '\f06e'; 
+            font-family: 'Font Awesome 6 Free'; 
+            font-weight: 900; 
+            font-size: 16px;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #average-rating .card-title::before { 
+            content: '\f005'; 
+            font-family: 'Font Awesome 6 Free'; 
+            font-weight: 900; 
+            font-size: 16px;
+            background: var(--gradient-warning);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #active-users .card-title::before { 
+            content: '\f0c0'; 
+            font-family: 'Font Awesome 6 Free'; 
+            font-weight: 900; 
+            font-size: 16px;
+            background: var(--gradient-success);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- 4. Filters Section --- */
+        .filters-container {
+            background-color: var(--bg-card);
+            padding: 1.5rem 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1.5rem;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+            min-width: 180px;
+        }
+        
+        .filter-group label {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .filter-group input, .filter-group select {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-family: var(--font-family);
+            transition: var(--transition);
+            font-size: 14px;
+        }
+        
+        .filter-group input:focus, .filter-group select:focus {
+            outline: none;
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 4px rgba(108, 93, 211, 0.25);
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            padding-top: 1.5rem;
+            width: 100%;
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+        }
+        
+        /* --- 5. Charts Section --- */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .chart-card {
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.7s ease-out forwards;
+            opacity: 0;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+
+        .chart-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .chart-card h3 {
+            font-size: 18px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-light);
+            font-weight: 700;
+        }
+        
+        .chart-card h3 i {
+            font-size: 20px;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .chart-placeholder {
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            flex-grow: 1;
+            position: relative;
+        }
+
+        /* --- 6. Activity Log Table --- */
+        .activity-log-card {
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            animation: fadeInUp 0.8s ease-out forwards;
+            opacity: 0;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+
+        .activity-log-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .activity-log-card h3 {
+            font-size: 18px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-light);
+            font-weight: 700;
+        }
+        
+        .activity-log-card h3 i {
+            font-size: 20px;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .activity-table th {
+            background-color: var(--bg-header);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 13px;
+            text-align: left;
+            padding: 14px 18px;
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .activity-table th:first-child { border-radius: 12px 0 0 12px; }
+        .activity-table th:last-child { border-radius: 0 12px 12px 0; }
+
+        .activity-table td {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .activity-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .activity-table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+            transform: scale(1.01);
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .user-email {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .role-badge {
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .role-admin { background: rgba(108, 93, 211, 0.2); color: var(--primary-accent-light); }
+        .role-manager { background: rgba(63, 140, 255, 0.2); color: var(--secondary-accent-light); }
+        .role-user { background: rgba(0, 182, 155, 0.2); color: var(--success-light); }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-viewed { background: rgba(0, 182, 155, 0.2); color: var(--success-light); }
+        .status-downloaded { background: rgba(63, 140, 255, 0.2); color: var(--secondary-accent-light); }
+        .status-searched { background: rgba(255, 196, 84, 0.2); color: var(--warning-light); }
+
+        .time-ago {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        /* --- 7. Timeline Section --- */
+        .timeline-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-header);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 2rem;
+            bottom: -1rem;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-item:last-child::before { display: none; }
+        
+        .timeline-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary-accent);
+            margin-top: 8px;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .timeline-content { flex-grow: 1; }
+        .timeline-time { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .timeline-text { font-size: 14px; color: var(--text-light); }
+        .timeline-user { font-weight: 600; color: var(--primary-accent-light); }
+        
+        /* --- 8. Pagination --- */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+
+        .pagination-btn {
+            background: var(--bg-header);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .pagination-btn:hover {
+            background: var(--primary-accent);
+            border-color: var(--primary-accent);
+        }
+
+        .pagination-btn.active {
+            background: var(--primary-accent);
+            border-color: var(--primary-accent);
+            color: white;
+            cursor: default;
+        }
+
+        .pagination-info {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin: 0 1rem;
+        }
+
+        /* --- 9. Animations --- */
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .kpi-card:nth-child(1) { animation-delay: 0.1s; }
+        .kpi-card:nth-child(2) { animation-delay: 0.2s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.3s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.4s; }
+        .chart-card:nth-child(1) { animation-delay: 0.5s; }
+        .chart-card:nth-child(2) { animation-delay: 0.6s; }
+        .chart-card:nth-child(3) { animation-delay: 0.7s; }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--primary-accent); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-accent-light); }
+        
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- 10. Responsive Design --- */
+        @media (max-width: 1200px) {
+            .charts-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .insights-dashboard { padding: 1.5rem; }
+            .charts-container { grid-template-columns: 1fr; }
+        }
+        
+        @media (max-width: 768px) {
+            .insights-dashboard { padding: 1rem; gap: 1rem; }
+            .dashboard-header { flex-direction: column; align-items: flex-start; }
+            .header-title h1 { font-size: 28px; }
+            .header-actions { width: 100%; justify-content: flex-start; }
+            .kpi-container { grid-template-columns: 1fr 1fr; }
+            .filters-container { gap: 1rem; }
+            .filter-group { min-width: calc(50% - 0.5rem); }
+            .filter-actions { margin-top: 0.5rem; }
+        }
+        
+        @media (max-width: 576px) {
+            .kpi-container { grid-template-columns: 1fr; }
+            .filter-group { min-width: 100%; }
+        }
+    </style>
 </head>
 <body>
 
-<div id="dashboard" style="visibility: hidden;">
-    <header class="page-header">
-        <div class="header-title">
-            <i class="fas fa-chart-pie logo-icon"></i>
-            <h1>Insights Dashboard</h1>
-        </div>
-        <div class="header-controls">
-            <div class="refresh-indicator" id="refreshIndicator">
-                <i class="fas fa-check-circle"></i>
-                <span>Last updated: <span id="lastUpdateTime">Never</span></span>
+    <div class="insights-dashboard">
+        
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-title">
+                <h1><i class="fas fa-chart-line"></i> Employee Tracking Dashboard</h1>
+                <p>Monitor and analyze employee activity</p>
             </div>
-            <button id="refreshDataBtn" class="button button-secondary"><i class="fas fa-sync-alt"></i><span>Refresh</span></button>
-            <a href="/app.html" class="button"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-        </div>
-    </header>
-
-    <div class="page-wrapper">
-        <div id="toast" class="toast">
-            <i class="fas"></i>
-            <span></span>
-        </div>
-        <div id="spinner" class="spinner-overlay" style="display:none;"><div class="spinner"></div></div>
-
-        <div class="summary-metrics">
-            <div class="metric-card"><i class="fas fa-file-alt icon"></i><div><div id="metric-total-articles" class="value">-</div><div class="label">Total Articles</div></div></div>
-            <div class="metric-card"><i class="fas fa-eye icon"></i><div><div id="metric-total-views" class="value">-</div><div class="label">Total Views</div></div></div>
-            <div class="metric-card"><i class="fas fa-star-half-alt icon"></i><div><div id="metric-avg-rating" class="value">-</div><div class="label">Average Rating</div></div></div>
-            <div class="metric-card"><i class="fas fa-users icon"></i><div><div id="metric-active-users" class="value">-</div><div class="label">Active Users (Week)</div></div></div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-filter"></i> Filters</h2>
+            <div class="header-actions">
+                <button class="action-btn" id="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="action-btn primary" id="export-btn"><i class="fas fa-download"></i> Export</button>
             </div>
-            <div class="filters-container">
-                <div class="form-group"><label for="filterDateFrom">From Date</label><input id="filterDateFrom" type="date"></div>
-                <div class="form-group"><label for="filterDateTo">To Date</label><input id="filterDateTo" type="date"></div>
-                <div class="form-group"><label for="filterEmployee">Employee</label><select id="filterEmployee"><option value="">All Employees</option></select></div>
-                <div class="form-group"><label for="filterCase">Case / Article Title</label><input id="filterCase" placeholder="Enter title to search..."></div>
-                <div class="filter-actions">
-                    <button id="applyFiltersBtn" class="button"><i class="fas fa-check"></i> Apply Filters</button>
-                    <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
-                    <div class="export-options">
-                        <button id="exportCsvBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
-                        <button id="exportPdfBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> PDF Report</button>
-                    </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="kpi-container" id="kpi-section">
+            <div class="kpi-card" id="total-articles">
+                <div class="card-title">Total Articles</div>
+                <div class="card-value">---</div>
+            </div>
+            <div class="kpi-card" id="total-views">
+                <div class="card-title">Total Views</div>
+                <div class="card-value">---</div>
+            </div>
+            <div class="kpi-card" id="average-rating">
+                <div class="card-title">Avg. Session Time</div>
+                <div class="card-value">---</div>
+            </div>
+            <div class="kpi-card" id="active-users">
+                <div class="card-title">Active Users (Today)</div>
+                <div class="card-value">---</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-container" id="filters-section">
+            <div class="filter-group">
+                <label for="from-date"><i class="fas fa-calendar-alt"></i> From Date</label>
+                <input type="date" id="from-date">
+            </div>
+            <div class="filter-group">
+                <label for="to-date"><i class="fas fa-calendar-alt"></i> To Date</label>
+                <input type="date" id="to-date">
+            </div>
+            <div class="filter-group">
+                <label for="department"><i class="fas fa-building"></i> Department</label>
+                <select id="department">
+                    <option>All Departments</option>
+                    <option>Support</option>
+                    <option>Sales</option>
+                    <option>HR</option>
+                    <option>Marketing</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="search-user"><i class="fas fa-search"></i> Search User</label>
+                <input type="text" id="search-user" placeholder="Search by name or email...">
+            </div>
+            <div class="filter-actions">
+                <button class="action-btn"><i class="fas fa-times"></i> Clear All</button>
+                <button class="action-btn primary"><i class="fas fa-filter"></i> Apply Filters</button>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-container" id="charts-section">
+            <div class="chart-card" id="activity-by-category-card">
+                <h3><i class="fas fa-chart-pie"></i> Activity by Department</h3>
+                <div class="chart-placeholder">
+                    <canvas id="activityByCategoryChart"></canvas>
                 </div>
             </div>
-            <div id="filterSummary" class="table-summary" style="display:none; margin-top:1.5rem;"></div>
-        </div>
-
-        <div class="insights-grid">
-            <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-chart-bar"></i>Activity by Category</h2>
+            <div class="chart-card" id="top-viewed-articles-card">
+                <h3><i class="fas fa-fire-alt"></i> Top Viewed Articles</h3>
+                <div class="chart-placeholder">
+                     <canvas id="topViewedArticlesChart"></canvas>
                 </div>
-                <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-fire"></i>Top 5 Viewed Articles</h2>
+            <div class="chart-card" id="feedback-analysis-card">
+                <h3><i class="fas fa-comment-dots"></i> User Engagement</h3>
+                <div class="chart-placeholder">
+                    <canvas id="feedbackAnalysisChart"></canvas>
                 </div>
-                <div class="chart-wrapper"><canvas id="topArticlesChart"></canvas></div>
-            </div>
-             <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-comments"></i>Feedback Analysis</h2>
-                </div>
-                <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-book-open"></i> Knowledge Base Articles</h2>
+        <!-- Activity Log -->
+        <div class="activity-log-card">
+            <h3><i class="fas fa-list-alt"></i> Employee Activity Timeline</h3>
+            
+            <!-- Timeline -->
+            <div class="timeline-container">
+                <!-- Timeline items will be populated dynamically -->
             </div>
-            <div class="table-wrap">
-                <table>
+
+            <!-- Activity Table -->
+            <div class="table-container">
+                <table class="activity-table">
                     <thead>
                         <tr>
-                            <th>Article Title</th>
-                            <th>Description</th>
-                            <th>Sub-Category</th>
-                            <th>Category</th>
-                            <th>Created At (Egypt Time)</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                            <th>Section</th>
+                            <th>Document</th>
+                            <th>Time</th>
                         </tr>
                     </thead>
-                    <tbody id="kbInsightsTable"></tbody>
+                    <tbody>
+                        <!-- Table rows will be populated dynamically -->
+                    </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <button class="pagination-btn">Previous</button>
+                <button class="pagination-btn active">1</button>
+                <button class="pagination-btn">2</button>
+                <button class="pagination-btn">3</button>
+                <span class="pagination-info">Page 1 of 3</span>
+                <button class="pagination-btn">Next</button>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-newspaper"></i> Article Performance</h2>
-            </div>
-            <div class="quick-stats" id="articleStats"></div>
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Article Title</th><th>Total Views</th><th>Avg Rating (out of 5)</th><th>Total Feedbacks</th><th>Last Viewed (Egypt Time)</th><th>Created By</th></tr></thead>
-                    <tbody id="articleInsightsTable"></tbody>
-                </table>
-            </div>
-            <div class="pagination-controls" id="paginationArticles"></div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-users"></i> User Engagement</h2>
-            </div>
-            <div class="quick-stats" id="userStats"></div>
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>User Name</th><th>Email</th><th>Total Articles Viewed</th><th>Unique Articles Viewed</th><th>Last Activity (Egypt Time)</th></tr></thead>
-                    <tbody id="userInsightsTable"></tbody>
-                </table>
-            </div>
-            <div class="pagination-controls" id="paginationUsers"></div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-folder-tree"></i> Section Performance</h2>
-            </div>
-            <div class="quick-stats" id="sectionStats"></div>
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Category Name</th><th>Total Articles</th><th>Total Views</th><th>Average Rating</th><th>Total Feedbacks</th><th>Last Activity (Egypt Time)</th></tr></thead>
-                    <tbody id="sectionInsightsTable"></tbody>
-                </table>
-            </div>
-            <div class="pagination-controls" id="paginationSections"></div>
-        </div>
     </div>
-</div>
 
-<footer style="padding: 2.5rem; text-align: center; color: var(--text-color-muted); font-size: 0.9rem;">
-    <span>&copy; <script>document.write((new Date).getFullYear())</script> InfiniBase.Elmenisy.</span>
-</footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            const chartColors = {
+                primary: 'rgba(108, 93, 211, 0.8)',
+                primaryLight: 'rgba(108, 93, 211, 0.4)',
+                secondary: 'rgba(63, 140, 255, 0.8)',
+                secondaryLight: 'rgba(63, 140, 255, 0.4)',
+                success: 'rgba(0, 182, 155, 0.8)',
+                successLight: 'rgba(0, 182, 155, 0.4)',
+                warning: 'rgba(255, 196, 84, 0.8)',
+                warningLight: 'rgba(255, 196, 84, 0.4)',
+                muted: 'rgba(128, 129, 145, 0.8)',
+                bgCard: '#1A1C23',
+                textLight: '#F5F5F5',
+                textMuted: '#9CA3B3'
+            };
 
-<script>
-const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = chartColors.textMuted;
 
-document.addEventListener('DOMContentLoaded', async function() {
-    initializeInsightsDashboard();
-});
-
-let allInsights = { articles: [], users: [], sections: [], overall: {}, feedback: [] };
-let filteredInsights = { articles: [], users: [], sections: [] };
-let paginationState = { articles: 1, users: 1, sections: 1 };
-const ROWS_PER_PAGE = 10;
-const toast = document.getElementById("toast");
-const spinner = document.getElementById("spinner");
-const refreshDataBtn = document.getElementById('refreshDataBtn');
-let activityBySectionChart, topArticlesChart, feedbackAnalysisChart = null;
-
-function showSpinner(show) {
-    spinner.style.display = show ? "flex" : "none";
-}
-
-function showToast(message, isError = true) {
-    const toastIcon = toast.querySelector('i');
-    const toastMessage = toast.querySelector('span');
-
-    toastMessage.textContent = message;
-    if (isError) {
-        toast.style.backgroundColor = "#ef4444";
-        toastIcon.className = 'fas fa-exclamation-circle';
-        toast.classList.remove("success");
-    } else {
-        toast.style.backgroundColor = "#22c55e";
-        toastIcon.className = 'fas fa-check-circle';
-        toast.classList.add("success");
-    }
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 3000);
-}
-
-toast.addEventListener('click', () => {
-    toast.classList.remove('show');
-});
-
-function escapeHtml(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/[&<>"']/g, (match) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    }[match]));
-}
-
-function formatToEgyptTime(dateString) {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleString('en-EG', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Africa/Cairo'
-    }) + ' (Cairo)';
-}
-
-function updateLastUpdateTime() {
-    const now = new Date();
-    document.getElementById("lastUpdateTime").textContent = now.toLocaleTimeString('en-GB', {
-        timeZone: 'Africa/Cairo',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    const refreshIndicator = document.getElementById("refreshIndicator");
-    refreshIndicator.classList.add("active");
-    setTimeout(() => refreshIndicator.classList.remove("active"), 2000);
-}
-
-function updateQuickStats() {
-    const articleStats = document.getElementById('articleStats');
-    const totalArticles = filteredInsights.articles.length;
-    const totalViews = filteredInsights.articles.reduce((sum, article) => sum + (article.total_views || 0), 0);
-    const articlesWithRating = filteredInsights.articles.filter(a => a.avg_rating !== null && a.avg_rating > 0);
-    const avgRating = articlesWithRating.reduce((sum, article) => sum + (article.avg_rating || 0), 0) / (articlesWithRating.length || 1);
-    articleStats.innerHTML = `
-        <div class="stat-badge"><i class="fas fa-file-alt"></i> ${totalArticles} Articles</div>
-        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalViews} Total Views</div>
-        <div class="stat-badge"><i class="fas fa-star"></i> ${avgRating.toFixed(2)} Avg Rating</div>
-    `;
-
-    const userStats = document.getElementById('userStats');
-    const totalUsers = filteredInsights.users.length;
-    const totalUserViews = filteredInsights.users.reduce((sum, user) => sum + (user.total_articles_viewed || 0), 0);
-    userStats.innerHTML = `
-        <div class="stat-badge"><i class="fas fa-users"></i> ${totalUsers} Users</div>
-        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalUserViews} Total Views</div>
-    `;
-
-    const sectionStats = document.getElementById('sectionStats');
-    const totalSections = filteredInsights.sections.length;
-    const totalSectionViews = filteredInsights.sections.reduce((sum, section) => sum + (section.total_views || 0), 0);
-    sectionStats.innerHTML = `
-        <div class="stat-badge"><i class="fas fa-folder"></i> ${totalSections} Sections</div>
-        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalSectionViews} Total Views</div>
-    `;
-}
-
-function renderPaginationControls(tableType, totalItems) {
-    const totalPages = Math.ceil(totalItems / ROWS_PER_PAGE);
-    const paginationContainer = document.getElementById(`pagination${tableType.charAt(0).toUpperCase() + tableType.slice(1)}`);
-    if (totalPages <= 1) {
-        paginationContainer.innerHTML = '';
-        return;
-    }
-
-    const currentPage = paginationState[tableType];
-    paginationContainer.innerHTML = `
-        <button class="button button-secondary ${currentPage === 1 ? 'disabled' : ''}" id="prevPage${tableType}">
-            <i class="fas fa-chevron-left"></i> Previous
-        </button>
-        <span>Page ${currentPage} of ${totalPages}</span>
-        <button class="button button-secondary ${currentPage === totalPages ? 'disabled' : ''}" id="nextPage${tableType}">
-            Next <i class="fas fa-chevron-right"></i>
-        </button>
-    `;
-
-    document.getElementById(`prevPage${tableType}`).addEventListener('click', () => {
-        if (currentPage > 1) {
-            paginationState[tableType] = currentPage - 1;
-            renderTable(tableType);
-        }
-    });
-
-    document.getElementById(`nextPage${tableType}`).addEventListener('click', () => {
-        if (currentPage < totalPages) {
-            paginationState[tableType] = currentPage + 1;
-            renderTable(tableType);
-        }
-    });
-}
-
-function renderTable(tableType) {
-    const tableBody = document.getElementById(`${tableType}InsightsTable`);
-    const data = filteredInsights[tableType];
-    const currentPage = paginationState[tableType];
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    const endIndex = startIndex + ROWS_PER_PAGE;
-    const pageData = data.slice(startIndex, endIndex);
-
-    tableBody.innerHTML = '';
-    if (pageData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-color-muted);">No data available</td></tr>';
-        renderPaginationControls(tableType, 0);
-        return;
-    }
-
-    pageData.forEach((item, index) => {
-        const row = document.createElement('tr');
-        if (index % 2 === 0) {
-            row.classList.add('data-highlight');
-        }
-
-        switch (tableType) {
-            case 'articles':
-                row.innerHTML = `
-                    <td>${escapeHtml(item.title || 'Untitled')}</td>
-                    <td>${escapeHtml(item.description || 'No description')}</td>
-                    <td>${escapeHtml(item.subcategory || 'N/A')}</td>
-                    <td>${escapeHtml(item.category || 'N/A')}</td>
-                    <td>${formatToEgyptTime(item.created_at)}</td>
-                `;
-                break;
-            case 'article':
-                row.innerHTML = `
-                    <td>${escapeHtml(item.title || 'Untitled')}</td>
-                    <td>${item.total_views || 0}</td>
-                    <td>${item.avg_rating ? item.avg_rating.toFixed(2) : 'N/A'}</td>
-                    <td>${item.total_feedbacks || 0}</td>
-                    <td>${formatToEgyptTime(item.last_viewed_at)}</td>
-                    <td>${escapeHtml(item.created_by || 'Unknown')}</td>
-                `;
-                break;
-            case 'users':
-                row.innerHTML = `
-                    <td>${escapeHtml(item.user_name || 'Unknown User')}</td>
-                    <td>${escapeHtml(item.email || 'N/A')}</td>
-                    <td>${item.total_articles_viewed || 0}</td>
-                    <td>${item.unique_articles_viewed || 0}</td>
-                    <td>${formatToEgyptTime(item.last_activity_at)}</td>
-                `;
-                break;
-            case 'sections':
-                row.innerHTML = `
-                    <td>${escapeHtml(item.category_name || 'Uncategorized')}</td>
-                    <td>${item.total_articles || 0}</td>
-                    <td>${item.total_views || 0}</td>
-                    <td>${item.avg_rating ? item.avg_rating.toFixed(2) : 'N/A'}</td>
-                    <td>${item.total_feedbacks || 0}</td>
-                    <td>${formatToEgyptTime(item.last_activity_at)}</td>
-                `;
-                break;
-        }
-        tableBody.appendChild(row);
-    });
-
-    renderPaginationControls(tableType, data.length);
-}
-
-function updateCharts() {
-    if (activityBySectionChart) activityBySectionChart.destroy();
-    if (topArticlesChart) topArticlesChart.destroy();
-    if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
-
-    const sectionData = filteredInsights.sections.slice(0, 8);
-    const topArticles = filteredInsights.articles
-        .filter(a => a.total_views > 0)
-        .sort((a, b) => (b.total_views || 0) - (a.total_views || 0))
-        .slice(0, 5);
-
-    const ctx1 = document.getElementById('activityBySectionChart').getContext('2d');
-    activityBySectionChart = new Chart(ctx1, {
-        type: 'bar',
-        data: {
-            labels: sectionData.map(s => s.category_name || 'Unknown'),
-            datasets: [{
-                label: 'Views',
-                data: sectionData.map(s => s.total_views || 0),
-                backgroundColor: '#8b5cf6',
-                borderColor: '#7c3aed',
-                borderWidth: 2,
-                borderRadius: 6,
-                hoverBackgroundColor: '#7c3aed'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#f3f4f6',
-                    bodyColor: '#e5e7eb',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return `Views: ${context.raw}`;
-                        }
-                    }
+            const tooltipDefaults = {
+                titleFont: { family: "'Inter', sans-serif", weight: '700' },
+                bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                backgroundColor: 'rgba(26, 28, 35, 0.9)',
+                titleColor: chartColors.textLight,
+                bodyColor: chartColors.textMuted,
+                borderColor: '#353843',
+                borderWidth: 1,
+                cornerRadius: 10,
+                displayColors: true,
+                padding: 12
+            };
+            
+            const legendDefaults = {
+                position: 'bottom',
+                labels: {
+                    color: chartColors.textLight,
+                    font: { family: "'Inter', sans-serif", size: 12, weight: '600' },
+                    padding: 20,
+                    usePointStyle: true,
+                    pointStyle: 'circle'
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(55, 65, 81, 0.3)' },
-                    ticks: { color: '#9ca3af' }
+            };
+
+            // 1. Activity by Category Chart (Donut)
+            const activityCtx = document.getElementById('activityByCategoryChart').getContext('2d');
+            new Chart(activityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [], // Data removed
+                    datasets: [{
+                        label: 'Views',
+                        data: [], // Data removed
+                        backgroundColor: [
+                            chartColors.primary, chartColors.secondary, chartColors.success,
+                            chartColors.warning, chartColors.muted
+                        ],
+                        borderColor: chartColors.bgCard,
+                        borderWidth: 4,
+                        hoverOffset: 10
+                    }]
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#9ca3af', maxRotation: 45 }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: legendDefaults, tooltip: tooltipDefaults },
+                    cutout: '70%'
                 }
-            }
-        }
-    });
-
-    const ctx2 = document.getElementById('topArticlesChart').getContext('2d');
-    topArticlesChart = new Chart(ctx2, {
-        type: 'doughnut',
-        data: {
-            labels: topArticles.map(a => a.title ? (a.title.length > 20 ? a.title.substring(0, 20) + '...' : a.title) : 'Untitled'),
-            datasets: [{
-                data: topArticles.map(a => a.total_views || 0),
-                backgroundColor: [
-                    '#8b5cf6', '#38bdf8', '#67e8f9', '#22c55e', '#f59e0b'
-                ],
-                borderColor: 'rgba(15, 23, 42, 0.8)',
-                borderWidth: 2,
-                hoverOffset: 15
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#e5e7eb', font: { size: 12 } }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#f3f4f6',
-                    bodyColor: '#e5e7eb',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.label}: ${context.raw} views`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    const feedbackData = filteredInsights.feedback;
-    const ratingCounts = {1:0, 2:0, 3:0, 4:0, 5:0};
-    feedbackData.forEach(f => {
-        if (f.rating && f.rating >= 1 && f.rating <= 5) {
-            ratingCounts[f.rating]++;
-        }
-    });
-
-    const ctx3 = document.getElementById('feedbackAnalysisChart').getContext('2d');
-    feedbackAnalysisChart = new Chart(ctx3, {
-        type: 'polarArea',
-        data: {
-            labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
-            datasets: [{
-                data: [ratingCounts[1], ratingCounts[2], ratingCounts[3], ratingCounts[4], ratingCounts[5]],
-                backgroundColor: [
-                    '#ef4444', '#f59e0b', '#eab308', '#84cc16', '#22c55e'
-                ],
-                borderColor: 'rgba(15, 23, 42, 0.8)',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#e5e7eb', font: { size: 12 } }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#f3f4f6',
-                    bodyColor: '#e5e7eb',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.label}: ${context.raw} feedbacks`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                r: {
-                    grid: { color: 'rgba(55, 65, 81, 0.3)' },
-                    ticks: { color: '#9ca3af', backdropColor: 'transparent' }
-                }
-            }
-        }
-    });
-}
-
-function applyFilters() {
-    const dateFrom = document.getElementById('filterDateFrom').value;
-    const dateTo = document.getElementById('filterDateTo').value;
-    const employee = document.getElementById('filterEmployee').value;
-    const caseTitle = document.getElementById('filterCase').value.toLowerCase();
-
-    filteredInsights.articles = allInsights.articles.filter(article => {
-        const articleDate = article.created_at ? new Date(article.created_at).toISOString().split('T')[0] : null;
-        const matchesDate = (!dateFrom || articleDate >= dateFrom) && (!dateTo || articleDate <= dateTo);
-        const matchesEmployee = !employee || (article.created_by && article.created_by.includes(employee));
-        const matchesCase = !caseTitle || (article.title && article.title.toLowerCase().includes(caseTitle));
-        return matchesDate && matchesEmployee && matchesCase;
-    });
-
-    filteredInsights.users = allInsights.users.filter(user => {
-        const userDate = user.last_activity_at ? new Date(user.last_activity_at).toISOString().split('T')[0] : null;
-        const matchesDate = (!dateFrom || userDate >= dateFrom) && (!dateTo || userDate <= dateTo);
-        const matchesEmployee = !employee || (user.user_name && user.user_name.includes(employee));
-        return matchesDate && matchesEmployee;
-    });
-
-    filteredInsights.sections = allInsights.sections.filter(section => {
-        const sectionDate = section.last_activity_at ? new Date(section.last_activity_at).toISOString().split('T')[0] : null;
-        const matchesDate = (!dateFrom || sectionDate >= dateFrom) && (!dateTo || sectionDate <= dateTo);
-        return matchesDate;
-    });
-
-    updateFilterSummary();
-    updateQuickStats();
-    renderTable('articles');
-    renderTable('article');
-    renderTable('users');
-    renderTable('sections');
-    updateCharts();
-}
-
-function updateFilterSummary() {
-    const filterSummary = document.getElementById('filterSummary');
-    const dateFrom = document.getElementById('filterDateFrom').value;
-    const dateTo = document.getElementById('filterDateTo').value;
-    const employee = document.getElementById('filterEmployee').value;
-    const caseTitle = document.getElementById('filterCase').value;
-
-    let summaryText = 'Showing ';
-    if (dateFrom || dateTo || employee || caseTitle) {
-        summaryText += 'filtered data';
-        if (dateFrom || dateTo) {
-            summaryText += ` from ${dateFrom || 'start'} to ${dateTo || 'now'}`;
-        }
-        if (employee) {
-            summaryText += ` for employee: ${employee}`;
-        }
-        if (caseTitle) {
-            summaryText += ` with title containing: "${caseTitle}"`;
-        }
-    } else {
-        summaryText += 'all data';
-    }
-
-    filterSummary.textContent = summaryText;
-    filterSummary.style.display = 'block';
-}
-
-async function fetchInsightsData() {
-    showSpinner(true);
-    try {
-        const { data: articles, error: articlesError } = await supabase
-            .from('knowledge_base')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (articlesError) throw articlesError;
-
-        const { data: articleStats, error: statsError } = await supabase
-            .from('article_views_stats')
-            .select('*');
-
-        if (statsError) throw statsError;
-
-        const { data: userStats, error: userStatsError } = await supabase
-            .from('user_engagement_stats')
-            .select('*');
-
-        if (userStatsError) throw userStatsError;
-
-        const { data: sectionStats, error: sectionStatsError } = await supabase
-            .from('section_performance_stats')
-            .select('*');
-
-        if (sectionStatsError) throw sectionStatsError;
-
-        const { data: feedback, error: feedbackError } = await supabase
-            .from('feedback')
-            .select('*');
-
-        if (feedbackError) throw feedbackError;
-
-        allInsights.articles = articles || [];
-        allInsights.article = articleStats || [];
-        allInsights.users = userStats || [];
-        allInsights.sections = sectionStats || [];
-        allInsights.feedback = feedback || [];
-
-        allInsights.overall = {
-            totalArticles: articles?.length || 0,
-            totalViews: articleStats?.reduce((sum, article) => sum + (article.total_views || 0), 0) || 0,
-            activeUsers: userStats?.length || 0,
-            avgRating: articleStats?.filter(a => a.avg_rating).reduce((sum, article) => sum + (article.avg_rating || 0), 0) / (articleStats?.filter(a => a.avg_rating).length || 1) || 0
-        };
-
-        filteredInsights = JSON.parse(JSON.stringify(allInsights));
-
-        updateMetrics();
-        updateQuickStats();
-        renderTable('articles');
-        renderTable('article');
-        renderTable('users');
-        renderTable('sections');
-        updateCharts();
-        updateLastUpdateTime();
-        showToast('Data refreshed successfully!', false);
-    } catch (error) {
-        console.error('Error fetching insights data:', error);
-        showToast('Failed to load insights data: ' + error.message);
-    } finally {
-        showSpinner(false);
-    }
-}
-
-function updateMetrics() {
-    document.getElementById('metric-total-articles').textContent = allInsights.overall.totalArticles;
-    document.getElementById('metric-total-views').textContent = allInsights.overall.totalViews;
-    document.getElementById('metric-avg-rating').textContent = allInsights.overall.avgRating.toFixed(2);
-    document.getElementById('metric-active-users').textContent = allInsights.overall.activeUsers;
-}
-
-function initializeInsightsDashboard() {
-    document.getElementById('dashboard').style.visibility = 'visible';
-    
-    refreshDataBtn.addEventListener('click', fetchInsightsData);
-    document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
-    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-    document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
-    document.getElementById('exportPdfBtn').addEventListener('click', exportToPdf);
-    
-    fetchInsightsData();
-}
-
-function clearFilters() {
-    document.getElementById('filterDateFrom').value = '';
-    document.getElementById('filterDateTo').value = '';
-    document.getElementById('filterEmployee').value = '';
-    document.getElementById('filterCase').value = '';
-    applyFilters();
-}
-
-function exportToCsv() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    
-    const tables = [
-        { name: "Articles", data: filteredInsights.articles },
-        { name: "Article Performance", data: filteredInsights.article },
-        { name: "User Engagement", data: filteredInsights.users },
-        { name: "Section Performance", data: filteredInsights.sections }
-    ];
-    
-    tables.forEach(table => {
-        csvContent += `${table.name}\n`;
-        if (table.data.length > 0) {
-            const headers = Object.keys(table.data[0]).join(",");
-            csvContent += headers + "\n";
-            table.data.forEach(row => {
-                const values = Object.values(row).map(value => 
-                    typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value
-                ).join(",");
-                csvContent += values + "\n";
             });
-        }
-        csvContent += "\n\n";
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `insights_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('CSV exported successfully!', false);
-}
 
-function exportToPdf() {
-    showToast('PDF export feature coming soon!', false);
-}
-</script>
+            // 2. Top Viewed Articles (Bar)
+            const topArticlesCtx = document.getElementById('topViewedArticlesChart').getContext('2d');
+            new Chart(topArticlesCtx, {
+                type: 'bar',
+                data: {
+                    labels: [], // Data removed
+                    datasets: [{
+                        label: 'Views',
+                        data: [], // Data removed
+                        backgroundColor: chartColors.primaryLight,
+                        borderColor: chartColors.primary,
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: chartColors.primary
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: tooltipDefaults },
+                    scales: {
+                        x: { grid: { color: 'rgba(42, 45, 56, 0.5)', drawBorder: false }, ticks: { color: chartColors.textMuted, font: { size: 12 } } },
+                        y: { grid: { display: false }, ticks: { color: chartColors.textLight, font: { size: 13, weight: '600' } } }
+                    }
+                }
+            });
+
+            // 3. User Engagement (Line)
+            const feedbackCtx = document.getElementById('feedbackAnalysisChart').getContext('2d');
+            new Chart(feedbackCtx, {
+                type: 'line',
+                data: {
+                    labels: [], // Data removed
+                    datasets: [{
+                        label: 'Active Users',
+                        data: [], // Data removed
+                        borderColor: chartColors.primary,
+                        backgroundColor: chartColors.primaryLight,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: chartColors.primary,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: chartColors.primary,
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: legendDefaults, tooltip: tooltipDefaults },
+                    scales: {
+                        x: { grid: { color: 'rgba(42, 45, 56, 0.5)', drawBorder: false }, ticks: { color: chartColors.textMuted, font: { size: 12 } } },
+                        y: { grid: { color: 'rgba(42, 45, 56, 0.5)', drawBorder: false }, ticks: { color: chartColors.textMuted, font: { size: 12 } } }
+                    }
+                }
+            });
+
+            // Refresh button functionality
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                const btn = this;
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = '<span class="loading"></span> Refreshing...';
+                btn.disabled = true;
+                
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Updated';
+                    btn.style.background = 'var(--gradient-success)';
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                        btn.style.background = '';
+                    }, 2000);
+                }, 1500);
+            });
+            
+            // Export button functionality
+            document.getElementById('export-btn').addEventListener('click', function() {
+                const btn = this;
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+                btn.disabled = true;
+                
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Exported';
+                    btn.style.background = 'var(--gradient-success)';
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                        btn.style.background = '';
+                    }, 2000);
+                }, 2000);
+            });
+
+            // Pagination functionality
+            document.querySelectorAll('.pagination-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelector('.pagination-btn.active').classList.remove('active');
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+
 </body>
 </html>
