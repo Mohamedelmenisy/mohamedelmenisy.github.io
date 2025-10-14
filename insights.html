@@ -1,68 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-  <style>
-/* Shared design tokens and improvements */
-:root{
-  --brand-500: #0b5fff; /* primary */
-  --brand-600: #084fd6;
-  --muted-600: #6b7280;
-  --bg: #0f1724;
-  --card-bg: #0b1220;
-  --glass: rgba(255,255,255,0.04);
-  --success: #16a34a;
-  --danger: #ef4444;
-  --radius: 10px;
-  --gap: 12px;
-  --max-width: 1200px;
-  --mono: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
-}
-
-/* Reset small things */
-body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#071428 0%, #071727 100%); color: #e6eef8; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
-.container{ max-width: var(--max-width); margin: 0 auto; padding: 20px; }
-
-/* Sticky header */
-.app-header{
-  position: sticky; top:0; z-index:40; background: rgba(6,11,22,0.7); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(255,255,255,0.04);
-  display:flex; align-items:center; justify-content:space-between; padding: 10px 18px;
-}
-.app-header .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--brand-500); }
-.app-header nav{ display:flex; gap:10px; align-items:center; }
-.app-header a{ color: #dbeafe; text-decoration:none; padding:8px 12px; border-radius:8px; display:inline-block; font-size:14px; }
-.app-header a:hover{ background: rgba(255,255,255,0.03); transform: translateY(-1px); transition: all 120ms ease; }
-
-/* Protected link */
-.protected-link{ opacity:0.6; cursor: pointer; position:relative; outline:none; }
-.protected-link::after{ content: '🔒'; margin-left:6px; font-size:12px; opacity:0.7; }
-
-/* Sidebar */
-.app-layout{ display:flex; gap:18px; align-items:flex-start; padding-top:12px; }
-.sidebar{ width:260px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:14px; border-radius:12px; height: calc(100vh - 88px); position:sticky; top:76px; overflow:auto; box-shadow: 0 6px 20px rgba(2,6,23,0.6); }
-.main{ flex:1; min-height: calc(100vh - 120px); padding-bottom:60px; }
-
-/* Cards */
-.card{ background: var(--card-bg); padding:16px; border-radius:var(--radius); box-shadow: 0 8px 30px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03); margin-bottom: var(--gap); }
-
-/* Modal styles */
-.protected-modal{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); visibility:hidden; opacity:0; transition: all 180ms ease; z-index:80; }
-.protected-modal.open{ visibility:visible; opacity:1; }
-.protected-modal-card{ width:380px; background: linear-gradient(180deg, #071428, #041025); padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 8px 30px rgba(2,6,23,0.7); color:#dbeafe; }
-.protected-modal-card h3{ margin:0 0 8px 0; }
-.protected-modal-card p{ margin:0 0 16px 0; color:var(--muted-600); }
-.protected-modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
-.protected-modal button{ background:transparent; color:var(--brand-500); border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; cursor:pointer; }
-
-/* responsive */
-@media (max-width:900px){
-  .sidebar{ position:relative; width:100%; height:auto; top:0; }
-  .app-layout{ flex-direction:column; }
-  .app-header nav{ gap:6px; }
-}
-
-  </style>
-
-<meta charset="UTF-8">
+  <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>InfiniBase - Knowledge Base Insights</title>
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -71,548 +10,72 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-:root {
-    --primary-color: #8b5cf6;
-    --primary-color-hover: #7c3aed;
-    --text-color: #e5e7eb;
-    --text-color-muted: #9ca3af;
-    --bg-color: #111827;
-    --bg-color-alt: #1f2937;
-    --border-color: #374151;
-    --border-radius: 0.5rem;
-    --border-radius-lg: 0.75rem;
-    --header-height: 70px;
-    --bg-color-lighter: #374151;
-    --bg-color-darker: #0f172a;
-    --accent-color: #38bdf8;
-    --accent-color-secondary: #67e8f9;
-    --success-color: #22c55e;
-    --warning-color: #f59e0b;
-    --shadow-color: rgba(0, 0, 0, 0.25);
-    --shadow-color-primary: rgba(139, 92, 246, 0.25);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-body, html {
-    height: 100%;
-    margin: 0;
-    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    background-image: linear-gradient(to bottom right, var(--bg-color-darker), #131c31);
-    color: var(--text-color);
-    font-size: 16px;
-    line-height: 1.6;
-}
-
-.page-wrapper {
-    padding: 1.6rem;
-    padding-top: calc(var(--header-height) + 2.2rem);
-    min-height: 100vh;
-}
-
-.page-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: var(--header-height);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 2.2rem;
-    background: rgba(15, 23, 42, 0.8);
-    border-bottom: 1px solid var(--border-color);
-    backdrop-filter: blur(12px);
-    z-index: 1000;
-}
-
-.page-header .header-title {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.page-header .logo-icon {
-    font-size: 1.8rem;
-    color: var(--primary-color);
-}
-
-.page-header h1 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #fff;
-    margin: 0;
-    text-shadow: 0 2px 10px var(--shadow-color);
-}
-
-.button, button {
-    background-color: var(--primary-color);
-    color: #fff;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: all 0.25s ease-in-out;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2), 0 0 2px rgba(255,255,255,0.1) inset;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-.button:hover, button:hover {
-    background-color: var(--primary-color-hover);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px var(--shadow-color-primary), 0 0 5px rgba(255,255,255,0.1) inset;
-}
-
-.button-secondary {
-    background-color: var(--bg-color-alt);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-
-.button-secondary:hover {
-    background-color: var(--border-color);
-    color: #fff;
-    border-color: var(--primary-color);
-}
-
-.button:disabled {
-    background-color: var(--border-color);
-    cursor: not-allowed;
-    opacity: 0.7;
-    transform: translateY(0);
-    box-shadow: none;
-}
-
-.card {
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 2rem;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    animation: fadeIn 0.6s ease-out forwards;
-    transform: scale(0.97); /* Slightly smaller cards */
-}
-
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-    transition: transform 0.4s ease;
-    transform: scaleX(0);
-    transform-origin: left;
-}
-
-.card:hover::before {
-    transform: scaleX(1);
-}
-
-.card:hover {
-    box-shadow: 0 12px 45px rgba(0,0,0,0.3);
-    border-color: var(--primary-color);
-    transform: translateY(-5px) scale(1);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: -2rem -2rem 2rem -2rem;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(31, 41, 55, 0.5);
-}
-
-.card-header h2 {
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: #fff;
-}
-
-.card-header h2 i {
-    color: var(--accent-color);
-}
-
-.summary-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2.5rem;
-}
-
-.metric-card {
-    background: var(--bg-color-alt);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 1.75rem;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
-    position: relative;
-    overflow: hidden;
-    animation: fadeIn 0.5s ease-out forwards;
-}
-
-.metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(to right, var(--primary-color), var(--accent-color));
-    transform: scaleX(0);
-    transition: transform 0.3s ease-in-out;
-    transform-origin: left;
-}
-
-.metric-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 10px 30px var(--shadow-color-primary);
-    border-color: var(--primary-color);
-}
-
-.metric-card:hover::before {
-    transform: scaleX(1);
-}
-
-.metric-card .icon {
-    font-size: 2rem;
-    color: var(--primary-color);
-    background: rgba(139, 92, 246, 0.1);
-    padding: 1rem;
-    border-radius: 12px;
-}
-
-.metric-card .value {
-    font-size: 2.25rem;
-    font-weight: 800;
-    color: #fff;
-}
-
-.metric-card .label {
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.filters-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 2rem;
-    align-items: flex-end;
-}
-
-.filters-container .form-group {
-    margin-bottom: 0;
-}
-
-.filters-container .form-group label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-color-muted);
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.filters-container input, .filters-container select {
-    width: 100%;
-    padding: 0.8rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    font-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.filters-container input:focus, .filters-container select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px var(--shadow-color-primary);
-    outline: none;
-}
-
-.filter-actions {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 1rem;
-    padding-top: 1.5rem;
-    justify-content: flex-start;
-}
-
-.insights-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2.5rem;
-}
-
-.chart-wrapper {
-    position: relative;
-    height: 400px;
-    padding: 1.5rem;
-}
-
-.table-container { 
-    max-height: 400px; 
-    overflow-y: auto; 
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    margin-top: 1.5rem;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-td, th {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.95rem;
-    text-align: left;
-    white-space: nowrap;
-}
-
-td:nth-child(2) {
-    white-space: normal;
-    max-width: 350px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-thead th {
-    background: linear-gradient(to bottom, var(--bg-color-lighter), var(--bg-color-alt));
-    color: var(--text-color);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    font-weight: 700;
-    padding: 1.25rem;
-}
-
-tbody tr {
-    transition: background-color 0.25s;
-}
-
-tbody tr:nth-child(even) {
-    background-color: rgba(31, 41, 55, 0.3);
-}
-
-tbody tr:hover {
-    background-color: rgba(139, 92, 246, 0.15);
-}
-
-.pagination-controls {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 1.25rem;
-    margin-top: 2rem;
-    font-size: 1rem;
-    color: var(--text-color-muted);
-}
-
-.pagination-controls button {
-    padding: 0.5rem 1rem;
-}
-
-.spinner-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
-
-.spinner {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 5px solid var(--border-color);
-    border-top-color: var(--primary-color);
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.toast {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    padding: 14px 20px;
-    border-radius: var(--border-radius);
-    color: #fff;
-    background-color: #ef4444;
-    z-index: 10100;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    opacity: 0;
-    transform: translateY(-15px);
-    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.refresh-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--text-color-muted);
-    font-size: 1rem;
-    background: var(--bg-color-alt);
-    padding: 0.6rem 1.2rem;
-    border-radius: 25px;
-    border: 1px solid var(--border-color);
-}
-
-.refresh-indicator.active {
-    color: var(--success-color);
-    border-color: rgba(34, 197, 94, 0.4);
-}
-
-.refresh-indicator.active i {
-    animation: spin 1.5s ease-in-out;
-}
-
-.quick-stats {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-}
-
-.stat-badge {
-    background: var(--bg-color-alt);
-    padding: 0.7rem 1.4rem;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.25s;
-}
-
-.stat-badge:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px var(--shadow-color);
-    border-color: var(--accent-color);
-}
-
-.stat-badge i {
-    color: var(--accent-color);
-    font-size: 1.1rem;
-}
-
-.table-summary {
-    background: var(--bg-color-darker);
-    padding: 1rem 1.5rem;
-    border-radius: var(--border-radius);
-    margin-bottom: 1.5rem;
-    font-size: 1rem;
-    color: var(--text-color-muted);
-    border: 1px solid var(--border-color);
-}
-
-.table-summary strong {
-    color: var(--text-color);
-}
-
-.chart-toolbar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-}
-
-.chart-toolbar button {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-}
-
-.export-options {
-    display: flex;
-    gap: 0.75rem;
-    margin-left: auto;
-}
-
-.export-options .button {
-    padding: 0.7rem 1.2rem;
-    font-size: 0.9rem;
-}
-
-.export-options .button i {
-    font-size: 0.9rem;
-}
-
-td:nth-child(3), td:nth-child(4), td:nth-child(5) {
-    text-align: center;
-}
-
-@media (max-width: 768px) {
-    .insights-grid {
-        grid-template-columns: 1fr;
-    }
-    .page-wrapper {
-        padding: 1.5rem;
-        padding-top: calc(var(--header-height) + 1.5rem);
-    }
-    .page-header {
-        padding: 0 1.5rem;
-    }
-    .page-header h1 {
-        font-size: 1.5rem;
-    }
-}
+:root{
+  --brand-500: #0b5fff;
+  --brand-600: #084fd6;
+  --muted-600: #6b7280;
+  --bg: #071428;
+  --card-bg: #0b1220;
+  --glass: rgba(255,255,255,0.04);
+  --success: #16a34a;
+  --danger: #ef4444;
+  --radius: 10px;
+  --gap: 12px;
+  --max-width: 1200px;
+  --mono: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
+  --primary-color: #8b5cf6;
+  --primary-color-hover: #7c3aed;
+  --text-color: #e5e7eb;
+  --text-color-muted: #9ca3af;
+  --bg-color: #111827;
+  --bg-color-alt: #1f2937;
+  --border-color: #374151;
+  --border-radius: 0.5rem;
+  --border-radius-lg: 0.75rem;
+  --header-height: 72px;
+  --accent-color: #38bdf8;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:var(--mono);background-image:linear-gradient(120deg,#071428 0%,#071827 100%);color:var(--text-color)}
+.app-header{
+  position:fixed;top:0;left:0;right:0;height:var(--header-height);display:flex;align-items:center;justify-content:space-between;padding:12px 20px;z-index:1200;
+  background:rgba(6,11,22,0.7);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.04)
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--brand-500)}
+.app-header nav{display:flex;gap:10px;align-items:center}
+.app-header a{color:#dbeafe;text-decoration:none;padding:8px 12px;border-radius:8px;display:inline-block;font-size:14px}
+.app-header a:hover{background:rgba(255,255,255,0.03);transform:translateY(-1px);transition:all 120ms ease}
+.protected-link{opacity:0.6;cursor:pointer;position:relative;outline:none}
+.protected-link::after{content:'🔒';margin-left:6px;font-size:12px;opacity:0.7}
+
+.page-wrapper{padding:1.6rem;padding-top:calc(var(--header-height) + 1.4rem);min-height:100vh;max-width:1200px;margin:0 auto}
+.card{background:var(--card-bg);border-radius:12px;padding:1.2rem;margin-bottom:1.2rem;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.02)}
+.card-header h2{margin:0;font-size:1.15rem;color:#fff}
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:1rem;margin-bottom:1.2rem}
+.chart-wrapper{height:360px;padding:12px}
+.table-container{max-height:420px;overflow:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.95rem;text-align:left}
+thead th{position:sticky;top:0;background:rgba(10,14,20,0.6);backdrop-filter:blur(4px);z-index:2}
+.metric-card{background:linear-gradient(180deg,var(--bg-color-alt),#111827);padding:14px;border-radius:12px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.02)}
+.metric-card .value{font-size:1.6rem;font-weight:800}
+.toast{position:fixed;top:20px;right:20px;padding:12px 16px;border-radius:8px;background:#ef4444;color:#fff;display:flex;align-items:center;gap:10px;z-index:2000;opacity:0;transform:translateY(-10px);transition:all .25s}
+.toast.show{opacity:1;transform:translateY(0)}
+.spinner-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:1500;display:none}
+.spinner{width:48px;height:48px;border-radius:50%;border:5px solid rgba(255,255,255,0.08);border-top-color:var(--primary-color);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:800px){.insights-grid{grid-template-columns:1fr}.app-header nav{display:flex;flex-wrap:wrap}}
+.protected-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:3000;visibility:hidden;opacity:0;transition:all .15s}
+.protected-modal.open{visibility:visible;opacity:1}
+.protected-card{background:#0b1220;padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);width:380px;color:#dbeafe}
+.protected-card h3{margin:0 0 8px}
+.protected-card p{color:var(--text-color-muted);margin:0 0 12px}
+.protected-actions{display:flex;justify-content:flex-end;gap:8px}
+.protected-actions button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--brand-500);cursor:pointer}
+.footer{padding:24px;text-align:center;color:var(--text-color-muted)}
 </style>
 </head>
 <body>
@@ -627,403 +90,243 @@ td:nth-child(3), td:nth-child(4), td:nth-child(5) {
   </nav>
 </header>
 
+<div id="dashboard" style="visibility:hidden">
+  <div class="page-wrapper">
+    <div id="toast" class="toast"><i class="fas fa-exclamation-circle"></i><span id="toastMsg"></span></div>
+    <div id="spinner" class="spinner-overlay"><div class="spinner"></div></div>
 
-
-<div id="dashboard" style="visibility: hidden;">
-    <header class="page-header">
-        <div class="header-title">
-            <i class="fas fa-chart-pie logo-icon"></i>
-            <h1>Insights Dashboard</h1>
-        </div>
-        <div class="header-controls">
-            <div class="refresh-indicator" id="refreshIndicator">
-                <i class="fas fa-check-circle"></i>
-                <span>Last updated: <span id="lastUpdateTime">Never</span></span>
-            </div>
-            <a href="/app (11).html" class="button"><i class="fas fa-arrow-left"></i> Back to App</a>
-        </div>
-    </header>
-
-    <div class="page-wrapper">
-        <div id="toast" class="toast">
-            <i class="fas"></i>
-            <span></span>
-        </div>
-        <div id="spinner" class="spinner-overlay" style="display:none;"><div class="spinner"></div></div>
-
-        <div class="insights-grid">
-            <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-chart-bar"></i>Activity by Category</h2>
-                </div>
-                <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
-            </div>
-             <div class="card">
-                <div class="card-header">
-                    <h2><i class="fas fa-comments"></i>Feedback Analysis</h2>
-                </div>
-                <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-book-open"></i> Articles Performance Insights</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Article Title</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Sub-Category</th>
-                            <th>Created By</th>
-                            <th>Created At</th>
-                            <th>Total Views</th>
-                            <th>Unique Viewers</th>
-                            <th>Last Viewed</th>
-                            <th>Avg Rating</th>
-                            <th>Total Feedbacks</th>
-                        </tr>
-                    </thead>
-                    <tbody id="articlesInsightsTable"></tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-crown"></i> Top Content Creators</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Creator Name</th>
-                            <th>Total Articles Created</th>
-                            <th>Total Views on Articles</th>
-                        </tr>
-                    </thead>
-                    <tbody id="topPerformersTable"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-folder-tree"></i> Sections Performance Summary</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Section Title</th>
-                            <th>Total Articles</th>
-                            <th>Total Views</th>
-                            <th>Average Rating</th>
-                            <th>Last Activity</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sectionsSummaryTable"></tbody>
-                </table>
-            </div>
-        </div>
+    <div class="insights-grid">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-chart-bar"></i> Activity by Section</h2></div>
+        <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-comments"></i> Feedback Analysis</h2></div>
+        <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-book-open"></i> Articles Performance Insights</h2></div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Article Title</th><th>Description</th><th>Category</th><th>Sub-Category</th><th>Created By</th><th>Created At</th><th>Total Views</th><th>Unique Viewers</th><th>Last Viewed</th><th>Avg Rating</th><th>Total Feedbacks</th>
+            </tr>
+          </thead>
+          <tbody id="articlesInsightsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-crown"></i> Top Content Creators</h2></div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Creator Name</th><th>Total Articles Created</th><th>Total Views on Articles</th></tr></thead>
+          <tbody id="topPerformersTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2><i class="fas fa-folder-tree"></i> Sections Performance Summary</h2></div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Section Title</th><th>Total Articles</th><th>Total Views</th><th>Average Rating</th><th>Last Activity</th></tr></thead>
+          <tbody id="sectionsSummaryTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
-<footer style="padding: 2.5rem; text-align: center; color: var(--text-color-muted); font-size: 0.9rem;">
-    <span>&copy; <script>document.write((new Date).getFullYear())</script> InfiniBase.Elmenisy.</span>
-</footer>
+<div class="protected-modal" id="protectedModal">
+  <div class="protected-card">
+    <h3>Restricted</h3>
+    <p>This section is for Admins and Managers only. If you believe you should have access, contact your administrator.</p>
+    <div class="protected-actions">
+      <button id="protectedClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">&copy; <script>document.write((new Date()).getFullYear())</script> InfiniBase.Elmenisy.</footer>
 
 <script>
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const toast = document.getElementById("toast");
-const spinner = document.getElementById("spinner");
-let activityBySectionChart, feedbackAnalysisChart = null;
+const toast = document.getElementById('toast');
+const toastMsg = document.getElementById('toastMsg');
+const spinner = document.getElementById('spinner');
+let activityBySectionChart = null, feedbackAnalysisChart = null;
 
-document.addEventListener('DOMContentLoaded', initializeInsightsDashboard);
-
-function showSpinner(show) {
-    spinner.style.display = show ? "flex" : "none";
+function showSpinner(show){ spinner.style.display = show ? 'flex' : 'none'; }
+function showToast(message, isError=true){
+  toastMsg.textContent = message;
+  toast.style.backgroundColor = isError ? '#ef4444' : '#16a34a';
+  toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),3000);
 }
 
-function showToast(message, isError = true) {
-    const toastIcon = toast.querySelector('i');
-    const toastMessage = toast.querySelector('span');
-    toastMessage.textContent = message;
-    toast.style.backgroundColor = isError ? "#ef4444" : "#22c55e";
-    toastIcon.className = isError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 3000);
+function escapeHtml(str){
+  if (str === null || str === undefined) return 'Not Available';
+  return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s]);
+}
+function formatToEgyptTime(dateString){
+  if(!dateString) return 'Not Available';
+  try{
+    const d = new Date(dateString);
+    if(isNaN(d.getTime())) return dateString;
+    return d.toLocaleString('en-EG',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Africa/Cairo'});
+  }catch(e){ return dateString; }
 }
 
-function escapeHtml(str) {
-    if (str === null || str === undefined) return "Not Available";
-    return String(str).replace(/[&<>"']/g, match => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[match]));
+function createChart(ctx,type,labels,data,label,backgroundColors){
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#fff';
+  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#374151';
+  return new Chart(ctx,{type,data:{labels,datasets:[{label,data,backgroundColor:backgroundColors,borderColor:borderColor,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:textColor}},tooltip:{backgroundColor:'#0b1220',titleColor:'#fff',bodyColor:'#fff'}}}});
 }
 
-function formatToEgyptTime(dateString) {
-    if (!dateString) return "Not Available";
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString;
-        return date.toLocaleString('en-EG', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Cairo'
-        });
-    } catch (e) {
-        return dateString;
-    }
+function renderArticlesTable(data){
+  const tbody = document.getElementById('articlesInsightsTable');
+  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No article data available.</td></tr>'; return;}
+  const html = data.map(r=>{
+    const title = r.article_title || r.case_name || r.title_en || 'Untitled';
+    const desc = r.article_description || r.description_en || r.description || '';
+    const section = r.section_title || r.section || r.section_name || '';
+    const subcat = r.sub_category_name || r.sub_category || '';
+    const createdBy = r.created_by || r.author_name || r.created_by_name || 'Unknown';
+    const createdAt = r.created_at_egypt || r.created_at || r.last_article_created_egypt || null;
+    const totalViews = r.total_views || r.total_views_all || r.views || 0;
+    const uniqueViewers = r.unique_viewers || r.unique_authors || r.unique_feedback_users || 0;
+    const lastViewed = r.last_viewed_egypt || r.last_activity_egypt || r.last_activity || null;
+    const avgRating = r.avg_rating || r.avg_feedback_rating || null;
+    const totalFeedbacks = r.total_feedbacks || r.total_feedbacks_count || r.total_feedback || 0;
+    return `<tr>
+      <td>${escapeHtml(title)}</td>
+      <td title="${escapeHtml(desc)}">${escapeHtml(desc)}</td>
+      <td>${escapeHtml(section)}</td>
+      <td>${escapeHtml(subcat)}</td>
+      <td>${escapeHtml(createdBy)}</td>
+      <td>${formatToEgyptTime(createdAt)}</td>
+      <td style="text-align:center">${escapeHtml(totalViews)}</td>
+      <td style="text-align:center">${escapeHtml(uniqueViewers)}</td>
+      <td>${formatToEgyptTime(lastViewed)}</td>
+      <td style="text-align:center">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
+      <td style="text-align:center">${escapeHtml(totalFeedbacks)}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = html;
 }
 
-function updateLastUpdateTime() {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit' });
-    document.getElementById("lastUpdateTime").textContent = `${timeString} (Cairo)`;
-    const refreshIndicator = document.getElementById("refreshIndicator");
-    refreshIndicator.classList.add("active");
-    setTimeout(() => refreshIndicator.classList.remove("active"), 2000);
+function renderTopPerformers(data){
+  const tbody = document.getElementById('topPerformersTable');
+  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">No performer data available.</td></tr>'; return;}
+  tbody.innerHTML = data.map(r=>`<tr><td>${escapeHtml(r.contributor_name || r.creator_name || r.created_by || 'Unknown')}</td><td style="text-align:center">${escapeHtml(r.total_articles || r.total_articles_created || 0)}</td><td style="text-align:center">${escapeHtml(r.total_views || 0)}</td></tr>`).join('');
 }
 
-function renderArticlesTable(data) {
-    const tableBody = document.getElementById("articlesInsightsTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="11" style="text-align:center;">No article data available.</td></tr>`;
-        return;
-    }
-    const html = data.map(row => {
-        // flexible mapping for different view column names
-        const title = row.article_title || row.case_title || row.title_en || 'Untitled';
-        const desc = row.article_description || row.description_en || row.description || '';
-        const section = row.section_title || row.section || row.section_name || '';
-        const subcat = row.sub_category_name || row.sub_category || '';
-        const createdBy = row.created_by || row.author_name || row.created_by_name || 'Unknown';
-        const createdAt = row.created_at_egypt || row.created_at || row.last_article_created_egypt || null;
-        const totalViews = row.total_views || row.total_views_all || row.views || 0;
-        const uniqueViewers = row.unique_viewers || row.unique_authors || row.unique_feedback_users || 0;
-        const lastViewed = row.last_viewed_egypt || row.last_activity_egypt || row.last_activity || null;
-        const avgRating = row.avg_rating || row.avg_feedback_rating || null;
-        const totalFeedbacks = row.total_feedbacks || row.total_feedbacks_count || row.total_feedback || 0;
-
-        return `
-        <tr>
-            <td>${escapeHtml(title)}</td>
-            <td title="${escapeHtml(desc)}">${escapeHtml(desc)}</td>
-            <td>${escapeHtml(section)}</td>
-            <td>${escapeHtml(subcat)}</td>
-            <td>${escapeHtml(createdBy)}</td>
-            <td>${formatToEgyptTime(createdAt)}</td>
-            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
-            <td style="text-align:center;">${escapeHtml(uniqueViewers)}</td>
-            <td>${formatToEgyptTime(lastViewed) || 'Not Viewed Yet'}</td>
-            <td style="text-align:center;">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
-            <td style="text-align:center;">${escapeHtml(totalFeedbacks)}</td>
-        </tr>
-    `}).join('');
-    tableBody.innerHTML = html;
+function renderSectionsTable(data){
+  const tbody = document.getElementById('sectionsSummaryTable');
+  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No section data available.</td></tr>'; return;}
+  tbody.innerHTML = data.map(r=>`<tr><td>${escapeHtml(r.section_title || r.section || r.section_name || 'Uncategorized')}</td><td style="text-align:center">${escapeHtml(r.total_articles || 0)}</td><td style="text-align:center">${escapeHtml(r.total_views || 0)}</td><td style="text-align:center">${r.avg_rating ? Number(r.avg_rating).toFixed(2) : 'Not Available'}</td><td>${formatToEgyptTime(r.last_activity_egypt || r.last_activity || null)}</td></tr>`).join('');
 }
 
-function renderTopPerformers(data) {
-    const tableBody = document.getElementById("topPerformersTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No performer data available.</td></tr>`;
-        return;
-    }
-    const html = data.map(row => {
-        const name = row.contributor_name || row.created_by || row.name || 'Unknown';
-        const totalArticles = row.total_articles || row.total_articles_created || 0;
-        const totalViews = row.total_views || 0;
-        return `
-        <tr>
-            <td>${escapeHtml(name)}</td>
-            <td style="text-align:center;">${escapeHtml(totalArticles)}</td>
-            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
-        </tr>
-    `}).join('');
-    tableBody.innerHTML = html;
+function renderFeedbackCharts(data){
+  if(feedbackAnalysisChart) feedbackAnalysisChart.destroy();
+  const ctx = document.getElementById('feedbackAnalysisChart').getContext('2d');
+  if(!data || data.length===0){ ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.font='16px Segoe UI'; ctx.fillStyle='grey'; ctx.textAlign='center'; ctx.fillText('No feedback data to display.',ctx.canvas.width/2,ctx.canvas.height/2); return;}
+  const labels = data.map(d=>d.feedback_type || d.label || (d.rating ? String(d.rating) : 'N/A'));
+  const counts = data.map(d=>d.total_feedbacks || d.count || 0);
+  const colors = ['#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6'];
+  feedbackAnalysisChart = createChart(ctx,'pie',labels,counts,'Feedback Distribution',colors);
 }
 
-function renderSectionsTable(data) {
-    const tableBody = document.getElementById("sectionsSummaryTable");
-    if (!data || data.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No section data available.</td></tr>`;
-        return;
-    }
-    const html = data.map(row => {
-        const title = row.section_title || row.section || row.section_name || 'Uncategorized';
-        const totalArticles = row.total_articles || 0;
-        const totalViews = row.total_views || 0;
-        const avgRating = row.avg_rating || row.avg_feedback_rating || null;
-        const lastActivity = row.last_activity_egypt || row.last_activity || null;
-        return `
-        <tr>
-            <td>${escapeHtml(title)}</td>
-            <td style="text-align:center;">${escapeHtml(totalArticles)}</td>
-            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
-            <td style="text-align:center;">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
-            <td>${formatToEgyptTime(lastActivity)}</td>
-        </tr>
-    `}).join('');
-    tableBody.innerHTML = html;
-}
-
-function renderFeedbackCharts(data) {
-    if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
-    const ctx = document.getElementById('feedbackAnalysisChart').getContext('2d');
-    if (!data || data.length === 0) {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.font = "16px Segoe UI";
-        ctx.fillStyle = "grey";
-        ctx.textAlign = "center";
-        ctx.fillText("No feedback data to display.", ctx.canvas.width / 2, ctx.canvas.height / 2);
-        return;
-    }
-    
-    const labels = data.map(f => f.feedback_type || f.rating_bucket || f.label || 'N/A');
-    const counts = data.map(f => f.total_feedbacks || f.count || 0);
-    const chartColors = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
-    
-    feedbackAnalysisChart = createChart(ctx, 'pie', labels, counts, 'Feedback Distribution', chartColors);
-}
-
-function createChart(ctx, type, labels, data, label, backgroundColors) {
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#fff';
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#374151';
-
-    return new Chart(ctx, {
-        type: type,
-        data: {
-            labels,
-            datasets: [{
-                label,
-                data,
-                backgroundColor: backgroundColors,
-                borderColor: type === 'bar' ? 'transparent' : borderColor,
-                borderWidth: 2,
-                borderRadius: type === 'bar' ? 6 : 0,
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'right', labels: { color: textColor, font: { size: 14 } } },
-                tooltip: {
-                    backgroundColor: '#111827', titleColor: '#fff', bodyColor: '#fff',
-                    borderColor: borderColor, borderWidth: 1
-                }
-            }
-        }
-    });
-}
-
-async function loadArticlesInsights() {
+async function loadArticlesInsights(){
   const { data, error } = await supabase.from('v_kb_insights').select('*');
-  if (error) {
-      console.error("Error loading Article Insights:", error);
-      showToast(`Error loading articles: ${error.message}`);
-  } else {
-      renderArticlesTable(data);
-  }
+  if(error){ console.error('Error loading Article Insights:', error); showToast('Error loading articles: ' + (error.message || error), true); return;}
+  renderArticlesTable(data);
 }
 
-async function loadTopPerformers() {
-  // note: view name is v_kb_top_contributors (matches DB view we created)
-  const { data, error } = await supabase.from('v_kb_top_contributors').select('*');
-  if (error) {
-      console.error("Error loading Top Performers:", error);
-      showToast(`Error loading performers: ${error.message}`);
-  } else {
-      renderTopPerformers(data);
-  }
+async function loadTopPerformers(){
+  const { data, error } = await supabase.from('v_kb_top_creators').select('*');
+  if(error){ console.error('Error loading Top Performers:', error); showToast('Error loading performers: ' + (error.message || error), true); return;}
+  renderTopPerformers(data);
 }
 
-async function loadFeedbackAnalysis() {
+async function loadFeedbackAnalysis(){
   const { data, error } = await supabase.from('v_kb_feedback_analysis').select('*');
-  if (error) {
-      console.error("Error loading Feedback Analysis:", error);
-      showToast(`Error loading feedback: ${error.message}`);
-  } else {
-      renderFeedbackCharts(data);
-  }
+  if(error){ console.error('Error loading Feedback Analysis:', error); showToast('Error loading feedback: ' + (error.message || error), true); return;}
+  renderFeedbackCharts(data);
 }
 
-async function loadSectionsSummary() {
-  // using v_kb_section_stats which summarizes sections
-  const { data, error } = await supabase.from('v_kb_section_stats').select('*');
-  if (error) {
-      console.error("Error loading Sections Summary:", error);
-      showToast(`Error loading sections: ${error.message}`);
-  } else {
-      renderSectionsTable(data);
-      // For the category chart
-      if (activityBySectionChart) activityBySectionChart.destroy();
-      const ctx = document.getElementById('activityBySectionChart').getContext('2d');
-      const labels = data.map(s => s.section || s.section_title || s.section_name || 'Uncategorized');
-      const views = data.map(s => s.total_views || 0);
-      const chartColors = ["#8b5cf6", "#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#f97316"];
-      activityBySectionChart = createChart(ctx, 'doughnut', labels, views, 'Total Views by Section', chartColors);
-  }
+async function loadSectionsSummary(){
+  const { data, error } = await supabase.from('v_kb_sections_summary').select('*');
+  if(error){ console.error('Error loading Sections Summary:', error); showToast('Error loading sections: ' + (error.message || error), true); return;}
+  renderSectionsTable(data);
+  if(activityBySectionChart) activityBySectionChart.destroy();
+  const ctx = document.getElementById('activityBySectionChart').getContext('2d');
+  const labels = data.map(s=>s.section_title || s.section || s.section_name || 'Uncategorized');
+  const values = data.map(s=>s.total_views || 0);
+  const colors = ['#8b5cf6','#38bdf8','#10b981','#f59e0b','#ef4444','#3b82f6'];
+  activityBySectionChart = createChart(ctx,'doughnut',labels,values,'Total Views by Section',colors);
 }
 
-async function fetchCurrentProfile() {
-  try {
+async function fetchCurrentProfile(){
+  try{
     const userResp = await supabase.auth.getUser();
     const user = userResp?.data?.user ?? null;
-    if (!user) return null;
-    // try to fetch profile row if RLS allows
+    if(!user) return null;
     const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-    if (error) {
-      // if no profile or policy denies, still set role badge from token claims
-      const roleFromToken = (user?.user_metadata && user.user_metadata.role) || user?.role || 'user';
+    if(error) {
+      const roleFromToken = (user?.user_metadata && user.user_metadata.role) || user?.role || 'agent';
       return { id: user.id, email: user.email, name: user.user_metadata?.name || user.email, role: roleFromToken };
     }
     return profile;
-  } catch (e) {
-    console.warn('Profile fetch failed', e);
-    return null;
-  }
+  }catch(e){ console.warn('Profile fetch failed', e); return null; }
 }
 
-async function initializeInsightsDashboard() {
+function applyNavVisibility(role){
+  const links = document.querySelectorAll('.app-header nav a[data-role-required]');
+  links.forEach(a=>{
+    const allowed = a.dataset.roleRequired.split(',').map(x=>x.trim());
+    if(!allowed.includes(role)){
+      a.classList.add('protected-link');
+      a.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        document.getElementById('protectedModal').classList.add('open');
+      });
+    } else {
+      a.classList.remove('protected-link');
+      a.removeEventListener('click', ()=>{});
+    }
+  });
+}
+
+document.getElementById('protectedClose').addEventListener('click', ()=>{ document.getElementById('protectedModal').classList.remove('open'); });
+
+async function initializeInsightsDashboard(){
   showSpinner(true);
   document.getElementById('dashboard').style.visibility = 'visible';
-
-  // fetch current user profile and set role-badge
   const profile = await fetchCurrentProfile();
-  if (profile) {
-    const rb = document.getElementById('role-badge');
-    rb.textContent = (profile.role || 'user') + (profile.name ? ` • ${profile.name}` : '');
+  if(profile){
+    document.getElementById('role-badge').textContent = (profile.role || 'user') + (profile.name ? ` • ${profile.name}` : '');
+    applyNavVisibility(profile.role || 'agent');
+  } else {
+    applyNavVisibility('agent');
   }
-
-  await Promise.all([
-      loadArticlesInsights(),
-      loadTopPerformers(),
-      loadFeedbackAnalysis(),
-      loadSectionsSummary()
-  ]);
-  
-  updateLastUpdateTime();
-  setInterval(updateLastUpdateTime, 60000);
-  
+  await Promise.all([ loadArticlesInsights(), loadTopPerformers(), loadFeedbackAnalysis(), loadSectionsSummary() ]);
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('lastUpdateTime')?.remove?.();
+  const el = document.createElement('div'); el.style.display='none'; el.id='lastUpdateTime'; el.textContent = timeString + ' (Cairo)'; document.querySelector('.page-wrapper').appendChild(el);
+  setInterval(()=>{ const now2=new Date(); const ts = now2.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'}); document.getElementById('lastUpdateTime').textContent = ts + ' (Cairo)'; },60000);
   showSpinner(false);
 }
 
-</script>
-
-<script type="module">
-  import { getCurrentUserRole, applyNavVisibility } from './role-check.js';
-  (async function(){
-    const role = await getCurrentUserRole();
-    applyNavVisibility(role);
-    // allow sidebar links visible to agents (do not block), only protect header admin pages
-    // optional: attach open handlers if needed
-  })();
+document.addEventListener('DOMContentLoaded', initializeInsightsDashboard);
 </script>
 
 </body>
