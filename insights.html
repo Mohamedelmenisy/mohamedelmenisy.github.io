@@ -797,21 +797,35 @@ function renderArticlesTable(data) {
         tableBody.innerHTML = `<tr><td colspan="11" style="text-align:center;">No article data available.</td></tr>`;
         return;
     }
-    const html = data.map(row => `
+    const html = data.map(row => {
+        // flexible mapping for different view column names
+        const title = row.article_title || row.case_title || row.title_en || 'Untitled';
+        const desc = row.article_description || row.description_en || row.description || '';
+        const section = row.section_title || row.section || row.section_name || '';
+        const subcat = row.sub_category_name || row.sub_category || '';
+        const createdBy = row.created_by || row.author_name || row.created_by_name || 'Unknown';
+        const createdAt = row.created_at_egypt || row.created_at || row.last_article_created_egypt || null;
+        const totalViews = row.total_views || row.total_views_all || row.views || 0;
+        const uniqueViewers = row.unique_viewers || row.unique_authors || row.unique_feedback_users || 0;
+        const lastViewed = row.last_viewed_egypt || row.last_activity_egypt || row.last_activity || null;
+        const avgRating = row.avg_rating || row.avg_feedback_rating || null;
+        const totalFeedbacks = row.total_feedbacks || row.total_feedbacks_count || row.total_feedback || 0;
+
+        return `
         <tr>
-            <td>${escapeHtml(row.article_title)}</td>
-            <td title="${escapeHtml(row.article_description)}">${escapeHtml(row.article_description)}</td>
-            <td>${escapeHtml(row.section_title)}</td>
-            <td>${escapeHtml(row.sub_category_name)}</td>
-            <td>${escapeHtml(row.created_by)}</td>
-            <td>${formatToEgyptTime(row.created_at_egypt)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
-            <td style="text-align:center;">${escapeHtml(row.unique_viewers)}</td>
-            <td>${formatToEgyptTime(row.last_viewed_egypt) || 'Not Viewed Yet'}</td>
-            <td style="text-align:center;">${row.avg_rating ? Number(row.avg_rating).toFixed(2) : 'Not Available'}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_feedbacks)}</td>
+            <td>${escapeHtml(title)}</td>
+            <td title="${escapeHtml(desc)}">${escapeHtml(desc)}</td>
+            <td>${escapeHtml(section)}</td>
+            <td>${escapeHtml(subcat)}</td>
+            <td>${escapeHtml(createdBy)}</td>
+            <td>${formatToEgyptTime(createdAt)}</td>
+            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
+            <td style="text-align:center;">${escapeHtml(uniqueViewers)}</td>
+            <td>${formatToEgyptTime(lastViewed) || 'Not Viewed Yet'}</td>
+            <td style="text-align:center;">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
+            <td style="text-align:center;">${escapeHtml(totalFeedbacks)}</td>
         </tr>
-    `).join('');
+    `}).join('');
     tableBody.innerHTML = html;
 }
 
@@ -821,13 +835,17 @@ function renderTopPerformers(data) {
         tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No performer data available.</td></tr>`;
         return;
     }
-    const html = data.map(row => `
+    const html = data.map(row => {
+        const name = row.contributor_name || row.created_by || row.name || 'Unknown';
+        const totalArticles = row.total_articles || row.total_articles_created || 0;
+        const totalViews = row.total_views || 0;
+        return `
         <tr>
-            <td>${escapeHtml(row.created_by)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_articles)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
+            <td>${escapeHtml(name)}</td>
+            <td style="text-align:center;">${escapeHtml(totalArticles)}</td>
+            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
         </tr>
-    `).join('');
+    `}).join('');
     tableBody.innerHTML = html;
 }
 
@@ -837,15 +855,21 @@ function renderSectionsTable(data) {
         tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No section data available.</td></tr>`;
         return;
     }
-    const html = data.map(row => `
+    const html = data.map(row => {
+        const title = row.section_title || row.section || row.section_name || 'Uncategorized';
+        const totalArticles = row.total_articles || 0;
+        const totalViews = row.total_views || 0;
+        const avgRating = row.avg_rating || row.avg_feedback_rating || null;
+        const lastActivity = row.last_activity_egypt || row.last_activity || null;
+        return `
         <tr>
-            <td>${escapeHtml(row.section_title)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_articles)}</td>
-            <td style="text-align:center;">${escapeHtml(row.total_views)}</td>
-            <td style="text-align:center;">${row.avg_rating ? Number(row.avg_rating).toFixed(2) : 'Not Available'}</td>
-            <td>${formatToEgyptTime(row.last_activity_egypt)}</td>
+            <td>${escapeHtml(title)}</td>
+            <td style="text-align:center;">${escapeHtml(totalArticles)}</td>
+            <td style="text-align:center;">${escapeHtml(totalViews)}</td>
+            <td style="text-align:center;">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
+            <td>${formatToEgyptTime(lastActivity)}</td>
         </tr>
-    `).join('');
+    `}).join('');
     tableBody.innerHTML = html;
 }
 
@@ -861,16 +885,16 @@ function renderFeedbackCharts(data) {
         return;
     }
     
-    const labels = data.map(f => f.feedback_type || 'N/A');
-    const counts = data.map(f => f.total_feedbacks);
+    const labels = data.map(f => f.feedback_type || f.rating_bucket || f.label || 'N/A');
+    const counts = data.map(f => f.total_feedbacks || f.count || 0);
     const chartColors = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
     
     feedbackAnalysisChart = createChart(ctx, 'pie', labels, counts, 'Feedback Distribution', chartColors);
 }
 
 function createChart(ctx, type, labels, data, label, backgroundColors) {
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#fff';
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#374151';
 
     return new Chart(ctx, {
         type: type,
@@ -909,7 +933,8 @@ async function loadArticlesInsights() {
 }
 
 async function loadTopPerformers() {
-  const { data, error } = await supabase.from('v_kb_top_performers').select('*');
+  // note: view name is v_kb_top_contributors (matches DB view we created)
+  const { data, error } = await supabase.from('v_kb_top_contributors').select('*');
   if (error) {
       console.error("Error loading Top Performers:", error);
       showToast(`Error loading performers: ${error.message}`);
@@ -929,7 +954,8 @@ async function loadFeedbackAnalysis() {
 }
 
 async function loadSectionsSummary() {
-  const { data, error } = await supabase.from('v_kb_sections_summary').select('*');
+  // using v_kb_section_stats which summarizes sections
+  const { data, error } = await supabase.from('v_kb_section_stats').select('*');
   if (error) {
       console.error("Error loading Sections Summary:", error);
       showToast(`Error loading sections: ${error.message}`);
@@ -938,17 +964,43 @@ async function loadSectionsSummary() {
       // For the category chart
       if (activityBySectionChart) activityBySectionChart.destroy();
       const ctx = document.getElementById('activityBySectionChart').getContext('2d');
-      const labels = data.map(s => s.section_title);
-      const views = data.map(s => s.total_views);
+      const labels = data.map(s => s.section || s.section_title || s.section_name || 'Uncategorized');
+      const views = data.map(s => s.total_views || 0);
       const chartColors = ["#8b5cf6", "#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#f97316"];
       activityBySectionChart = createChart(ctx, 'doughnut', labels, views, 'Total Views by Section', chartColors);
+  }
+}
+
+async function fetchCurrentProfile() {
+  try {
+    const userResp = await supabase.auth.getUser();
+    const user = userResp?.data?.user ?? null;
+    if (!user) return null;
+    // try to fetch profile row if RLS allows
+    const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+    if (error) {
+      // if no profile or policy denies, still set role badge from token claims
+      const roleFromToken = (user?.user_metadata && user.user_metadata.role) || user?.role || 'user';
+      return { id: user.id, email: user.email, name: user.user_metadata?.name || user.email, role: roleFromToken };
+    }
+    return profile;
+  } catch (e) {
+    console.warn('Profile fetch failed', e);
+    return null;
   }
 }
 
 async function initializeInsightsDashboard() {
   showSpinner(true);
   document.getElementById('dashboard').style.visibility = 'visible';
-  
+
+  // fetch current user profile and set role-badge
+  const profile = await fetchCurrentProfile();
+  if (profile) {
+    const rb = document.getElementById('role-badge');
+    rb.textContent = (profile.role || 'user') + (profile.name ? ` • ${profile.name}` : '');
+  }
+
   await Promise.all([
       loadArticlesInsights(),
       loadTopPerformers(),
