@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>InfiniBase - Knowledge Base Insights</title>
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -10,355 +10,1281 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-:root{
-  --brand-500: #0b5fff;
-  --brand-600: #084fd6;
-  --muted-600: #6b7280;
-  --bg: #071428;
-  --card-bg: #0b1220;
-  --glass: rgba(255,255,255,0.04);
-  --success: #16a34a;
-  --danger: #ef4444;
-  --radius: 10px;
-  --gap: 12px;
-  --max-width: 1200px;
-  --mono: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
-  --primary-color: #8b5cf6;
-  --primary-color-hover: #7c3aed;
-  --text-color: #e5e7eb;
-  --text-color-muted: #9ca3af;
-  --bg-color: #111827;
-  --bg-color-alt: #1f2937;
-  --border-color: #374151;
-  --border-radius: 0.5rem;
-  --border-radius-lg: 0.75rem;
-  --header-height: 72px;
-  --accent-color: #38bdf8;
+:root {
+    --primary-color: #8b5cf6;
+    --primary-color-hover: #7c3aed;
+    --primary-glow-color: rgba(139, 92, 246, 0.5);
+    --text-color: #e5e7eb;
+    --text-color-muted: #9ca3af;
+    --bg-color: #111827;
+    --bg-color-alt: #1f2937;
+    --border-color: #374151;
+    --border-radius: 0.5rem;
+    --border-radius-lg: 0.75rem;
+    --header-height: 70px;
+    --bg-color-lighter: #374151;
+    --bg-color-darker: #0f172a;
+    --accent-color: #38bdf8;
+    --accent-color-secondary: #67e8f9;
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+    --shadow-color: rgba(0, 0, 0, 0.25);
+    --shadow-color-primary: rgba(139, 92, 246, 0.25);
 }
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:var(--mono);background-image:linear-gradient(120deg,#071428 0%,#071827 100%);color:var(--text-color)}
-.app-header{
-  position:fixed;top:0;left:0;right:0;height:var(--header-height);display:flex;align-items:center;justify-content:space-between;padding:12px 20px;z-index:1200;
-  background:rgba(6,11,22,0.75);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.04)
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--brand-500)}
-.app-header nav{display:flex;gap:10px;align-items:center}
-.app-header a{color:#dbeafe;text-decoration:none;padding:8px 12px;border-radius:8px;display:inline-block;font-size:14px}
-.app-header a:hover{background:rgba(255,255,255,0.03);transform:translateY(-1px);transition:all 120ms ease}
-.protected-link{opacity:0.6;cursor:pointer;position:relative;outline:none}
-.protected-link::after{content:'🔒';margin-left:6px;font-size:12px;opacity:0.7}
 
-.page-wrapper{padding:1.6rem;padding-top:calc(var(--header-height) + 1.4rem);min-height:100vh;max-width:1200px;margin:0 auto}
-.card{background:var(--card-bg);border-radius:12px;padding:1.2rem;margin-bottom:1.2rem;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.02)}
-.card-header h2{margin:0;font-size:1.15rem;color:#fff}
-.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:1rem;margin-bottom:1.2rem}
-.chart-wrapper{height:360px;padding:12px}
-.table-container{max-height:420px;overflow:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.95rem;text-align:left}
-thead th{position:sticky;top:0;background:rgba(10,14,20,0.6);backdrop-filter:blur(4px);z-index:2}
-.metric-card{background:linear-gradient(180deg,var(--bg-color-alt),#111827);padding:14px;border-radius:12px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.02)}
-.metric-card .value{font-size:1.6rem;font-weight:800}
-.toast{position:fixed;top:20px;right:20px;padding:12px 16px;border-radius:8px;background:#ef4444;color:#fff;display:flex;align-items:center;gap:10px;z-index:2000;opacity:0;transform:translateY(-10px);transition:all .25s}
-.toast.show{opacity:1;transform:translateY(0)}
-.spinner-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:1500;display:none}
-.spinner{width:48px;height:48px;border-radius:50%;border:5px solid rgba(255,255,255,0.08);border-top-color:var(--primary-color);animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:800px){.insights-grid{grid-template-columns:1fr}.app-header nav{display:flex;flex-wrap:wrap}}
-.protected-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:3000;visibility:hidden;opacity:0;transition:all .15s}
-.protected-modal.open{visibility:visible;opacity:1}
-.protected-card{background:#0b1220;padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);width:380px;color:#dbeafe}
-.protected-card h3{margin:0 0 8px}
-.protected-card p{color:var(--text-color-muted);margin:0 0 12px}
-.protected-actions{display:flex;justify-content:flex-end;gap:8px}
-.protected-actions button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--brand-500);cursor:pointer}
-.footer{padding:24px;text-align:center;color:var(--text-color-muted)}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 
-/* small polish for table headers and values */
-thead th { font-weight:700; color: #cfe5ff; font-size:0.95rem; }
-tbody td { color: #e6eefc; }
-.card small { color: var(--text-color-muted); }
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    background-image: linear-gradient(to bottom right, var(--bg-color-darker), #131c31);
+    color: var(--text-color);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.page-wrapper {
+    padding: 2.2rem;
+    padding-top: calc(var(--header-height) + 2.2rem);
+    min-height: 100vh;
+}
+
+.page-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--header-height);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2.2rem;
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+}
+
+.page-header .header-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-header .logo-icon {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    text-shadow: 0 0 15px var(--primary-glow-color);
+}
+
+.page-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    text-shadow: 0 2px 10px var(--shadow-color);
+}
+
+.button, button {
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.25s ease-in-out;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2), 0 0 2px rgba(255,255,255,0.1) inset;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.button:hover, button:hover {
+    background-color: var(--primary-color-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px var(--shadow-color-primary), 0 0 5px rgba(255,255,255,0.1) inset;
+}
+
+.button-secondary {
+    background-color: var(--bg-color-alt);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.button-secondary:hover {
+    background-color: var(--border-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+.button:disabled {
+    background-color: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.card {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    transition: transform 0.4s ease;
+    transform: scaleX(0);
+    transform-origin: left;
+}
+
+.card:hover::before {
+    transform: scaleX(1);
+}
+
+.card:hover {
+    box-shadow: 0 12px 45px rgba(0,0,0,0.3);
+    border-color: var(--primary-color);
+    transform: translateY(-5px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -2rem -2rem 2rem -2rem;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(31, 41, 55, 0.5);
+}
+
+.card-header h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #fff;
+}
+
+.card-header h2 i {
+    color: var(--accent-color);
+}
+
+.summary-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+}
+
+.metric-card {
+    background: var(--bg-color-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+.metric-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 30px var(--shadow-color-primary);
+    border-color: var(--primary-color);
+}
+
+.metric-card .icon {
+    font-size: 2rem;
+    color: var(--primary-color);
+    background: rgba(139, 92, 246, 0.1);
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover .icon {
+    color: #fff;
+    background: var(--primary-color);
+    text-shadow: 0 0 10px var(--primary-glow-color);
+}
+
+.metric-card .value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.metric-card .label {
+    color: var(--text-color-muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.filters-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+    align-items: flex-end;
+}
+
+.filters-container .form-group {
+    margin-bottom: 0;
+}
+
+.filters-container .form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color-muted);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.filters-container input, .filters-container select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filters-container input:focus, .filters-container select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px var(--shadow-color-primary);
+    outline: none;
+}
+
+.filter-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    justify-content: flex-start;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2.5rem;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 400px;
+    padding: 1.5rem;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    max-height: 480px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-top: 1.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+td:nth-child(2) {
+    white-space: normal;
+    max-width: 350px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+thead th {
+    background: linear-gradient(to bottom, var(--bg-color-lighter), var(--bg-color-alt));
+    color: var(--text-color);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-weight: 700;
+    padding: 1.25rem;
+}
+
+tbody tr {
+    transition: background-color 0.25s;
+}
+
+tbody tr:nth-child(even) {
+    background-color: rgba(31, 41, 55, 0.3);
+}
+
+tbody tr:hover {
+    background-color: rgba(139, 92, 246, 0.15);
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1.25rem;
+    margin-top: 2rem;
+    font-size: 1rem;
+    color: var(--text-color-muted);
+}
+
+.pagination-controls button {
+    padding: 0.5rem 1rem;
+}
+
+.spinner-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 5px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    animation: spin 1s linear infinite;
+}
+
+.toast {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    padding: 14px 20px;
+    border-radius: var(--border-radius);
+    color: #fff;
+    background-color: #ef4444;
+    z-index: 10100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(-15px);
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.refresh-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-color-muted);
+    font-size: 1rem;
+    background: var(--bg-color-alt);
+    padding: 0.6rem 1.2rem;
+    border-radius: 25px;
+    border: 1px solid var(--border-color);
+}
+
+.refresh-indicator.active {
+    color: var(--success-color);
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.refresh-indicator.active i {
+    animation: spin 1.5s ease-in-out;
+}
+
+.quick-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    background: var(--bg-color-alt);
+    padding: 0.7rem 1.4rem;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    transition: all 0.25s;
+}
+
+.stat-badge:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.stat-badge i {
+    color: var(--accent-color);
+    font-size: 1.1rem;
+}
+
+.table-summary {
+    background: var(--bg-color-darker);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    color: var(--text-color-muted);
+    border: 1px solid var(--border-color);
+}
+
+.table-summary strong {
+    color: var(--text-color);
+}
+
+.chart-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.chart-toolbar button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.export-options {
+    display: flex;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.export-options .button {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.9rem;
+}
+
+.export-options .button i {
+    font-size: 0.9rem;
+}
+
+td:nth-child(3), td:nth-child(4), td:nth-child(5) {
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .insights-grid {
+        grid-template-columns: 1fr;
+    }
+    .page-wrapper {
+        padding: 1.5rem;
+        padding-top: calc(var(--header-height) + 1.5rem);
+    }
+    .page-header {
+        padding: 0 1.5rem;
+    }
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+}
 </style>
 </head>
 <body>
-<header class="app-header">
-  <div class="brand">Knowledge Base</div>
-  <nav>
-    <a href="app.html" id="link-dashboard" data-role-required="admin,manager">Dashboard</a>
-    <a href="insights.html" id="link-insights" data-role-required="admin,manager">Insights</a>
-    <a href="employees.html" id="link-employees" data-role-required="admin,manager">Employees</a>
-    <a href="audit.html" id="link-audit" data-role-required="admin,manager">Audit Log</a>
-    <span id="role-badge" style="margin-left:12px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:13px">guest</span>
-  </nav>
-</header>
 
-<div id="dashboard" style="visibility:hidden">
-  <div class="page-wrapper">
-    <div id="toast" class="toast"><i class="fas fa-exclamation-circle"></i><span id="toastMsg"></span></div>
-    <div id="spinner" class="spinner-overlay"><div class="spinner"></div></div>
+<div id="dashboard" style="visibility: hidden;">
+    <header class="page-header">
+        <div class="header-title">
+            <i class="fas fa-chart-pie logo-icon"></i>
+            <h1>Insights Dashboard</h1>
+        </div>
+        <div class="header-controls">
+            <div class="refresh-indicator" id="refreshIndicator">
+                <i class="fas fa-check-circle"></i>
+                <span>Last updated: <span id="lastUpdateTime">Never</span></span>
+            </div>
+            <button id="refreshDataBtn" class="button button-secondary"><i class="fas fa-sync-alt"></i><span>Refresh</span></button>
+            <a href="/app.html" class="button"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </header>
 
-    <div class="insights-grid">
-      <div class="card">
-        <div class="card-header"><h2><i class="fas fa-chart-bar"></i> Activity by Section</h2></div>
-        <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><h2><i class="fas fa-comments"></i> Feedback Analysis</h2></div>
-        <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
-      </div>
+    <div class="page-wrapper">
+        <div id="toast" class="toast">
+            <i class="fas"></i>
+            <span></span>
+        </div>
+        <div id="spinner" class="spinner-overlay" style="display:none;"><div class="spinner"></div></div>
+
+        <div class="summary-metrics">
+            <div class="metric-card"><i class="fas fa-file-alt icon"></i><div><div id="metric-total-articles" class="value">-</div><div class="label">Total Articles</div></div></div>
+            <div class="metric-card"><i class="fas fa-eye icon"></i><div><div id="metric-total-views" class="value">-</div><div class="label">Total Views</div></div></div>
+            <div class="metric-card"><i class="fas fa-star-half-alt icon"></i><div><div id="metric-avg-rating" class="value">-</div><div class="label">Average Rating</div></div></div>
+            <div class="metric-card"><i class="fas fa-users icon"></i><div><div id="metric-active-users" class="value">-</div><div class="label">Active Users (Week)</div></div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-filter"></i> Filters</h2>
+            </div>
+            <div class="filters-container">
+                <div class="form-group"><label for="filterDateFrom">From Date</label><input id="filterDateFrom" type="date"></div>
+                <div class="form-group"><label for="filterDateTo">To Date</label><input id="filterDateTo" type="date"></div>
+                <div class="form-group"><label for="filterEmployee">Employee</label><select id="filterEmployee"><option value="">All Employees</option></select></div>
+                <div class="form-group"><label for="filterCase">Case / Article Title</label><input id="filterCase" placeholder="Enter title to search..."></div>
+                <div class="filter-actions">
+                    <button id="applyFiltersBtn" class="button"><i class="fas fa-check"></i> Apply Filters</button>
+                    <button id="clearFiltersBtn" class="button-secondary"><i class="fas fa-times"></i> Clear</button>
+                    <div class="export-options">
+                        <button id="exportCsvBtn" class="button-secondary"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button id="exportPdfBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> PDF Report</button>
+                    </div>
+                </div>
+            </div>
+            <div id="filterSummary" class="table-summary" style="display:none; margin-top:1.5rem;"></div>
+        </div>
+
+        <div class="insights-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-bar"></i>Activity by Category</h2>
+                </div>
+                <div class="chart-wrapper"><canvas id="activityBySectionChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-fire"></i>Top 5 Viewed Articles</h2>
+                </div>
+                <div class="chart-wrapper"><canvas id="topArticlesChart"></canvas></div>
+            </div>
+             <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-comments"></i>Feedback Analysis</h2>
+                </div>
+                <div class="chart-wrapper"><canvas id="feedbackAnalysisChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-book-open"></i> Knowledge Base Articles</h2>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Article Title</th>
+                            <th>Description</th>
+                            <th>Sub-Category</th>
+                            <th>Category</th>
+                            <th>Created At (Egypt Time)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kbInsightsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-newspaper"></i> Article Performance</h2>
+            </div>
+            <div class="quick-stats" id="articleStats"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Article Title</th><th>Total Views</th><th>Avg Rating (out of 5)</th><th>Total Feedbacks</th><th>Last Viewed (Egypt Time)</th><th>Created By</th></tr></thead>
+                    <tbody id="articleInsightsTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationArticles"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-users"></i> User Engagement</h2>
+            </div>
+            <div class="quick-stats" id="userStats"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>User Name</th><th>Email</th><th>Total Articles Viewed</th><th>Unique Articles Viewed</th><th>Last Activity (Egypt Time)</th></tr></thead>
+                    <tbody id="userInsightsTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationUsers"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-folder-tree"></i> Section Performance</h2>
+            </div>
+            <div class="quick-stats" id="sectionStats"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Category Name</th><th>Total Articles</th><th>Total Views</th><th>Average Rating</th><th>Total Feedbacks</th><th>Last Activity (Egypt Time)</th></tr></thead>
+                    <tbody id="sectionInsightsTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination-controls" id="paginationSections"></div>
+        </div>
     </div>
-
-    <div class="card">
-      <div class="card-header"><h2><i class="fas fa-book-open"></i> Articles Performance Insights</h2></div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Article Title</th><th>Description</th><th>Category</th><th>Sub-Category</th><th>Created By</th><th>Created At</th><th>Total Views</th><th>Unique Viewers</th><th>Last Viewed</th><th>Avg Rating</th><th>Total Feedbacks</th>
-            </tr>
-          </thead>
-          <tbody id="articlesInsightsTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><h2><i class="fas fa-crown"></i> Top Content Creators</h2></div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Creator Name</th><th>Total Articles Created</th><th>Total Views on Articles</th></tr></thead>
-          <tbody id="topPerformersTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><h2><i class="fas fa-folder-tree"></i> Sections Performance Summary</h2></div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Section Title</th><th>Total Articles</th><th>Total Views</th><th>Average Rating</th><th>Last Activity</th></tr></thead>
-          <tbody id="sectionsSummaryTable"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 </div>
 
-<div class="protected-modal" id="protectedModal">
-  <div class="protected-card">
-    <h3>Restricted</h3>
-    <p>This section is for Admins and Managers only. If you believe you should have access, contact your administrator.</p>
-    <div class="protected-actions">
-      <button id="protectedClose">Close</button>
-    </div>
-  </div>
-</div>
-
-<footer class="footer">&copy; <script>document.write((new Date()).getFullYear())</script> InfiniBase.Elmenisy.</footer>
+<footer style="padding: 2.5rem; text-align: center; color: var(--text-color-muted); font-size: 0.9rem;">
+    <span>&copy; <script>document.write((new Date).getFullYear())</script> InfiniBase.Elmenisy.</span>
+</footer>
 
 <script>
-/* -------------------------
-   Configuration
-   ------------------------- */
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* -------------------------
-   UI helpers
-   ------------------------- */
-const toast = document.getElementById('toast');
-const toastMsg = document.getElementById('toastMsg');
-const spinner = document.getElementById('spinner');
-let activityBySectionChart = null, feedbackAnalysisChart = null;
+document.addEventListener('DOMContentLoaded', async function() {
+    initializeInsightsDashboard();
+});
 
-function showSpinner(show){ spinner.style.display = show ? 'flex' : 'none'; }
-function showToast(message, isError=true){
-  toastMsg.textContent = message;
-  toast.style.backgroundColor = isError ? '#ef4444' : '#16a34a';
-  toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),3000);
+let allInsights = { articles: [], users: [], sections: [], overall: {}, feedback: [] };
+let filteredInsights = { articles: [], users: [], sections: [] };
+let paginationState = { articles: 1, users: 1, sections: 1 };
+const ROWS_PER_PAGE = 10;
+const toast = document.getElementById("toast");
+const spinner = document.getElementById("spinner");
+const refreshDataBtn = document.getElementById('refreshDataBtn');
+let activityBySectionChart, topArticlesChart, feedbackAnalysisChart = null;
+
+function showSpinner(show) {
+    spinner.style.display = show ? "flex" : "none";
 }
 
-function escapeHtml(str){
-  if (str === null || str === undefined) return 'Not Available';
-  return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s]);
-}
-function formatToEgyptTime(dateString){
-  if(!dateString) return 'Not Available';
-  try{
-    const d = new Date(dateString);
-    if(isNaN(d.getTime())) return dateString;
-    return d.toLocaleString('en-EG',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Africa/Cairo'});
-  }catch(e){ return dateString; }
-}
+function showToast(message, isError = true) {
+    const toastIcon = toast.querySelector('i');
+    const toastMessage = toast.querySelector('span');
 
-function createChart(ctx,type,labels,data,label,backgroundColors){
-  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#fff';
-  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#374151';
-  return new Chart(ctx,{type,data:{labels,datasets:[{label,data,backgroundColor:backgroundColors,borderColor:borderColor,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:textColor}},tooltip:{backgroundColor:'#0b1220',titleColor:'#fff',bodyColor:'#fff'}}}});
-}
-
-/* -------------------------
-   Renderers
-   ------------------------- */
-function renderArticlesTable(data){
-  const tbody = document.getElementById('articlesInsightsTable');
-  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No article data available.</td></tr>'; return;}
-  const html = data.map(r=>{
-    const title = r.article_title || r.case_name || r.title_en || 'Untitled';
-    const desc = r.article_description || r.description_en || r.description || '';
-    const section = r.section_title || r.section || r.section_name || '';
-    const subcat = r.sub_category_name || r.sub_category || '';
-    const createdBy = r.created_by || r.author_name || r.created_by_name || 'Unknown';
-    const createdAt = r.created_at_egypt || r.created_at || r.last_article_created_egypt || null;
-    const totalViews = r.total_views || r.total_views_all || r.views || 0;
-    const uniqueViewers = r.unique_viewers || r.unique_authors || r.unique_feedback_users || 0;
-    const lastViewed = r.last_viewed_egypt || r.last_activity_egypt || r.last_activity || null;
-    const avgRating = r.avg_rating || r.avg_feedback_rating || null;
-    const totalFeedbacks = r.total_feedbacks || r.total_feedbacks_count || r.total_feedback || 0;
-    return `<tr>
-      <td>${escapeHtml(title)}</td>
-      <td title="${escapeHtml(desc)}">${escapeHtml(desc)}</td>
-      <td>${escapeHtml(section)}</td>
-      <td>${escapeHtml(subcat)}</td>
-      <td>${escapeHtml(createdBy)}</td>
-      <td>${formatToEgyptTime(createdAt)}</td>
-      <td style="text-align:center">${escapeHtml(totalViews)}</td>
-      <td style="text-align:center">${escapeHtml(uniqueViewers)}</td>
-      <td>${formatToEgyptTime(lastViewed)}</td>
-      <td style="text-align:center">${avgRating ? Number(avgRating).toFixed(2) : 'Not Available'}</td>
-      <td style="text-align:center">${escapeHtml(totalFeedbacks)}</td>
-    </tr>`;
-  }).join('');
-  tbody.innerHTML = html;
-}
-
-function renderTopPerformers(data){
-  const tbody = document.getElementById('topPerformersTable');
-  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">No performer data available.</td></tr>'; return;}
-  tbody.innerHTML = data.map(r=>`<tr><td>${escapeHtml(r.contributor_name || r.creator_name || r.created_by || 'Unknown')}</td><td style="text-align:center">${escapeHtml(r.total_articles || r.total_articles_created || 0)}</td><td style="text-align:center">${escapeHtml(r.total_views || 0)}</td></tr>`).join('');
-}
-
-function renderSectionsTable(data){
-  const tbody = document.getElementById('sectionsSummaryTable');
-  if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No section data available.</td></tr>'; return;}
-  tbody.innerHTML = data.map(r=>`<tr><td>${escapeHtml(r.section_title || r.section || r.section_name || 'Uncategorized')}</td><td style="text-align:center">${escapeHtml(r.total_articles || 0)}</td><td style="text-align:center">${escapeHtml(r.total_views || 0)}</td><td style="text-align:center">${r.avg_rating ? Number(r.avg_rating).toFixed(2) : 'Not Available'}</td><td>${formatToEgyptTime(r.last_activity_egypt || r.last_activity || null)}</td></tr>`).join('');
-}
-
-function renderFeedbackCharts(data){
-  if(feedbackAnalysisChart) feedbackAnalysisChart.destroy();
-  const ctx = document.getElementById('feedbackAnalysisChart').getContext('2d');
-  if(!data || data.length===0){ ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.font='16px Segoe UI'; ctx.fillStyle='grey'; ctx.textAlign='center'; ctx.fillText('No feedback data to display.',ctx.canvas.width/2,ctx.canvas.height/2); return;}
-  const labels = data.map(d=>d.feedback_type || d.label || (d.rating ? String(d.rating) : 'N/A'));
-  const counts = data.map(d=>d.total_feedbacks || d.count || 0);
-  const colors = ['#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6'];
-  feedbackAnalysisChart = createChart(ctx,'pie',labels,counts,'Feedback Distribution',colors);
-}
-
-/* -------------------------
-   Data loaders (use the views we created)
-   ------------------------- */
-async function loadArticlesInsights(){
-  const { data, error } = await supabase.from('v_kb_articles').select('*');
-  if(error){ console.error('Error loading Article Insights:', error); showToast('Error loading articles: ' + (error.message || error), true); return;}
-  renderArticlesTable(data);
-}
-
-async function loadTopPerformers(){
-  const { data, error } = await supabase.from('v_kb_top_creators').select('*');
-  if(error){ console.error('Error loading Top Performers:', error); showToast('Error loading performers: ' + (error.message || error), true); return;}
-  renderTopPerformers(data);
-}
-
-async function loadFeedbackAnalysis(){
-  const { data, error } = await supabase.from('v_kb_feedback_analysis').select('*');
-  if(error){ console.error('Error loading Feedback Analysis:', error); showToast('Error loading feedback: ' + (error.message || error), true); return;}
-  // aggregate by rating or reason for chart
-  const grouped = (data || []).reduce((acc,row)=>{
-    const key = row.rating ? String(row.rating) : (row.reason ? (row.reason.length>20 ? row.reason.slice(0,20)+'...' : row.reason) : 'No Rating');
-    if(!acc[key]) acc[key] = 0;
-    acc[key]++;
-    return acc;
-  },{});
-  const chartData = Object.keys(grouped).map(k=>({ label:k, total_feedbacks: grouped[k]}));
-  renderFeedbackCharts(chartData);
-}
-
-async function loadSectionsSummary(){
-  const { data, error } = await supabase.from('v_kb_sections_summary').select('*');
-  if(error){ console.error('Error loading Sections Summary:', error); showToast('Error loading sections: ' + (error.message || error), true); return;}
-  renderSectionsTable(data);
-  if(activityBySectionChart) activityBySectionChart.destroy();
-  const ctx = document.getElementById('activityBySectionChart').getContext('2d');
-  const labels = data.map(s=>s.section_title || s.section || s.section_name || 'Uncategorized');
-  const values = data.map(s=>s.total_views || 0);
-  const colors = ['#8b5cf6','#38bdf8','#10b981','#f59e0b','#ef4444','#3b82f6'];
-  activityBySectionChart = createChart(ctx,'doughnut',labels,values,'Total Views by Section',colors);
-}
-
-/* -------------------------
-   current user & nav access
-   ------------------------- */
-async function fetchCurrentProfile(){
-  try{
-    const userResp = await supabase.auth.getUser();
-    const user = userResp?.data?.user ?? null;
-    if(!user) return null;
-    const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-    if(error) {
-      const roleFromToken = (user?.user_metadata && user.user_metadata.role) || user?.role || 'agent';
-      return { id: user.id, email: user.email, name: user.user_metadata?.name || user.email, role: roleFromToken };
-    }
-    return profile;
-  }catch(e){ console.warn('Profile fetch failed', e); return null; }
-}
-
-function applyNavVisibility(role){
-  const links = document.querySelectorAll('.app-header nav a[data-role-required]');
-  links.forEach(a=>{
-    const allowed = a.dataset.roleRequired.split(',').map(x=>x.trim());
-    if(!allowed.includes(role)){
-      a.classList.add('protected-link');
-      // ensure only one listener
-      a.onclick = (ev)=>{
-        ev.preventDefault();
-        document.getElementById('protectedModal').classList.add('open');
-      };
+    toastMessage.textContent = message;
+    if (isError) {
+        toast.style.backgroundColor = "#ef4444";
+        toastIcon.className = 'fas fa-exclamation-circle';
     } else {
-      a.classList.remove('protected-link');
-      a.onclick = null;
+        toast.style.backgroundColor = "#22c55e";
+        toastIcon.className = 'fas fa-check-circle';
     }
-  });
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-document.getElementById('protectedClose').addEventListener('click', ()=>{ document.getElementById('protectedModal').classList.remove('open'); });
-
-/* -------------------------
-   initialize dashboard
-   ------------------------- */
-async function initializeInsightsDashboard(){
-  showSpinner(true);
-  document.getElementById('dashboard').style.visibility = 'visible';
-  const profile = await fetchCurrentProfile();
-  if(profile){
-    document.getElementById('role-badge').textContent = (profile.role || 'user') + (profile.name ? ` • ${profile.name}` : '');
-    applyNavVisibility(profile.role || 'agent');
-  } else {
-    applyNavVisibility('agent');
-  }
-  await Promise.all([ loadArticlesInsights(), loadTopPerformers(), loadFeedbackAnalysis(), loadSectionsSummary() ]);
-  const now = new Date();
-  const timeString = now.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('lastUpdateTime')?.remove?.();
-  const el = document.createElement('div'); el.style.display='none'; el.id='lastUpdateTime'; el.textContent = timeString + ' (Cairo)'; document.querySelector('.page-wrapper').appendChild(el);
-  setInterval(()=>{ const now2=new Date(); const ts = now2.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'}); document.getElementById('lastUpdateTime').textContent = ts + ' (Cairo)'; },60000);
-  showSpinner(false);
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, (match) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[match]));
 }
 
-document.addEventListener('DOMContentLoaded', initializeInsightsDashboard);
+function formatToEgyptTime(dateString) {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleString('en-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Africa/Cairo'
+    }) + ' (Cairo)';
+}
+
+function updateLastUpdateTime() {
+    const now = new Date();
+    document.getElementById("lastUpdateTime").textContent = now.toLocaleTimeString('en-GB', {
+        timeZone: 'Africa/Cairo',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    const refreshIndicator = document.getElementById("refreshIndicator");
+    refreshIndicator.classList.add("active");
+    setTimeout(() => refreshIndicator.classList.remove("active"), 2000);
+}
+
+function updateQuickStats() {
+    const articleStats = document.getElementById('articleStats');
+    const totalArticles = filteredInsights.articles.length;
+    const totalViews = filteredInsights.articles.reduce((sum, article) => sum + (article.total_views || 0), 0);
+    const articlesWithRating = filteredInsights.articles.filter(a => a.avg_rating !== null && a.avg_rating > 0);
+    const avgRating = articlesWithRating.reduce((sum, article) => sum + (article.avg_rating || 0), 0) / (articlesWithRating.length || 1);
+    articleStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-file-alt"></i> ${totalArticles} Articles</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalViews} Total Views</div>
+        <div class="stat-badge"><i class="fas fa-star"></i> ${avgRating.toFixed(2)} Avg Rating</div>
+    `;
+
+    const userStats = document.getElementById('userStats');
+    const totalUsers = filteredInsights.users.length;
+    const totalUserViews = filteredInsights.users.reduce((sum, user) => sum + (user.total_articles_viewed || 0), 0);
+    userStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-users"></i> ${totalUsers} Users</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalUserViews} Total Views</div>
+    `;
+
+    const sectionStats = document.getElementById('sectionStats');
+    const totalSections = filteredInsights.sections.length;
+    const totalSectionViews = filteredInsights.sections.reduce((sum, section) => sum + (section.total_views || 0), 0);
+    sectionStats.innerHTML = `
+        <div class="stat-badge"><i class="fas fa-folder"></i> ${totalSections} Categories</div>
+        <div class="stat-badge"><i class="fas fa-eye"></i> ${totalSectionViews} Total Views</div>
+    `;
+}
+
+function updateFilterSummary() {
+    const summaryEl = document.getElementById('filterSummary');
+    const fromDate = document.getElementById('filterDateFrom').value;
+    const toDate = document.getElementById('filterDateTo').value;
+    const employee = document.getElementById('filterEmployee').value;
+    const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
+
+    const filtersApplied = [];
+    if (fromDate) filtersApplied.push(`From: <strong>${fromDate}</strong>`);
+    if (toDate) filtersApplied.push(`To: <strong>${toDate}</strong>`);
+    if (employee) {
+        const select = document.getElementById('filterEmployee');
+        const selectedText = select.options[select.selectedIndex].text;
+        filtersApplied.push(`Employee: <strong>${selectedText}</strong>`);
+    }
+    if (caseTitle) filtersApplied.push(`Case: <strong>"${caseTitle}"</strong>`);
+
+    if (filtersApplied.length > 0) {
+        summaryEl.innerHTML = `<strong>Active Filters:</strong> ${filtersApplied.join(' &bull; ')}`;
+        summaryEl.style.display = 'block';
+    } else {
+        summaryEl.style.display = 'none';
+    }
+}
+
+function createChart(ctx, type, labels, data, label, backgroundColors) {
+    if (!ctx) return null;
+
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+    const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color-muted').trim();
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 1200,
+            easing: 'easeInOutQuart'
+        },
+        plugins: {
+            legend: {
+                position: type === 'doughnut' || type === 'pie' ? 'right' : 'top',
+                labels: { color: textColor, font: { size: 14 } }
+            },
+            tooltip: {
+                bodyFont: { size: 14 },
+                titleFont: { size: 16 },
+                backgroundColor: '#111827',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: borderColor,
+                borderWidth: 1
+            }
+        }
+    };
+    
+    let chartConfig = {
+        type: type,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: type === 'bar' ? 'transparent' : borderColor,
+                borderWidth: 2,
+                borderRadius: type === 'bar' ? 6 : 0,
+            }]
+        },
+        options: commonOptions,
+    };
+
+    if (type === 'bar') {
+        chartConfig.options.scales = {
+            y: {
+                beginAtZero: true,
+                ticks: { color: mutedColor, precision: 0 },
+                grid: { color: borderColor }
+            },
+            x: {
+                ticks: { color: mutedColor },
+                grid: { display: false }
+            }
+        };
+    }
+    
+    return new Chart(ctx, chartConfig);
+}
+
+function renderPaginatedTable(tableName, data, tableBodyId, paginationId) {
+    const currentPage = paginationState[tableName];
+    const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    const endIndex = startIndex + ROWS_PER_PAGE;
+    const paginatedData = data.slice(startIndex, endIndex);
+
+    const tableBody = document.getElementById(tableBodyId);
+    let html;
+
+    if (tableName === 'articles') {
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.article_title)}</td>
+                <td style="text-align: center;">${item.total_views || 0}</td>
+                <td style="text-align: center;">${(item.avg_rating || 0).toFixed(2)}</td>
+                <td style="text-align: center;">${item.total_feedbacks || 0}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_viewed_egypt))}</td>
+                <td>${escapeHtml(item.created_by) || 'N/A'}</td>
+            </tr>
+        `).join('');
+    } else if (tableName === 'users') {
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.user_name)}</td>
+                <td>${escapeHtml(item.user_email)}</td>
+                <td style="text-align: center;">${item.total_articles_viewed || 0}</td>
+                <td style="text-align: center;">${item.unique_articles_viewed || 0}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td>
+            </tr>
+        `).join('');
+    } else { // sections
+        html = paginatedData.map(item => `
+            <tr>
+                <td>${escapeHtml(item.section_name)}</td>
+                <td style="text-align: center;">${item.total_articles}</td>
+                <td style="text-align: center;">${item.total_views}</td>
+                <td style="text-align: center;">${item.average_rating ? item.average_rating.toFixed(2) : 'N/A'}</td>
+                <td style="text-align: center;">${item.total_feedbacks}</td>
+                <td>${escapeHtml(formatToEgyptTime(item.last_activity_egypt))}</td>
+            </tr>
+        `).join('');
+    }
+
+    tableBody.innerHTML = html || `<tr><td colspan="6" style="text-align:center;">No data to display.</td></tr>`;
+
+    document.getElementById(paginationId).innerHTML = `
+        <span>Page ${currentPage} of ${totalPages || 1}</span>
+        <button class="button-secondary" onclick="window.changePage('${tableName}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+        <button class="button-secondary" onclick="window.changePage('${tableName}', 1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+    `;
+}
+
+function renderAllTables() {
+    renderPaginatedTable('articles', filteredInsights.articles, 'articleInsightsTable', 'paginationArticles');
+    renderPaginatedTable('users', filteredInsights.users, 'userInsightsTable', 'paginationUsers');
+    renderPaginatedTable('sections', filteredInsights.sections, 'sectionInsightsTable', 'paginationSections');
+    updateQuickStats();
+}
+
+function renderSummaryMetrics(data) {
+    document.getElementById("metric-total-articles").textContent = data.total_articles || 0;
+    document.getElementById("metric-total-views").textContent = data.total_views || 0;
+    document.getElementById("metric-avg-rating").textContent = data.average_rating ? data.average_rating.toFixed(2) : "N/A";
+    document.getElementById("metric-active-users").textContent = data.active_users_week || 0;
+}
+
+function renderCharts() {
+    const chartColors = ["#8b5cf6", "#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#f97316"];
+
+    if (activityBySectionChart) activityBySectionChart.destroy();
+    const sectionLabels = allInsights.sections.map(s => s.section_name || 'Uncategorized');
+    const sectionViews = allInsights.sections.map(s => s.total_views);
+    const activityCtx = document.getElementById('activityBySectionChart').getContext('2d');
+    activityBySectionChart = createChart(activityCtx, 'doughnut', sectionLabels, sectionViews, 'Total Views', chartColors);
+
+    if (topArticlesChart) topArticlesChart.destroy();
+    const topArticles = [...allInsights.articles].sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 5);
+    const articleLabels = topArticles.map(a => a.article_title.length > 35 ? a.article_title.substring(0, 35) + '...' : a.article_title);
+    const articleViews = topArticles.map(a => a.total_views);
+    const topArticlesCtx = document.getElementById('topArticlesChart').getContext('2d');
+    topArticlesChart = createChart(topArticlesCtx, 'bar', articleLabels, articleViews, 'Total Views', chartColors);
+    
+    if (feedbackAnalysisChart) feedbackAnalysisChart.destroy();
+    const feedbackLabels = allInsights.feedback.map(f => f.feedback_type || 'N/A');
+    const feedbackCounts = allInsights.feedback.map(f => f.total_feedbacks);
+    const feedbackCtx = document.getElementById('feedbackAnalysisChart').getContext('2d');
+    feedbackAnalysisChart = createChart(feedbackCtx, 'pie', feedbackLabels, feedbackCounts, 'Feedback Distribution', chartColors.slice().reverse());
+}
+
+function applyFilters() {
+    const fromDateStr = document.getElementById('filterDateFrom').value;
+    const toDateStr = document.getElementById('filterDateTo').value;
+    const employeeName = document.getElementById('filterEmployee').value;
+    const caseTitle = document.getElementById('filterCase').value.trim().toLowerCase();
+
+    const fromDate = fromDateStr ? new Date(fromDateStr) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    const toDate = toDateStr ? new Date(toDateStr) : null;
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+
+    const isDateInRange = (dateStr) => {
+        if (!dateStr) return false;
+        const date = new Date(dateStr);
+        if (fromDate && date < fromDate) return false;
+        if (toDate && date > toDate) return false;
+        return true;
+    };
+
+    filteredInsights.articles = allInsights.articles.filter(article => {
+        const titleMatch = !caseTitle || article.article_title.toLowerCase().includes(caseTitle);
+        const employeeMatch = !employeeName || article.created_by === employeeName;
+        const dateMatch = (!fromDate && !toDate) || isDateInRange(article.last_viewed_egypt) || isDateInRange(article.created_at_egypt);
+        return titleMatch && dateMatch && employeeMatch;
+    });
+
+    filteredInsights.users = allInsights.users.filter(user => {
+        const employeeMatch = !employeeName || user.user_name === employeeName;
+        const dateMatch = (!fromDate && !toDate) || isDateInRange(user.last_activity_egypt);
+        return employeeMatch && dateMatch;
+    });
+
+    filteredInsights.sections = calculateCategoryPerformance(filteredInsights.articles);
+
+    paginationState = { articles: 1, users: 1, sections: 1 };
+    renderAllTables();
+    updateFilterSummary();
+}
+
+function clearFilters() {
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    document.getElementById("filterEmployee").value = "";
+    document.getElementById("filterCase").value = "";
+
+    filteredInsights = JSON.parse(JSON.stringify(allInsights));
+    filteredInsights.sections = calculateCategoryPerformance(allInsights.articles);
+    
+    paginationState = { articles: 1, users: 1, sections: 1 };
+    renderAllTables();
+    updateFilterSummary();
+}
+
+function exportCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    const generateSection = (title, headers, data) => {
+        let section = `${title}\n`;
+        section += headers.map(h => h.label || h.key).join(',') + '\n';
+        data.forEach(item => {
+            const row = headers.map(header => {
+                let value = item[header.key] || '';
+                if (header.formatter) value = header.formatter(value);
+                return `"${String(value).replace(/"/g, '""')}"`;
+            });
+            section += row.join(',') + '\n';
+        });
+        return section + '\n';
+    };
+
+    csvContent += generateSection('Article Performance', [
+        { key: 'article_title' }, { key: 'total_views' }, { key: 'avg_rating' },
+        { key: 'total_feedbacks' }, { key: 'last_viewed_egypt', formatter: formatToEgyptTime }, { key: 'created_by' }
+    ], filteredInsights.articles);
+
+    csvContent += generateSection('User Engagement', [
+        { key: 'user_name' }, { key: 'user_email' }, { key: 'total_articles_viewed' },
+        { key: 'unique_articles_viewed' }, { key: 'last_activity_egypt', formatter: formatToEgyptTime }
+    ], filteredInsights.users);
+
+    csvContent += generateSection('Section Performance', [
+        { key: 'section_name', label: 'Category Name' }, { key: 'total_articles' }, { key: 'total_views' },
+        { key: 'average_rating' }, { key: 'total_feedbacks' }, { key: 'last_activity_egypt', formatter: formatToEgyptTime }
+    ], filteredInsights.sections);
+
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = 'infinibase_insights_report.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("CSV exported successfully", false);
+}
+
+function populateUserFilter(articles, users) {
+    const select = document.getElementById('filterEmployee');
+    select.innerHTML = '<option value="">All Employees</option>';
+    
+    const userNames = new Set();
+    articles.forEach(article => article.created_by && userNames.add(article.created_by));
+    users.forEach(user => user.user_name && userNames.add(user.user_name));
+    
+    const sortedUsers = Array.from(userNames).sort((a, b) => a.localeCompare(b));
+
+    sortedUsers.forEach(userName => {
+        const option = document.createElement('option');
+        option.value = userName;
+        option.textContent = userName;
+        select.appendChild(option);
+    });
+}
+
+function calculateCategoryPerformance(articles) {
+    const categoryMap = {};
+    articles.forEach(article => {
+        const categoryName = article.section_title || 'Uncategorized';
+        if (!categoryMap[categoryName]) {
+            categoryMap[categoryName] = {
+                section_name: categoryName,
+                total_articles: 0,
+                total_views: 0,
+                total_feedbacks: 0,
+                last_activity_egypt: null,
+                rating_sum: 0,
+                rating_count: 0
+            };
+        }
+        const category = categoryMap[categoryName];
+        category.total_articles += 1;
+        category.total_views += article.total_views || 0;
+        category.total_feedbacks += article.total_feedbacks || 0;
+        if (article.avg_rating !== null && article.total_feedbacks > 0) {
+            category.rating_sum += article.avg_rating * article.total_feedbacks;
+            category.rating_count += article.total_feedbacks;
+        }
+        const articleDate = article.last_viewed_egypt ? new Date(article.last_viewed_egypt) : null;
+        const categoryDate = category.last_activity_egypt ? new Date(category.last_activity_egypt) : null;
+        if (articleDate && (!categoryDate || articleDate > categoryDate)) {
+            category.last_activity_egypt = article.last_viewed_egypt;
+        }
+    });
+
+    return Object.values(categoryMap).map(category => {
+        category.average_rating = category.rating_count > 0 ? category.rating_sum / category.rating_count : null;
+        return category;
+    });
+}
+
+function processUserLogs(logs) {
+    const userMap = {};
+    logs.forEach(log => {
+        if (!log.user_name) return;
+        if (!userMap[log.user_name]) {
+            userMap[log.user_name] = {
+                user_name: log.user_name,
+                user_email: log.user_email,
+                total_articles_viewed: 0,
+                unique_articles: new Set(),
+                last_activity_egypt: null
+            };
+        }
+        const user = userMap[log.user_name];
+        user.total_articles_viewed += 1;
+        user.unique_articles.add(log.article_id);
+
+        const logDate = new Date(log.viewed_at_egypt);
+        const userDate = user.last_activity_egypt ? new Date(user.last_activity_egypt) : null;
+        if (!userDate || logDate > userDate) {
+            user.last_activity_egypt = log.viewed_at_egypt;
+        }
+    });
+
+    return Object.values(userMap).map(user => {
+        user.unique_articles_viewed = user.unique_articles.size;
+        delete user.unique_articles;
+        return user;
+    });
+}
+
+async function fetchData() {
+    if (refreshDataBtn) {
+        refreshDataBtn.disabled = true;
+        const icon = refreshDataBtn.querySelector('i');
+        const text = refreshDataBtn.querySelector('span');
+        if (icon) icon.classList.add('fa-spin');
+        if (text) text.textContent = 'Refreshing...';
+    }
+    showSpinner(true);
+
+    try {
+        const [articlesRes, userLogsRes, overallRes, feedbackRes] = await Promise.all([
+            supabase.from('v_kb_top_performers').select('*'),
+            supabase.from('v_article_logs').select('user_name, user_email, viewed_at_egypt, article_id'),
+            supabase.from('v_kb_dashboard_overview').select('*').single(),
+            supabase.from('v_feedback_distribution').select('*')
+        ]);
+
+        if (articlesRes.error) throw new Error(`Article Performance: ${articlesRes.error.message}`);
+        if (userLogsRes.error) throw new Error(`User Logs: ${userLogsRes.error.message}`);
+        if (overallRes.error) throw new Error(`Dashboard Overview: ${overallRes.error.message}`);
+        if (feedbackRes.error) throw new Error(`Feedback Distribution: ${feedbackRes.error.message}`);
+
+        const articlesData = articlesRes.data || [];
+        const userLogs = userLogsRes.data || [];
+        
+        const sectionsData = calculateCategoryPerformance(articlesData);
+        const usersData = processUserLogs(userLogs);
+
+        allInsights = {
+            articles: articlesData,
+            users: usersData,
+            sections: sectionsData,
+            overall: overallRes.data || {},
+            feedback: feedbackRes.data || []
+        };
+
+        filteredInsights = JSON.parse(JSON.stringify(allInsights));
+        filteredInsights.sections = calculateCategoryPerformance(filteredInsights.articles);
+
+        populateUserFilter(allInsights.articles, allInsights.users);
+        renderSummaryMetrics(allInsights.overall);
+        renderAllTables();
+        renderCharts();
+        updateLastUpdateTime();
+
+    } catch (error) {
+        showToast(`Failed to load data: ${error.message}`);
+    } finally {
+        if (refreshDataBtn) {
+            refreshDataBtn.disabled = false;
+            const icon = refreshDataBtn.querySelector('i');
+            const text = refreshDataBtn.querySelector('span');
+            if (icon) icon.classList.remove('fa-spin');
+            if (text) text.textContent = 'Refresh';
+        }
+        showSpinner(false);
+    }
+}
+
+async function loadKnowledgeBaseInsights() {
+    try {
+        const { data, error } = await supabase
+            .from('v_articles_detailed')
+            .select('article_id, article_title, article_description, created_at_egypt, sub_category_name, section_title')
+            .order('created_at_egypt', { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error("Error loading KB Insights:", error);
+            document.getElementById("kbInsightsTable").innerHTML = `
+                <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ Error loading insights: ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            document.getElementById("kbInsightsTable").innerHTML = `
+                <tr><td colspan="5" style="text-align:center;">No articles found</td></tr>`;
+            return;
+        }
+
+        const tableHtml = data.map(row => {
+            const description = row.article_description || "";
+            return `
+                <tr>
+                    <td>${escapeHtml(row.article_title)}</td>
+                    <td title="${escapeHtml(description)}">${escapeHtml(description)}</td>
+                    <td>${escapeHtml(row.sub_category_name)}</td>
+                    <td>${escapeHtml(row.section_title)}</td>
+                    <td>${escapeHtml(formatToEgyptTime(row.created_at_egypt))}</td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById("kbInsightsTable").innerHTML = tableHtml;
+
+    } catch (err) {
+        console.error("Unexpected error loading KB Insights:", err);
+        document.getElementById("kbInsightsTable").innerHTML = `
+            <tr><td colspan="5" style="text-align:center; color: #ef4444;">⚠️ An unexpected error occurred.</td></tr>`;
+    }
+}
+
+async function initializeInsightsDashboard() {
+    document.getElementById('dashboard').style.visibility = 'visible';
+    await fetchData();
+    await loadKnowledgeBaseInsights();
+
+    supabase.channel('public-insights-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, (payload) => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, (payload) => fetchData())
+        .subscribe();
+}
+
+window.changePage = (tableName, direction) => {
+    const totalPages = Math.ceil(filteredInsights[tableName].length / ROWS_PER_PAGE);
+    let newPage = paginationState[tableName] + direction;
+    if (newPage >= 1 && newPage <= totalPages) {
+        paginationState[tableName] = newPage;
+        renderAllTables();
+    }
+};
+
+document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+    showToast("PDF export feature coming soon", false);
+});
+if (refreshDataBtn) {
+    refreshDataBtn.addEventListener('click', fetchData);
+}
 </script>
 
 </body>
