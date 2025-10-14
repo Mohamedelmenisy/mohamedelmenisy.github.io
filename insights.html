@@ -41,7 +41,7 @@
 html,body{height:100%;margin:0;font-family:var(--mono);background-image:linear-gradient(120deg,#071428 0%,#071827 100%);color:var(--text-color)}
 .app-header{
   position:fixed;top:0;left:0;right:0;height:var(--header-height);display:flex;align-items:center;justify-content:space-between;padding:12px 20px;z-index:1200;
-  background:rgba(6,11,22,0.7);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.04)
+  background:rgba(6,11,22,0.75);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.04)
 }
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--brand-500)}
 .app-header nav{display:flex;gap:10px;align-items:center}
@@ -76,6 +76,11 @@ thead th{position:sticky;top:0;background:rgba(10,14,20,0.6);backdrop-filter:blu
 .protected-actions{display:flex;justify-content:flex-end;gap:8px}
 .protected-actions button{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--brand-500);cursor:pointer}
 .footer{padding:24px;text-align:center;color:var(--text-color-muted)}
+
+/* small polish for table headers and values */
+thead th { font-weight:700; color: #cfe5ff; font-size:0.95rem; }
+tbody td { color: #e6eefc; }
+.card small { color: var(--text-color-muted); }
 </style>
 </head>
 <body>
@@ -155,10 +160,16 @@ thead th{position:sticky;top:0;background:rgba(10,14,20,0.6);backdrop-filter:blu
 <footer class="footer">&copy; <script>document.write((new Date()).getFullYear())</script> InfiniBase.Elmenisy.</footer>
 
 <script>
+/* -------------------------
+   Configuration
+   ------------------------- */
 const SUPABASE_URL = 'https://aefiigottnlcmjzilqnh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlZmlpZ290dG5sY21qemlscW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNzY2MDQsImV4cCI6MjA2Mjc1MjYwNH0.FypB02v3tGMnxXV9ZmZMdMC0oQpREKOJWgHMPxUzwX4';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/* -------------------------
+   UI helpers
+   ------------------------- */
 const toast = document.getElementById('toast');
 const toastMsg = document.getElementById('toastMsg');
 const spinner = document.getElementById('spinner');
@@ -190,6 +201,9 @@ function createChart(ctx,type,labels,data,label,backgroundColors){
   return new Chart(ctx,{type,data:{labels,datasets:[{label,data,backgroundColor:backgroundColors,borderColor:borderColor,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:textColor}},tooltip:{backgroundColor:'#0b1220',titleColor:'#fff',bodyColor:'#fff'}}}});
 }
 
+/* -------------------------
+   Renderers
+   ------------------------- */
 function renderArticlesTable(data){
   const tbody = document.getElementById('articlesInsightsTable');
   if(!data || data.length===0){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center">No article data available.</td></tr>'; return;}
@@ -244,8 +258,11 @@ function renderFeedbackCharts(data){
   feedbackAnalysisChart = createChart(ctx,'pie',labels,counts,'Feedback Distribution',colors);
 }
 
+/* -------------------------
+   Data loaders (use the views we created)
+   ------------------------- */
 async function loadArticlesInsights(){
-  const { data, error } = await supabase.from('v_kb_insights').select('*');
+  const { data, error } = await supabase.from('v_kb_articles').select('*');
   if(error){ console.error('Error loading Article Insights:', error); showToast('Error loading articles: ' + (error.message || error), true); return;}
   renderArticlesTable(data);
 }
@@ -259,7 +276,15 @@ async function loadTopPerformers(){
 async function loadFeedbackAnalysis(){
   const { data, error } = await supabase.from('v_kb_feedback_analysis').select('*');
   if(error){ console.error('Error loading Feedback Analysis:', error); showToast('Error loading feedback: ' + (error.message || error), true); return;}
-  renderFeedbackCharts(data);
+  // aggregate by rating or reason for chart
+  const grouped = (data || []).reduce((acc,row)=>{
+    const key = row.rating ? String(row.rating) : (row.reason ? (row.reason.length>20 ? row.reason.slice(0,20)+'...' : row.reason) : 'No Rating');
+    if(!acc[key]) acc[key] = 0;
+    acc[key]++;
+    return acc;
+  },{});
+  const chartData = Object.keys(grouped).map(k=>({ label:k, total_feedbacks: grouped[k]}));
+  renderFeedbackCharts(chartData);
 }
 
 async function loadSectionsSummary(){
@@ -274,6 +299,9 @@ async function loadSectionsSummary(){
   activityBySectionChart = createChart(ctx,'doughnut',labels,values,'Total Views by Section',colors);
 }
 
+/* -------------------------
+   current user & nav access
+   ------------------------- */
 async function fetchCurrentProfile(){
   try{
     const userResp = await supabase.auth.getUser();
@@ -294,19 +322,23 @@ function applyNavVisibility(role){
     const allowed = a.dataset.roleRequired.split(',').map(x=>x.trim());
     if(!allowed.includes(role)){
       a.classList.add('protected-link');
-      a.addEventListener('click', (ev)=>{
+      // ensure only one listener
+      a.onclick = (ev)=>{
         ev.preventDefault();
         document.getElementById('protectedModal').classList.add('open');
-      });
+      };
     } else {
       a.classList.remove('protected-link');
-      a.removeEventListener('click', ()=>{});
+      a.onclick = null;
     }
   });
 }
 
 document.getElementById('protectedClose').addEventListener('click', ()=>{ document.getElementById('protectedModal').classList.remove('open'); });
 
+/* -------------------------
+   initialize dashboard
+   ------------------------- */
 async function initializeInsightsDashboard(){
   showSpinner(true);
   document.getElementById('dashboard').style.visibility = 'visible';
