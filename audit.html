@@ -74,6 +74,7 @@
             gap: 24px;
             max-width: 1600px;
             margin: 0 auto;
+            visibility: hidden; /* Hide by default */
         }
         
         /* Header Section */
@@ -719,7 +720,7 @@
             transform: translateX(0);
         }
 
-        /* --- 12. Modal Styles --- */
+        /* --- 12. Modal & Access Denied Styles --- */
         .modal {
             position: fixed;
             inset: 0;
@@ -781,12 +782,44 @@
         .modal .close-btn:hover {
             color: var(--primary-accent);
         }
+        
+        .access-restricted-container {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .access-restricted-card {
+            max-width: 450px;
+            padding: 3rem;
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-hover);
+        }
+        .access-restricted-card .icon {
+            font-size: 3rem;
+            color: var(--primary-accent);
+            margin-bottom: 1rem;
+        }
+        .access-restricted-card h2 {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-light);
+        }
+        .access-restricted-card p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
 
     </style>
 </head>
 <body>
 
-    <div class="insights-dashboard">
+    <div id="dashboard-container" class="insights-dashboard">
         
         <!-- Header -->
         <header class="dashboard-header">
@@ -921,8 +954,17 @@
                 <button id="nextBtn" class="pagination-btn">Next <i class="fas fa-arrow-right"></i></button>
             </div>
         </div>
-
     </div>
+    
+    <div id="restricted-container" class="access-restricted-container">
+        <div class="access-restricted-card">
+            <div class="icon">🔒</div>
+            <h2>Access Restricted</h2>
+            <p>You do not have the necessary permissions to view this page. This area is for administrators only.</p>
+            <a href="app.html" class="action-btn primary" style="text-decoration: none; display: inline-flex; justify-content: center;">Go to Dashboard</a>
+        </div>
+    </div>
+
 
     <!-- Toast Notification -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -1282,23 +1324,34 @@
             applyFiltersAndRender();
         };
         
-        async function checkAdminAccess() {
+        async function checkAccess() {
              try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) throw new Error("Not logged in");
 
                 const { data: userData, error } = await supabase.from("users").select("role").eq("id", user.id).single();
-                if (error || userData?.role !== "admin") throw new Error("Access denied");
+                
+                // This page is for Admins only
+                if (error || userData?.role !== "admin") {
+                    throw new Error("Access denied. Admin role required.");
+                }
 
+                // If access is granted, show the dashboard and fetch data
+                document.getElementById('dashboard-container').style.visibility = 'visible';
                 await fetchData();
+                
+                // Subscribe to real-time updates
                 supabase.channel("public:case_history").on("postgres_changes", { event: "INSERT", schema: "public", table: "case_history" }, handleRealtimeUpdate).subscribe();
+
             } catch (error) {
-                document.body.innerHTML = `<div style="text-align:center;padding-top:5rem;font-size:1.2rem;color:var(--danger-light);">Access Denied. Administrator role required.</div>`;
+                console.error(error.message);
+                // If access is denied, show the restricted message card
+                document.getElementById('restricted-container').style.display = 'flex';
             }
         }
         
         document.addEventListener("DOMContentLoaded", () => {
-            checkAdminAccess();
+            checkAccess();
 
             ["searchInput", "userSearchInput", "sectionFilter", "actionFilter", "startDate", "endDate"].forEach(id => {
                 document.getElementById(id).addEventListener("input", applyFiltersAndRender);
