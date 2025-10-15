@@ -427,23 +427,7 @@
             UIElements.totalRecords.textContent = `${filteredActivity.length} records found`;
         }
 
-        function updateKpiCards() {
-            UIElements.kpiTotalActions.textContent = filteredActivity.length.toLocaleString();
-            UIElements.kpiTotalDocs.textContent = [...new Set(filteredActivity.map(i => i.Case))].length.toLocaleString();
-
-            const deptCounts = filteredActivity.reduce((acc, item) => {
-                if(item.Department) acc[item.Department] = (acc[item.Department] || 0) + 1;
-                return acc;
-            }, {});
-            const topDept = Object.entries(deptCounts).sort((a, b) => b[1] - a[1])[0];
-            UIElements.kpiActiveDept.textContent = topDept ? topDept[0] : 'N/A';
-            
-            const today = new Date().toLocaleDateString();
-            const activeToday = new Set(allActivity
-                .filter(i => new Date(i.Time).toLocaleDateString() === today)
-                .map(i => i["User Email"])).size;
-            UIElements.kpiActiveUsers.textContent = activeToday.toLocaleString();
-        }
+        
 
         function renderActivityTable() {
             const tableBody = UIElements.activityTableBody;
@@ -452,7 +436,28 @@
             if (filteredActivity.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem;">No matching records found.</td></tr>`;
                 return;
+            }async function updateKpiCards() {
+            try {
+                const { data, error } = await supabase
+                    .from('v_insights_kpis_summary')
+                    .select('*')
+                    .single();
+
+                if (error) throw error;
+
+                if (data) {
+                    UIElements.kpiTotalActions.textContent = data.total_actions.toLocaleString();
+                    UIElements.kpiTotalDocs.textContent = data.unique_cases.toLocaleString();
+                    UIElements.kpiActiveDept.textContent = data.most_active_dept || 'N/A';
+                    UIElements.kpiActiveUsers.textContent = data.active_users_today.toLocaleString();
+                }
+            } catch (error) {
+                console.error("Error updating KPI cards:", error);
+                // Fallback to old method in case of error
+                UIElements.kpiTotalActions.textContent = allActivity.length.toLocaleString();
+                UIElements.kpiActiveUsers.textContent = 'Error';
             }
+        }
 
             const startIndex = (currentPage - 1) * PAGE_SIZE;
             const endIndex = startIndex + PAGE_SIZE;
