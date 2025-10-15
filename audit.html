@@ -17,6 +17,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
+    <!-- jsPDF for PDF Export (Note: These are placeholders; you need to host these libraries) -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script> -->
+
     <style>
         /* --- 1. Global Styles & Theme Variables --- */
         :root {
@@ -842,7 +846,8 @@
             </div>
             <div class="header-actions">
                 <button class="action-btn" id="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                <button class="action-btn primary" id="export-btn"><i class="fas fa-download"></i> Export</button>
+                <button class="action-btn" id="export-csv-btn"><i class="fas fa-file-csv"></i> Export CSV</button>
+                <button class="action-btn primary" id="export-pdf-btn"><i class="fas fa-file-pdf"></i> Export PDF</button>
             </div>
         </header>
 
@@ -996,7 +1001,11 @@
     <script type="module">
         import { supabase } from "./supabase.js";
         
-        let auditStore = [], filteredStore = [], pageSize = 10, currentPage = 1, charts = {}, 
+        let currentPage = 1, 
+            pageSize = 10, 
+            totalRecordsCount = 0,
+            charts = {},
+            currentTableData = [],
             savedFilters = JSON.parse(localStorage.getItem("auditFilters") || "[]");
 
         const escapeHtml = text => String(text || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
@@ -1010,27 +1019,17 @@
             minute: "2-digit"
         }) : "-";
 
-        async function fetchData() {
-            try {
-                const { data, error } = await supabase
-                    .from("v_case_history_audit")
-                    .select("*")
-                    .order("modified_at_egypt", { ascending: false });
-                
-                if (error) throw error;
-                
-                auditStore = data || [];
-                populateFilters();
-                applyFiltersAndRender();
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                document.getElementById("auditBody").innerHTML = 
-                    '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load data.</td></tr>';
-            }
-        }
+        const populateFilters = async () => {
+             const { data, error } = await supabase
+                .from('distinct_sections')
+                .select('section');
 
-        const populateFilters = () => {
-            const sections = [...new Set(auditStore.map(item => item.section).filter(Boolean))];
+            if (error) {
+                console.error('Error fetching distinct sections:', error);
+                return;
+            }
+
+            const sections = data.map(item => item.section).filter(Boolean);
             const sectionFilter = document.getElementById("sectionFilter");
             sectionFilter.innerHTML = '<option value="">All Sections</option>';
             sections.sort().forEach(section => sectionFilter.add(new Option(section, section)));
@@ -1039,7 +1038,7 @@
                 populateSavedFilters();
             }
         };
-
+        
         const populateSavedFilters = () => {
             if (document.getElementById("savedFilters")) return;
             const savedFiltersSelect = document.createElement("select");
@@ -1066,18 +1065,15 @@
 
         const renderPage = () => {
             const auditBody = document.getElementById("auditBody");
-            const totalPages = Math.max(1, Math.ceil(filteredStore.length / pageSize));
+            const totalPages = Math.max(1, Math.ceil(totalRecordsCount / pageSize));
             currentPage = Math.min(currentPage, totalPages);
-            
-            const startIndex = (currentPage - 1) * pageSize;
-            const endIndex = startIndex + pageSize;
             
             const actionIcons = { "Create": "fa-plus", "Update": "fa-pencil-alt", "Delete": "fa-trash" };
 
             auditBody.innerHTML = "";
             
-            if (filteredStore.length) {
-                filteredStore.slice(startIndex, endIndex).forEach(item => {
+            if (currentTableData.length) {
+                currentTableData.forEach(item => {
                     const row = document.createElement("tr");
                     const icon = actionIcons[item.action] ? `<i class="fas ${actionIcons[item.action]}"></i>` : "";
                     
@@ -1111,76 +1107,121 @@
             document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
             document.getElementById("prevBtn").disabled = currentPage === 1;
             document.getElementById("nextBtn").disabled = currentPage >= totalPages;
-            document.getElementById("totalRecords").textContent = `${filteredStore.length} records`;
+            document.getElementById("totalRecords").textContent = `${totalRecordsCount} records`;
         };
 
-        const applyFiltersAndRender = () => {
-            const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
-            const userSearchTerm = document.getElementById("userSearchInput").value.toLowerCase().trim();
+        const applyFiltersAndRender = async (resetPage = true) => {
+            if (resetPage) currentPage = 1;
+
+            let query = supabase.from("v_case_history_audit");
+
+            const searchTerm = document.getElementById("searchInput").value.trim();
+            const userSearchTerm = document.getElementById("userSearchInput").value.trim();
             const actionFilter = document.getElementById("actionFilter").value;
             const sectionFilter = document.getElementById("sectionFilter").value;
-            const startDate = document.getElementById("startDate").valueAsDate;
-            const endDate = document.getElementById("endDate").valueAsDate;
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
             
-            if (endDate) endDate.setHours(23, 59, 59, 999);
-            
-            filteredStore = auditStore.filter(item => {
-                const itemDate = new Date(item.modified_at_egypt);
-                const userMatch = !userSearchTerm || 
-                    (item.user_name || "").toLowerCase().includes(userSearchTerm) || 
-                    (item.user_email || "").toLowerCase().includes(userSearchTerm);
+            if (searchTerm) query = query.ilike('case_title', `%${searchTerm}%`);
+            if (userSearchTerm) query = query.or(`user_name.ilike.%${userSearchTerm}%,user_email.ilike.%${userSearchTerm}%`);
+            if (actionFilter) query = query.eq('action', actionFilter);
+            if (sectionFilter) query = query.eq('section', sectionFilter);
+            if (startDate) query = query.gte('modified_at_egypt', new Date(startDate).toISOString());
+            if (endDate) {
+                 const endOfDay = new Date(endDate);
+                 endOfDay.setHours(23, 59, 59, 999);
+                 query = query.lte('modified_at_egypt', endOfDay.toISOString());
+            }
+
+            try {
+                // --- Fetch data for charts and stats (all matching records, but only needed columns) ---
+                const chartQuery = query.select('action, case_title, modified_at_egypt');
+                const { data: chartData, error: chartError } = await chartQuery;
+                if (chartError) throw chartError;
+
+                updateQuickStats(chartData);
+                buildCharts(chartData);
+
+                // --- Fetch paginated data for the table (all columns, with count) ---
+                const startIndex = (currentPage - 1) * pageSize;
+                const tableQuery = query
+                    .select('*', { count: 'exact' })
+                    .order("modified_at_egypt", { ascending: false })
+                    .range(startIndex, startIndex + pageSize - 1);
+
+                const { data, count, error: tableError } = await tableQuery;
+                if (tableError) throw tableError;
+
+                currentTableData = data || [];
+                totalRecordsCount = count || 0;
                 
-                return (!startDate || itemDate >= startDate) &&
-                       (!endDate || itemDate <= endDate) &&
-                       (!actionFilter || item.action === actionFilter) &&
-                       (!sectionFilter || item.section === sectionFilter) &&
-                       (!searchTerm || (item.case_title || "").toLowerCase().includes(searchTerm)) &&
-                       userMatch;
-            });
-            
-            currentPage = 1;
-            renderPage();
-            updateKpiCards();
-            updateQuickStats();
-            buildCharts();
+                renderPage();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById("auditBody").innerHTML = 
+                    '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load filtered data.</td></tr>';
+                showToast("Error fetching data.", "error");
+            }
         };
 
-        const updateKpiCards = () => {
-            const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
-            const todayItems = auditStore.filter(item => item.modified_at_egypt?.startsWith(today));
-            
-            document.getElementById("kpi-today-mods").textContent = todayItems.length;
-            document.getElementById("kpi-new-cases").textContent = todayItems.filter(item => item.action === "Create").length;
-            
-            const sectionCounts = todayItems.reduce((acc, item) => {
-                if (item.section) acc[item.section] = (acc[item.section] || 0) + 1;
-                return acc;
-            }, {});
-            
-            const mostActiveSection = Object.entries(sectionCounts).sort((a, b) => b[1] - a[1])[0];
-            document.getElementById("kpi-active-section").textContent = mostActiveSection ? mostActiveSection[0] : "-";
-            
-            const lastUpdate = auditStore[0]?.modified_at_egypt;
-            document.getElementById("kpi-last-update").textContent = lastUpdate ? 
-                new Date(lastUpdate).toLocaleTimeString("en-US", {
-                    timeZone: "Africa/Cairo",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                }) : "-";
+        const updateKpiCards = async () => {
+            try {
+                const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+                
+                // Fetch today's items
+                const { data: todayItems, error: todayError } = await supabase
+                    .from("v_case_history_audit")
+                    .select("action, section")
+                    .gte('modified_at_egypt', `${today}T00:00:00.000Z`)
+                    .lte('modified_at_egypt', `${today}T23:59:59.999Z`);
+                
+                if (todayError) throw todayError;
+
+                document.getElementById("kpi-today-mods").textContent = todayItems.length;
+                document.getElementById("kpi-new-cases").textContent = todayItems.filter(item => item.action === "Create").length;
+                
+                const sectionCounts = todayItems.reduce((acc, item) => {
+                    if (item.section) acc[item.section] = (acc[item.section] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                const mostActiveSection = Object.entries(sectionCounts).sort((a, b) => b[1] - a[1])[0];
+                document.getElementById("kpi-active-section").textContent = mostActiveSection ? mostActiveSection[0] : "-";
+
+                // Fetch last update
+                const { data: lastUpdateItem, error: lastUpdateError } = await supabase
+                    .from("v_case_history_audit")
+                    .select("modified_at_egypt")
+                    .order("modified_at_egypt", { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                if (lastUpdateError) throw lastUpdateError;
+                
+                const lastUpdate = lastUpdateItem?.modified_at_egypt;
+                document.getElementById("kpi-last-update").textContent = lastUpdate ? 
+                    new Date(lastUpdate).toLocaleTimeString("en-US", {
+                        timeZone: "Africa/Cairo",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }) : "-";
+            } catch(error) {
+                console.error("Failed to update KPI cards:", error);
+            }
         };
 
-        const updateQuickStats = () => {
+        const updateQuickStats = (data) => {
             const quickStats = document.getElementById("quickStats");
-            if (filteredStore.length === 0) {
+            if (!data || data.length === 0) {
                 quickStats.innerHTML = "";
                 return;
             }
             
-            const createdCount = filteredStore.filter(item => item.action === "Create").length;
-            const updatedCount = filteredStore.filter(item => item.action === "Update").length;
-            const deletedCount = filteredStore.filter(item => item.action === "Delete").length;
-            const uniqueUsers = [...new Set(filteredStore.map(item => item.user_email))].length;
-            const uniqueCases = [...new Set(filteredStore.map(item => item.case_title))].length;
+            const createdCount = data.filter(item => item.action === "Create").length;
+            const updatedCount = data.filter(item => item.action === "Update").length;
+            const deletedCount = data.filter(item => item.action === "Delete").length;
+            const uniqueUsers = [...new Set(data.map(item => item.user_email))].length;
+            const uniqueCases = [...new Set(data.map(item => item.case_title))].length;
             
             quickStats.innerHTML = `
                 <div class="stat-badge"><i class="fas fa-plus-circle"></i> ${createdCount} Created</div>
@@ -1189,6 +1230,11 @@
                 <div class="stat-badge"><i class="fas fa-users"></i> ${uniqueUsers} Users</div>
                 <div class="stat-badge"><i class="fas fa-file-alt"></i> ${uniqueCases} Cases</div>
             `;
+            
+            // Smart Alert System
+            if (deletedCount > 10) {
+                showToast("⚠️ High number of deletions detected!", "error");
+            }
         };
 
         const createChart = (chartId, type, data, options) => {
@@ -1197,7 +1243,7 @@
             charts[chartId] = new Chart(ctx, { type, data, options });
         };
 
-        const buildCharts = () => {
+        const buildCharts = (data) => {
             const textColor = "#F5F5F5";
             const gridColor = "#2A2D38";
             
@@ -1206,7 +1252,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { position: "bottom", labels: { color: textColor, font: { size: 14 }, padding: 20 }},
-                    title: { display: true, text: title, color: textColor, font: { size: 16, weight: "bold" }, padding: { bottom: 15 }},
+                    title: { display: false },
                     tooltip: { backgroundColor: "#111827", titleColor: "#fff", bodyColor: "#fff", borderColor: gridColor, borderWidth: 1, padding: 10 }
                 },
                 scales: {
@@ -1216,7 +1262,7 @@
             });
 
             // Daily Activity Chart
-            const dailyActivity = filteredStore.reduce((acc, item) => {
+            const dailyActivity = data.reduce((acc, item) => {
                 const date = item.modified_at_egypt.slice(0, 10);
                 acc[date] = (acc[date] || 0) + 1;
                 return acc;
@@ -1232,10 +1278,10 @@
                     tension: 0.4,
                     fill: true
                 }]
-            }, baseOptions("Daily Activity"));
+            }, baseOptions());
 
             // Actions Distribution Chart
-            const actionsCount = filteredStore.reduce((acc, item) => {
+            const actionsCount = data.reduce((acc, item) => {
                 acc[item.action] = (acc[item.action] || 0) + 1;
                 return acc;
             }, {});
@@ -1248,11 +1294,11 @@
                     borderColor: gridColor,
                     borderWidth: 2
                 }]
-            }, { ...baseOptions("Actions Distribution"), cutout: "60%" });
+            }, { ...baseOptions(), cutout: "60%" });
 
             // Top Modified Cases Chart
-            const caseCounts = filteredStore.reduce((acc, item) => {
-                acc[item.case_title] = (acc[item.case_title] || 0) + 1;
+            const caseCounts = data.reduce((acc, item) => {
+                if (item.case_title) acc[item.case_title] = (acc[item.case_title] || 0) + 1;
                 return acc;
             }, {});
 
@@ -1268,7 +1314,7 @@
                     borderWidth: 1,
                     borderRadius: 4
                 }]
-            }, baseOptions("Top Modified Cases"));
+            }, baseOptions());
         };
 
         const showTimeline = async (caseId) => {
@@ -1332,9 +1378,9 @@
         };
 
         const handleRealtimeUpdate = (change) => {
-            showToast(`A new record was ${change.new.action || 'modified'}. Updating...`, "info");
-            auditStore.unshift(change.new);
-            applyFiltersAndRender();
+            showToast(`A new record was ${change.new.action || 'modified'}. Refreshing...`, "info");
+            applyFiltersAndRender(false); // Re-fetch data for the current page
+            updateKpiCards(); // Update global KPIs
         };
         
         async function checkAccess() {
@@ -1350,34 +1396,23 @@
                     .eq("id", user.id)
                     .single();
 
-                if (error) {
-                    throw new Error("Could not verify user role.");
-                }
-                if (!userData) {
-                    throw new Error("User profile not found.");
-                }
+                if (error) throw error;
+                if (!userData) throw new Error("User profile not found.");
                 
-                // Add a console log for debugging
-                console.log('User Role Fetched:', userData.role);
-
-                // Make the role check robust: handle null, undefined, spaces, and case-insensitivity.
                 const userRole = (userData.role || '').trim().toLowerCase();
-                
-                // This page is for Admins only
                 if (userRole !== "admin") {
                     throw new Error("Access denied. Admin role required.");
                 }
 
-                // If access is granted, show the dashboard and fetch data
                 document.getElementById('dashboard-container').style.visibility = 'visible';
-                await fetchData();
+                await populateFilters();
+                await updateKpiCards();
+                await applyFiltersAndRender();
                 
-                // Subscribe to real-time updates
                 supabase.channel("public:case_history").on("postgres_changes", { event: "INSERT", schema: "public", table: "case_history" }, handleRealtimeUpdate).subscribe();
 
             } catch (error) {
                 console.error("Access Check Failed:", error.message);
-                // If access is denied, show the restricted message card
                 document.getElementById('restricted-container').style.display = 'flex';
             }
         }
@@ -1386,7 +1421,7 @@
             checkAccess();
 
             ["searchInput", "userSearchInput", "sectionFilter", "actionFilter", "startDate", "endDate"].forEach(id => {
-                document.getElementById(id).addEventListener("input", applyFiltersAndRender);
+                document.getElementById(id).addEventListener("input", () => applyFiltersAndRender(true));
             });
 
             document.getElementById("clearBtn").addEventListener("click", () => {
@@ -1396,20 +1431,23 @@
                 document.getElementById("actionFilter").value = "";
                 document.getElementById("startDate").value = "";
                 document.getElementById("endDate").value = "";
-                applyFiltersAndRender();
+                applyFiltersAndRender(true);
             });
             
-            document.getElementById("refresh-btn").addEventListener("click", fetchData);
+            document.getElementById("refresh-btn").addEventListener("click", () => {
+                updateKpiCards();
+                applyFiltersAndRender(false);
+            });
             document.getElementById("saveFilterBtn").addEventListener("click", saveCurrentFilter);
-            document.getElementById("prevBtn").addEventListener("click", () => { currentPage--; renderPage(); });
-            document.getElementById("nextBtn").addEventListener("click", () => { currentPage++; renderPage(); });
+            document.getElementById("prevBtn").addEventListener("click", () => { currentPage--; applyFiltersAndRender(false); });
+            document.getElementById("nextBtn").addEventListener("click", () => { currentPage++; applyFiltersAndRender(false); });
 
-            document.getElementById("export-btn").addEventListener("click", () => {
-                if (!filteredStore.length) return showToast("No data to export.", "error");
+            document.getElementById("export-csv-btn").addEventListener("click", () => {
+                if (!currentTableData.length) return showToast("No data to export.", "error");
                 const headers = ["Date", "User", "Email", "Case", "Section", "Action", "Details"];
                 const csvData = [
                     headers.join(","),
-                    ...filteredStore.map(item => [
+                    ...currentTableData.map(item => [
                         formatTime(item.modified_at_egypt), item.user_name, item.user_email, item.case_title, 
                         item.section, item.action, item.details
                     ].map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
@@ -1424,6 +1462,54 @@
                 showToast("CSV exported successfully.", "success");
             });
 
+            document.getElementById("export-pdf-btn").addEventListener("click", () => {
+                 showToast("PDF export requires 'jsPDF' library.", "info");
+                // To enable PDF export:
+                // 1. Uncomment the jsPDF script tags in the <head> section.
+                // 2. Ensure you have the jspdf.umd.min.js and jspdf.plugin.autotable.min.js files available.
+                // 3. Uncomment the code block below.
+
+                /*
+                if (typeof jsPDF === 'undefined' || typeof jsPDF.autoTable === 'undefined') {
+                    console.error("jsPDF or jsPDF-autoTable is not loaded.");
+                    showToast("PDF export library not found.", "error");
+                    return;
+                }
+                if (!currentTableData.length) {
+                    showToast("No data to export.", "error");
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const tableHead = [["Date", "User", "Case", "Section", "Action"]];
+                const tableBody = currentTableData.map(item => [
+                    formatTime(item.modified_at_egypt),
+                    item.user_name || item.user_email,
+                    item.case_title,
+                    item.section,
+                    item.action,
+                ]);
+
+                doc.autoTable({
+                    head: tableHead,
+                    body: tableBody,
+                    startY: 10,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 8
+                    },
+                    headStyles: {
+                        fillColor: [108, 93, 211] // --primary-accent
+                    }
+                });
+                
+                doc.save(`audit-log-${new Date().toISOString().slice(0, 10)}.pdf`);
+                showToast("PDF exported successfully.", "success");
+                */
+            });
+
             document.addEventListener("click", e => {
                 const timelineBtn = e.target.closest(".view-timeline-btn");
                 if (timelineBtn) showTimeline(timelineBtn.dataset.caseId);
@@ -1432,7 +1518,10 @@
                 }
             });
             
-            setInterval(fetchData, 300000); // Auto-refresh every 5 minutes
+            setInterval(() => {
+                updateKpiCards();
+                applyFiltersAndRender(false);
+            }, 300000); // Auto-refresh every 5 minutes
         });
     </script>
 </body>
