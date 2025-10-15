@@ -17,9 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
-    <!-- ****************************************************** -->
-    <!-- *** 1. ADDED: jsdiff library for text comparison *** -->
-    <!-- ****************************************************** -->
+    <!-- jsdiff library for text comparison -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
 
 
@@ -503,7 +501,7 @@
             color: var(--success-light);
         }
 
-        .badge.Update {
+        .badge.Update, .badge.CASE_UPDATED {
             background: rgba(255, 196, 84, 0.2);
             color: var(--warning-light);
         }
@@ -843,9 +841,6 @@
             to { transform: scale(1); opacity: 1; }
         }
         
-        /* ****************************************************** */
-        /* *** 2. ADDED: CSS Styles for the Diff Viewer Modal *** */
-        /* ****************************************************** */
         .diff-content-area {
             background-color: var(--bg-dark);
             border: 1px solid var(--border-color);
@@ -1058,9 +1053,7 @@
         </div>
     </div>
     
-    <!-- **************************************************** -->
-    <!-- *** 3. ADDED: HTML Structure for Diff Viewer Modal *** -->
-    <!-- **************************************************** -->
+    <!-- Diff Viewer Modal -->
     <div id="diffModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1084,10 +1077,6 @@
             savedFilters = JSON.parse(localStorage.getItem("auditFilters") || "[]");
 
         const escapeHtml = text => String(text || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-        
-        // *******************************************************************
-        // *** 4. ADDED: Helper functions for Diff Viewer functionality ***
-        // *******************************************************************
         
         /**
          * Removes HTML tags from a string to get plain text.
@@ -1196,19 +1185,18 @@
             const totalPages = Math.max(1, Math.ceil(totalRecordsCount / pageSize));
             currentPage = Math.min(currentPage, totalPages);
             
-            const actionIcons = { "Create": "fa-plus-circle", "Update": "fa-pencil-alt", "Delete": "fa-trash-alt" };
+            const actionIcons = { "Create": "fa-plus-circle", "Update": "fa-pencil-alt", "Delete": "fa-trash-alt", "CASE_UPDATED": "fa-pencil-alt" };
 
             auditBody.innerHTML = "";
             
             if (currentTableData.length) {
                 currentTableData.forEach(item => {
                     const row = document.createElement("tr");
-                    const icon = actionIcons[item.action] ? `<i class="fas ${actionIcons[item.action]}"></i>` : "";
+                    const cleanAction = (item.action || '').replace(/\s/g, '_'); // For CSS class
+                    const icon = actionIcons[cleanAction] || actionIcons[item.action] || '';
                     
-                    // *************************************************************************************************
-                    // *** 5. MODIFIED: Added conditional button for "View Changes" for 'Update' actions ***
-                    // *************************************************************************************************
-                    const changesButtonHtml = item.action === 'Update' ? `
+                    // *** THIS IS THE CORRECTED LINE ***
+                    const changesButtonHtml = (item.action || '').toUpperCase().includes('UPDATE') ? `
                         <button class="action-btn view-diff-btn" data-history-id="${item.id}" title="View Content Changes">
                             <i class="fas fa-exchange-alt"></i>
                         </button>` : `<span>—</span>`;
@@ -1226,7 +1214,7 @@
                         </td>
                         <td class="case-cell">${escapeHtml(item.case_title)}</td>
                         <td>${escapeHtml(item.section)}</td>
-                        <td><span class="badge ${item.action}">${icon} ${item.action}</span></td>
+                        <td><span class="badge ${cleanAction}">${icon ? `<i class="fas ${icon}"></i>` : ''} ${item.action}</span></td>
                         <td class="details-cell">${escapeHtml(item.details)}</td>
                         <td>${changesButtonHtml}</td>
                         <td>
@@ -1350,9 +1338,9 @@
                 return;
             }
             
-            const createdCount = data.filter(item => item.action === "Create").length;
-            const updatedCount = data.filter(item => item.action === "Update").length;
-            const deletedCount = data.filter(item => item.action === "Delete").length;
+            const createdCount = data.filter(item => (item.action || '').toUpperCase() === 'CREATE').length;
+            const updatedCount = data.filter(item => (item.action || '').toUpperCase().includes('UPDATE')).length;
+            const deletedCount = data.filter(item => (item.action || '').toUpperCase() === 'DELETE').length;
             
             quickStats.innerHTML = `
                 <div class="stat-badge"><i class="fas fa-plus-circle"></i> ${createdCount} Created</div>
@@ -1408,7 +1396,12 @@
             }, baseOptions());
 
             const actionsCount = data.reduce((acc, item) => {
-                acc[item.action] = (acc[item.action] || 0) + 1;
+                const action = (item.action || 'Unknown').toUpperCase();
+                if (action.includes('UPDATE')) {
+                    acc['Update'] = (acc['Update'] || 0) + 1;
+                } else {
+                    acc[item.action] = (acc[item.action] || 0) + 1;
+                }
                 return acc;
             }, {});
 
@@ -1469,10 +1462,7 @@
                 timelineBody.innerHTML = "<p>Error loading timeline data.</p>";
             }
         };
-
-        // ***************************************************************
-        // *** 6. ADDED: Function to show the new Diff Viewer Modal ***
-        // ***************************************************************
+        
         const showDiff = (historyId) => {
             const record = currentTableData.find(item => item.id == historyId);
             if (!record) {
@@ -1614,9 +1604,6 @@
                  showToast("PDF export is currently disabled.", "info");
             });
 
-            // ********************************************************************************************
-            // *** 7. MODIFIED: Main event listener now handles Timeline, Diff, and closing all modals ***
-            // ********************************************************************************************
             document.addEventListener("click", e => {
                 const timelineBtn = e.target.closest(".view-timeline-btn");
                 if (timelineBtn) {
