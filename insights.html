@@ -278,7 +278,7 @@
             <div class="timeline-container" id="timeline-container"></div>
             <div class="table-container">
                 <table class="activity-table">
-                    <thead><tr><th>User</th><th>Role</th><th>Action</th><th>Department</th><th>Section</th><th>Case</th><th>Time</th></tr></thead>
+                    <thead><tr><th>User</th><th>Role</th><th>Action</th><th>Department</th><th>Section</th><th>Case</th><th>First View</th><th>Last View</th><th>View Count</th></tr></thead>
                     <tbody id="activity-table-body"></tbody>
                     <tbody id="skeleton-body" class="skeleton-loader">
                         <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
@@ -357,7 +357,7 @@
                 const { data, error } = await supabase
                     .from('v_employee_activity_fixed')
                     .select('*')
-                    .order('Time', { ascending: false });
+                    .order('Last View', { ascending: false });
 
                 if (error) throw error;
                 allActivity = data || [];
@@ -391,7 +391,7 @@
             if (toDate) toDate.setHours(23, 59, 59, 999);
 
             filteredActivity = allActivity.filter(item => {
-                const itemDate = new Date(item.Time);
+                const itemDate = new Date(item['Last View']);
                 const userMatch = !searchTerm || 
                     (item.User || '').toLowerCase().includes(searchTerm) ||
                     (item["User Email"] || '').toLowerCase().includes(searchTerm);
@@ -466,7 +466,7 @@
                     <td>${escapeHtml(item.Department || 'N/A')}</td>
                     <td>${escapeHtml(item.Section || 'N/A')}</td>
                     <td>${escapeHtml(item.Case || 'N/A')}</td>
-                    <td>${new Date(item.Time).toLocaleString()}</td>
+                    <td>${new Date(item['Last View']).toLocaleString()}</td>
                 `;
                 tableBody.appendChild(tr);
             });
@@ -486,7 +486,7 @@
                 timelineItem.innerHTML = `
                     <div class="timeline-dot"></div>
                     <div class="timeline-content">
-                        <div class="timeline-time">${new Date(item.Time).toLocaleString()}</div>
+                        <div class="timeline-time">${new Date(item['Last View']).toLocaleString()}</div>
                         <div class="timeline-text">
                             <span class="timeline-user">${escapeHtml(item.User)}</span> 
                             ${escapeHtml(item.Action)} the case "${escapeHtml(item.Case)}"
@@ -593,8 +593,8 @@
 
         function exportToCsv() {
             if (filteredActivity.length === 0) return showToast("No data to export.", "warning");
-            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "Time"];
-            const rows = filteredActivity.map(i => [ i.User, i.Role, i.Action, i.Department, i.Section, i.Case, new Date(i.Time).toISOString() ]);
+            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "First View", "Last View", "View Count"];
+            const rows = filteredActivity.map(i => [ i.User, i.Role, i.Action, i.Department, i.Section, i.Case, new Date(i["First View"]).toISOString(), new Date(i["Last View"]).toISOString(), i["View Count"] ]);
             let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(r => r.map(field => `"${field}"`).join(",")).join("\n");
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
