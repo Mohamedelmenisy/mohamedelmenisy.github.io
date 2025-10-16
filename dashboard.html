@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
 <head>
   <style>
@@ -707,6 +707,69 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Improved colors for better visibility */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-container h3 {
+            color: var(--text-light);
+            border-bottom-color: var(--border-color);
+        }
+
+        /* Better text contrast */
+        .stat-value {
+            color: var(--text-light) !important;
+        }
+
+        .stat-label {
+            color: var(--text-color-muted);
+        }
+
+        /* Improved button styles */
+        .add-content-btn {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .add-content-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Better empty state styling */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-color-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-color-muted);
+        }
+
+        .empty-state h3 {
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            margin-bottom: 1.5rem;
+        }
 </style>
 
 </head>
@@ -1097,36 +1160,64 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     
     async function fetchDashboardData() {
-        const results = await Promise.allSettled([
-            supabase.from('v_recent_activity').select('*').limit(50),
-            supabase.from('v_overall_insights').select('*').single(),
-            supabase.from('v_growth_trends').select('*'),
-            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
-            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(),
-            supabase.from('v_user_insights').select('*').order('total_articles_viewed', { ascending: false }).limit(5)
-        ]);
-        
-        const [
-            activity, 
-            insights, 
-            growth, 
-            weeklyActivity,
-            feedbackKpis,
-            topUsers
-        ] = results.map(res => res.status === 'fulfilled' ? res.value.data : null);
+        try {
+            const results = await Promise.allSettled([
+                supabase.from('activity_log').select('*').limit(50),
+                supabase.from('cases').select('*'),
+                supabase.from('kb_feedback').select('*'),
+                supabase.from('users').select('*').limit(10)
+            ]);
 
-        if (results.some(res => res.status === 'rejected')) {
-            console.warn("One or more dashboard data queries failed.", results.filter(r => r.status === 'rejected').map(r => r.reason));
-            showToast('Some dashboard widgets could not be loaded.', 'error');
+            const activity = results[0].value?.data || [];
+            const articles = results[1].value?.data || [];
+            const feedback = results[2].value?.data || [];
+            const users = results[3].value?.data || [];
+
+            // Calculate real statistics from existing data
+            const totalArticles = articles.length;
+            const totalViews = activity.filter(act => act.action === 'viewed').length;
+            const totalEdits = activity.filter(act => act.action === 'updated').length;
+            const activeUsers = [...new Set(activity.map(act => act.user_id))].length;
+            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
+
+            return {
+                activityLog: activity,
+                overallInsights: {
+                    total_articles: totalArticles,
+                    total_views_all: totalViews,
+                    total_edits: totalEdits,
+                    active_users_this_week: activeUsers
+                },
+                feedbackKpis: {
+                    helpful_ratings: helpfulRatings,
+                    not_helpful_ratings: notHelpfulRatings
+                },
+                topUsers: users.map(user => ({
+                    user_name: user.name || user.email || 'Unknown User',
+                    total_articles_viewed: activity.filter(act => act.user_id === user.id && act.action === 'viewed').length
+                })).sort((a, b) => b.total_articles_viewed - a.total_articles_viewed).slice(0, 5)
+            };
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            return getFallbackDashboardData();
         }
+    }
 
+    function getFallbackDashboardData() {
         return {
-            activityLog: activity || [],
-            overallInsights: insights || {},
-            growthTrends: growth || [],
-            weeklyActivity: weeklyActivity || [],
-            feedbackKpis: feedbackKpis || {},
-            topUsers: topUsers || []
+            activityLog: [],
+            overallInsights: {
+                total_articles: 0,
+                total_views_all: 0,
+                total_edits: 0,
+                active_users_this_week: 0
+            },
+            feedbackKpis: {
+                helpful_ratings: 0,
+                not_helpful_ratings: 0
+            },
+            topUsers: []
         };
     }
 
@@ -1344,6 +1435,20 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         });
         
         navigationMenu.innerHTML = menuHTML;
+
+        // Add event listeners to sidebar links
+        setTimeout(() => {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    const sectionSlug = this.getAttribute('data-section-slug');
+                    if (sectionSlug === 'home') {
+                        displayDashboard();
+                    } else {
+                        displaySectionContent(sectionSlug);
+                    }
+                });
+            });
+        }, 100);
     }
     
     function highlightSidebarLink(sectionSlug) {
@@ -1389,8 +1494,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
         const actionsHTML = isAdmin ? `
             <div class="card-actions">
-                <button class="button" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit"><i class="fas fa-edit"></i></button>
-                <button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                <button class="button" onclick="event.stopPropagation(); openEditModal('${sectionData.id}', '${item.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="button button-danger" onclick="event.stopPropagation(); openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete"><i class="fas fa-trash-alt"></i></button>
             </div>` : '';
 
         return `
@@ -1627,7 +1732,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             },
             {
                 icon: 'fas fa-eye',
-                value: insights.total_views || 0,
+                value: insights.total_views_all || 0,
                 label: 'Total Views',
                 color: 'var(--secondary-accent)'
             },
@@ -1687,7 +1792,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             <div class="dashboard-main-grid">
                 <div class="chart-container">
                     <div class="chart-header">
-                        <h3><i class="fas fa-chart-line"></i> Activity Trends (Last 7 Days)</h3>
+                        <h3><i class="fas fa-chart-line"></i> Activity Trends</h3>
                         <div class="chart-actions">
                             <button class="button-secondary" onclick="refreshDashboardData()">
                                 <i class="fas fa-sync-alt"></i> Refresh
@@ -1702,23 +1807,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <div class="card">
                     <div id="topUsersContainer">
                         <!-- Top users will be populated by renderTopUsers -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="dashboard-section">
-                <div class="performance-metrics">
-                    <div class="metric">
-                        <span class="metric-value">85%</span>
-                        <span class="metric-label">Knowledge Areas Engagement</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">72%</span>
-                        <span class="metric-label">Partner Care Activity</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">15</span>
-                        <span class="metric-label">New Cases This Week</span>
                     </div>
                 </div>
             </div>
@@ -1750,35 +1838,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             <div class="dashboard-section">
                 <div id="recentActivityContainer">
                     <!-- Activity log will be populated by renderActivityLog -->
-                </div>
-            </div>
-
-            <div class="dashboard-section">
-                <h3 class="dashboard-section-title">
-                    <i class="fas fa-heartbeat"></i> System Health
-                </h3>
-                <div class="health-metrics">
-                    <div class="health-item">
-                        <i class="fas fa-database health-good"></i>
-                        <div>
-                            <div style="font-weight: 600;">Database</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">All systems operational</div>
-                        </div>
-                    </div>
-                    <div class="health-item">
-                        <i class="fas fa-server health-good"></i>
-                        <div>
-                            <div style="font-weight: 600;">API Services</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">Running smoothly</div>
-                        </div>
-                    </div>
-                    <div class="health-item">
-                        <i class="fas fa-cloud health-good"></i>
-                        <div>
-                            <div style="font-weight: 600;">Storage</div>
-                            <div style="font-size: 0.875rem; color: var(--text-muted);">85% capacity available</div>
-                        </div>
-                    </div>
                 </div>
             </div>
         `;
@@ -1952,11 +2011,12 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         
         if (section.items.length === 0) {
             sectionHTML = `
-                <div class="card">
+                <div class="empty-state">
+                    <i class="fas fa-folder-open"></i>
                     <h3>No Content Available</h3>
                     <p>This section doesn't have any content yet.</p>
                     ${isCurrentUserAdmin() ? `
-                        <button class="button" onclick="openAddContentModal('${section.id}')">
+                        <button class="add-content-btn" onclick="openAddContentModal('${section.id}')">
                             <i class="fas fa-plus"></i> Add Content
                         </button>
                     ` : ''}
@@ -1964,6 +2024,13 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             `;
         } else {
             sectionHTML = `
+                ${isCurrentUserAdmin() ? `
+                    <div style="text-align: left; margin-bottom: 1.5rem;">
+                        <button class="add-content-btn" onclick="openAddContentModal('${section.id}')">
+                            <i class="fas fa-plus"></i> Add Content to ${escapeHTML(section.name)}
+                        </button>
+                    </div>
+                ` : ''}
                 <div class="cards-grid">
                     ${section.items.map(item => renderItemCard(item, section)).join('')}
                 </div>
@@ -2206,6 +2273,10 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 showToast('Error deleting item', 'error');
             }
         };
+    };
+
+    window.openAddContentModal = function(sectionId) {
+        addContentModalOverlay.classList.remove('hidden');
     };
 
     window.refreshDashboardData = refreshDashboardData;
