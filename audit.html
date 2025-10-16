@@ -1053,7 +1053,7 @@
                 minute: "2-digit"
             }) : "-";
         };
-
+        
         const createFriendlyDiff = (oldValue, newValue) => {
             console.log("OLD VALUE:", oldValue);
             console.log("NEW VALUE:", newValue);
@@ -1145,6 +1145,11 @@
                     const tr = document.createElement("tr");
                     const actionIcon = actionIcons[item.action] ? `<i class="fas ${actionIcons[item.action]}"></i>` : "";
                     
+                    let detailsHtml = escapeHtml(item.details);
+                    if (item.action === 'Update' && item.old_record_data && item.record_data) {
+                        detailsHtml = createFriendlyDiff(item.old_record_data, item.record_data);
+                    }
+
                     tr.innerHTML = `
                         <td>${formatTime(item.timestamp)}</td>
                         <td>
@@ -1159,7 +1164,7 @@
                         <td class="case-cell">${escapeHtml(item.case)}</td>
                         <td>${escapeHtml(item.section)}</td>
                         <td><span class="badge ${item.action}">${actionIcon} ${item.action}</span></td>
-                        <td class="details-cell">${escapeHtml(item.details)}</td>
+                        <td class="details-cell">${detailsHtml}</td>
                         <td>
                             <button class="action-btn view-timeline-btn" data-case-id="${item.case_id}" title="View Timeline">
                                 <i class="fas fa-stream"></i>
@@ -1382,7 +1387,12 @@
                 if (data.length === 0) {
                     timelineBody.innerHTML = "<p>No history for this case.</p>";
                 } else {
-                    timelineBody.innerHTML = data.map(item => `
+                    timelineBody.innerHTML = data.map(item => {
+                        let detailsHtml = escapeHtml(item.details);
+                        if (item.action === 'Update' && item.old_record_data && item.record_data) {
+                            detailsHtml = createFriendlyDiff(item.old_record_data, item.record_data);
+                        }
+                        return `
                         <div class="timeline-item">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
@@ -1390,10 +1400,10 @@
                                 <div class="timeline-text">
                                     ${escapeHtml(item.action)} by <span class="timeline-user">${escapeHtml(item.user || item.email)}</span>
                                 </div>
-                                <div class="timeline-text">${escapeHtml(item.details)}</div>
+                                <div class="timeline-text">${detailsHtml}</div>
                             </div>
                         </div>
-                    `).join("");
+                    `}).join("");
                 }
 
                 modal.classList.add("show");
