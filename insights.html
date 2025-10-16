@@ -175,6 +175,14 @@
         .status-viewed { background: rgba(0, 182, 155, 0.2); color: var(--success); }
         .status-downloaded { background: rgba(63, 140, 255, 0.2); color: var(--secondary-accent); }
         .status-searched { background: rgba(255, 196, 84, 0.2); color: var(--warning); }
+        .view-count-badge { 
+            background: var(--gradient-primary); 
+            color: white; 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            font-size: 11px; 
+            font-weight: 700;
+        }
         .table-container { overflow-x: auto; }
         .skeleton-loader .skeleton-bar { width: 90%; height: 20px; background-color: var(--border-color); border-radius: 4px; opacity: 0.5; animation: shimmer 1.5s infinite linear; }
         @keyframes shimmer { 0% { background-color: var(--border-color); } 50% { background-color: #3f4452; } 100% { background-color: var(--border-color); } }
@@ -278,14 +286,24 @@
             <div class="timeline-container" id="timeline-container"></div>
             <div class="table-container">
                 <table class="activity-table">
-                    <thead><tr><th>User</th><th>Role</th><th>Action</th><th>Department</th><th>Section</th><th>Case</th><th>Time</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                            <th>Department</th>
+                            <th>Section</th>
+                            <th>Case</th>
+                            <th>First View</th>
+                            <th>Last View</th>
+                            <th>Views</th>
+                        </tr>
+                    </thead>
                     <tbody id="activity-table-body"></tbody>
                     <tbody id="skeleton-body" class="skeleton-loader">
-                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
-                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
-                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
-                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
-                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
+                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
+                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
+                        <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -367,7 +385,7 @@
 
                 if (error) throw error;
                 
-                // تحويل البيانات لتتناسب مع الكود
+                // تحويل البيانات لتتناسب مع النظام الجديد
                 allActivity = (data || []).map(item => ({
                     "User": item.User || 'Unknown User',
                     "Role": item.Role || 'user',
@@ -375,8 +393,11 @@
                     "Department": item.Department || 'N/A',
                     "Section": item.Section || 'N/A',
                     "Case": item.Case || 'Unknown Case',
-                    "Time": item["Last View"] || new Date(),
-                    "User Email": item["User Email"] || ''
+                    "First View": item["First View"] || new Date(),
+                    "Last View": item["Last View"] || new Date(),
+                    "View Count": item["View Count"] || 1,
+                    "User Email": item["User Email"] || '',
+                    "Time": item["Last View"] || new Date() // للتوافق مع الكود القديم
                 }));
                 
                 console.log("✅ البيانات المحملة:", allActivity.length, "سجل");
@@ -386,7 +407,7 @@
             } catch (error) {
                 console.error("Error fetching data:", error);
                 showToast("Failed to load activity data.", "danger");
-                UIElements.activityTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem;">Error loading data.</td></tr>`;
+                UIElements.activityTableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem;">Error loading data.</td></tr>`;
             } finally {
                 showSkeleton(false);
             }
@@ -411,7 +432,7 @@
             if (toDate) toDate.setHours(23, 59, 59, 999);
 
             filteredActivity = allActivity.filter(item => {
-                const itemDate = new Date(item.Time);
+                const itemDate = new Date(item["Last View"]);
                 const userMatch = !searchTerm || 
                     (item.User || '').toLowerCase().includes(searchTerm) ||
                     (item["User Email"] || '').toLowerCase().includes(searchTerm);
@@ -436,11 +457,11 @@
         }
 
         function updateKpiCards() {
-            UIElements.kpiTotalActions.textContent = filteredActivity.length.toLocaleString();
+            UIElements.kpiTotalActions.textContent = filteredActivity.reduce((sum, item) => sum + (item["View Count"] || 1), 0).toLocaleString();
             UIElements.kpiTotalDocs.textContent = [...new Set(filteredActivity.map(i => i.Case))].length.toLocaleString();
 
             const deptCounts = filteredActivity.reduce((acc, item) => {
-                if(item.Department) acc[item.Department] = (acc[item.Department] || 0) + 1;
+                if(item.Department) acc[item.Department] = (acc[item.Department] || 0) + (item["View Count"] || 1);
                 return acc;
             }, {});
             const topDept = Object.entries(deptCounts).sort((a, b) => b[1] - a[1])[0];
@@ -448,7 +469,7 @@
             
             const today = new Date().toLocaleDateString();
             const activeToday = new Set(allActivity
-                .filter(i => new Date(i.Time).toLocaleDateString() === today)
+                .filter(i => new Date(i["Last View"]).toLocaleDateString() === today)
                 .map(i => i["User Email"])).size;
             UIElements.kpiActiveUsers.textContent = activeToday.toLocaleString();
         }
@@ -458,7 +479,7 @@
             tableBody.innerHTML = '';
             
             if (filteredActivity.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem;">No matching records found.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem;">No matching records found.</td></tr>`;
                 return;
             }
 
@@ -471,6 +492,7 @@
                 const initials = (item.User || 'U').split(' ').map(n => n[0]).join('').substring(0, 2);
                 const roleClass = `role-${(item.Role || 'user').toLowerCase()}`;
                 const statusClass = `status-${(item.Action || 'viewed').toLowerCase()}`;
+                
                 tr.innerHTML = `
                     <td>
                         <div class="user-info">
@@ -486,7 +508,9 @@
                     <td>${escapeHtml(item.Department)}</td>
                     <td>${escapeHtml(item.Section)}</td>
                     <td>${escapeHtml(item.Case)}</td>
-                    <td>${new Date(item.Time).toLocaleString()}</td>
+                    <td>${new Date(item["First View"]).toLocaleDateString()}</td>
+                    <td>${new Date(item["Last View"]).toLocaleString()}</td>
+                    <td><span class="view-count-badge">${item["View Count"] || 1}</span></td>
                 `;
                 tableBody.appendChild(tr);
             });
@@ -508,15 +532,17 @@
                 const action = item.Action || 'viewed';
                 const caseName = item.Case || 'Unknown Case';
                 const section = item.Section || 'Unknown Section';
+                const viewCount = item["View Count"] || 1;
                 
                 timelineItem.innerHTML = `
                     <div class="timeline-dot"></div>
                     <div class="timeline-content">
-                        <div class="timeline-time">${new Date(item.Time).toLocaleString()}</div>
+                        <div class="timeline-time">${new Date(item["Last View"]).toLocaleString()}</div>
                         <div class="timeline-text">
                             <span class="timeline-user">${escapeHtml(user)}</span> 
                             ${escapeHtml(action)} the case "${escapeHtml(caseName)}"
                             in ${escapeHtml(section)} section.
+                            ${viewCount > 1 ? `<span style="color: var(--primary-accent-light); font-weight: 600;">(${viewCount} views)</span>` : ''}
                         </div>
                     </div>
                 `;
@@ -531,11 +557,7 @@
             UIElements.nextBtn.disabled = currentPage >= totalPages;
         }
 
-        function createChart(id, type, data, options) {
-            if (charts[id]) charts[id].destroy();
-            const ctx = document.getElementById(id).getContext('2d');
-            charts[id] = new Chart(ctx, { type, data, options });
-        }
+        // باقي الدوال (renderCharts, exportToCsv, checkAccess) تبقى كما هي...
 
         async function renderCharts() {
             const chartColors = {
@@ -619,8 +641,13 @@
 
         function exportToCsv() {
             if (filteredActivity.length === 0) return showToast("No data to export.", "warning");
-            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "Time"];
-            const rows = filteredActivity.map(i => [ i.User, i.Role, i.Action, i.Department, i.Section, i.Case, new Date(i.Time).toISOString() ]);
+            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "First View", "Last View", "View Count"];
+            const rows = filteredActivity.map(i => [ 
+                i.User, i.Role, i.Action, i.Department, i.Section, i.Case, 
+                new Date(i["First View"]).toISOString(), 
+                new Date(i["Last View"]).toISOString(), 
+                i["View Count"] 
+            ]);
             let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(r => r.map(field => `"${field}"`).join(",")).join("\n");
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
