@@ -278,7 +278,7 @@
             <div class="timeline-container" id="timeline-container"></div>
             <div class="table-container">
                 <table class="activity-table">
-                    <thead><tr><th>User</th><th>Role</th><th>Action</th><th>Department</th><th>Section</th><th>Case</th><th>First View</th><th>Last View</th><th>View Count</th></tr></thead>
+                    <thead><tr><th>User</th><th>Role</th><th>Action</th><th>Department</th><th>Section</th><th>Case</th><th>Time</th></tr></thead>
                     <tbody id="activity-table-body"></tbody>
                     <tbody id="skeleton-body" class="skeleton-loader">
                         <tr><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
@@ -338,9 +338,15 @@
             UIElements.activityTableBody.style.display = show ? 'none' : 'table-row-group';
         };
 
-        const escapeHtml = (unsafe) => unsafe
-             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        const escapeHtml = (unsafe) => {
+            if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        };
 
         const showToast = (message, type = 'info') => {
             const toast = document.getElementById('toast');
@@ -360,7 +366,21 @@
                     .order('Last View', { ascending: false });
 
                 if (error) throw error;
-                allActivity = data || [];
+                
+                // تحويل البيانات لتتناسب مع الكود
+                allActivity = (data || []).map(item => ({
+                    "User": item.User || 'Unknown User',
+                    "Role": item.Role || 'user',
+                    "Action": item.Action || 'viewed',
+                    "Department": item.Department || 'N/A',
+                    "Section": item.Section || 'N/A',
+                    "Case": item.Case || 'Unknown Case',
+                    "Time": item["Last View"] || new Date(),
+                    "User Email": item["User Email"] || ''
+                }));
+                
+                console.log("✅ البيانات المحملة:", allActivity.length, "سجل");
+                
                 populateFilters();
                 applyFiltersAndRender();
             } catch (error) {
@@ -391,7 +411,7 @@
             if (toDate) toDate.setHours(23, 59, 59, 999);
 
             filteredActivity = allActivity.filter(item => {
-                const itemDate = new Date(item['Last View']);
+                const itemDate = new Date(item.Time);
                 const userMatch = !searchTerm || 
                     (item.User || '').toLowerCase().includes(searchTerm) ||
                     (item["User Email"] || '').toLowerCase().includes(searchTerm);
@@ -448,25 +468,25 @@
 
             pageData.forEach(item => {
                 const tr = document.createElement('tr');
-                const initials = (item.User || 'U').split(' ').map(n => n[0]).join('');
+                const initials = (item.User || 'U').split(' ').map(n => n[0]).join('').substring(0, 2);
                 const roleClass = `role-${(item.Role || 'user').toLowerCase()}`;
-                const statusClass = `status-${(item.Action || '').toLowerCase()}`;
+                const statusClass = `status-${(item.Action || 'viewed').toLowerCase()}`;
                 tr.innerHTML = `
                     <td>
                         <div class="user-info">
                             <div class="user-avatar">${escapeHtml(initials)}</div>
                             <div>
-                                <div class="user-name">${escapeHtml(item.User || 'Unknown User')}</div>
-                                <div class="user-email">${escapeHtml(item["User Email"] || '')}</div>
+                                <div class="user-name">${escapeHtml(item.User)}</div>
+                                <div class="user-email">${escapeHtml(item["User Email"])}</div>
                             </div>
                         </div>
                     </td>
-                    <td><span class="role-badge ${roleClass}">${escapeHtml(item.Role || 'User')}</span></td>
-                    <td><span class="status-badge ${statusClass}">${escapeHtml(item.Action || 'N/A')}</span></td>
-                    <td>${escapeHtml(item.Department || 'N/A')}</td>
-                    <td>${escapeHtml(item.Section || 'N/A')}</td>
-                    <td>${escapeHtml(item.Case || 'N/A')}</td>
-                    <td>${new Date(item['Last View']).toLocaleString()}</td>
+                    <td><span class="role-badge ${roleClass}">${escapeHtml(item.Role)}</span></td>
+                    <td><span class="status-badge ${statusClass}">${escapeHtml(item.Action)}</span></td>
+                    <td>${escapeHtml(item.Department)}</td>
+                    <td>${escapeHtml(item.Section)}</td>
+                    <td>${escapeHtml(item.Case)}</td>
+                    <td>${new Date(item.Time).toLocaleString()}</td>
                 `;
                 tableBody.appendChild(tr);
             });
@@ -483,14 +503,20 @@
             recentItems.forEach(item => {
                 const timelineItem = document.createElement('div');
                 timelineItem.className = 'timeline-item';
+                
+                const user = item.User || 'Unknown User';
+                const action = item.Action || 'viewed';
+                const caseName = item.Case || 'Unknown Case';
+                const section = item.Section || 'Unknown Section';
+                
                 timelineItem.innerHTML = `
                     <div class="timeline-dot"></div>
                     <div class="timeline-content">
-                        <div class="timeline-time">${new Date(item['Last View']).toLocaleString()}</div>
+                        <div class="timeline-time">${new Date(item.Time).toLocaleString()}</div>
                         <div class="timeline-text">
-                            <span class="timeline-user">${escapeHtml(item.User)}</span> 
-                            ${escapeHtml(item.Action)} the case "${escapeHtml(item.Case)}"
-                            in ${escapeHtml(item.Section)} section.
+                            <span class="timeline-user">${escapeHtml(user)}</span> 
+                            ${escapeHtml(action)} the case "${escapeHtml(caseName)}"
+                            in ${escapeHtml(section)} section.
                         </div>
                     </div>
                 `;
@@ -593,8 +619,8 @@
 
         function exportToCsv() {
             if (filteredActivity.length === 0) return showToast("No data to export.", "warning");
-            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "First View", "Last View", "View Count"];
-            const rows = filteredActivity.map(i => [ i.User, i.Role, i.Action, i.Department, i.Section, i.Case, new Date(i["First View"]).toISOString(), new Date(i["Last View"]).toISOString(), i["View Count"] ]);
+            const headers = ["User", "Role", "Action", "Department", "Section", "Case", "Time"];
+            const rows = filteredActivity.map(i => [ i.User, i.Role, i.Action, i.Department, i.Section, i.Case, new Date(i.Time).toISOString() ]);
             let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(r => r.map(field => `"${field}"`).join(",")).join("\n");
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
