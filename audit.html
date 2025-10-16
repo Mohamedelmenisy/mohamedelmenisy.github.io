@@ -962,7 +962,8 @@
                             <th>Section</th>
                             <th>Action</th>
                             <th>Details</th>
-                            <th>View</th>
+                            <th>Changes</th>
+                            <th>History</th>
                         </tr>
                     </thead>
                     <tbody id="auditBody"></tbody>
@@ -1048,7 +1049,7 @@
                 applyFiltersAndRender();
             } catch (error) {
                 console.error("Error fetching data:", error);
-                document.getElementById("auditBody").innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load data.</td></tr>';
+                document.getElementById("auditBody").innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load data.</td></tr>';
             }
         }
 
@@ -1070,38 +1071,40 @@
             const endIndex = startIndex + pageSize;
             const pageData = filteredStore.slice(startIndex, endIndex);
 
-            const actionIcons = {
-                Create: "fa-plus",
-                Update: "fa-pencil-alt", 
-                Delete: "fa-trash"
-            };
-
             tableBody.innerHTML = "";
 
             if (filteredStore.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">No records match the filters.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">No records match the filters.</td></tr>';
             } else {
                 pageData.forEach(item => {
                     const tr = document.createElement("tr");
-                    const actionIcon = actionIcons[item.action] ? `<i class="fas ${actionIcons[item.action]}"></i>` : "";
+                    
+                    const action = (item.action || '').toUpperCase();
+                    const changesButtonHtml = action.includes('UPDATE') ? 
+                        `<button class="action-btn view-diff-btn" data-history-id="${item.id}" title="View Content Changes">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>` 
+                        : 
+                        `<span>—</span>`;
                     
                     tr.innerHTML = `
                         <td>${formatTime(item.timestamp)}</td>
                         <td>
                             <div class="user-info">
-                                <div class="user-avatar">${(item.user || "—").charAt(0)}</div>
+                                <div class="user-avatar">${(item.user || '?').charAt(0).toUpperCase()}</div>
                                 <div class="user-details">
-                                    <div class="user-name">${escapeHtml(item.user || "—")}</div>
+                                    <div class="user-name">${escapeHtml(item.user)}</div>
                                     <div class="user-email">${escapeHtml(item.email)}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="case-cell">${escapeHtml(item.case)}</td>
+                        <td>${escapeHtml(item.case)}</td>
                         <td>${escapeHtml(item.section)}</td>
-                        <td><span class="badge ${item.action}">${actionIcon} ${item.action}</span></td>
-                        <td class="details-cell">${escapeHtml(item.details)}</td>
+                        <td><span class="badge ${item.action}">${item.action}</span></td>
+                        <td>${escapeHtml(item.details)}</td>
+                        <td>${changesButtonHtml}</td>
                         <td>
-                            <button class="action-btn view-timeline-btn" data-case-id="${item.case_id}" title="View Timeline">
+                            <button class="action-btn view-timeline-btn" data-case-id="${item.case_id}" title="View Full History">
                                 <i class="fas fa-stream"></i>
                             </button>
                         </td>
