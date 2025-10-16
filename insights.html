@@ -557,8 +557,136 @@
             UIElements.nextBtn.disabled = currentPage >= totalPages;
         }
 
-        // باقي الدوال (renderCharts, exportToCsv, checkAccess) تبقى كما هي...
+function createChart(id, type, data, options) {
+    // إذا الشارت موجود من قبل، نحذفه
+    if (charts[id]) {
+        charts[id].destroy();
+    }
+    
+    const ctx = document.getElementById(id).getContext('2d');
+    charts[id] = new Chart(ctx, {
+        type: type,
+        data: data,
+        options: options
+    });
+}
 
+// ثم تبقى الدالة renderCharts كما هي...
+async function renderCharts() {
+    const chartColors = {
+        primary: 'rgba(108, 93, 211, 0.8)', 
+        primaryLight: 'rgba(108, 93, 211, 0.4)',
+        secondary: 'rgba(63, 140, 255, 0.8)', 
+        success: 'rgba(0, 182, 155, 0.8)',
+        warning: 'rgba(255, 196, 84, 0.8)', 
+        textMuted: '#9CA3B3', 
+        bgCard: '#1A1C23'
+    };
+    
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = chartColors.textMuted;
+    const baseOptions = { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: {
+                    color: chartColors.textMuted,
+                    font: {
+                        family: "'Inter', sans-serif"
+                    }
+                }
+            }
+        }
+    };
+
+    // Chart 1: Activity by Department (Doughnut)
+    try {
+        const { data: deptData } = await supabase
+            .from('v_department_activity')
+            .select('*');
+        
+        if (deptData && deptData.length > 0) {
+            createChart('activityByCategoryChart', 'doughnut', {
+                labels: deptData.map(d => d.department),
+                datasets: [{ 
+                    data: deptData.map(d => d.total_views), 
+                    backgroundColor: [chartColors.primary, chartColors.secondary, chartColors.success, chartColors.warning], 
+                    borderColor: chartColors.bgCard, 
+                    borderWidth: 4 
+                }]
+            }, { 
+                ...baseOptions, 
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            });
+        } else {
+            console.log("No department data available");
+        }
+    } catch (error) {
+        console.error("Error loading department chart:", error);
+    }
+
+    // Chart 2: Top Viewed Cases (Bar)
+    try {
+        const { data: topCases } = await supabase
+            .from('v_top_viewed_cases_fixed')
+            .select('*')
+            .limit(5);
+        
+        if (topCases && topCases.length > 0) {
+            createChart('topViewedArticlesChart', 'bar', {
+                labels: topCases.map(d => d.Case),
+                datasets: [{ 
+                    label: 'Views', 
+                    data: topCases.map(d => d["View Count"]), 
+                    backgroundColor: chartColors.primaryLight, 
+                    borderColor: chartColors.primary, 
+                    borderWidth: 2, 
+                    borderRadius: 8 
+                }]
+            }, { 
+                ...baseOptions, 
+                indexAxis: 'y', 
+                plugins: { legend: { display: false } } 
+            });
+        } else {
+            console.log("No top cases data available");
+        }
+    } catch (error) {
+        console.error("Error loading top cases chart:", error);
+    }
+    
+    // Chart 3: Daily Activity (Line)
+    try {
+        const { data: dailyData } = await supabase
+            .from('v_daily_activity')
+            .select('*')
+            .order('activity_date', { ascending: true });
+        
+        if (dailyData && dailyData.length > 0) {
+            createChart('dailyActivityChart', 'line', {
+                labels: dailyData.map(d => new Date(d.activity_date).toLocaleDateString()),
+                datasets: [{ 
+                    label: 'Actions', 
+                    data: dailyData.map(d => d.total_views), 
+                    borderColor: chartColors.primary, 
+                    backgroundColor: chartColors.primaryLight, 
+                    tension: 0.4, 
+                    fill: true 
+                }]
+            }, baseOptions);
+        } else {
+            console.log("No daily activity data available");
+        }
+    } catch (error) {
+        console.error("Error loading daily activity chart:", error);
+    }
+}
         async function renderCharts() {
             const chartColors = {
                 primary: 'rgba(108, 93, 211, 0.8)', primaryLight: 'rgba(108, 93, 211, 0.4)',
