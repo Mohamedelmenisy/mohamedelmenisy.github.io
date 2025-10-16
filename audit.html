@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- 1. إضافة مكتبة jsdiff -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
     <style>
         :root {
             --bg-dark: #0F1015;
@@ -294,8 +296,13 @@
             font-size: 14px;
         }
         
+        .filter-group.date-filter {
+             cursor: pointer;
+        }
+
         .filter-group.date-filter input[type="date"] {
             padding-right: 3rem;
+            pointer-events: none; /* Make input itself not clickable */
         }
 
         .filter-group.date-filter::after {
@@ -705,12 +712,14 @@
             border-radius: var(--border-radius);
             padding: 24px;
             width: 90%;
-            max-width: 700px;
+            max-width: 800px; /* Increased width for better diff view */
             max-height: 80vh;
             overflow-y: auto;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-hover);
             animation: modal-fade-in .3s ease-out forwards;
+            display: flex;
+            flex-direction: column;
         }
 
         @keyframes modal-fade-in {
@@ -731,6 +740,7 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 16px;
             margin-bottom: 20px;
+            flex-shrink: 0;
         }
 
         .modal h2 {
@@ -751,6 +761,29 @@
         .modal .close-btn:hover {
             color: var(--primary-accent);
         }
+
+        .modal-body {
+            overflow-y: auto;
+            word-break: break-word;
+            line-height: 1.8;
+        }
+
+        .diff-body del {
+            background-color: rgba(255, 106, 85, 0.2);
+            color: var(--danger-light);
+            text-decoration: none;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
+        .diff-body ins {
+            background-color: rgba(0, 182, 155, 0.2);
+            color: var(--success-light);
+            text-decoration: none;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
 
         .access-restricted-container {
             display: none;
@@ -1000,7 +1033,18 @@
                 <h2 id="timelineCaseTitle">Case Timeline</h2>
                 <button class="close-btn" data-close-modal>&times;</button>
             </div>
-            <div id="timelineBody" class="timeline"></div>
+            <div id="timelineBody" class="modal-body timeline"></div>
+        </div>
+    </div>
+    
+    <!-- 2. نافذة عرض التغييرات (Modal) -->
+    <div id="diffModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Content Changes</h2>
+                <button class="close-btn" data-close-modal>&times;</button>
+            </div>
+            <div id="diffBody" class="modal-body diff-body"></div>
         </div>
     </div>
 
@@ -1012,6 +1056,78 @@
         let pageSize = 10;
         let currentPage = 1;
         let charts = {};
+        
+        // 4. دوال الجافاسكريبت المفقودة
+        /**
+         * Removes HTML tags from a string.
+         * @param {string} html The HTML string.
+         * @returns {string} The plain text content.
+         */
+        const stripHtml = (html) => {
+           if (!html) return "";
+           const doc = new DOMParser().parseFromString(html, 'text/html');
+           return doc.body.textContent || "";
+        };
+
+        /**
+         * Creates a user-friendly visual diff of two strings.
+         * @param {string} oldValue The original value.
+         * @param {string} newValue The new value.
+         * @returns {string} An HTML string representing the diff.
+         */
+        const createFriendlyDiff = (oldValue, newValue) => {
+            // 5. معالجة الأخطاء للقيم الفارغة
+            const oldText = stripHtml(oldValue);
+            const newText = stripHtml(newValue);
+
+            if (oldText === newText) {
+                return '<p style="color: var(--text-muted);">No textual changes detected.</p>';
+            }
+
+            const diff = Diff.diffWords(oldText, newText);
+            let html = '';
+            diff.forEach(part => {
+                const tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
+                // Using escapeHtml to prevent XSS from the text content itself
+                html += `<${tag}>${escapeHtml(part.value)}</${tag}>`;
+            });
+            return html;
+        };
+
+        /**
+         * Fetches diff data for a specific history ID and displays it in a modal.
+         * @param {string} historyId The ID of the audit trail record.
+         */
+        const showDiff = async (historyId) => {
+            const modal = document.getElementById("diffModal");
+            const diffBody = document.getElementById("diffBody");
+            
+            diffBody.innerHTML = '<p>Loading changes...</p>';
+            modal.classList.add("show");
+
+            try {
+                // 3. سحب البيانات من v_case_history_audit
+                const { data, error } = await supabase
+                    .from('v_case_history_audit')
+                    .select('old_value, new_value')
+                    .eq('id', historyId)
+                    .single();
+
+                if (error) throw error;
+                if (!data) {
+                    diffBody.innerHTML = '<p>Could not find the record.</p>';
+                    return;
+                }
+
+                const diffHtml = createFriendlyDiff(JSON.stringify(data.old_value), JSON.stringify(data.new_value));
+                diffBody.innerHTML = diffHtml;
+
+            } catch (error) {
+                console.error("Error fetching diff data:", error);
+                diffBody.innerHTML = '<p style="color: var(--danger-light);">Failed to load changes. Please try again.</p>';
+            }
+        };
+
 
         const escapeHtml = (unsafe) => {
             return String(unsafe || "").replace(/[&<>"']/g, (char) => {
@@ -1085,7 +1201,7 @@
                             <i class="fas fa-exchange-alt"></i>
                         </button>` 
                         : 
-                        `<span>—</span>`;
+                        `<span style="color: var(--text-muted);">—</span>`;
                     
                     tr.innerHTML = `
                         <td>${formatTime(item.timestamp)}</td>
@@ -1376,8 +1492,6 @@
 
                 if (error) throw new Error("Could not verify user role.");
                 if (!userData) throw new Error("User profile not found.");
-
-                console.log("User Role Fetched:", userData.role);
                 
                 if (userData.role?.trim().toLowerCase() !== "admin") {
                     throw new Error("Access denied. Admin role required.");
@@ -1405,6 +1519,22 @@
 
             ["searchInput", "userSearchInput", "sectionFilter", "actionFilter", "startDate", "endDate"].forEach(id => {
                 document.getElementById(id).addEventListener("input", applyFiltersAndRender);
+            });
+            
+            // 8. تحسين خانة الفلترة (التاريخ)
+            document.querySelectorAll('.date-filter').forEach(filterGroup => {
+                filterGroup.addEventListener('click', () => {
+                    const input = filterGroup.querySelector('input[type="date"]');
+                    if (input) {
+                        try {
+                            input.showPicker();
+                        } catch (e) {
+                            // Fallback for browsers that do not support showPicker()
+                            console.error("showPicker() is not supported.", e);
+                            input.focus(); 
+                        }
+                    }
+                });
             });
 
             document.getElementById("clearBtn").addEventListener("click", () => {
@@ -1459,14 +1589,22 @@
                 showToast("CSV exported successfully.", "success");
             });
 
+            // 6. تفعيل زر "Changes" مع بقية الأزرار
             document.addEventListener("click", (event) => {
                 const timelineBtn = event.target.closest(".view-timeline-btn");
                 if (timelineBtn) {
                     showTimeline(timelineBtn.dataset.caseId);
+                    return;
                 }
 
-                if (event.target.closest(".close-btn") || event.target.matches(".modal")) {
-                    document.getElementById("timelineModal").classList.remove("show");
+                const diffBtn = event.target.closest(".view-diff-btn");
+                if (diffBtn) {
+                    showDiff(diffBtn.dataset.historyId);
+                    return;
+                }
+
+                if (event.target.closest("[data-close-modal]") || event.target.matches(".modal")) {
+                    document.querySelectorAll(".modal").forEach(modal => modal.classList.remove("show"));
                 }
             });
 
