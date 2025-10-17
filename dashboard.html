@@ -1202,18 +1202,25 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     
     async function fetchDashboardData() {
         try {
-            // استعلام أفضل علشان نجيب بيانات المستخدمين مع الـ activity
+            console.log('Fetching dashboard data...');
+            
+            // نجيب البيانات منفصلة ونتعامل معاهم يدوي
             const { data: activity, error: activityError } = await supabase
                 .from('activity_log')
-                .select(`
-                    *,
-                    users!inner (name, full_name, username, email)
-                `)
+                .select('*')
                 .limit(100);
+
+            const { data: users, error: usersError } = await supabase
+                .from('users')
+                .select('id, name, full_name, username, email, role');
 
             if (activityError) {
                 console.error('Error fetching activity:', activityError);
-                throw activityError;
+                // نكمل عادي علشان مشكلة الـ activity مش توقف كل حاجة
+            }
+
+            if (usersError) {
+                console.error('Error fetching users:', usersError);
             }
 
             const results = await Promise.allSettled([
@@ -1226,35 +1233,46 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
             // حساب الإحصائيات الأساسية
             const totalArticles = articles.length;
-            const totalViews = activity.filter(act => act.action === 'viewed').length;
-            const totalEdits = activity.filter(act => act.action === 'updated').length;
-            const activeUsers = [...new Set(activity.map(act => act.user_id))].length;
+            const totalViews = (activity || []).filter(act => act.action === 'viewed').length;
+            const totalEdits = (activity || []).filter(act => act.action === 'updated').length;
+            const activeUsers = [...new Set((activity || []).map(act => act.user_id))].length;
             const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
             const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
 
-            // MOST ACTIVE USERS - الإصلاح النهائي
+            console.log('Activity data:', activity);
+            console.log('Users data:', users);
+
+            // MOST ACTIVE USERS - الطريقة اليدوية الآمنة
             const userStats = {};
             
-            activity.forEach(act => {
-                if (act.action === 'viewed' && act.users) {
-                    const userId = act.user_id;
-                    if (!userStats[userId]) {
-                        userStats[userId] = {
-                            user_id: userId,
-                            user_name: act.users.name || act.users.full_name || act.users.username || act.users.email || `User ${userId.substring(0, 8)}`,
-                            total_articles_viewed: 0
-                        };
+            if (activity && users) {
+                activity.forEach(act => {
+                    if (act.action === 'viewed' && act.user_id) {
+                        const userId = act.user_id;
+                        if (!userStats[userId]) {
+                            // البحث عن المستخدم في مصفوفة users
+                            const user = users.find(u => u.id === userId);
+                            console.log(`Found user for ${userId}:`, user);
+                            
+                            userStats[userId] = {
+                                user_id: userId,
+                                user_name: user ? (user.name || user.full_name || user.username || user.email || `User ${userId.substring(0, 8)}`) : `User ${userId.substring(0, 8)}`,
+                                total_articles_viewed: 0
+                            };
+                        }
+                        userStats[userId].total_articles_viewed++;
                     }
-                    userStats[userId].total_articles_viewed++;
-                }
-            });
+                });
+            }
 
             const topUsers = Object.values(userStats)
                 .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
                 .slice(0, 5);
 
+            console.log('Final topUsers:', topUsers);
+
             return {
-                activityLog: activity,
+                activityLog: activity || [],
                 overallInsights: {
                     total_articles: totalArticles,
                     total_views_all: totalViews,
