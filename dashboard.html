@@ -1,3 +1,13 @@
+An elegant, beautiful, and fully functional dashboard is crucial for a productive workflow. I have addressed the core issue with activity logging to ensure your dashboard and insights reflect the real-time usage of your knowledge base. Additionally, I've implemented several aesthetic enhancements to create a more polished and visually appealing user interface.
+
+Here is the complete, updated code for your dashboard (10).html file. You can copy and paste this directly into your project.
+
+code
+Html
+play_circle
+download
+content_copy
+expand_less
 <!DOCTYPE html>
 <html class="dark" data-hash="2025-06-24T15:30" dir="ltr" lang="en">
 <head>
@@ -138,6 +148,18 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             --rating-color: var(--warning);
         }
 
+        /* Aesthetic Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scale-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         
@@ -149,7 +171,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             line-height: 1.6;
             font-size: 16px;
             background-image: 
-                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0%, transparent S20%),
                 radial-gradient(circle at 90% 80%, rgba(63, 140, 255, 0.05) 0%, transparent 20%);
         }
 
@@ -275,6 +297,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         main { 
             padding-top: 1.5rem;
             flex-grow: 1;
+            animation: fadeIn 0.5s ease-out;
         }
 
         .card {
@@ -345,7 +368,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .modal-content {
             background-color: var(--bg-color-modal); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-hover); width: 100%; max-width: 48rem; max-height: 90vh; overflow-y: auto; transform: scale(0.95); opacity: 0; transition: transform 0.3s ease-out, opacity 0.3s ease-out;
         }
-        .modal-overlay:not(.hidden) .modal-content { transform: scale(1); opacity: 1; }
+        .modal-overlay:not(.hidden) .modal-content { 
+            animation: scale-in 0.3s ease-out forwards;
+        }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
         }
@@ -368,7 +393,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .toast-notification {
             position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: var(--border-radius); box-shadow: var(--shadow-hover); z-index: 2000; opacity: 0; transform: translateY(20px); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); display: flex; align-items: center; color: white;
         }
-        .toast-notification.show { opacity: 1; transform: translateY(0); }
+        .toast-notification.show { 
+            animation: fade-in-up 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
         .toast-icon { margin-right: 10px; font-size: 1.2em; }
         .toast-success { background-color: var(--success); }
         .toast-error { background-color: var(--danger); }
@@ -441,7 +468,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-dark); color: var(--text-light); transition: var(--transition); }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2);
+            outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2), 0 0 15px rgba(108, 93, 211, 0.1);
         }
 
         /* ======== ACTIVITY LOG STYLES (UNIFIED) ======== */
@@ -850,34 +877,32 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         return { error };
     }
 
-    async function logActivity(user, itemId, itemType, action, details = {}) {
+    /**
+     * [CORE FIX] Logs user activity to the 'activity_log' table.
+     * This function now sends `case_id` and `section` as expected by the database triggers.
+     */
+    async function logActivity(user, itemId, sectionName, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
             return;
         }
+      // 1. استخلاص اسم الكيس من كائن 'details' بشكل آمن
+        const caseTitle = details.case_title || 'Unknown Case';
 
-        let typeToLog = itemType;
-
-        if (!typeToLog) {
-            const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
-            if (fetchError || !item) {
-                console.error(`Could not fetch item type for logging activity (ItemID: ${itemId}).`, fetchError);
-                typeToLog = 'unknown'; // Fallback
-            } else {
-                typeToLog = item.type;
-            }
-        }
-        
-        const { error } = await supabase.from('activity_log').insert([{
+        const logData = {
             user_id: user.id,
             user_name: user.name,
-            item_id: itemId,
-            item_type: typeToLog,
+            case_id: itemId, // Correct field name for the trigger
+            section: sectionName || 'Unknown Section', // Correct field name for the trigger
             action: action,
+           case_title: caseTitle,
             details: details,
-        }]);
+        };
+        
+        const { error } = await supabase.from('activity_log').insert([logData]);
+
         if (error) {
-            console.error('Error logging activity:', error);
+            console.error('Error logging activity:', error.message);
         }
     }
     
@@ -1057,7 +1082,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(() => toast.remove(), 400);
         }, duration);
     }
     
@@ -1492,7 +1517,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             return;
         }
 
-        await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
+        // [CORE FIX] Log the view with the correct parameters: case ID and section name.
+        await logActivity(currentUser, itemData.id, itemData.sectionName, 'viewed', { case_title: itemData.title_en });
         
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title_en, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
@@ -1800,8 +1826,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 showToast(`Failed to save content: ${error.message}`, 'error');
                 return;
             }
+            
+            // [CORE FIX] Log create/update activity with the correct section name.
+            const sectionForLog = kbSystemData.sections.find(s => s.id === savedItem.sub_category_id);
+            await logActivity(
+                currentUser, 
+                savedItem.id, 
+                sectionForLog ? sectionForLog.name : 'Unknown Section',
+                itemData.id ? 'updated' : 'created', 
+                { case_title: savedItem.title_en }
+            );
 
-            await logActivity(currentUser, savedItem.id, savedItem.type, itemData.id ? 'updated' : 'created');
             showToast(`Content '${savedItem.title_en}' saved successfully!`, 'success');
             closeAddContentModal();
             await loadAndStructureData();
