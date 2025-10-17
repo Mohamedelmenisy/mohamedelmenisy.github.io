@@ -1202,17 +1202,27 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     
     async function fetchDashboardData() {
         try {
+            // استعلام أفضل علشان نجيب بيانات المستخدمين مع الـ activity
+            const { data: activity, error: activityError } = await supabase
+                .from('activity_log')
+                .select(`
+                    *,
+                    users!inner (name, full_name, username, email)
+                `)
+                .limit(100);
+
+            if (activityError) {
+                console.error('Error fetching activity:', activityError);
+                throw activityError;
+            }
+
             const results = await Promise.allSettled([
-                supabase.from('activity_log').select('*').limit(100),
                 supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, full_name, role')
+                supabase.from('kb_feedback').select('*')
             ]);
 
-            const activity = results[0].value?.data || [];
-            const articles = results[1].value?.data || [];
-            const feedback = results[2].value?.data || [];
-            const users = results[3].value?.data || [];
+            const articles = results[0].value?.data || [];
+            const feedback = results[1].value?.data || [];
 
             // حساب الإحصائيات الأساسية
             const totalArticles = articles.length;
@@ -1222,16 +1232,16 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
             const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
 
-            // MOST ACTIVE USERS - الإصلاح
+            // MOST ACTIVE USERS - الإصلاح النهائي
             const userStats = {};
+            
             activity.forEach(act => {
-                if (act.action === 'viewed') {
+                if (act.action === 'viewed' && act.users) {
                     const userId = act.user_id;
                     if (!userStats[userId]) {
-                        const user = users.find(u => u.id === userId);
                         userStats[userId] = {
                             user_id: userId,
-                            user_name: user?.name || user?.full_name || user?.username || user?.email || `User ${userId.substring(0, 8)}`,
+                            user_name: act.users.name || act.users.full_name || act.users.username || act.users.email || `User ${userId.substring(0, 8)}`,
                             total_articles_viewed: 0
                         };
                     }
