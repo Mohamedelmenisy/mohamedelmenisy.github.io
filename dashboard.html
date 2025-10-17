@@ -897,8 +897,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             return;
         }
       
-        // ✅ الخطوة 1: تعريف المتغير 'caseTitle' بشكل صحيح هنا
-        // This line was missing, causing the error.
+        // ✅ This defines `caseTitle` correctly before it is used.
         const caseTitle = details.case_title || 'Unknown Case';
 
         const logData = {
@@ -908,8 +907,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             section: sectionName || 'Unknown Section', // Correct field name for the trigger
             action: action,
             details: details,
-          // ✅ الخطوة 2: الآن استخدام المتغير 'caseTitle' آمن لأنه معرف
-            case_title: caseTitle,
+            case_title: caseTitle, // `caseTitle` is now safely defined
         };
         
         const { error } = await supabase.from('activity_log').insert([logData]);
@@ -919,81 +917,98 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-    
-async function fetchDashboardData() {
-  try {
-    const results = await Promise.allSettled([
-      supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
-      supabase.from('cases').select('*'),
-      supabase.from('kb_feedback').select('*')
-    ]);
+    // [FIX] Corrected and consolidated data fetching function.
+    async function fetchDashboardData() {
+        const results = await Promise.allSettled([
+            supabase.from('activity_log').select('user_id, user_name, action').order('created_at', { ascending: false }).limit(100),
+            supabase.from('cases').select('id', { count: 'exact', head: true }),
+            supabase.from('kb_feedback').select('rating'),
+            supabase.from('users').select('id, name, email, username, full_name').limit(50)
+        ]);
 
-    const activity = results[0].status === 'fulfilled' ? results[0].value.data || [] : [];
-    const articles = results[1].status === 'fulfilled' ? results[1].value.data || [] : [];
-    const feedback = results[2].status === 'fulfilled' ? results[2].value.data || [] : [];
+        const activity = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
+        const totalArticles = results[1].status === 'fulfilled' ? (results[1].value.count || 0) : 0;
+        const feedback = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
+        const users = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
 
-    // ✅ حساب الإحصائيات الأساسية
-    const totalArticles = articles.length;
-    const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length;
-    const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
-    const activeUsers = new Set(activity.map(a => a.user_id)).size;
-
-    // ✅ حساب تقييمات الفيدباك
-    const helpfulRatings = feedback.filter(f => Number(f.rating) >= 4).length;
-    const notHelpfulRatings = feedback.filter(f => Number(f.rating) < 3).length;
-
-    // ✅ بناء المستخدمين الأكثر نشاطًا من activity_log نفسه
-    const userStats = {};
-    activity.forEach(act => {
-      if ((act.action || '').toLowerCase() === 'viewed') {
-        const uid = act.user_id || 'unknown';
-        if (!userStats[uid]) {
-          userStats[uid] = {
-            user_name: act.user_name || act.user_email || `User ${uid}`,
-            total_articles_viewed: 0
-          };
+        if (results.some(r => r.status === 'rejected')) {
+            console.warn("Some dashboard queries failed:", results.filter(r => r.status==='rejected').map(r=>r.reason));
+            showToast('Some dashboard widgets could not be loaded.', 'error');
         }
-        userStats[uid].total_articles_viewed++;
-      }
+
+        // Compute statistics
+        const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length;
+        const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
+        const activeUsers = new Set(activity.map(a => a.user_id)).size;
+
+        const helpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating >= 4).length;
+        const notHelpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating < 3).length;
+
+        // [FIX] Build top users with fallback to activity log's user_name.
+        const userStats = {};
+        activity.forEach(act => {
+            if ((act.action || '').toLowerCase() === 'viewed' && act.user_id) {
+                const uid = act.user_id;
+                if (!userStats[uid]) {
+                    const u = users.find(x => x.id === uid) || {};
+                    const displayName = u.name || u.full_name || act.user_name || u.username || u.email || `User ${uid.substring(0,8)}`;
+                    userStats[uid] = { user_name: displayName, total_articles_viewed: 0 };
+                }
+                userStats[uid].total_articles_viewed++;
+            }
+        });
+        const topUsers = Object.values(userStats).sort((a,b)=>b.total_articles_viewed-a.total_articles_viewed).slice(0,5);
+
+        // This data structure matches what the dashboard rendering functions expect.
+        return {
+            activityLog: activity, // Note: This is now a smaller payload for performance
+            overallInsights: {
+                total_articles: totalArticles,
+                total_views_all: totalViews,
+                total_edits: totalEdits,
+                active_users_this_week: activeUsers,
+                helpful_ratings: helpfulRatings,
+                not_helpful_ratings: notHelpfulRatings
+            },
+            growthTrends: [], 
+            weeklyActivity: [],
+            feedbackKpis: {
+                helpful_ratings: helpfulRatings,
+                not_helpful_ratings: notHelpfulRatings
+            },
+            topUsers: topUsers
+        };
+    }
+
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        fontFamily: 'Inter, sans-serif',
+        flowchart: {
+            htmlLabels: true,
+            useMaxWidth: true,
+        },
+        themeVariables: {
+            fontSize: '14px',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+        }
     });
+    
+    let kbSystemData = { sections: [] };
+    let mainQuillEditor;
+    let currentUser = null;
+    let currentOpenItem = null;
+    
+    let activityChartInstance;
+    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
+    let activityLogPage = 1;
+    const ACTIVITY_LOG_PAGE_SIZE = 7;
 
-    const topUsers = Object.values(userStats)
-      .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
-      .slice(0, 5);
-
-    // ✅ رجع كل البيانات للـ Dashboard
-    return {
-      activityLog: activity,
-      overallInsights: {
-        total_articles: totalArticles,
-        total_views_all: totalViews,
-        total_edits: totalEdits,
-        active_users_this_week: activeUsers
-      },
-      feedbackKpis: {
-        helpful_ratings: helpfulRatings,
-        not_helpful_ratings: notHelpfulRatings
-      },
-      topUsers: topUsers
-    };
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    return {
-      activityLog: [],
-      overallInsights: {
-        total_articles: 0,
-        total_views_all: 0,
-        total_edits: 0,
-        active_users_this_week: 0
-      },
-      feedbackKpis: {
-        helpful_ratings: 0,
-        not_helpful_ratings: 0
-      },
-      topUsers: []
-    };
-  }
-}
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
@@ -1272,39 +1287,28 @@ async function fetchDashboardData() {
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
-        const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
-        
-        const getGrowthHTML = (metric) => {
-            const trend = growthTrends[metric];
-            if (!trend || trend.percentage_change === null || isNaN(trend.percentage_change)) return '';
-            const isPositive = trend.percentage_change >= 0;
-            const arrow = isPositive ? '↑' : '↓';
-            return `<span class="stat-growth ${isPositive ? 'positive' : 'negative'}">${arrow} ${Math.abs(trend.percentage_change)}%</span>`;
-        };
         
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-stats-grid">
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-newspaper"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Total Articles</span></div>
-                    ${getGrowthHTML('articles')}
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-eye"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>
-                    ${getGrowthHTML('views')}
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-users"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div>
                 </div>
                 <div class="dashboard-stat-card">
-                    <div class="icon-container"><i class="fas fa-star"></i></div>
-                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating ? insights.avg_feedback_rating.toFixed(2) : 'N/A'}</span><span class="stat-label">Avg. Feedback</span></div>
+                    <div class="icon-container"><i class="fas fa-thumbs-up"></i></div>
+                     <div class="stat-info"><span class="stat-value">${insights.helpful_ratings || 0}</span><span class="stat-label">Helpful Ratings</span></div>
                 </div>
                  <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-edit"></i></div>
-                    <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
+                    <div class="stat-info"><span class="stat-value">${insights.total_edits || 0}</span><span class="stat-label">Total Edits</span></div>
                 </div>
             </div>
             <div class="dashboard-main-grid">
@@ -1400,6 +1404,12 @@ async function fetchDashboardData() {
                     }
                 }
             });
+        } else if (activityCtx) {
+            // Fallback for when weeklyActivity is not available
+            activityCtx.font = "16px 'Poppins', sans-serif";
+            activityCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            activityCtx.textAlign = 'center';
+            activityCtx.fillText('Chart data is not available at this moment.', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
         }
     }
     
@@ -1899,12 +1909,7 @@ async function fetchDashboardData() {
 
         supabase.channel('public:cases').on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender).subscribe();
     }
-  
-    // Ensure currentUser is defined globally
-if (typeof currentUser === 'undefined') {
-    var currentUser = null;
-}
-
+    
     async function initializeApp() {
         try {
             currentUser = await getCurrentUserProfile();
@@ -1928,8 +1933,8 @@ if (typeof currentUser === 'undefined') {
 
         } catch (error) {
             console.error("A critical error occurred during app initialization:", error);
-            showToast('Failed to initialize the application.', 'error');
-            pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
+            // [FIX] Use a non-destructive toast for errors instead of replacing page content.
+            showToast('Failed to initialize the application. Please refresh.', 'error');
             document.getElementById('sidebarLoader').innerHTML = 'Failed to load.';
         }
     }
