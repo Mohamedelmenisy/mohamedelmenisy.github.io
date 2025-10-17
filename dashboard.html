@@ -918,25 +918,22 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     
     // [FIX] Corrected and consolidated data fetching function.
-    async function fetchDashboardData() {
+   async function fetchDashboardData() {
+    try {
         const results = await Promise.allSettled([
-            supabase.from('activity_log').select('user_id, user_name, action').order('created_at', { ascending: false }).limit(100),
+            supabase.from('activity_log').select('*').limit(100),
             supabase.from('cases').select('id', { count: 'exact', head: true }),
             supabase.from('kb_feedback').select('rating'),
             supabase.from('users').select('id, name, email, username, full_name').limit(50)
         ]);
 
+        // ✅ معالجة النتائج بشكل آمن
         const activity = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
         const totalArticles = results[1].status === 'fulfilled' ? (results[1].value.count || 0) : 0;
         const feedback = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
         const users = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
 
-        if (results.some(r => r.status === 'rejected')) {
-            console.warn("Some dashboard queries failed:", results.filter(r => r.status==='rejected').map(r=>r.reason));
-            showToast('Some dashboard widgets could not be loaded.', 'error');
-        }
-
-        // Compute statistics
+        // 📊 حساب الإحصائيات الأساسية
         const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length;
         const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
         const activeUsers = new Set(activity.map(a => a.user_id)).size;
@@ -944,24 +941,42 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         const helpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating >= 4).length;
         const notHelpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating < 3).length;
 
-        // [FIX] Build top users with fallback to activity log's user_name.
+        // 🔥 MOST ACTIVE USERS - الإصدار المحسّن
         const userStats = {};
+        
         activity.forEach(act => {
             if ((act.action || '').toLowerCase() === 'viewed' && act.user_id) {
                 const uid = act.user_id;
+                
                 if (!userStats[uid]) {
-                    const u = users.find(x => x.id === uid) || {};
-                    const displayName = u.name || u.full_name || act.user_name || u.username || u.email || `User ${uid.substring(0,8)}`;
-                    userStats[uid] = { user_name: displayName, total_articles_viewed: 0 };
+                    const userData = users.find(u => u.id === uid) || {};
+                    
+                    // 🎯 تحديد اسم العرض بأفضل طريقة
+                    const displayName = 
+                        userData.name || 
+                        userData.full_name || 
+                        act.user_name || 
+                        userData.username || 
+                        userData.email || 
+                        `User ${uid.substring(0, 8)}`;
+                    
+                    userStats[uid] = { 
+                        user_name: displayName, 
+                        total_articles_viewed: 0 
+                    };
                 }
+                
                 userStats[uid].total_articles_viewed++;
             }
         });
-        const topUsers = Object.values(userStats).sort((a,b)=>b.total_articles_viewed-a.total_articles_viewed).slice(0,5);
 
-        // This data structure matches what the dashboard rendering functions expect.
+        const topUsers = Object.values(userStats)
+            .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
+            .slice(0, 5);
+
+        // 📈 البيانات النهائية
         return {
-            activityLog: activity, // Note: This is now a smaller payload for performance
+            activityLog: activity,
             overallInsights: {
                 total_articles: totalArticles,
                 total_views_all: totalViews,
@@ -970,7 +985,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 helpful_ratings: helpfulRatings,
                 not_helpful_ratings: notHelpfulRatings
             },
-            growthTrends: [], 
+            growthTrends: [],
             weeklyActivity: [],
             feedbackKpis: {
                 helpful_ratings: helpfulRatings,
@@ -978,37 +993,34 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             },
             topUsers: topUsers
         };
+
+    } catch (error) {
+        console.error('❌ Error fetching dashboard data:', error);
+        return getFallbackDashboardData();
     }
+}
 
-    mermaid.initialize({
-        startOnLoad: false,
-        theme: 'dark',
-        fontFamily: 'Inter, sans-serif',
-        flowchart: {
-            htmlLabels: true,
-            useMaxWidth: true,
+// 🛡️ دالة الطوارئ لو فشل الاتصال
+function getFallbackDashboardData() {
+    return {
+        activityLog: [],
+        overallInsights: {
+            total_articles: 0,
+            total_views_all: 0,
+            total_edits: 0,
+            active_users_this_week: 0,
+            helpful_ratings: 0,
+            not_helpful_ratings: 0
         },
-        themeVariables: {
-            fontSize: '14px',
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-        }
-    });
-    
-    let kbSystemData = { sections: [] };
-    let mainQuillEditor;
-    let currentUser = null;
-    let currentOpenItem = null;
-    
-    let activityChartInstance;
-    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
-    let activityLogPage = 1;
-    const ACTIVITY_LOG_PAGE_SIZE = 7;
-
+        growthTrends: [],
+        weeklyActivity: [],
+        feedbackKpis: {
+            helpful_ratings: 0,
+            not_helpful_ratings: 0
+        },
+        topUsers: []
+    };
+}
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
