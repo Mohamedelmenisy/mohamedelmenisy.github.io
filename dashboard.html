@@ -1200,100 +1200,78 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-   async function fetchDashboardData() {
-    try {
-        // ... الكود ...
-        
-        return {  // ← تأكد إن كل الـ {} متقفلة
-            activityLog: activity,
-            overallInsights: {
-                total_articles: totalArticles,
-                // ... 
-            },
-            // ... 
-        };  // ← تأكد من الفاصلة المنقوطة
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        return {
-            // ... 
-        };
-    }  // ← تأكد إن الـ try/catch متقفلة
-}  // ← تأكد إن الدالة متقفلة
-4. الحل السريع:
-بدل ما تدور على المشكلة، جرب تستبدل الكود كله بهذا الإصاح:
+    async function fetchDashboardData() {
+        try {
+            const results = await Promise.allSettled([
+                supabase.from('activity_log').select('*').limit(100),
+                supabase.from('cases').select('*'),
+                supabase.from('kb_feedback').select('*'),
+                supabase.from('users').select('id, name, email, username, full_name, role')
+            ]);
 
-javascript
-async function fetchDashboardData() {
-    try {
-        const results = await Promise.allSettled([
-            supabase.from('activity_log').select('*').limit(100),
-            supabase.from('cases').select('*'),
-            supabase.from('kb_feedback').select('*'),
-            supabase.from('users').select('id, name, email, username, full_name, role')
-        ]);
+            const activity = results[0].value?.data || [];
+            const articles = results[1].value?.data || [];
+            const feedback = results[2].value?.data || [];
+            const users = results[3].value?.data || [];
 
-        const activity = results[0].value?.data || [];
-        const articles = results[1].value?.data || [];
-        const feedback = results[2].value?.data || [];
-        const users = results[3].value?.data || [];
+            // حساب الإحصائيات الأساسية
+            const totalArticles = articles.length;
+            const totalViews = activity.filter(act => act.action === 'viewed').length;
+            const totalEdits = activity.filter(act => act.action === 'updated').length;
+            const activeUsers = [...new Set(activity.map(act => act.user_id))].length;
+            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
 
-        // حساب الإحصائيات الأساسية
-        const totalArticles = articles.length;
-        const totalViews = activity.filter(act => act.action === 'viewed').length;
-        const totalEdits = activity.filter(act => act.action === 'updated').length;
-        const activeUsers = [...new Set(activity.map(act => act.user_id))].length;
-        const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-        const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
-
-        // MOST ACTIVE USERS - الإصلاح
-        const userStats = {};
-        activity.forEach(act => {
-            if (act.action === 'viewed') {
-                const userId = act.user_id;
-                if (!userStats[userId]) {
-                    const user = users.find(u => u.id === userId);
-                    userStats[userId] = {
-                        user_id: userId,
-                        user_name: user?.name || user?.full_name || user?.username || user?.email || `User ${userId.substring(0, 8)}`,
-                        total_articles_viewed: 0
-                    };
+            // MOST ACTIVE USERS - الإصلاح
+            const userStats = {};
+            activity.forEach(act => {
+                if (act.action === 'viewed') {
+                    const userId = act.user_id;
+                    if (!userStats[userId]) {
+                        const user = users.find(u => u.id === userId);
+                        userStats[userId] = {
+                            user_id: userId,
+                            user_name: user?.name || user?.full_name || user?.username || user?.email || `User ${userId.substring(0, 8)}`,
+                            total_articles_viewed: 0
+                        };
+                    }
+                    userStats[userId].total_articles_viewed++;
                 }
-                userStats[userId].total_articles_viewed++;
-            }
-        });
+            });
 
-        const topUsers = Object.values(userStats)
-            .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
-            .slice(0, 5);
+            const topUsers = Object.values(userStats)
+                .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
+                .slice(0, 5);
 
-        return {
-            activityLog: activity,
-            overallInsights: {
-                total_articles: totalArticles,
-                total_views_all: totalViews,
-                total_edits: totalEdits,
-                active_users_this_week: activeUsers
-            },
-            feedbackKpis: {
-                helpful_ratings: helpfulRatings,
-                not_helpful_ratings: notHelpfulRatings
-            },
-            topUsers: topUsers,
-            growthTrends: [],
-            weeklyActivity: []
-        };
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        return {
-            activityLog: [],
-            overallInsights: {},
-            feedbackKpis: {},
-            topUsers: [],
-            growthTrends: [],
-            weeklyActivity: []
-        };
+            return {
+                activityLog: activity,
+                overallInsights: {
+                    total_articles: totalArticles,
+                    total_views_all: totalViews,
+                    total_edits: totalEdits,
+                    active_users_this_week: activeUsers
+                },
+                feedbackKpis: {
+                    helpful_ratings: helpfulRatings,
+                    not_helpful_ratings: notHelpfulRatings
+                },
+                topUsers: topUsers,
+                growthTrends: [],
+                weeklyActivity: []
+            };
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            return {
+                activityLog: [],
+                overallInsights: {},
+                feedbackKpis: {},
+                topUsers: [],
+                growthTrends: [],
+                weeklyActivity: []
+            };
+        }
     }
-}
+
     mermaid.initialize({
         startOnLoad: false,
         theme: 'dark',
@@ -2556,4 +2534,4 @@ function renderTopUsers() {
 </script>
 
 </body>
-</html>```
+</html>
