@@ -921,98 +921,79 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     
     
 async function fetchDashboardData() {
-    // Consolidated and robust fetch using existing tables only.
+  try {
     const results = await Promise.allSettled([
-        supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('cases').select('*'),
-        supabase.from('kb_feedback').select('*'),
-supabase.from('users').select('id, name, email, role, status, department').limit(50)
+      supabase.from('activity_log').select('*').order('timestamp', { ascending: false }).limit(100),
+      supabase.from('cases').select('*'),
+      supabase.from('kb_feedback').select('*')
     ]);
 
-    const activity = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
-    const articles = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
-    const feedback = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
-    const users = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
+    const activity = results[0].status === 'fulfilled' ? results[0].value.data || [] : [];
+    const articles = results[1].status === 'fulfilled' ? results[1].value.data || [] : [];
+    const feedback = results[2].status === 'fulfilled' ? results[2].value.data || [] : [];
 
-    if (results.some(r => r.status === 'rejected')) {
-        console.warn("Some dashboard queries failed:", results.filter(r => r.status==='rejected').map(r=>r.reason));
-        showToast('Some dashboard widgets could not be loaded.', 'error');
-    }
-
-    // Compute statistics
+    // ✅ حساب الإحصائيات الأساسية
     const totalArticles = articles.length;
-    const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length || activity.length;
+    const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length;
     const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
-    const activeUsers = new Set((activity || []).map(a => a.user_id)).size || 0;
+    const activeUsers = new Set(activity.map(a => a.user_id)).size;
 
-    const helpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating >= 4).length;
-    const notHelpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating < 3).length;
+    // ✅ حساب تقييمات الفيدباك
+    const helpfulRatings = feedback.filter(f => Number(f.rating) >= 4).length;
+    const notHelpfulRatings = feedback.filter(f => Number(f.rating) < 3).length;
 
-    // Build top users from activity (based on 'viewed')
+    // ✅ بناء المستخدمين الأكثر نشاطًا من activity_log نفسه
     const userStats = {};
-    (activity || []).forEach(act => {
-        if ((act.action || '').toLowerCase() === 'viewed') {
-            const uid = act.user_id || act.userId || act.author_id || 'unknown';
-            if (!userStats[uid]) {
-                // try to find user details
-                const u = users.find(x => x.id === uid) || {};
-                const displayName = u.name || u.email || `User ${uid}`;
-                userStats[uid] = { user_name: displayName, total_articles_viewed: 0 };
-            }
-            userStats[uid].total_articles_viewed++;
+    activity.forEach(act => {
+      if ((act.action || '').toLowerCase() === 'viewed') {
+        const uid = act.user_id || 'unknown';
+        if (!userStats[uid]) {
+          userStats[uid] = {
+            user_name: act.user_name || act.user_email || `User ${uid}`,
+            total_articles_viewed: 0
+          };
         }
+        userStats[uid].total_articles_viewed++;
+      }
     });
-    const topUsers = Object.values(userStats).sort((a,b)=>b.total_articles_viewed-a.total_articles_viewed).slice(0,5);
 
+    const topUsers = Object.values(userStats)
+      .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
+      .slice(0, 5);
+
+    // ✅ رجع كل البيانات للـ Dashboard
     return {
-        activityLog: activity,
-        overallInsights: {
-            total_articles: totalArticles,
-            total_views_all: totalViews,
-            total_edits: totalEdits,
-            active_users_this_week: activeUsers,
-            helpful_ratings: helpfulRatings,
-            not_helpful_ratings: notHelpfulRatings
-        },
-        growthTrends: [], // removed: not available
-        weeklyActivity: [], // removed: not available
-        feedbackKpis: {
-            helpful_ratings: helpfulRatings,
-            not_helpful_ratings: notHelpfulRatings
-        },
-        topUsers: topUsers
+      activityLog: activity,
+      overallInsights: {
+        total_articles: totalArticles,
+        total_views_all: totalViews,
+        total_edits: totalEdits,
+        active_users_this_week: activeUsers
+      },
+      feedbackKpis: {
+        helpful_ratings: helpfulRatings,
+        not_helpful_ratings: notHelpfulRatings
+      },
+      topUsers: topUsers
     };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return {
+      activityLog: [],
+      overallInsights: {
+        total_articles: 0,
+        total_views_all: 0,
+        total_edits: 0,
+        active_users_this_week: 0
+      },
+      feedbackKpis: {
+        helpful_ratings: 0,
+        not_helpful_ratings: 0
+      },
+      topUsers: []
+    };
+  }
 }
-        
-    mermaid.initialize({
-        startOnLoad: false,
-        theme: 'dark',
-        fontFamily: 'Inter, sans-serif',
-        flowchart: {
-            htmlLabels: true,
-            useMaxWidth: true,
-        },
-        themeVariables: {
-            fontSize: '14px',
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-        }
-    });
-    
-    let kbSystemData = { sections: [] };
-    let mainQuillEditor;
-    let currentUser = null;
-    let currentOpenItem = null;
-    
-    let activityChartInstance;
-    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
-    let activityLogPage = 1;
-    const ACTIVITY_LOG_PAGE_SIZE = 7;
-
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
