@@ -138,18 +138,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             --rating-color: var(--warning);
         }
 
-        /* Aesthetic Animations */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fade-in-up {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scale-in {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         
@@ -161,7 +149,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             line-height: 1.6;
             font-size: 16px;
             background-image: 
-                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0%, transparent S20%),
+                radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0%, transparent 20%),
                 radial-gradient(circle at 90% 80%, rgba(63, 140, 255, 0.05) 0%, transparent 20%);
         }
 
@@ -287,7 +275,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         main { 
             padding-top: 1.5rem;
             flex-grow: 1;
-            animation: fadeIn 0.5s ease-out;
         }
 
         .card {
@@ -358,9 +345,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .modal-content {
             background-color: var(--bg-color-modal); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-hover); width: 100%; max-width: 48rem; max-height: 90vh; overflow-y: auto; transform: scale(0.95); opacity: 0; transition: transform 0.3s ease-out, opacity 0.3s ease-out;
         }
-        .modal-overlay:not(.hidden) .modal-content { 
-            animation: scale-in 0.3s ease-out forwards;
-        }
+        .modal-overlay:not(.hidden) .modal-content { transform: scale(1); opacity: 1; }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
         }
@@ -383,9 +368,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .toast-notification {
             position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: var(--border-radius); box-shadow: var(--shadow-hover); z-index: 2000; opacity: 0; transform: translateY(20px); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); display: flex; align-items: center; color: white;
         }
-        .toast-notification.show { 
-            animation: fade-in-up 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
+        .toast-notification.show { opacity: 1; transform: translateY(0); }
         .toast-icon { margin-right: 10px; font-size: 1.2em; }
         .toast-success { background-color: var(--success); }
         .toast-error { background-color: var(--danger); }
@@ -458,7 +441,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-dark); color: var(--text-light); transition: var(--transition); }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2), 0 0 15px rgba(108, 93, 211, 0.1);
+            outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2);
         }
 
         /* ======== ACTIVITY LOG STYLES (UNIFIED) ======== */
@@ -509,26 +492,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .restricted-icon { font-size: 56px; margin-bottom: 20px; color: var(--danger); }
         .restricted-notice h2 { font-size: 1.75rem; margin-bottom: 0.75rem; }
         .restricted-notice p { font-size: 1rem; line-height: 1.6; color: var(--text-muted); }
-
-
-/* User-requested: hide visible scrollbar for Top Users but keep wheel scrolling */
-#topUsersContainer .top-users-list {
-    max-height: 340px;
-    overflow-y: auto;
-    -ms-overflow-style: none; /* IE 10+ */
-    scrollbar-width: none; /* Firefox */
-}
-#topUsersContainer .top-users-list::-webkit-scrollbar { display: none; } /* Safari/WebKit */
-#topUsersContainer .top-user-views { color: var(--primary-accent-light); background-color: rgba(99,102,241,0.08); padding: 0.25rem 0.6rem; border-radius: 6px; }
-
-/* Add a subtle separator style for sidebar grouping */
-.sidebar-separator {
-    height: 1px;
-    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.04), rgba(255,255,255,0));
-    margin: 0.75rem 0;
-    border-radius: 2px;
-}
-
 </style>
 
 </head>
@@ -887,140 +850,100 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         return { error };
     }
 
-    /**
-     * [CORE FIX] Logs user activity to the 'activity_log' table.
-     * This function now sends `case_id` and `section` as expected by the database triggers.
-     */
-    async function logActivity(user, itemId, sectionName, action, details = {}) {
+    async function logActivity(user, itemId, itemType, action, details = {}) {
         if (!user || !user.id) {
             console.warn("Attempted to log activity without a valid user.");
             return;
         }
-      
-        // ✅ This defines `caseTitle` correctly before it is used.
-        const caseTitle = details.case_title || 'Unknown Case';
 
-        const logData = {
+        let typeToLog = itemType;
+
+        if (!typeToLog) {
+            const { data: item, error: fetchError } = await supabase.from('cases').select('type').eq('id', itemId).single();
+            if (fetchError || !item) {
+                console.error(`Could not fetch item type for logging activity (ItemID: ${itemId}).`, fetchError);
+                typeToLog = 'unknown'; // Fallback
+            } else {
+                typeToLog = item.type;
+            }
+        }
+        
+        const { error } = await supabase.from('activity_log').insert([{
             user_id: user.id,
             user_name: user.name,
-            case_id: itemId, // Correct field name for the trigger
-            section: sectionName || 'Unknown Section', // Correct field name for the trigger
+            item_id: itemId,
+            item_type: typeToLog,
             action: action,
             details: details,
-            case_title: caseTitle, // `caseTitle` is now safely defined
-        };
-        
-        const { error } = await supabase.from('activity_log').insert([logData]);
-
+        }]);
         if (error) {
-            console.error('Error logging activity:', error.message);
+            console.error('Error logging activity:', error);
         }
     }
     
-    // [FIX] Corrected and consolidated data fetching function.
-   async function fetchDashboardData() {
-    try {
+    async function fetchDashboardData() {
         const results = await Promise.allSettled([
-            supabase.from('activity_log').select('*').limit(100),
-            supabase.from('cases').select('id', { count: 'exact', head: true }),
-            supabase.from('kb_feedback').select('rating'),
-            supabase.from('users').select('id, name, email, username, full_name').limit(50)
+            supabase.from('v_recent_activity').select('*').limit(50),
+            supabase.from('v_overall_insights').select('*').single(),
+            supabase.from('v_growth_trends').select('*'),
+            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
+            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(),
+            supabase.from('v_user_insights').select('*').order('total_articles_viewed', { ascending: false }).limit(5)
         ]);
-
-        // ✅ معالجة النتائج بشكل آمن
-        const activity = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
-        const totalArticles = results[1].status === 'fulfilled' ? (results[1].value.count || 0) : 0;
-        const feedback = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
-        const users = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
-
-        // 📊 حساب الإحصائيات الأساسية
-        const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length;
-        const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
-        const activeUsers = new Set(activity.map(a => a.user_id)).size;
-
-        const helpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating >= 4).length;
-        const notHelpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating < 3).length;
-
-        // 🔥 MOST ACTIVE USERS - الإصدار المحسّن
-        const userStats = {};
         
-        activity.forEach(act => {
-            if ((act.action || '').toLowerCase() === 'viewed' && act.user_id) {
-                const uid = act.user_id;
-                
-                if (!userStats[uid]) {
-                    const userData = users.find(u => u.id === uid) || {};
-                    
-                    // 🎯 تحديد اسم العرض بأفضل طريقة
-                    const displayName = 
-                        userData.name || 
-                        userData.full_name || 
-                        act.user_name || 
-                        userData.username || 
-                        userData.email || 
-                        `User ${uid.substring(0, 8)}`;
-                    
-                    userStats[uid] = { 
-                        user_name: displayName, 
-                        total_articles_viewed: 0 
-                    };
-                }
-                
-                userStats[uid].total_articles_viewed++;
-            }
-        });
+        const [
+            activity, 
+            insights, 
+            growth, 
+            weeklyActivity,
+            feedbackKpis,
+            topUsers
+        ] = results.map(res => res.status === 'fulfilled' ? res.value.data : null);
 
-        const topUsers = Object.values(userStats)
-            .sort((a, b) => b.total_articles_viewed - a.total_articles_viewed)
-            .slice(0, 5);
+        if (results.some(res => res.status === 'rejected')) {
+            console.warn("One or more dashboard data queries failed.", results.filter(r => r.status === 'rejected').map(r => r.reason));
+            showToast('Some dashboard widgets could not be loaded.', 'error');
+        }
 
-        // 📈 البيانات النهائية
         return {
-            activityLog: activity,
-            overallInsights: {
-                total_articles: totalArticles,
-                total_views_all: totalViews,
-                total_edits: totalEdits,
-                active_users_this_week: activeUsers,
-                helpful_ratings: helpfulRatings,
-                not_helpful_ratings: notHelpfulRatings
-            },
-            growthTrends: [],
-            weeklyActivity: [],
-            feedbackKpis: {
-                helpful_ratings: helpfulRatings,
-                not_helpful_ratings: notHelpfulRatings
-            },
-            topUsers: topUsers
+            activityLog: activity || [],
+            overallInsights: insights || {},
+            growthTrends: growth || [],
+            weeklyActivity: weeklyActivity || [],
+            feedbackKpis: feedbackKpis || {},
+            topUsers: topUsers || []
         };
-
-    } catch (error) {
-        console.error('❌ Error fetching dashboard data:', error);
-        return getFallbackDashboardData();
     }
-}
 
-// 🛡️ دالة الطوارئ لو فشل الاتصال
-function getFallbackDashboardData() {
-    return {
-        activityLog: [],
-        overallInsights: {
-            total_articles: 0,
-            total_views_all: 0,
-            total_edits: 0,
-            active_users_this_week: 0,
-            helpful_ratings: 0,
-            not_helpful_ratings: 0
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        fontFamily: 'Inter, sans-serif',
+        flowchart: {
+            htmlLabels: true,
+            useMaxWidth: true,
         },
-        growthTrends: [],
-        weeklyActivity: [],
-        feedbackKpis: {
-            helpful_ratings: 0,
-            not_helpful_ratings: 0
-        },
-        topUsers: []
-    };
-}
+        themeVariables: {
+            fontSize: '14px',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+        }
+    });
+    
+    let kbSystemData = { sections: [] };
+    let mainQuillEditor;
+    let currentUser = null;
+    let currentOpenItem = null;
+    
+    let activityChartInstance;
+    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
+    let activityLogPage = 1;
+    const ACTIVITY_LOG_PAGE_SIZE = 7;
+
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
@@ -1134,7 +1057,7 @@ function getFallbackDashboardData() {
         setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 400);
+            setTimeout(() => toast.remove(), 300);
         }, duration);
     }
     
@@ -1271,6 +1194,67 @@ function getFallbackDashboardData() {
             </div>`;
     }
 
+    function renderActivityLog(page = 1) {
+        const container = document.getElementById('recentActivityContainer');
+        if (!container) return;
+
+        const activityLog = dashboardData.activityLog || [];
+        const totalPages = Math.ceil(activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
+        activityLogPage = Math.max(1, Math.min(page, totalPages || 1));
+
+        const startIndex = (activityLogPage - 1) * ACTIVITY_LOG_PAGE_SIZE;
+        const endIndex = startIndex + ACTIVITY_LOG_PAGE_SIZE;
+        const pageItems = activityLog.slice(startIndex, endIndex);
+
+        const getIconForAction = (action) => {
+            switch (action) {
+                case 'created': return '<i class="fas fa-plus-circle" style="color: var(--yes-color);"></i>';
+                case 'updated': return '<i class="fas fa-pen" style="color: var(--rating-color);"></i>';
+                case 'deleted': return '<i class="fas fa-trash-alt" style="color: var(--no-color);"></i>';
+                case 'viewed': return '<i class="fas fa-eye" style="color: var(--primary-color);"></i>';
+                default: return '<i class="fas fa-history" style="color: var(--text-color-muted);"></i>';
+            }
+        };
+
+        let itemsHTML = pageItems.map(log => {
+            const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
+            const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
+            return `
+                <div class="activity-log-item">
+                    <div class="activity-icon">${getIconForAction(log.action)}</div>
+                    <div class="activity-details">
+                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
+                    </div>
+                    <div class="activity-time">${formatReadableDate(log.timestamp || log.created_at_egypt)}</div>
+                </div>
+            `;
+        }).join('');
+
+        if (pageItems.length === 0) {
+            itemsHTML = `<div class="activity-log-item" style="justify-content: center;"><p>No recent activity found.</p></div>`;
+        }
+
+        let paginationHTML = '';
+        if (totalPages > 1) {
+            paginationHTML = `
+                <div class="activity-pagination">
+                    <button class="button-secondary" ${activityLogPage === 1 ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage - 1})">Prev</button>
+                    <span>Page ${activityLogPage} of ${totalPages}</span>
+                    <button class="button-secondary" ${activityLogPage === totalPages ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage + 1})">Next</button>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <h3>Recent Activity</h3>
+            <div class="activity-log-list">
+                ${itemsHTML}
+            </div>
+            ${paginationHTML}
+        `;
+    }
+    window.renderActivityLog = renderActivityLog;
+    
     function renderTopUsers() {
         const container = document.getElementById('topUsersContainer');
         if (!container) return;
@@ -1299,28 +1283,39 @@ function getFallbackDashboardData() {
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
+        const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
+        
+        const getGrowthHTML = (metric) => {
+            const trend = growthTrends[metric];
+            if (!trend || trend.percentage_change === null || isNaN(trend.percentage_change)) return '';
+            const isPositive = trend.percentage_change >= 0;
+            const arrow = isPositive ? '↑' : '↓';
+            return `<span class="stat-growth ${isPositive ? 'positive' : 'negative'}">${arrow} ${Math.abs(trend.percentage_change)}%</span>`;
+        };
         
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-stats-grid">
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-newspaper"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.total_articles || 0}</span><span class="stat-label">Total Articles</span></div>
+                    ${getGrowthHTML('articles')}
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-eye"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.total_views_all || 0}</span><span class="stat-label">Total Views</span></div>
+                    ${getGrowthHTML('views')}
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-users"></i></div>
                     <div class="stat-info"><span class="stat-value">${insights.active_users_this_week || 0}</span><span class="stat-label">Active Users (Week)</span></div>
                 </div>
                 <div class="dashboard-stat-card">
-                    <div class="icon-container"><i class="fas fa-thumbs-up"></i></div>
-                     <div class="stat-info"><span class="stat-value">${insights.helpful_ratings || 0}</span><span class="stat-label">Helpful Ratings</span></div>
+                    <div class="icon-container"><i class="fas fa-star"></i></div>
+                    <div class="stat-info"><span class="stat-value">${insights.avg_feedback_rating ? insights.avg_feedback_rating.toFixed(2) : 'N/A'}</span><span class="stat-label">Avg. Feedback</span></div>
                 </div>
                  <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-edit"></i></div>
-                    <div class="stat-info"><span class="stat-value">${insights.total_edits || 0}</span><span class="stat-label">Total Edits</span></div>
+                    <div class="stat-info"><span class="stat-value">${insights.edits_this_week || 0}</span><span class="stat-label">Edits This Week</span></div>
                 </div>
             </div>
             <div class="dashboard-main-grid">
@@ -1333,12 +1328,14 @@ function getFallbackDashboardData() {
                 <div id="topUsersContainer" class="card">
                     <!-- Top Users content will be rendered here -->
                 </div>
-</div>`;
+                <div id="recentActivityContainer" class="card"></div>
+            </div>`;
         
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
             renderTopUsers();
-            }, 100);
+            renderActivityLog(1);
+        }, 100);
     }
 
     async function displayDashboard() {
@@ -1416,12 +1413,6 @@ function getFallbackDashboardData() {
                     }
                 }
             });
-        } else if (activityCtx) {
-            // Fallback for when weeklyActivity is not available
-            activityCtx.font = "16px 'Poppins', sans-serif";
-            activityCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            activityCtx.textAlign = 'center';
-            activityCtx.fillText('Chart data is not available at this moment.', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
         }
     }
     
@@ -1501,8 +1492,7 @@ function getFallbackDashboardData() {
             return;
         }
 
-        // [CORE FIX] Log the view with the correct parameters: case ID and section name.
-        await logActivity(currentUser, itemData.id, itemData.sectionName, 'viewed', { case_title: itemData.title_en });
+        await logActivity(currentUser, itemData.id, itemData.type, 'viewed');
         
         currentOpenItem = { sectionId: itemData.sectionId, itemId: itemData.id, title: itemData.title_en, type: itemData.type };
         dashboardOverviewContainer.classList.add('hidden');
@@ -1810,17 +1800,8 @@ function getFallbackDashboardData() {
                 showToast(`Failed to save content: ${error.message}`, 'error');
                 return;
             }
-            
-            // [CORE FIX] Log create/update activity with the correct section name.
-            const sectionForLog = kbSystemData.sections.find(s => s.id === savedItem.sub_category_id);
-            await logActivity(
-                currentUser, 
-                savedItem.id, 
-                sectionForLog ? sectionForLog.name : 'Unknown Section',
-                itemData.id ? 'updated' : 'created', 
-                { case_title: savedItem.title_en }
-            );
 
+            await logActivity(currentUser, savedItem.id, savedItem.type, itemData.id ? 'updated' : 'created');
             showToast(`Content '${savedItem.title_en}' saved successfully!`, 'success');
             closeAddContentModal();
             await loadAndStructureData();
@@ -1945,8 +1926,8 @@ function getFallbackDashboardData() {
 
         } catch (error) {
             console.error("A critical error occurred during app initialization:", error);
-            // [FIX] Use a non-destructive toast for errors instead of replacing page content.
-            showToast('Failed to initialize the application. Please refresh.', 'error');
+            showToast('Failed to initialize the application.', 'error');
+            pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
             document.getElementById('sidebarLoader').innerHTML = 'Failed to load.';
         }
     }
@@ -1972,49 +1953,6 @@ function getFallbackDashboardData() {
     // allow sidebar links visible to agents (do not block), only protect header admin pages
     // optional: attach open handlers if needed
   })();
-
-
-// Sidebar reorder: move specific links into the requested order and add separator.
-// Will not rename or delete any elements; performs DOM reorder only.
-(function reorderSidebar() {
-    try {
-        const nav = document.getElementById('navigationMenu');
-        if (!nav) return;
-        const names = [
-            'Order at Store MAC',
-            'Forms & Templates'
-        ];
-        // find and move these items to the top of the nav (after MAIN and its title)
-        const links = Array.from(nav.querySelectorAll('.sidebar-link'));
-        const toMove = links.filter(a => names.includes(a.textContent.trim()));
-        if (toMove.length) {
-            // find first sidebar-section-title after MAIN (if any)
-            const mainTitle = nav.querySelector('.sidebar-section-title');
-            toMove.forEach(link => {
-                nav.insertBefore(link, mainTitle.nextSibling);
-            });
-            // insert separator after moved items
-            const sep = document.createElement('div');
-            sep.className = 'sidebar-separator';
-            // place sep after the moved items
-            if (toMove.length) {
-                nav.insertBefore(sep, toMove[toMove.length-1].nextSibling);
-            }
-        }
-        // Move following group below separator if they exist
-        const secondGroup = ['Operating Systems','Compensation Policies','Operational Instructions'];
-        secondGroup.forEach(name => {
-            const el = Array.from(nav.querySelectorAll('.sidebar-link')).find(a => a.textContent.trim() === name);
-            if (el) {
-                // append to end (after separator) to create grouping
-                nav.appendChild(el);
-            }
-        });
-    } catch(e) {
-        console.warn('Sidebar reorder failed', e);
-    }
-})();
-
 </script>
 
 </body>
