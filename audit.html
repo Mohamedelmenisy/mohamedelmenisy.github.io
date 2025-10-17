@@ -1213,22 +1213,25 @@ const diffHtml = createFriendlyDiff(data.old_value, data.new_value);
             }) : "-";
         };
 
-        async function fetchData() {
-            try {
-                const { data, error } = await supabase
-                    .from("v_audit_with_sections")
-                    .select("*")
-                    .order("timestamp", { ascending: false });
+       async function fetchData() {
+    try {
+        const { data, error } = await supabase
+            .from("v_audit_with_sections")
+            .select("*")
+            .order("timestamp", { ascending: false });
 
-                if (error) throw error;
-                auditStore = data || [];
-                populateFilters();
-                applyFiltersAndRender();
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                document.getElementById("auditBody").innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load data.</td></tr>';
-            }
-        }
+        if (error) throw error;
+        auditStore = data || [];
+        populateFilters();
+        applyFiltersAndRender();
+        
+        // تحديث الـ KPIs بعد ما البيانات تتحمل
+        updateKpiCards();
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        document.getElementById("auditBody").innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger-light);">Failed to load data.</td></tr>';
+    }
+}
 
         const populateFilters = () => {
             const sections = [...new Set(auditStore.map(item => item.section).filter(Boolean))];
@@ -1327,27 +1330,52 @@ const diffHtml = createFriendlyDiff(data.old_value, data.new_value);
             buildCharts();
         };
 
-        const updateKpiCards = () => {
-            const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
-            const todayItems = auditStore.filter(item => item.timestamp?.startsWith(today));
-            
-        document.getElementById("kpi-today-mods").textContent = todayItems.filter(item => item.action === "Update").length;
-        document.getElementById("kpi-new-cases").textContent = todayItems.filter(item => item.action === "Create").length;
-            const sectionCounts = todayItems.reduce((acc, item) => {
-                if (item.section) acc[item.section] = (acc[item.section] || 0) + 1;
-                return acc;
-            }, {});
-            const topSection = Object.entries(sectionCounts).sort((a, b) => b[1] - a[1])[0];
-            document.getElementById("kpi-active-section").textContent = topSection ? topSection[0] : "-";
+        const updateKpiCards = async () => {
+    try {
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+        
+        // جلب New Cases Today من جدول cases مباشرة
+        const { data: newCases, error: casesError } = await supabase
+            .from('cases')
+            .select('id')
+            .gte('created_at', today + 'T00:00:00')
+            .lte('created_at', today + 'T23:59:59');
 
-            const lastUpdate = auditStore[0]?.timestamp;
-            document.getElementById("kpi-last-update").textContent = lastUpdate ? 
-                new Date(lastUpdate).toLocaleTimeString("en-US", { 
-                    timeZone: "Africa/Cairo", 
-                    hour: "2-digit", 
-                    minute: "2-digit" 
-                }) : "-";
-        };
+        // جلب Today's Modifications من الـ audit store
+        const todayAuditItems = auditStore.filter(item => item.timestamp?.startsWith(today));
+        const todayModifications = todayAuditItems.filter(item => 
+            item.action === 'Update' || item.action.includes('Updated')
+        ).length;
+
+        // تحديث الـ KPIs
+        document.getElementById("kpi-new-cases").textContent = newCases?.length || 0;
+        document.getElementById("kpi-today-mods").textContent = todayModifications;
+
+        // باقي الـ KPIs
+        const sectionCounts = todayAuditItems.reduce((acc, item) => {
+            if (item.section) acc[item.section] = (acc[item.section] || 0) + 1;
+            return acc;
+        }, {});
+        const topSection = Object.entries(sectionCounts).sort((a, b) => b[1] - a[1])[0];
+        document.getElementById("kpi-active-section").textContent = topSection ? topSection[0] : "-";
+
+        const lastUpdate = auditStore[0]?.timestamp;
+        document.getElementById("kpi-last-update").textContent = lastUpdate ? 
+            new Date(lastUpdate).toLocaleTimeString("en-US", { 
+                timeZone: "Africa/Cairo", 
+                hour: "2-digit", 
+                minute: "2-digit" 
+            }) : "-";
+
+    } catch (error) {
+        console.error("Error updating KPIs:", error);
+        // Fallback
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+        const todayItems = auditStore.filter(item => item.timestamp?.startsWith(today));
+        document.getElementById("kpi-today-mods").textContent = todayItems.length;
+        document.getElementById("kpi-new-cases").textContent = 0;
+    }
+};
 
         const updateQuickStats = () => {
             const quickStats = document.getElementById("quickStats");
