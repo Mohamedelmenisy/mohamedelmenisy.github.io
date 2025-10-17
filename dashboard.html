@@ -509,6 +509,26 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .restricted-icon { font-size: 56px; margin-bottom: 20px; color: var(--danger); }
         .restricted-notice h2 { font-size: 1.75rem; margin-bottom: 0.75rem; }
         .restricted-notice p { font-size: 1rem; line-height: 1.6; color: var(--text-muted); }
+
+
+/* User-requested: hide visible scrollbar for Top Users but keep wheel scrolling */
+#topUsersContainer .top-users-list {
+    max-height: 340px;
+    overflow-y: auto;
+    -ms-overflow-style: none; /* IE 10+ */
+    scrollbar-width: none; /* Firefox */
+}
+#topUsersContainer .top-users-list::-webkit-scrollbar { display: none; } /* Safari/WebKit */
+#topUsersContainer .top-user-views { color: var(--primary-accent-light); background-color: rgba(99,102,241,0.08); padding: 0.25rem 0.6rem; border-radius: 6px; }
+
+/* Add a subtle separator style for sidebar grouping */
+.sidebar-separator {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.04), rgba(255,255,255,0));
+    margin: 0.75rem 0;
+    border-radius: 2px;
+}
+
 </style>
 
 </head>
@@ -899,14 +919,71 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-    async function fetchDashboardData() {
-        const results = await Promise.allSettled([
-            supabase.from('v_recent_activity').select('*').limit(50),
-            supabase.from('v_overall_insights').select('*').single(),
-            supabase.from('v_growth_trends').select('*'),
-            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt'),
-            supabase.from('v_insights_kpis').select('helpful_ratings, not_helpful_ratings').single(),
-            supabase.from('v_user_insights').select('*').order('total_articles_viewed', { ascending: false }).limit(5)
+    
+async function fetchDashboardData() {
+    // Consolidated and robust fetch using existing tables only.
+    const results = await Promise.allSettled([
+        supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('cases').select('*'),
+        supabase.from('kb_feedback').select('*'),
+        supabase.from('users').select('id, name, email, username, full_name').limit(50)
+    ]);
+
+    const activity = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
+    const articles = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
+    const feedback = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
+    const users = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
+
+    if (results.some(r => r.status === 'rejected')) {
+        console.warn("Some dashboard queries failed:", results.filter(r => r.status==='rejected').map(r=>r.reason));
+        showToast('Some dashboard widgets could not be loaded.', 'error');
+    }
+
+    // Compute statistics
+    const totalArticles = articles.length;
+    const totalViews = activity.filter(a => (a.action || '').toLowerCase() === 'viewed').length || activity.length;
+    const totalEdits = activity.filter(a => (a.action || '').toLowerCase() === 'updated' || (a.action || '').toLowerCase() === 'edited').length;
+    const activeUsers = new Set((activity || []).map(a => a.user_id)).size || 0;
+
+    const helpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating >= 4).length;
+    const notHelpfulRatings = feedback.filter(f => typeof f.rating === 'number' && f.rating < 3).length;
+
+    // Build top users from activity (based on 'viewed')
+    const userStats = {};
+    (activity || []).forEach(act => {
+        if ((act.action || '').toLowerCase() === 'viewed') {
+            const uid = act.user_id || act.userId || act.author_id || 'unknown';
+            if (!userStats[uid]) {
+                // try to find user details
+                const u = users.find(x => x.id === uid) || {};
+                const displayName = u.name || u.full_name || u.username || u.email || `User ${uid}`;
+                userStats[uid] = { user_name: displayName, total_articles_viewed: 0 };
+            }
+            userStats[uid].total_articles_viewed++;
+        }
+    });
+    const topUsers = Object.values(userStats).sort((a,b)=>b.total_articles_viewed-a.total_articles_viewed).slice(0,5);
+
+    return {
+        activityLog: activity,
+        overallInsights: {
+            total_articles: totalArticles,
+            total_views_all: totalViews,
+            total_edits: totalEdits,
+            active_users_this_week: activeUsers,
+            helpful_ratings: helpfulRatings,
+            not_helpful_ratings: notHelpfulRatings
+        },
+        growthTrends: [], // removed: not available
+        weeklyActivity: [], // removed: not available
+        feedbackKpis: {
+            helpful_ratings: helpfulRatings,
+            not_helpful_ratings: notHelpfulRatings
+        },
+        topUsers: topUsers
+    };
+}
+).limit(5)
         ]);
         
         const [
@@ -1212,67 +1289,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             </div>`;
     }
 
-    function renderActivityLog(page = 1) {
-        const container = document.getElementById('recentActivityContainer');
-        if (!container) return;
-
-        const activityLog = dashboardData.activityLog || [];
-        const totalPages = Math.ceil(activityLog.length / ACTIVITY_LOG_PAGE_SIZE);
-        activityLogPage = Math.max(1, Math.min(page, totalPages || 1));
-
-        const startIndex = (activityLogPage - 1) * ACTIVITY_LOG_PAGE_SIZE;
-        const endIndex = startIndex + ACTIVITY_LOG_PAGE_SIZE;
-        const pageItems = activityLog.slice(startIndex, endIndex);
-
-        const getIconForAction = (action) => {
-            switch (action) {
-                case 'created': return '<i class="fas fa-plus-circle" style="color: var(--yes-color);"></i>';
-                case 'updated': return '<i class="fas fa-pen" style="color: var(--rating-color);"></i>';
-                case 'deleted': return '<i class="fas fa-trash-alt" style="color: var(--no-color);"></i>';
-                case 'viewed': return '<i class="fas fa-eye" style="color: var(--primary-color);"></i>';
-                default: return '<i class="fas fa-history" style="color: var(--text-color-muted);"></i>';
-            }
-        };
-
-        let itemsHTML = pageItems.map(log => {
-            const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
-            const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
-            return `
-                <div class="activity-log-item">
-                    <div class="activity-icon">${getIconForAction(log.action)}</div>
-                    <div class="activity-details">
-                        <span class="activity-user">${escapeHTML(log.user_name)}</span> ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
-                    </div>
-                    <div class="activity-time">${formatReadableDate(log.timestamp || log.created_at_egypt)}</div>
-                </div>
-            `;
-        }).join('');
-
-        if (pageItems.length === 0) {
-            itemsHTML = `<div class="activity-log-item" style="justify-content: center;"><p>No recent activity found.</p></div>`;
-        }
-
-        let paginationHTML = '';
-        if (totalPages > 1) {
-            paginationHTML = `
-                <div class="activity-pagination">
-                    <button class="button-secondary" ${activityLogPage === 1 ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage - 1})">Prev</button>
-                    <span>Page ${activityLogPage} of ${totalPages}</span>
-                    <button class="button-secondary" ${activityLogPage === totalPages ? 'disabled' : ''} onclick="window.renderActivityLog(${activityLogPage + 1})">Next</button>
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <h3>Recent Activity</h3>
-            <div class="activity-log-list">
-                ${itemsHTML}
-            </div>
-            ${paginationHTML}
-        `;
-    }
-    window.renderActivityLog = renderActivityLog;
-    
     function renderTopUsers() {
         const container = document.getElementById('topUsersContainer');
         if (!container) return;
@@ -1346,14 +1362,12 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <div id="topUsersContainer" class="card">
                     <!-- Top Users content will be rendered here -->
                 </div>
-                <div id="recentActivityContainer" class="card"></div>
-            </div>`;
+</div>`;
         
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
             renderTopUsers();
-            renderActivityLog(1);
-        }, 100);
+            }, 100);
     }
 
     async function displayDashboard() {
@@ -1981,6 +1995,49 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     // allow sidebar links visible to agents (do not block), only protect header admin pages
     // optional: attach open handlers if needed
   })();
+
+
+// Sidebar reorder: move specific links into the requested order and add separator.
+// Will not rename or delete any elements; performs DOM reorder only.
+(function reorderSidebar() {
+    try {
+        const nav = document.getElementById('navigationMenu');
+        if (!nav) return;
+        const names = [
+            'Order at Store MAC',
+            'Forms & Templates'
+        ];
+        // find and move these items to the top of the nav (after MAIN and its title)
+        const links = Array.from(nav.querySelectorAll('.sidebar-link'));
+        const toMove = links.filter(a => names.includes(a.textContent.trim()));
+        if (toMove.length) {
+            // find first sidebar-section-title after MAIN (if any)
+            const mainTitle = nav.querySelector('.sidebar-section-title');
+            toMove.forEach(link => {
+                nav.insertBefore(link, mainTitle.nextSibling);
+            });
+            // insert separator after moved items
+            const sep = document.createElement('div');
+            sep.className = 'sidebar-separator';
+            // place sep after the moved items
+            if (toMove.length) {
+                nav.insertBefore(sep, toMove[toMove.length-1].nextSibling);
+            }
+        }
+        // Move following group below separator if they exist
+        const secondGroup = ['Operating Systems','Compensation Policies','Operational Instructions'];
+        secondGroup.forEach(name => {
+            const el = Array.from(nav.querySelectorAll('.sidebar-link')).find(a => a.textContent.trim() === name);
+            if (el) {
+                // append to end (after separator) to create grouping
+                nav.appendChild(el);
+            }
+        });
+    } catch(e) {
+        console.warn('Sidebar reorder failed', e);
+    }
+})();
+
 </script>
 
 </body>
