@@ -666,6 +666,154 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             border-radius: 2px;
             margin-right: 0.5rem;
         }
+        
+        /* Analytics Hub Styles */
+        .analytics-hub {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            grid-column: 1 / -1;
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .analytics-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .time-filter select {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-header);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-accent);
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            color: var(--primary-accent);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(108, 93, 211, 0.1);
+            border-radius: 8px;
+        }
+
+        .metric-data {
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-light);
+            line-height: 1.2;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-trend {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .metric-trend.up {
+            background: rgba(0, 182, 155, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(0, 182, 155, 0.2);
+        }
+
+        .metric-trend.down {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .metric-trend.stable {
+            background: rgba(255, 196, 84, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(255, 196, 84, 0.2);
+        }
+
+        .quick-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .quick-stat {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-header);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .quick-stat:hover {
+            background: rgba(108, 93, 211, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
 </style>
 
 </head>
@@ -1033,7 +1181,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             console.warn("Attempted to log activity without a valid user.");
             return;
         }
-      // 1. استخلاص اسم الكيس من كائن 'details' بشكل آمن
         const caseTitle = details.case_title || 'Unknown Case';
 
         const logData = {
@@ -1042,7 +1189,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             case_id: itemId, // Correct field name for the trigger
             section: sectionName || 'Unknown Section', // Correct field name for the trigger
             action: action,
-           case_title: caseTitle,
+            case_title: caseTitle,
             details: details,
         };
         
@@ -1209,6 +1356,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         const el = document.createElement('div');
         el.textContent = str;
         return el.innerHTML;
+    }
+
+    // إضافة دالة escapeHtml المفقودة
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
+        return String(unsafe)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
     }
 
     function formatReadableDate(isoString) {
@@ -1584,13 +1742,83 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <div id="topUsersContainer" class="card">
                     <!-- Top Users content will be rendered here -->
                 </div>
-                <div id="recentActivityContainer" class="card"></div>
+                <div class="analytics-hub">
+                    <div class="analytics-header">
+                        <h3><i class="fas fa-chart-network"></i> Analytics Hub</h3>
+                        <div class="time-filter">
+                            <select id="analyticsPeriod">
+                                <option value="today">Today</option>
+                                <option value="week" selected>This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="quarter">This Quarter</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-grid">
+                        <div class="metric-card performance">
+                            <div class="metric-icon"><i class="fas fa-rocket"></i></div>
+                            <div class="metric-data">
+                                <div class="metric-value" id="performanceScore">87%</div>
+                                <div class="metric-label">System Performance</div>
+                                <div class="metric-trend up">+5%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card engagement">
+                            <div class="metric-icon"><i class="fas fa-users"></i></div>
+                            <div class="metric-data">
+                                <div class="metric-value" id="engagementRate">64%</div>
+                                <div class="metric-label">User Engagement</div>
+                                <div class="metric-trend up">+12%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card content">
+                            <div class="metric-icon"><i class="fas fa-heartbeat"></i></div>
+                            <div class="metric-data">
+                                <div class="metric-value" id="contentHealth">92%</div>
+                                <div class="metric-label">Content Health</div>
+                                <div class="metric-trend stable">±0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card resolution">
+                            <div class="metric-icon"><i class="fas fa-check-double"></i></div>
+                            <div class="metric-data">
+                                <div class="metric-value" id="resolutionRate">78%</div>
+                                <div class="metric-label">Case Resolution</div>
+                                <div class="metric-trend up">+8%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="quick-stats-grid">
+                        <div class="quick-stat">
+                            <span class="stat-label">Avg. Response Time</span>
+                            <span class="stat-value">2.3h</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-label">Satisfaction Rate</span>
+                            <span class="stat-value">94%</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-label">Active Sessions</span>
+                            <span class="stat-value">47</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-label">Knowledge Gaps</span>
+                            <span class="stat-value">3</span>
+                        </div>
+                    </div>
+                </div>
             </div>`;
         
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
             renderTopUsers();
-            renderActivityLog(1);
+            // إزالة استدعاء renderActivityLog
         }, 100);
     }
     
@@ -2307,4 +2535,4 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 </script>
 
 </body>
-</html>
+</html>```
