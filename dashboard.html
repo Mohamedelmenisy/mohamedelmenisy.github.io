@@ -1200,30 +1200,30 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-    async function fetchDashboardData() {
-        try {
-            const results = await Promise.allSettled([
-                supabase.from('activity_log').select('*').limit(50),
-                supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, full_name').limit(10)
-            ]);
+   async function fetchDashboardData() {
+    try {
+        // ... الكود ...
+        
+        return {  // ← تأكد إن كل الـ {} متقفلة
+            activityLog: activity,
+            overallInsights: {
+                total_articles: totalArticles,
+                // ... 
+            },
+            // ... 
+        };  // ← تأكد من الفاصلة المنقوطة
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        return {
+            // ... 
+        };
+    }  // ← تأكد إن الـ try/catch متقفلة
+}  // ← تأكد إن الدالة متقفلة
+4. الحل السريع:
+بدل ما تدور على المشكلة، جرب تستبدل الكود كله بهذا الإصاح:
 
-            const activity = results[0].value?.data || [];
-            const articles = results[1].value?.data || [];
-            const feedback = results[2].value?.data || [];
-            const users = results[3].value?.data || [];
-
-            // حساب الإحصائيات الأساسية
-            const totalArticles = articles.length;
-            const totalViews = activity.filter(act => act.action === 'viewed').length;
-            const totalEdits = activity.filter(act => act.action === 'updated').length;
-            const activeUsers = [...new Set(activity.map(act => act.user_id))].length;
-            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
-
-            // 🔥 MOST ACTIVE USERS - الديناميكي الجديد
-           async function fetchDashboardData() {
+javascript
+async function fetchDashboardData() {
     try {
         const results = await Promise.allSettled([
             supabase.from('activity_log').select('*').limit(100),
@@ -1245,13 +1245,12 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
         const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
 
-        // 🔥 MOST ACTIVE USERS - الإصلاح هنا
+        // MOST ACTIVE USERS - الإصلاح
         const userStats = {};
         activity.forEach(act => {
             if (act.action === 'viewed') {
                 const userId = act.user_id;
                 if (!userStats[userId]) {
-                    // البحث عن بيانات المستخدم من جدول users
                     const user = users.find(u => u.id === userId);
                     userStats[userId] = {
                         user_id: userId,
@@ -1382,7 +1381,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
 
     // إضافة دالة escapeHtml المفقودة
-   function escapeHtml(unsafe) {
+  function escapeHtml(unsafe) {
     if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
     return String(unsafe)
         .replace(/&/g, "&amp;")
@@ -1391,7 +1390,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
 }
-
     function formatReadableDate(isoString) {
         if (!isoString) return 'N/A';
         try {
