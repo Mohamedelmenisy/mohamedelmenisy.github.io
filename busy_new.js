@@ -201,19 +201,39 @@
             return;
         }
 
-        // --- Smooth scroll for internal anchor links ---
+        // --- Improved Smooth scroll for internal anchor links ---
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
             if (!href || href === '#') return;
+            
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
-                    e.preventDefault();
-                    targetElement.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start' 
-                    });
+                    // إذا كان العنصر من نوع lightbox، نفتحه
+                    if (targetElement.classList.contains('css-lightbox')) {
+                        openLightbox(targetElement.id);
+                    } else {
+                        // إذا كان عنصر عادي، ننتقل إليه
+                        e.preventDefault();
+                        targetElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    }
+                } else {
+                    // إذا العنصر مش موجود، نحاول البحث عن أي عنصر بنفس الـ ID
+                    const elementId = href.substring(1);
+                    const fallbackElement = document.getElementById(elementId);
+                    if (fallbackElement) {
+                        e.preventDefault();
+                        fallbackElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    } else {
+                        console.warn('Element not found:', href);
+                    }
                 }
             } catch (err) {
                 console.error("Could not scroll to anchor:", err);
