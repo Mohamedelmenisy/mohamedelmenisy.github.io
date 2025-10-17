@@ -179,7 +179,9 @@
         });
     }
 
-    // ====== EVENT LISTENERS (Delegated for performance) ======
+    // ====== EVENT LISTENERS ======
+
+    // Listener للـ clicks العادية (بدون passive)
     document.addEventListener('click', function (e) {
         const target = e.target;
         
@@ -240,6 +242,12 @@
             }
             return;
         }
+    });
+
+    // Listener منفصل للـ touch events (بـ passive) إذا احتجت
+    document.addEventListener('touchstart', function (e) {
+        // Touch events هنا ممكن تضيف أي handling لـ
+        // لكن مش هنحتاج preventDefault هنا
     }, { passive: true });
     
     // --- Close lightbox on ESC key ---
