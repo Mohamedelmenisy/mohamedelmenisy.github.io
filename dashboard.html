@@ -1204,32 +1204,26 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         try {
             console.log('Fetching dashboard data...');
             
-            // نجيب البيانات منفصلة ونتعامل معاهم يدوي
+            // نستخدم timestamp بدل created_at
             const { data: activity, error: activityError } = await supabase
                 .from('activity_log')
                 .select('*')
-                .limit(100);
-
-            const { data: users, error: usersError } = await supabase
-                .from('users')
-                .select('id, name, full_name, username, email, role');
+                .limit(100)
+                .order('timestamp', { ascending: false });
 
             if (activityError) {
                 console.error('Error fetching activity:', activityError);
-                // نكمل عادي علشان مشكلة الـ activity مش توقف كل حاجة
-            }
-
-            if (usersError) {
-                console.error('Error fetching users:', usersError);
             }
 
             const results = await Promise.allSettled([
                 supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*')
+                supabase.from('kb_feedback').select('*'),
+                supabase.from('users').select('id, name, email, username, role')
             ]);
 
             const articles = results[0].value?.data || [];
             const feedback = results[1].value?.data || [];
+            const users = results[2].value?.data || [];
 
             // حساب الإحصائيات الأساسية
             const totalArticles = articles.length;
@@ -1242,21 +1236,27 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             console.log('Activity data:', activity);
             console.log('Users data:', users);
 
-            // MOST ACTIVE USERS - الطريقة اليدوية الآمنة
+            // MOST ACTIVE USERS - استخدام user_name مباشرة من activity_log
             const userStats = {};
             
-            if (activity && users) {
+            if (activity) {
                 activity.forEach(act => {
                     if (act.action === 'viewed' && act.user_id) {
                         const userId = act.user_id;
                         if (!userStats[userId]) {
-                            // البحث عن المستخدم في مصفوفة users
-                            const user = users.find(u => u.id === userId);
-                            console.log(`Found user for ${userId}:`, user);
+                            // نستخدم user_name من activity_log أو نبحث في users ك fallback
+                            let userName = act.user_name;
+                            
+                            if (!userName && users) {
+                                const user = users.find(u => u.id === userId);
+                                userName = user ? (user.name || user.email) : `User ${userId.substring(0, 8)}`;
+                            } else if (!userName) {
+                                userName = `User ${userId.substring(0, 8)}`;
+                            }
                             
                             userStats[userId] = {
                                 user_id: userId,
-                                user_name: user ? (user.name || user.full_name || user.username || user.email || `User ${userId.substring(0, 8)}`) : `User ${userId.substring(0, 8)}`,
+                                user_name: userName,
                                 total_articles_viewed: 0
                             };
                         }
@@ -1631,7 +1631,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                             <span class="activity-user">${escapeHTML(log.user_name)}</span> 
                             ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
                         </div>
-                        <div class="activity-time">${formatReadableDate(log.timestamp || log.created_at_egypt)}</div>
+                        <div class="activity-time">${formatReadableDate(log.timestamp || log.activity_time_egypt)}</div>
                     </div>
                 `;
             }).join('');
