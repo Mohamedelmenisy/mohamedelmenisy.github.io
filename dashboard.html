@@ -1204,12 +1204,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         try {
             console.log('Fetching dashboard data...');
             
-            // نستخدم timestamp بدل created_at
+            // البيانات الأساسية
             const { data: activity, error: activityError } = await supabase
-                .from('activity_log')
-                .select('*')
-                .limit(100)
-                .order('timestamp', { ascending: false });
+                .from('activity_log').select('*').limit(100).order('timestamp', { ascending: false });
 
             if (activityError) {
                 console.error('Error fetching activity:', activityError);
@@ -1302,14 +1299,14 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 growthTrends: [],
                 weeklyActivity: weeklyActivity, // البيانات الحقيقية
                 analyticsData: {
-                    activeSessions: engagementStats[0]?.active_sessions || 1,
-                    satisfactionRate: feedbackSummary[0]?.satisfaction_rate || 94,
-                    avgResponseTime: fastestTicket[0]?.avg_response_time || '2.3h',
-                    knowledgeGaps: unseenUpdates.length || 3,
-                    performanceScore: overallInsights[0]?.performance_score || 87,
-                    engagementRate: overallInsights[0]?.engagement_rate || 64,
-                    contentHealth: overallInsights[0]?.content_health || 92,
-                    resolutionRate: overallInsights[0]?.resolution_rate || 78
+                    activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
+                    satisfactionRate: feedbackSummary[0]?.satisfaction_rate || Math.round((overallInsights[0]?.avg_feedback_rating || 0) * 20),
+                    avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
+                    knowledgeGaps: unseenUpdates.length || 0,
+                    performanceScore: overallInsights[0]?.performance_score || Math.min(100, Math.round(((overallInsights[0]?.total_views_all || 0) / Math.max((overallInsights[0]?.total_articles || 1), 1)) * 25)),
+                    engagementRate: overallInsights[0]?.engagement_rate || Math.min(100, Math.round(((overallInsights[0]?.active_users_this_week || 0) / Math.max((overallInsights[0]?.total_employees || 1), 1)) * 100)),
+                    contentHealth: overallInsights[0]?.content_health || Math.min(100, Math.round(((overallInsights[0]?.total_articles || 0) / 10) * 100 + ((overallInsights[0]?.edits_this_week || 0) * 5))),
+                    resolutionRate: overallInsights[0]?.resolution_rate || Math.min(100, Math.round((overallInsights[0]?.avg_feedback_rating || 0) * 20))
                 }
             };
         } catch (error) {
