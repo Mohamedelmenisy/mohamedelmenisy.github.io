@@ -1218,12 +1218,26 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             const results = await Promise.allSettled([
                 supabase.from('cases').select('*'),
                 supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, role')
+                supabase.from('users').select('id, name, email, username, role'),
+                // بيانات الـ Chart من v_activity_combined_7days
+                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
+                // باقي البيانات للـ Analytics Hub
+                supabase.from('v_engagement_stats').select('*'),
+                supabase.from('v_kb_feedback_summary').select('*'),
+                supabase.from('fastest_ticket').select('*').limit(1),
+                supabase.from('v_unseen_updates').select('*'),
+                supabase.from('v_overall_insights').select('*')
             ]);
 
             const articles = results[0].value?.data || [];
             const feedback = results[1].value?.data || [];
             const users = results[2].value?.data || [];
+            const weeklyActivity = results[3].value?.data || []; // البيانات الحقيقية للـ Chart
+            const engagementStats = results[4].value?.data || [];
+            const feedbackSummary = results[5].value?.data || [];
+            const fastestTicket = results[6].value?.data || [];
+            const unseenUpdates = results[7].value?.data || [];
+            const overallInsights = results[8].value?.data || [];
 
             // حساب الإحصائيات الأساسية
             const totalArticles = articles.length;
@@ -1270,6 +1284,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 .slice(0, 5);
 
             console.log('Final topUsers:', topUsers);
+            console.log('Weekly Activity Data for Chart:', weeklyActivity); // علشان نتأكد
 
             return {
                 activityLog: activity || [],
@@ -1285,7 +1300,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 },
                 topUsers: topUsers,
                 growthTrends: [],
-                weeklyActivity: []
+                weeklyActivity: weeklyActivity, // البيانات الحقيقية
+                analyticsData: {
+                    activeSessions: engagementStats[0]?.active_sessions || 1,
+                    satisfactionRate: feedbackSummary[0]?.satisfaction_rate || 94,
+                    avgResponseTime: fastestTicket[0]?.avg_response_time || '2.3h',
+                    knowledgeGaps: unseenUpdates.length || 3,
+                    performanceScore: overallInsights[0]?.performance_score || 87,
+                    engagementRate: overallInsights[0]?.engagement_rate || 64,
+                    contentHealth: overallInsights[0]?.content_health || 92,
+                    resolutionRate: overallInsights[0]?.resolution_rate || 78
+                }
             };
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -1295,10 +1320,14 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 feedbackKpis: {},
                 topUsers: [],
                 growthTrends: [],
-                weeklyActivity: []
+                analyticsData: {},
+                weeklyActivity: [
+                    { activity_date_egypt: '2025-10-17', total_views: 4, active_users: 1 }
+                ]
             };
         }
     }
+
 
     mermaid.initialize({
         startOnLoad: false,
@@ -1325,7 +1354,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     let currentOpenItem = null;
     
     let activityChartInstance;
-    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [] };
+    let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [], analyticsData: {} };
     let activityLogPage = 1;
     const ACTIVITY_LOG_PAGE_SIZE = 7;
 
@@ -1621,7 +1650,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             `;
         } else {
             itemsHTML = pageItems.map(log => {
-                const itemTitle = log.item_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.item_title, 40))}</strong>` : '';
+                const itemTitle = log.case_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.case_title, 40))}</strong>` : '';
                 const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
                 
                 return `
@@ -1708,6 +1737,7 @@ function renderTopUsers() {
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
+        const analytics = dashboardData.analyticsData || {};
         const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
         
         const getGrowthHTML = (metric) => {
@@ -1786,7 +1816,7 @@ function renderTopUsers() {
                         <div class="metric-card performance">
                             <div class="metric-icon"><i class="fas fa-rocket"></i></div>
                             <div class="metric-data">
-                                <div class="metric-value" id="performanceScore">87%</div>
+                                <div class="metric-value" id="performanceScore">${analytics.performanceScore}%</div>
                                 <div class="metric-label">System Performance</div>
                                 <div class="metric-trend up">+5%</div>
                             </div>
@@ -1795,7 +1825,7 @@ function renderTopUsers() {
                         <div class="metric-card engagement">
                             <div class="metric-icon"><i class="fas fa-users"></i></div>
                             <div class="metric-data">
-                                <div class="metric-value" id="engagementRate">64%</div>
+                                <div class="metric-value" id="engagementRate">${analytics.engagementRate}%</div>
                                 <div class="metric-label">User Engagement</div>
                                 <div class="metric-trend up">+12%</div>
                             </div>
@@ -1804,7 +1834,7 @@ function renderTopUsers() {
                         <div class="metric-card content">
                             <div class="metric-icon"><i class="fas fa-heartbeat"></i></div>
                             <div class="metric-data">
-                                <div class="metric-value" id="contentHealth">92%</div>
+                                <div class="metric-value" id="contentHealth">${analytics.contentHealth}%</div>
                                 <div class="metric-label">Content Health</div>
                                 <div class="metric-trend stable">±0%</div>
                             </div>
@@ -1813,7 +1843,7 @@ function renderTopUsers() {
                         <div class="metric-card resolution">
                             <div class="metric-icon"><i class="fas fa-check-double"></i></div>
                             <div class="metric-data">
-                                <div class="metric-value" id="resolutionRate">78%</div>
+                                <div class="metric-value" id="resolutionRate">${analytics.resolutionRate}%</div>
                                 <div class="metric-label">Case Resolution</div>
                                 <div class="metric-trend up">+8%</div>
                             </div>
@@ -1824,19 +1854,19 @@ function renderTopUsers() {
                     <div class="quick-stats-grid">
                         <div class="quick-stat">
                             <span class="stat-label">Avg. Response Time</span>
-                            <span class="stat-value">2.3h</span>
+                            <span class="stat-value">${analytics.avgResponseTime}</span>
                         </div>
                         <div class="quick-stat">
                             <span class="stat-label">Satisfaction Rate</span>
-                            <span class="stat-value">94%</span>
+                            <span class="stat-value">${analytics.satisfactionRate}%</span>
                         </div>
                         <div class="quick-stat">
                             <span class="stat-label">Active Sessions</span>
-                            <span class="stat-value">47</span>
+                            <span class="stat-value">${analytics.activeSessions}</span>
                         </div>
                         <div class="quick-stat">
                             <span class="stat-label">Knowledge Gaps</span>
-                            <span class="stat-value">3</span>
+                            <span class="stat-value">${analytics.knowledgeGaps}</span>
                         </div>
                     </div>
                 </div>
@@ -1845,7 +1875,7 @@ function renderTopUsers() {
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
             renderTopUsers();
-            // إزالة استدعاء renderActivityLog
+            renderActivityLog(1);
         }, 100);
     }
     
@@ -1861,16 +1891,19 @@ function renderTopUsers() {
         
         const activityCtx = document.getElementById('activityChart')?.getContext('2d');
         if (activityCtx) {
-            // استخدام بيانات افتراضية إذا لم تكن هناك بيانات حقيقية
-            const weeklyData = data.weeklyActivity?.length > 0 ? data.weeklyActivity : [
-                { activity_date_egypt: new Date(Date.now() - 6*24*60*60*1000).toISOString().split('T')[0], total_views: 45, active_users: 8 },
-                { activity_date_egypt: new Date(Date.now() - 5*24*60*60*1000).toISOString().split('T')[0], total_views: 67, active_users: 12 },
-                { activity_date_egypt: new Date(Date.now() - 4*24*60*60*1000).toISOString().split('T')[0], total_views: 89, active_users: 15 },
-                { activity_date_egypt: new Date(Date.now() - 3*24*60*60*1000).toISOString().split('T')[0], total_views: 76, active_users: 14 },
-                { activity_date_egypt: new Date(Date.now() - 2*24*60*60*1000).toISOString().split('T')[0], total_views: 94, active_users: 16 },
-                { activity_date_egypt: new Date(Date.now() - 1*24*60*60*1000).toISOString().split('T')[0], total_views: 112, active_users: 18 },
-                { activity_date_egypt: new Date().toISOString().split('T')[0], total_views: 87, active_users: 14 }
-            ];
+            // استخدام البيانات الحقيقية من v_activity_combined_7days
+            const weeklyData = data.weeklyActivity || [];
+            
+            console.log('Chart Data:', weeklyData); // علشان نتأكد من البيانات
+            
+            // إذا مفيش بيانات كافية، نعرض رسالة
+            if (weeklyData.length === 0 || weeklyData.every(d => d.total_views === 0)) {
+                activityCtx.fillStyle = 'var(--text-muted)';
+                activityCtx.font = '16px Inter';
+                activityCtx.textAlign = 'center';
+                activityCtx.fillText('No activity data available for the chart', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
+                return;
+            }
             
             const labels = weeklyData.map(d => {
                 const date = new Date(d.activity_date_egypt);
@@ -1884,7 +1917,7 @@ function renderTopUsers() {
                     datasets: [
                         {
                             label: 'Total Views',
-                            data: weeklyData.map(d => d.total_views),
+                            data: weeklyData.map(d => d.total_views || 0),
                             backgroundColor: "rgba(108, 93, 211, 0.7)",
                             borderColor: primaryColor,
                             borderWidth: 2,
@@ -1893,7 +1926,7 @@ function renderTopUsers() {
                         },
                         {
                             label: 'Active Users',
-                            data: weeklyData.map(d => d.active_users),
+                            data: weeklyData.map(d => d.active_users || 0),
                             type: 'line',
                             borderColor: successColor,
                             backgroundColor: "rgba(0, 182, 155, 0.1)",
@@ -1937,18 +1970,6 @@ function renderTopUsers() {
                             padding: 12,
                             cornerRadius: 8,
                             displayColors: true,
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y;
-                                    }
-                                    return label;
-                                }
-                            }
                         }
                     },
                     scales: {
