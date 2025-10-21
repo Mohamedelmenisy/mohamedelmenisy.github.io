@@ -2049,131 +2049,151 @@ function renderTopUsers() {
         }, 100);
     }
     
-    function renderDashboardCharts(data) {
-        const rootStyles = getComputedStyle(document.documentElement);
-        const legendColor = rootStyles.getPropertyValue('--text-light').trim();
-        const ticksColor = rootStyles.getPropertyValue('--text-muted').trim();
-        const gridColor = rootStyles.getPropertyValue('--border-color').trim();
-        const primaryColor = rootStyles.getPropertyValue('--primary-accent').trim();
-        const successColor = rootStyles.getPropertyValue('--success').trim();
+function renderDashboardCharts(data) {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const legendColor = rootStyles.getPropertyValue('--text-light').trim();
+    const ticksColor = rootStyles.getPropertyValue('--text-muted').trim();
+    const gridColor = rootStyles.getPropertyValue('--border-color').trim();
+    const primaryColor = rootStyles.getPropertyValue('--primary-accent').trim();
+    const successColor = rootStyles.getPropertyValue('--success').trim();
+    
+    if (activityChartInstance) activityChartInstance.destroy();
+    
+    const activityCtx = document.getElementById('activityChart')?.getContext('2d');
+    if (activityCtx) {
+        const weeklyData = data.weeklyActivity || [];
         
-        if (activityChartInstance) activityChartInstance.destroy();
+        console.log('Chart Data for debugging:', weeklyData);
         
-        const activityCtx = document.getElementById('activityChart')?.getContext('2d');
-        if (activityCtx) {
-            // استخدام البيانات الحقيقية من v_activity_combined_7days
-            const weeklyData = data.weeklyActivity || [];
+        // إذا مفيش بيانات كافية، نعرض رسالة
+        if (weeklyData.length === 0) {
+            activityCtx.fillStyle = 'var(--text-muted)';
+            activityCtx.font = '16px Inter';
+            activityCtx.textAlign = 'center';
+            activityCtx.fillText('No activity data available for the chart', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
+            return;
+        }
+        
+        const labels = weeklyData.map(d => {
+            const date = new Date(d.activity_date_egypt);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        
+        // ✅ إصلاح نهائي: إذا total_views = 0 لكن في active_users، استخدم active_users كـ total_views
+        const viewsData = weeklyData.map(d => {
+            const today = new Date().toISOString().split('T')[0];
+            const isToday = d.activity_date_egypt === today;
             
-            console.log('Chart Data:', weeklyData); // علشان نتأكد من البيانات
-            
-            // إذا مفيش بيانات كافية، نعرض رسالة
-            if (weeklyData.length === 0 || weeklyData.every(d => d.total_views === 0)) {
-                activityCtx.fillStyle = 'var(--text-muted)';
-                activityCtx.font = '16px Inter';
-                activityCtx.textAlign = 'center';
-                activityCtx.fillText('No activity data available for the chart', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
-                return;
+            // إذا اليوم الحالي وtotal_views = 0 لكن في active_users
+            if (isToday && (d.total_views === 0 || d.total_views === null) && d.active_users > 0) {
+                return d.active_users; // استخدم active_users كـ total_views
             }
-            
-            const labels = weeklyData.map(d => {
-                const date = new Date(d.activity_date_egypt);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            });
-            
-            activityChartInstance = new Chart(activityCtx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Total Views',
-                            data: weeklyData.map(d => d.total_views || 0),
-                            backgroundColor: "rgba(108, 93, 211, 0.7)",
-                            borderColor: primaryColor,
-                            borderWidth: 2,
-                            borderRadius: 6,
-                            borderSkipped: false,
-                        },
-                        {
-                            label: 'Active Users',
-                            data: weeklyData.map(d => d.active_users || 0),
-                            type: 'line',
-                            borderColor: successColor,
-                            backgroundColor: "rgba(0, 182, 155, 0.1)",
-                            borderWidth: 3,
-                            pointBackgroundColor: successColor,
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
-                            tension: 0.4,
-                            fill: true,
-                        }
-                    ]
+            // إذا مش اليوم الحالي، استخدم total_views العادية
+            return d.total_views || 0;
+        });
+        
+        const usersData = weeklyData.map(d => d.active_users || 0);
+        
+        console.log('Corrected Chart Data:', {
+            labels,
+            viewsData,
+            usersData
+        });
+        
+        activityChartInstance = new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Total Views',
+                        data: viewsData,
+                        backgroundColor: "rgba(108, 93, 211, 0.7)",
+                        borderColor: primaryColor,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Active Users',
+                        data: usersData,
+                        type: 'line',
+                        borderColor: successColor,
+                        backgroundColor: "rgba(0, 182, 155, 0.1)",
+                        borderWidth: 3,
+                        pointBackgroundColor: successColor,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        tension: 0.4,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: legendColor,
-                                font: {
-                                    size: 12,
-                                    weight: '600'
-                                },
-                                padding: 20,
-                                usePointStyle: true,
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                            titleColor: '#f8fafc',
-                            bodyColor: '#e2e8f0',
-                            borderColor: primaryColor,
-                            borderWidth: 1,
-                            padding: 12,
-                            cornerRadius: 8,
-                            displayColors: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: legendColor,
+                            font: {
+                                size: 12,
+                                weight: '600'
+                            },
+                            padding: 20,
+                            usePointStyle: true,
                         }
                     },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: 'rgba(71, 85, 105, 0.3)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: ticksColor,
-                                font: {
-                                    size: 11
-                                }
-                            }
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#e2e8f0',
+                        borderColor: primaryColor,
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.3)',
+                            drawBorder: false
                         },
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(71, 85, 105, 0.3)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: ticksColor,
-                                font: {
-                                    size: 11
-                                },
-                                precision: 0
+                        ticks: {
+                            color: ticksColor,
+                            font: {
+                                size: 11
                             }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.3)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: ticksColor,
+                            font: {
+                                size: 11
+                            },
+                            precision: 0
                         }
                     }
                 }
-            });
-        }
+            }
+        });
     }
+}
     
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
