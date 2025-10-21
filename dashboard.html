@@ -1213,45 +1213,36 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             }
 
             const results = await Promise.allSettled([
-              supabase.from('cases').select('*'),
-              supabase.from('kb_feedback').select('*'),
-              supabase.from('users').select('id, name, email, username, role'),
-              // بيانات الـ Chart من v_activity_combined_7days
-              supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-              // باقي البيانات للـ Analytics Hub
-              supabase.from('v_engagement_stats').select('*'),
-              supabase.from('v_kb_feedback_summary').select('*'),
-              supabase.from('fastest_ticket').select('*').limit(1),
-              supabase.from('v_unseen_updates').select('*'),
-              supabase.from('v_employee_tracking').select('*'), // ✅ أضفناها هنا
-              supabase.from('v_overall_insights_fixed').select('total_unique_views, total_all_views, total_cases_viewed, total_users_viewed')
-            ]);
+  supabase.from('cases').select('*'),
+  supabase.from('kb_feedback').select('*'),
+  supabase.from('users').select('id, name, email, username, role'),
+  // بيانات الـ Chart من v_activity_combined_7days
+  supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
+  // باقي البيانات للـ Analytics Hub
+  supabase.from('v_engagement_stats').select('*'),
+  supabase.from('v_kb_feedback_summary').select('*'),
+  supabase.from('fastest_ticket').select('*').limit(1),
+  supabase.from('v_unseen_updates').select('*'),
+  supabase.from('v_employee_tracking').select('*'), // ✅ أضفناها هنا
+  supabase.from('v_overall_insights').select('*')
+]);
 
-            const articles = results[0].value?.data || [];
-            const feedback = results[1].value?.data || [];
-            const users = results[2].value?.data || [];
-            const weeklyActivity = results[3].value?.data || [];
-            const engagementStats = results[4].value?.data || [];
-            const feedbackSummary = results[5].value?.data || [];
-            const fastestTicket = results[6].value?.data || [];
-            const unseenUpdates = results[7].value?.data || [];
-            const employeeStats = results[8].value?.data || []; // ✅ أضف ده
-            const overallInsights = results[9].value?.data || [];
+const articles = results[0].value?.data || [];
+const feedback = results[1].value?.data || [];
+const users = results[2].value?.data || [];
+const weeklyActivity = results[3].value?.data || [];
+const engagementStats = results[4].value?.data || [];
+const feedbackSummary = results[5].value?.data || [];
+const fastestTicket = results[6].value?.data || [];
+const unseenUpdates = results[7].value?.data || [];
+const employeeStats = results[8].value?.data || []; // ✅ أضف ده
+const overallInsights = results[9].value?.data || [];
 
 
             // حساب الإحصائيات الأساسية
             const totalArticles = articles.length;
-
-            // [FIX START] Calculate UNIQUE views instead of total views from the activity log
-            // This ensures that if a user views the same case multiple times, it only counts as one "view" in this stat.
-            const uniqueViews = new Set(
-                (activity || [])
-                    .filter(act => act.action === 'viewed' && act.user_id && act.case_id) // Filter for views with necessary data
-                    .map(act => `${act.user_id}-${act.case_id}`) // Create a unique identifier for each user-case pair (e.g., "user123-caseABC")
-            );
-            const totalUniqueViews = uniqueViews.size; // The size of the Set is the unique view count
-            // [FIX END]
-
+            // const totalViews = (activity || []).filter(act => act.action === 'viewed').length;
+          const totalViews = (activity || []).filter(act => act.action === 'viewed').length;
             const totalEdits = (activity || []).filter(act => act.action === 'updated').length;
             const activeUsers = [...new Set((activity || []).map(act => act.user_id))].length;
             const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
@@ -1301,7 +1292,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 activityLog: activity || [],
                 overallInsights: {
                     total_articles: totalArticles,
-                    total_unique_views: totalUniqueViews, // [FIX] Use the correct unique views count
+                    total_views_all: totalViews,
                     total_edits: totalEdits,
                     active_users_this_week: activeUsers
                 },
@@ -1747,7 +1738,7 @@ function renderTopUsers() {
 
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
-         const insights = dashboardData.overallInsights;
+        const insights = dashboardData.overallInsights;
         const analytics = dashboardData.analyticsData || {};
         const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
         
@@ -1773,7 +1764,7 @@ function renderTopUsers() {
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-eye"></i></div>
                     <div class="stat-info">
-                    <span class="stat-value">${insights.total_unique_views || 0}</span>
+                        <span class="stat-value">${insights.total_views_all || 0}</span>
                         <span class="stat-label">Total Views</span>
                         ${getGrowthHTML('views')}
                     </div>
