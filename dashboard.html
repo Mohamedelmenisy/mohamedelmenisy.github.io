@@ -1201,134 +1201,114 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     
     async function fetchDashboardData() {
-        try {
-            console.log('Fetching dashboard data...');
-            
-            // البيانات الأساسية
-            const { data: activity, error: activityError } = await supabase
-                .from('activity_log').select('*').limit(100).order('timestamp', { ascending: false });
+    try {
+        console.log('Fetching dashboard data...');
+        
+        // احصل على البيانات بنفس طريقة Insights
+        const { data: employeeActivity, error: activityError } = await supabase
+            .from('v_employee_activity_fixed')
+            .select('*');
 
-            if (activityError) {
-                console.error('Error fetching activity:', activityError);
-            }
-
-            const results = await Promise.allSettled([
-  supabase.from('cases').select('*'),
-  supabase.from('kb_feedback').select('*'),
-  supabase.from('users').select('id, name, email, username, role'),
-  // بيانات الـ Chart من v_activity_combined_7days
-  supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-  // باقي البيانات للـ Analytics Hub
-  supabase.from('v_engagement_stats').select('*'),
-  supabase.from('v_kb_feedback_summary').select('*'),
-  supabase.from('fastest_ticket').select('*').limit(1),
-  supabase.from('v_unseen_updates').select('*'),
-  supabase.from('v_employee_tracking').select('*'), // ✅ أضفناها هنا
-  supabase.from('v_overall_insights').select('*')
-]);
-
-const articles = results[0].value?.data || [];
-const feedback = results[1].value?.data || [];
-const users = results[2].value?.data || [];
-const weeklyActivity = results[3].value?.data || [];
-const engagementStats = results[4].value?.data || [];
-const feedbackSummary = results[5].value?.data || [];
-const fastestTicket = results[6].value?.data || [];
-const unseenUpdates = results[7].value?.data || [];
-const employeeStats = results[8].value?.data || []; // ✅ أضف ده
-const overallInsights = results[9].value?.data || [];
-
-
-            // حساب الإحصائيات الأساسية
-            const totalArticles = articles.length;
-            // const totalViews = (activity || []).filter(act => act.action === 'viewed').length;
-            const totalViews = employeeActivity ? employeeActivity.length : 0;
-            const totalEdits = (activity || []).filter(act => act.action === 'updated').length;
-            const activeUsers = [...new Set((activity || []).map(act => act.user_id))].length;
-            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
-
-            console.log('Activity data:', activity);
-            console.log('Users data:', users);
-
-            // MOST ACTIVE USERS - استخدام user_name مباشرة من activity_log
-            const userStats = {};
-            
-            if (activity) {
-                activity.forEach(act => {
-                    if (act.action === 'viewed' && act.user_id) {
-                        const userId = act.user_id;
-                        if (!userStats[userId]) {
-                            // نستخدم user_name من activity_log أو نبحث في users ك fallback
-                            let userName = act.user_name;
-                            
-                            if (!userName && users) {
-                                const user = users.find(u => u.id === userId);
-                                userName = user ? (user.name || user.email) : `User ${userId.substring(0, 8)}`;
-                            } else if (!userName) {
-                                userName = `User ${userId.substring(0, 8)}`;
-                            }
-                            
-                            userStats[userId] = {
-                                user_id: userId,
-                                user_name: userName,
-                                total_articles_viewed: 0
-                            };
-                        }
-                        userStats[userId].total_articles_viewed++;
-                    }
-                });
-            }
-
-           const topUsers = (employeeStats || [])
-    .filter(u => u.total_views > 0)
-    .sort((a, b) => b.total_views - a.total_views)
-    .slice(0, 5);
-          
-            console.log('Final topUsers:', topUsers);
-            console.log('Weekly Activity Data for Chart:', weeklyActivity); // علشان نتأكد
-
-            return {
-                activityLog: activity || [],
-                overallInsights: {
-                    total_articles: totalArticles,
-                    total_views_all: totalViews,
-                    total_edits: totalEdits,
-                    active_users_this_week: activeUsers
-                },
-                feedbackKpis: {
-                    helpful_ratings: helpfulRatings,
-                    not_helpful_ratings: notHelpfulRatings
-                },
-                topUsers: topUsers,
-                growthTrends: [],
-                weeklyActivity: weeklyActivity, // البيانات الحقيقية
-                analyticsData: {
-                    activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
-                    satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
-                    avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
-                    knowledgeGaps: unseenUpdates.length || 0,
-                    performanceScore: Math.min(100, Math.round(((overallInsights[0]?.total_views_all || 0) / Math.max((overallInsights[0]?.total_articles || 1), 1)) * 100)),
-                    engagementRate: Math.min(100, Math.round(((overallInsights[0]?.active_users_this_week || 0) / 3) * 100)), // افتراض 3 مستخدمين نشطين = 100%
-                    contentHealth: Math.min(100, 30 + ((overallInsights[0]?.total_articles || 0) * 10) + ((overallInsights[0]?.edits_this_week || 0) * 5)),
-                    resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
-                }
-            };
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            return {
-                activityLog: [],
-                overallInsights: {},
-                feedbackKpis: {},
-                topUsers: [],
-                growthTrends: [],
-                analyticsData: {},
-                weeklyActivity: [
-                    { activity_date_egypt: '2025-10-17', total_views: 4, active_users: 1 }
-                ]
-            };
+        if (activityError) {
+            console.error('Error fetching employee activity:', activityError);
         }
+
+        // احصل على activity_log للـ Recent Activity فقط
+        const { data: activityLog, error: logError } = await supabase
+            .from('activity_log')
+            .select('*')
+            .limit(100)
+            .order('timestamp', { ascending: false });
+
+        if (logError) {
+            console.error('Error fetching activity log:', logError);
+        }
+
+        const results = await Promise.allSettled([
+            supabase.from('cases').select('*'),
+            supabase.from('kb_feedback').select('*'),
+            supabase.from('users').select('id, name, email, username, role'),
+            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
+            supabase.from('v_engagement_stats').select('*'),
+            supabase.from('v_kb_feedback_summary').select('*'),
+            supabase.from('fastest_ticket').select('*').limit(1),
+            supabase.from('v_unseen_updates').select('*'),
+            supabase.from('v_employee_tracking').select('*'),
+            supabase.from('v_overall_insights').select('*')
+        ]);
+
+        const articles = results[0].value?.data || [];
+        const feedback = results[1].value?.data || [];
+        const users = results[2].value?.data || [];
+        const weeklyActivity = results[3].value?.data || [];
+        const engagementStats = results[4].value?.data || [];
+        const feedbackSummary = results[5].value?.data || [];
+        const fastestTicket = results[6].value?.data || [];
+        const unseenUpdates = results[7].value?.data || [];
+        const employeeStats = results[8].value?.data || [];
+        const overallInsights = results[9].value?.data || [];
+
+        // ✅ الحسابات الصحيحة - استخدام employeeActivity مثل Insights
+        const totalArticles = articles.length;
+        const totalViews = employeeActivity ? employeeActivity.length : 0; // عدد السجلات مثل Insights
+        const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
+        const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
+        const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+        const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
+
+        console.log('Dashboard data calculated:', {
+            totalArticles,
+            totalViews, 
+            totalEdits,
+            activeUsers,
+            employeeActivityCount: employeeActivity?.length
+        });
+
+        // MOST ACTIVE USERS - استخدام employeeStats مباشرة
+        const topUsers = (employeeStats || [])
+            .filter(u => u.total_views > 0)
+            .sort((a, b) => b.total_views - a.total_views)
+            .slice(0, 5);
+
+        return {
+            activityLog: activityLog || [], // للـ Recent Activity
+            overallInsights: {
+                total_articles: totalArticles,
+                total_views_all: totalViews, // ✅ متوافق مع Insights الآن
+                total_edits: totalEdits,
+                active_users_this_week: activeUsers
+            },
+            feedbackKpis: {
+                helpful_ratings: helpfulRatings,
+                not_helpful_ratings: notHelpfulRatings
+            },
+            topUsers: topUsers,
+            growthTrends: [],
+            weeklyActivity: weeklyActivity,
+            analyticsData: {
+                activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
+                satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
+                avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
+                knowledgeGaps: unseenUpdates.length || 0,
+                performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
+                engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
+                contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
+                resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        return {
+            activityLog: [],
+            overallInsights: {},
+            feedbackKpis: {},
+            topUsers: [],
+            growthTrends: [],
+            analyticsData: {},
+            weeklyActivity: []
+        };
     }
+}
 
 
     mermaid.initialize({
