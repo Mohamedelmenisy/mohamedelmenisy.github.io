@@ -1,183 +1,57 @@
-/* role-check.js - unified role helper and UI helper functions
-   - getCurrentUserRole() returns 'admin'|'manager'|'agent' or null
-   - applyNavVisibility(role) updates header links and attaches protection for admin-only pages
-   - showProtectedModal() shows a warning when agent tries to open admin-only pages
-*/
-import { supabase } from './supabase.js';
-
-// 🔊 صوت تنبيه عند محاولة دخول غير مصرح بها
-const alertSound = new Audio('/elevo-core-flow/sounds/call_sound.mp3');
-alertSound.volume = 0.5;
-
-// فك الحظر من أول كليك
-document.addEventListener('click', () => {
-  alertSound.play().then(() => {
-    alertSound.pause();
-    alertSound.currentTime = 0;
-  }).catch(() => {});
-}, { once: true });
-
-export async function getCurrentUserRole() {
-  try {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) return null;
-
-    const { data: profile, error } = await supabase
-      .from('users')
-      .select('id, role, name, email')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching profile', error);
-      return null;
-    }
-
-    return profile?.role || 'agent';
-  } catch (e) {
-    console.error('getCurrentUserRole error', e);
-    return null;
-  }
+/* Shared design tokens and improvements */
+:root{
+  --brand-500: #0b5fff; /* primary */
+  --brand-600: #084fd6;
+  --muted-600: #6b7280;
+  --bg: #0f1724;
+  --card-bg: #0b1220;
+  --glass: rgba(255,255,255,0.04);
+  --success: #16a34a;
+  --danger: #ef4444;
+  --radius: 10px;
+  --gap: 12px;
+  --max-width: 1200px;
+  --mono: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
 }
 
-export function applyNavVisibility(role) {
-  document.querySelectorAll('[data-role-required]').forEach(el => {
-    const req = el.getAttribute('data-role-required');
-    if (!req) return;
-    const allowed = req.split(',').map(s => s.trim());
-    if (!role || !allowed.includes(role)) {
-      el.classList.add('protected-link');
-      el.addEventListener('click', protectedClickHandler);
-      el.setAttribute('aria-disabled','true');
-    } else {
-      el.classList.remove('protected-link');
-      el.removeEventListener('click', protectedClickHandler);
-      el.removeAttribute('aria-disabled');
-    }
-  });
+/* Reset small things */
+body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#071428 0%, #071727 100%); color: #e6eef8; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+.container{ max-width: var(--max-width); margin: 0 auto; padding: 20px; }
 
-  const roleBadge = document.getElementById('role-badge');
-  if (roleBadge) roleBadge.textContent = role || 'guest';
+/* Sticky header */
+.app-header{
+  position: sticky; top:0; z-index:40; background: rgba(6,11,22,0.7); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(255,255,255,0.04);
+  display:flex; align-items:center; justify-content:space-between; padding: 10px 18px;
 }
+.app-header .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; color:var(--brand-500); }
+.app-header nav{ display:flex; gap:10px; align-items:center; }
+.app-header a{ color: #dbeafe; text-decoration:none; padding:8px 12px; border-radius:8px; display:inline-block; font-size:14px; }
+.app-header a:hover{ background: rgba(255,255,255,0.03); transform: translateY(-1px); transition: all 120ms ease; }
 
-function protectedClickHandler(e){
-  e.preventDefault();
-  showProtectedModal();
-}
+/* Protected link */
+.protected-link{ opacity:0.6; cursor: pointer; position:relative; outline:none; }
+.protected-link::after{ content: '🔒'; margin-left:6px; font-size:12px; opacity:0.7; }
 
-export function showProtectedModal() {
-  let modal = document.getElementById('protected-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'protected-modal';
-    modal.className = 'protected-modal';
-    modal.innerHTML = `
-      <div class="protected-modal-overlay"></div>
-      <div class="protected-modal-card">
-        <div class="icon-circle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-        </div>
-        <h3>Access Restricted</h3>
-        <p>This area is for managers and administrators only.<br>
-        If you believe you should have access, please contact your admin.</p>
-        <div class="protected-modal-actions">
-          <button id="pm-close">Okay</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
+/* Sidebar */
+.app-layout{ display:flex; gap:18px; align-items:flex-start; padding-top:12px; }
+.sidebar{ width:260px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:14px; border-radius:12px; height: calc(100vh - 88px); position:sticky; top:76px; overflow:auto; box-shadow: 0 6px 20px rgba(2,6,23,0.6); }
+.main{ flex:1; min-height: calc(100vh - 120px); padding-bottom:60px; }
 
-    // زر الإغلاق
-    document.getElementById('pm-close').addEventListener('click', ()=>{
-      modal.classList.remove('open');
-    });
-  }
+/* Cards */
+.card{ background: var(--card-bg); padding:16px; border-radius:var(--radius); box-shadow: 0 8px 30px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03); margin-bottom: var(--gap); }
 
-  modal.classList.add('open');
-  alertSound.play().catch(()=>{});
-}
+/* Modal styles */
+.protected-modal{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); visibility:hidden; opacity:0; transition: all 180ms ease; z-index:80; }
+.protected-modal.open{ visibility:visible; opacity:1; }
+.protected-modal-card{ width:380px; background: linear-gradient(180deg, #071428, #041025); padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 8px 30px rgba(2,6,23,0.7); color:#dbeafe; }
+.protected-modal-card h3{ margin:0 0 8px 0; }
+.protected-modal-card p{ margin:0 0 16px 0; color:var(--muted-600); }
+.protected-modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
+.protected-modal button{ background:transparent; color:var(--brand-500); border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; cursor:pointer; }
 
-/* 🌑 تصميم عصري للفورم */
-const style = document.createElement('style');
-style.textContent = `
-.protected-modal {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
+/* responsive */
+@media (max-width:900px){
+  .sidebar{ position:relative; width:100%; height:auto; top:0; }
+  .app-layout{ flex-direction:column; }
+  .app-header nav{ gap:6px; }
 }
-.protected-modal.open {
-  opacity: 1;
-  pointer-events: all;
-}
-.protected-modal-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  backdrop-filter: blur(10px);
-}
-.protected-modal-card {
-  position: relative;
-  background: rgba(25,28,40,0.9);
-  border-radius: 20px;
-  padding: 2.5rem;
-  max-width: 420px;
-  width: 90%;
-  text-align: center;
-  color: #fff;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  z-index: 1;
-  animation: modalPop 0.35s ease;
-}
-.protected-modal-card h3 {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-.protected-modal-card p {
-  color: #cbd5e1;
-  line-height: 1.6;
-  margin-bottom: 1.8rem;
-}
-.protected-modal-actions button {
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
-  border: none;
-  color: white;
-  font-weight: 600;
-  padding: 0.8rem 2.2rem;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.25s ease;
-  box-shadow: 0 0 25px rgba(78,140,255,0.25);
-}
-.protected-modal-actions button:hover {
-  transform: scale(1.05);
-}
-.icon-circle {
-  width:80px;
-  height:80px;
-  margin:0 auto 1.5rem;
-  border-radius:50%;
-  background:rgba(96,165,250,0.15);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid rgba(96,165,250,0.3);
-  box-shadow:0 0 20px rgba(96,165,250,0.25);
-}
-@keyframes modalPop {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-`;
-document.head.appendChild(style);
