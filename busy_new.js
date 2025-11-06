@@ -1,43 +1,48 @@
 /*
-  Unified script for InfiniBase Cases - Enhanced Version
+  Unified script for InfiniBase Cases - Enhanced Professional Version
   - Handles language toggling with persistence
-  - Manages lightboxes for images with improved performance
-  - Loads media efficiently using Intersection Observer
+  - Manages lightboxes with enhanced performance
+  - Efficient media loading with Intersection Observer
+  - Improved accessibility and user experience
 */
 
 (function () {
     'use strict';
     
     const APP_SELECTOR = '.kb-app';
+    const LIGHTBOX_ACTIVE_CLASS = 'active';
     let currentLightbox = null;
 
-    // ===== Lightbox Functions =====
+    // ===== Lightbox Management =====
     window.openLightbox = function (targetId) {
         const lb = document.getElementById(targetId);
-        if (!lb) return;
+        if (!lb) {
+            console.warn(`Lightbox with ID '${targetId}' not found`);
+            return;
+        }
         
         currentLightbox = lb;
-        lb.classList.add('active');
+        lb.classList.add(LIGHTBOX_ACTIVE_CLASS);
         document.body.style.overflow = 'hidden';
         
+        // Handle video elements
         const video = lb.querySelector('video');
         if (video && typeof video.play === 'function') {
             video.currentTime = 0;
-            video.play().catch(() => {});
+            video.play().catch(err => {
+                console.warn('Video autoplay failed:', err);
+            });
         }
         
-        // إضافة focus trapping للوصول
-        const focusableElements = lb.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusableElements.length > 0) {
-            focusableElements[0].focus();
-        }
+        // Focus management for accessibility
+        trapFocus(lb);
     };
 
     window.closeLightbox = function (targetId) {
         const lb = targetId ? document.getElementById(targetId) : currentLightbox;
         if (!lb) return;
         
-        lb.classList.remove('active');
+        lb.classList.remove(LIGHTBOX_ACTIVE_CLASS);
         document.body.style.overflow = '';
         
         const video = lb.querySelector('video');
@@ -48,23 +53,27 @@
         currentLightbox = null;
     };
     
-    // ===== تحسين تحميل الوسائط =====
-    function loadAllMedia() {
-        const allMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
+    // Focus trap for accessibility
+    function trapFocus(element) {
+        const focusableElements = element.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
         
-        // إذا لم يدعم المتصفح Intersection Observer، نستخدم الطريقة التقليدية
+        if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+        }
+    }
+    
+    // ===== Efficient Media Loading =====
+    function loadAllMedia() {
+        const allMedia = document.querySelectorAll(
+            `${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`
+        );
+        
+        // Fallback for browsers without Intersection Observer
         if (!('IntersectionObserver' in window)) {
             allMedia.forEach(media => {
-                if (media.src) return;
-                const dataSrc = media.getAttribute('data-src');
-                if (dataSrc) {
-                    media.src = dataSrc;
-                    media.removeAttribute('data-src');
-                    
-                    if (media.tagName === 'VIDEO') {
-                        media.load();
-                    }
-                }
+                loadMediaElement(media);
             });
             return;
         }
@@ -78,58 +87,64 @@
         const mediaObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    const media = entry.target;
-                    const dataSrc = media.getAttribute('data-src');
-                    
-                    if (dataSrc) {
-                        media.src = dataSrc;
-                        media.removeAttribute('data-src');
-                        
-                        if (media.tagName === 'VIDEO') {
-                            media.load();
-                        }
-                        
-                        mediaObserver.unobserve(media);
-                    }
+                    loadMediaElement(entry.target);
+                    mediaObserver.unobserve(entry.target);
                 }
             });
         }, observerOptions);
         
         allMedia.forEach(media => {
-            if (media.src) return;
-            mediaObserver.observe(media);
+            if (!media.src) {
+                mediaObserver.observe(media);
+            }
         });
     }
     
-    // ===== Language Toggle Function =====
+    function loadMediaElement(media) {
+        const dataSrc = media.getAttribute('data-src');
+        if (!dataSrc) return;
+        
+        media.src = dataSrc;
+        media.removeAttribute('data-src');
+        
+        if (media.tagName === 'VIDEO') {
+            media.load();
+        }
+    }
+    
+    // ===== Language Management =====
     function toggleLanguage() {
-      const button = document.getElementById("lang-toggle-button");
-      const appWrapper = document.querySelector(APP_SELECTOR);
-      if (!button || !appWrapper) return;
+        const button = document.getElementById("lang-toggle-button");
+        const appWrapper = document.querySelector(APP_SELECTOR);
+        if (!button || !appWrapper) return;
 
-      const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+        const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+        const newLang = isArabicActive ? 'en' : 'ar';
 
-      if (isArabicActive) {
-        appWrapper.setAttribute('dir', 'ltr');
-        button.textContent = "التحويل للعربية";
-        button.setAttribute('aria-label', 'Switch to Arabic');
-      } else {
-        appWrapper.setAttribute('dir', 'rtl');
-        button.textContent = "Switch to English";
-        button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
-      }
-      
-      // حفظ التفضيل
-      try {
-        localStorage.setItem('preferred-language', isArabicActive ? 'en' : 'ar');
-      } catch (e) {
-        console.warn('Could not save language preference:', e);
-      }
-      
-      window.scrollTo({ top: 0, behavior: "smooth" });
+        // Update UI
+        if (newLang === 'ar') {
+            appWrapper.setAttribute('dir', 'rtl');
+            button.textContent = "Switch to English";
+            button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
+        } else {
+            appWrapper.setAttribute('dir', 'ltr');
+            button.textContent = "التحويل للعربية";
+            button.setAttribute('aria-label', 'Switch to Arabic');
+        }
+        
+        // Save preference
+        saveLanguagePreference(newLang);
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    // ===== استعادة تفضيل اللغة =====
+    function saveLanguagePreference(lang) {
+        try {
+            localStorage.setItem('preferred-language', lang);
+        } catch (e) {
+            console.warn('Could not save language preference:', e);
+        }
+    }
+
     function restoreLanguagePreference() {
         try {
             const preferredLang = localStorage.getItem('preferred-language');
@@ -152,18 +167,20 @@
         }
     }
 
-    // ===== Initialization Function =====
-    function init() {
-        restoreLanguagePreference();
-        loadAllMedia();
+    // ===== Smooth Scrolling =====
+    function handleSmoothScroll(targetElement, e) {
+        e.preventDefault();
+        targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
         
-        // تحسين تجربة المستخدم للوسائط
-        enhanceMediaExperience();
+        // Update URL hash without scrolling
+        history.pushState(null, null, `#${targetElement.id}`);
     }
 
-    // ===== تحسين تجربة الوسائط =====
+    // ===== Enhanced Media Experience =====
     function enhanceMediaExperience() {
-        // إضافة عناصر تحميل للفيديوهات
         document.querySelectorAll('video').forEach(video => {
             video.addEventListener('loadstart', function() {
                 this.style.opacity = '0.7';
@@ -175,89 +192,129 @@
             
             video.addEventListener('error', function() {
                 console.error('Error loading video:', this.src);
+                this.style.opacity = '1'; // Reset opacity on error
             });
         });
     }
 
-    // ====== EVENT LISTENERS ======
+    // ===== Event Delegation =====
+    function setupEventListeners() {
+        // Click events
+        document.addEventListener('click', function (e) {
+            const target = e.target;
+            
+            // Language toggle
+            if (target.closest('#lang-toggle-button')) {
+                toggleLanguage();
+                return;
+            }
 
-    // Listener للـ clicks العادية (بدون passive)
-    document.addEventListener('click', function (e) {
-        const target = e.target;
+            // Lightbox closing
+            const overlay = target.closest('.lightbox-overlay');
+            const closeBtn = target.closest('.lightbox-close');
+            if (overlay || closeBtn) {
+                const lb = target.closest('.css-lightbox');
+                if (lb && lb.id) {
+                    closeLightbox(lb.id);
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            // Anchor links handling
+            const anchor = target.closest('a[href^="#"]');
+            if (anchor) {
+                const href = anchor.getAttribute('href');
+                if (!href || href === '#') return;
+                
+                try {
+                    const targetElement = document.querySelector(href);
+                    if (targetElement) {
+                        if (targetElement.classList.contains('css-lightbox')) {
+                            openLightbox(targetElement.id);
+                        } else {
+                            handleSmoothScroll(targetElement, e);
+                        }
+                    } else {
+                        // Fallback for dynamic content
+                        const elementId = href.substring(1);
+                        const fallbackElement = document.getElementById(elementId);
+                        if (fallbackElement) {
+                            handleSmoothScroll(fallbackElement, e);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Could not handle anchor click:", err);
+                }
+                return;
+            }
+            
+            // Lightbox opening via data attributes
+            const lightboxTrigger = target.closest('[data-lightbox]');
+            if (lightboxTrigger) {
+                const lightboxId = lightboxTrigger.getAttribute('data-lightbox');
+                if (lightboxId) {
+                    openLightbox(lightboxId);
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Touch events (passive for better performance)
+        document.addEventListener('touchstart', function (e) {
+            // Add touch-specific handlers if needed
+        }, { passive: true });
         
-        // --- Language Toggle Button ---
-        if (target.closest('#lang-toggle-button')) {
-            toggleLanguage();
-            return;
-        }
-
-        // --- Lightbox closing ---
-        const overlay = target.closest('.lightbox-overlay');
-        const closeBtn = target.closest('.lightbox-close');
-        if(overlay || closeBtn) {
-            const lb = target.closest('.css-lightbox');
-            if (lb && lb.id) {
-                closeLightbox(lb.id);
+        // Keyboard events
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") {
+                closeLightbox();
+            }
+            
+            // Tab key trapping in lightbox
+            if (e.key === "Tab" && currentLightbox) {
+                trapFocusInLightbox(e);
+            }
+        });
+    }
+    
+    function trapFocusInLightbox(e) {
+        const focusableElements = currentLightbox.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        
+        if (focusableElements.length === 0) return;
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        
+        if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+                lastElement.focus();
                 e.preventDefault();
             }
-            return;
-        }
-
-        // --- Improved Smooth scroll for internal anchor links ---
-        const anchor = target.closest('a[href^="#"]');
-        if (anchor) {
-            const href = anchor.getAttribute('href');
-            if (!href || href === '#') return;
-            
-            try {
-                const targetElement = document.querySelector(href);
-                if (targetElement) {
-                    // إذا كان العنصر من نوع lightbox، نفتحه
-                    if (targetElement.classList.contains('css-lightbox')) {
-                        openLightbox(targetElement.id);
-                    } else {
-                        // إذا كان عنصر عادي، ننتقل إليه
-                        e.preventDefault();
-                        targetElement.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                        });
-                    }
-                } else {
-                    // إذا العنصر مش موجود، نحاول البحث عن أي عنصر بنفس الـ ID
-                    const elementId = href.substring(1);
-                    const fallbackElement = document.getElementById(elementId);
-                    if (fallbackElement) {
-                        e.preventDefault();
-                        fallbackElement.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                        });
-                    } else {
-                        console.warn('Element not found:', href);
-                    }
-                }
-            } catch (err) {
-                console.error("Could not scroll to anchor:", err);
+        } else {
+            if (document.activeElement === lastElement) {
+                firstElement.focus();
+                e.preventDefault();
             }
-            return;
         }
-    });
+    }
 
-    // Listener منفصل للـ touch events (بـ passive) إذا احتجت
-    document.addEventListener('touchstart', function (e) {
-        // Touch events هنا ممكن تضيف أي handling لـ
-        // لكن مش هنحتاج preventDefault هنا
-    }, { passive: true });
-    
-    // --- Close lightbox on ESC key ---
-    document.addEventListener('keydown', (e) => {
-        if (e.key === "Escape") {
-            closeLightbox();
-        }
-    });
+    // ===== Initialization =====
+    function init() {
+        restoreLanguagePreference();
+        loadAllMedia();
+        enhanceMediaExperience();
+        setupEventListeners();
+        
+        // Add loaded class for CSS transitions
+        setTimeout(() => {
+            document.documentElement.classList.add('js-loaded');
+        }, 100);
+    }
 
-    // Run init on load
+    // Start the application
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         setTimeout(init, 0);
     } else {
