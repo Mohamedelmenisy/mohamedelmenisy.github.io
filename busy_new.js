@@ -3,6 +3,7 @@
   - Handles language toggling with persistence
   - Manages lightboxes for images with improved performance
   - Loads media efficiently using Intersection Observer
+  - Initializes copy-to-clipboard functionality
 */
 
 (function () {
@@ -75,7 +76,7 @@
             threshold: 0.1
         };
         
-        const mediaObserver = new IntersectionObserver((entries) => {
+        const mediaObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const media = entry.target;
@@ -89,7 +90,7 @@
                             media.load();
                         }
                         
-                        mediaObserver.unobserve(media);
+                        observer.unobserve(media);
                     }
                 }
             });
@@ -151,14 +152,28 @@
             console.warn('Could not restore language preference:', e);
         }
     }
-
-    // ===== Initialization Function =====
-    function init() {
-        restoreLanguagePreference();
-        loadAllMedia();
-        
-        // تحسين تجربة المستخدم للوسائط
-        enhanceMediaExperience();
+    
+    // ===== Copy Button Functionality =====
+    function initializeCopyButtons() {
+        const copyButtons = document.querySelectorAll('.copy-btn');
+        copyButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // Find the span with the text next to the button
+                const textToCopy = e.target.closest('td').querySelector('span').textContent.trim();
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = button.textContent;
+                    const isRtl = e.target.closest('.kb-app[dir="rtl"]');
+                    button.textContent = isRtl ? 'تم النسخ!' : 'Copied!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('copied');
+                    }, 1500);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
+            });
+        });
     }
 
     // ===== تحسين تجربة الوسائط =====
@@ -177,6 +192,14 @@
                 console.error('Error loading video:', this.src);
             });
         });
+    }
+
+    // ===== Initialization Function =====
+    function init() {
+        restoreLanguagePreference();
+        loadAllMedia();
+        enhanceMediaExperience();
+        initializeCopyButtons(); // Initialize the new copy buttons
     }
 
     // ====== EVENT LISTENERS ======
@@ -252,7 +275,7 @@
     
     // --- Close lightbox on ESC key ---
     document.addEventListener('keydown', (e) => {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" && currentLightbox) {
             closeLightbox();
         }
     });
