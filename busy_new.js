@@ -1,10 +1,10 @@
-
-  Unified script for InfiniBase Cases - Enhanced Version
+/*
+Unified script for InfiniBase Cases - Enhanced Version
   - Handles language toggling with persistence
   - Manages lightboxes for images with improved performance
   - Loads media efficiently using Intersection Observer
   - Initializes copy-to-clipboard functionality
-
+*/
 
 (function () {
     'use strict';
