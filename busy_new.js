@@ -16,6 +16,7 @@
     // ===================================
     // ===== Lightbox Functions =====
     // ===================================
+
     window.openLightbox = function (targetId) {
         const lb = document.getElementById(targetId);
         if (!lb) return;
@@ -55,6 +56,7 @@
     // ===================================
     // ===== Media Loading (Lazy Load) =====
     // ===================================
+
     function loadAllMedia() {
         const allMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
         
@@ -95,6 +97,7 @@
     // ===================================
     // ===== Language Toggle =====
     // ===================================
+
     function toggleLanguage() {
       const button = document.getElementById("lang-toggle-button");
       const appWrapper = document.querySelector(APP_SELECTOR);
@@ -122,6 +125,7 @@
     // ===================================
     // ===== Restore Language Preference =====
     // ===================================
+
     function restoreLanguagePreference() {
         try {
             const preferredLang = localStorage.getItem('preferred-language');
@@ -145,6 +149,7 @@
     // ===================================
     // ===== Media Experience Enhancements =====
     // ===================================
+
     function enhanceMediaExperience() {
         document.querySelectorAll('video').forEach(video => {
             video.addEventListener('loadstart', function() { this.style.opacity = '0.7'; });
@@ -156,6 +161,7 @@
     // ===================================
     // ===== Initialization Function =====
     // ===================================
+
     function init() {
         restoreLanguagePreference();
         loadAllMedia();
