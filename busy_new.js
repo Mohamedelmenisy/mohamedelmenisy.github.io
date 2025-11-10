@@ -155,23 +155,29 @@
     
     // ===== Copy Button Functionality =====
     function initializeCopyButtons() {
-        const copyButtons = document.querySelectorAll('.copy-btn');
-        copyButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                // Find the span with the text next to the button
-                const textToCopy = e.target.closest('td').querySelector('span').textContent.trim();
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    const originalText = button.textContent;
-                    const isRtl = e.target.closest('.kb-app[dir="rtl"]');
-                    button.textContent = isRtl ? 'تم النسخ!' : 'Copied!';
-                    button.classList.add('copied');
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                        button.classList.remove('copied');
-                    }, 1500);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                });
+        // Use event delegation on the main app container for efficiency
+        const appWrapper = document.querySelector(APP_SELECTOR);
+        if (!appWrapper) return;
+
+        appWrapper.addEventListener('click', (e) => {
+            // Check if a copy button was clicked
+            if (!e.target.classList.contains('copy-btn')) return;
+
+            const button = e.target;
+            const textToCopy = button.closest('td').querySelector('span').textContent.trim();
+            
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalText = button.textContent;
+                const isRtl = button.closest('.kb-app[dir="rtl"]');
+                button.textContent = isRtl ? 'تم النسخ!' : 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
             });
         });
     }
