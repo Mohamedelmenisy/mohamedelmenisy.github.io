@@ -10,6 +10,10 @@
 (function () {
     'use strict';
     
+    // ===================================
+    // ===== Global Variables =====
+    // ===================================
+
     const APP_SELECTOR = '.kb-app';
     let currentLightbox = null;
 
