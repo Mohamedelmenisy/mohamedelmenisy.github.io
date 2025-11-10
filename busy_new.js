@@ -1,26 +1,17 @@
 /*
   Unified script for InfiniBase Cases - Enhanced Version
   - Handles language toggling with persistence
-  - Manages lightboxes for images and videos
-  - Initializes copy-to-clipboard functionality
+  - Manages lightboxes for images with improved performance
   - Loads media efficiently using Intersection Observer
-  - Includes accessibility features like focus trapping
 */
 
 (function () {
     'use strict';
     
-    // ===================================
-    // ===== Global Variables =====
-    // ===================================
-
     const APP_SELECTOR = '.kb-app';
     let currentLightbox = null;
 
-    // ===================================
     // ===== Lightbox Functions =====
-    // ===================================
-
     window.openLightbox = function (targetId) {
         const lb = document.getElementById(targetId);
         if (!lb) return;
@@ -35,7 +26,7 @@
             video.play().catch(() => {});
         }
         
-        // Accessibility: Trap focus inside the lightbox
+        // إضافة focus trapping للوصول
         const focusableElements = lb.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length > 0) {
             focusableElements[0].focus();
@@ -57,13 +48,11 @@
         currentLightbox = null;
     };
     
-    // ===================================
-    // ===== Media Loading (Lazy Load) =====
-    // ===================================
-
+    // ===== تحسين تحميل الوسائط =====
     function loadAllMedia() {
         const allMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
         
+        // إذا لم يدعم المتصفح Intersection Observer، نستخدم الطريقة التقليدية
         if (!('IntersectionObserver' in window)) {
             allMedia.forEach(media => {
                 if (media.src) return;
@@ -71,26 +60,40 @@
                 if (dataSrc) {
                     media.src = dataSrc;
                     media.removeAttribute('data-src');
-                    if (media.tagName === 'VIDEO') media.load();
+                    
+                    if (media.tagName === 'VIDEO') {
+                        media.load();
+                    }
                 }
             });
             return;
         }
         
-        const mediaObserver = new IntersectionObserver((entries, observer) => {
+        const observerOptions = {
+            root: null,
+            rootMargin: '50px 0px',
+            threshold: 0.1
+        };
+        
+        const mediaObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const media = entry.target;
                     const dataSrc = media.getAttribute('data-src');
+                    
                     if (dataSrc) {
                         media.src = dataSrc;
                         media.removeAttribute('data-src');
-                        if (media.tagName === 'VIDEO') media.load();
-                        observer.unobserve(media);
+                        
+                        if (media.tagName === 'VIDEO') {
+                            media.load();
+                        }
+                        
+                        mediaObserver.unobserve(media);
                     }
                 }
             });
-        }, { root: null, rootMargin: '50px 0px', threshold: 0.1 });
+        }, observerOptions);
         
         allMedia.forEach(media => {
             if (media.src) return;
@@ -98,10 +101,7 @@
         });
     }
     
-    // ===================================
-    // ===== Language Toggle =====
-    // ===================================
-
+    // ===== Language Toggle Function =====
     function toggleLanguage() {
       const button = document.getElementById("lang-toggle-button");
       const appWrapper = document.querySelector(APP_SELECTOR);
@@ -119,17 +119,17 @@
         button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
       }
       
+      // حفظ التفضيل
       try {
         localStorage.setItem('preferred-language', isArabicActive ? 'en' : 'ar');
-      } catch (e) { console.warn('Could not save language preference:', e); }
+      } catch (e) {
+        console.warn('Could not save language preference:', e);
+      }
       
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    // ===================================
-    // ===== Restore Language Preference =====
-    // ===================================
-
+    // ===== استعادة تفضيل اللغة =====
     function restoreLanguagePreference() {
         try {
             const preferredLang = localStorage.getItem('preferred-language');
@@ -147,61 +147,47 @@
                     button.setAttribute('aria-label', 'Switch to Arabic');
                 }
             }
-        } catch (e) { console.warn('Could not restore language preference:', e); }
-    }
-    
-    // ===================================
-    // ===== Media Experience Enhancements =====
-    // ===================================
-
-    function enhanceMediaExperience() {
-        document.querySelectorAll('video').forEach(video => {
-            video.addEventListener('loadstart', function() { this.style.opacity = '0.7'; });
-            video.addEventListener('canplay', function() { this.style.opacity = '1'; });
-            video.addEventListener('error', function() { console.error('Error loading video:', this.src); });
-        });
+        } catch (e) {
+            console.warn('Could not restore language preference:', e);
+        }
     }
 
-    // ===================================
     // ===== Initialization Function =====
-    // ===================================
-
     function init() {
         restoreLanguagePreference();
         loadAllMedia();
+        
+        // تحسين تجربة المستخدم للوسائط
         enhanceMediaExperience();
     }
 
-    // ===================================
-    // ====== EVENT LISTENERS ======
-    // ===================================
+    // ===== تحسين تجربة الوسائط =====
+    function enhanceMediaExperience() {
+        // إضافة عناصر تحميل للفيديوهات
+        document.querySelectorAll('video').forEach(video => {
+            video.addEventListener('loadstart', function() {
+                this.style.opacity = '0.7';
+            });
+            
+            video.addEventListener('canplay', function() {
+                this.style.opacity = '1';
+            });
+            
+            video.addEventListener('error', function() {
+                console.error('Error loading video:', this.src);
+            });
+        });
+    }
 
-    // Main click listener using event delegation
+    // ====== EVENT LISTENERS ======
+
+    // Listener للـ clicks العادية (بدون passive)
     document.addEventListener('click', function (e) {
         const target = e.target;
         
         // --- Language Toggle Button ---
         if (target.closest('#lang-toggle-button')) {
             toggleLanguage();
-            return;
-        }
-
-        // --- Copy Button ---
-        const copyBtn = target.closest('.copy-btn');
-        if (copyBtn) {
-            const textToCopy = copyBtn.closest('td').querySelector('span').textContent.trim();
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                const originalText = copyBtn.textContent;
-                const isRtl = copyBtn.closest('.kb-app[dir="rtl"]');
-                copyBtn.textContent = isRtl ? 'تم النسخ!' : 'Copied!';
-                copyBtn.classList.add('copied');
-                setTimeout(() => {
-                    copyBtn.textContent = originalText;
-                    copyBtn.classList.remove('copied');
-                }, 1500);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
             return;
         }
 
@@ -217,7 +203,7 @@
             return;
         }
 
-        // --- Smooth scroll for internal anchor links ---
+        // --- Improved Smooth scroll for internal anchor links ---
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
@@ -226,32 +212,56 @@
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
+                    // إذا كان العنصر من نوع lightbox، نفتحه
                     if (targetElement.classList.contains('css-lightbox')) {
                         openLightbox(targetElement.id);
                     } else {
+                        // إذا كان عنصر عادي، ننتقل إليه
                         e.preventDefault();
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        targetElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
                     }
                 } else {
-                    const fallbackElement = document.getElementById(href.substring(1));
+                    // إذا العنصر مش موجود، نحاول البحث عن أي عنصر بنفس الـ ID
+                    const elementId = href.substring(1);
+                    const fallbackElement = document.getElementById(elementId);
                     if (fallbackElement) {
                         e.preventDefault();
-                        fallbackElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        fallbackElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    } else {
+                        console.warn('Element not found:', href);
                     }
                 }
-            } catch (err) { console.error("Could not scroll to anchor:", err); }
+            } catch (err) {
+                console.error("Could not scroll to anchor:", err);
+            }
             return;
         }
     });
+
+    // Listener منفصل للـ touch events (بـ passive) إذا احتجت
+    document.addEventListener('touchstart', function (e) {
+        // Touch events هنا ممكن تضيف أي handling لـ
+        // لكن مش هنحتاج preventDefault هنا
+    }, { passive: true });
     
     // --- Close lightbox on ESC key ---
     document.addEventListener('keydown', (e) => {
-        if (e.key === "Escape" && currentLightbox) {
+        if (e.key === "Escape") {
             closeLightbox();
         }
     });
 
     // Run init on load
-    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(init, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
+    }
 
 })();
