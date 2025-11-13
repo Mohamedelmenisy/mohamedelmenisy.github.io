@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- 1. تغيير العنوان ليعكس وظيفة الصفحة الجديدة -->
+    <title>InfiniBase — Approval Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 2. نسخ كل الأنماط (CSS) من ملف audit.html لضمان تطابق التصميم -->
+    <style>
+        :root {
+            --bg-dark: #0F1015;
+            --bg-card: #1A1C23;
+            --bg-header: #21242D;
+            --primary-accent: #6C5DD3;
+            --primary-accent-light: #8374FF;
+            --text-light: #F5F5F5;
+            --text-muted: #9CA3B3;
+            --border-color: #2A2D38;
+            --success: #00B69B;
+            --success-light: #00D6B5;
+            --warning: #FFC454;
+            --warning-light: #FFD27A;
+            --danger: #FF6A55;
+            --danger-light: #FF8A7A;
+            --font-family: 'Poppins', sans-serif;
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.35);
+            --gradient-primary: linear-gradient(135deg, #6C5DD3 0%, #8374FF 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            background-image: radial-gradient(circle at 10% 20%, rgba(108, 93, 211, 0.05) 0, transparent 20%), radial-gradient(circle at 90% 80%, rgba(63, 140, 255, 0.05) 0, transparent 20%);
+        }
+        .insights-dashboard { padding: 24px; display: grid; gap: 24px; visibility: hidden; margin: auto; }
+        .dashboard-header {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+            background: var(--bg-header); padding: 24px; border-radius: var(--border-radius); border: 1px solid var(--border-color);
+            box-shadow: var(--shadow); position: relative; overflow: hidden;
+        }
+        .header-title h1 {
+            font-size: clamp(1.75rem, 2.5vw, 2rem); font-weight: 800; background: var(--gradient-primary);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; position: relative;
+        }
+        .header-title p { color: var(--text-muted); font-size: 15px; font-weight: 500; }
+        .header-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .action-btn {
+            background-color: var(--bg-card); color: var(--text-light); border: 1px solid var(--border-color);
+            padding: 12px 20px; border-radius: 12px; font-family: var(--font-family); cursor: pointer;
+            transition: var(--transition); display: inline-flex; align-items: center; gap: 8px; font-weight: 600;
+            font-size: 14px; box-shadow: var(--shadow); text-decoration: none;
+        }
+        .action-btn.primary, .action-btn.success { background: var(--gradient-primary); border: none; color: #fff; }
+        .action-btn.danger { background: var(--danger); border: none; color: #fff; }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--primary-accent); }
+        .action-btn.primary:hover, .action-btn.success:hover, .action-btn.danger:hover { filter: brightness(1.1); }
+        .back-to-dashboard-btn { order: -1; }
+        .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+        .kpi-card {
+            background-color: var(--bg-card); padding: 28px 24px; border-radius: var(--border-radius);
+            border: 1px solid var(--border-color); transition: var(--transition); box-shadow: var(--shadow); position: relative;
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary-accent-light); }
+        .kpi-card .card-title { color: var(--text-muted); font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .kpi-card .card-value { font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 800; color: var(--text-light); line-height: 1.2; }
+        .tabs-container { display: flex; gap: 10px; background-color: var(--bg-card); padding: 10px; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
+        .tabs-container .action-btn { flex: 1; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+        .badge.pending_approval { background: rgba(255, 196, 84, .2); color: var(--warning-light); }
+        .badge.approved { background: rgba(0, 182, 155, .2); color: var(--success-light); }
+        .badge.rejected { background: rgba(255, 106, 85, .2); color: var(--danger-light); }
+        .activity-log-card { background-color: var(--bg-card); padding: 24px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow); }
+        .activity-log-card h3 { font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-light); font-weight: 700; }
+        .activity-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .activity-table th { background-color: var(--bg-header); color: var(--text-muted); font-weight: 600; font-size: 12px; text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; }
+        .activity-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-light); text-align: left; }
+        .activity-table tr:last-child td { border-bottom: none; }
+        .activity-table tr:hover { background-color: rgba(255, 255, 255, .03); }
+        .modal { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; background: rgba(15, 16, 21, .8); backdrop-filter: blur(10px); }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-card); color: var(--text-light); border-radius: var(--border-radius); padding: 24px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-shrink: 0; }
+        .modal h2 { margin: 0; color: #fff; font-size: 20px; }
+        .modal .close-btn { background: 0 0; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; }
+        .modal-body { overflow-y: auto; word-break: break-word; line-height: 1.8; }
+        .modal-footer { padding-top: 20px; border-top: 1px solid var(--border-color); margin-top: 20px; }
+        .access-restricted-container { display: none; position: fixed; inset: 0; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; background-color: var(--bg-dark); padding: 2rem; }
+        .access-restricted-card { max-width: 450px; padding: 3rem; background: var(--bg-card); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); }
+        .access-restricted-card .icon { font-size: 4rem; color: var(--danger); margin-bottom: 1.5rem; }
+        .access-restricted-card h2 { font-size: 1.75rem; margin-bottom: .75rem; color: var(--text-light); }
+        .access-restricted-card p { color: var(--text-muted); margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <div id="dashboard-container" class="insights-dashboard">
+        <!-- 3. تعديل الهيدر ليعكس صفحة المراجعة -->
+        <header class="dashboard-header">
+            <div class="header-title">
+                <h1><i class="fas fa-check-double"></i> Approval Dashboard</h1>
+                <p>Review, approve, or reject new and updated knowledge base cases.</p>
+            </div>
+            <div class="header-actions">
+                <a href="dashboard.html" class="action-btn back-to-dashboard-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <button class="action-btn" id="refresh-btn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- 4. تعديل بطاقات KPIs -->
+        <div class="kpi-container" id="kpi-section">
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-hourglass-half"></i> Pending Review</div>
+                <div class="card-value" id="kpi-pending-review">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-thumbs-up"></i> Approved Today</div>
+                <div class="card-value" id="kpi-approved-today">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-comment-dots"></i> Rejected Today</div>
+                <div class="card-value" id="kpi-rejected-today">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="card-title"><i class="fas fa-stopwatch"></i> Avg. Review Time</div>
+                <div class="card-value" id="kpi-avg-review-time">-</div>
+            </div>
+        </div>
+        
+        <!-- 5. استبدال الفلاتر بنظام التبويبات -->
+        <div class="tabs-container">
+            <button class="action-btn primary" id="tab-pending" data-status="pending_approval">
+                <i class="fas fa-hourglass-half"></i> Pending 
+                <span id="pending-count" style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px;">0</span>
+            </button>
+            <button class="action-btn" id="tab-approved" data-status="approved">
+                <i class="fas fa-check"></i> Approved
+            </button>
+            <button class="action-btn" id="tab-rejected" data-status="rejected">
+                <i class="fas fa-times"></i> Rejected
+            </button>
+        </div>
+
+        <!-- 6. تعديل الجدول الرئيسي لعرض قائمة المراجعة -->
+        <div class="activity-log-card">
+            <h3><i class="fas fa-list-alt"></i> Cases Queue</h3>
+            <div class="table-container">
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Submitted At</th>
+                            <th>Submitter</th>
+                            <th>Case Title & Version</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvalQueueBody">
+                        <!-- الصفوف سيتم ملؤها بواسطة JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. إضافة نافذة المراجعة (Modal) الجديدة -->
+    <div id="reviewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <h2 id="reviewModalTitle">Reviewing Case</h2>
+                <button class="close-btn" data-close-modal>&times;</button>
+            </div>
+            <div id="reviewModalBody" class="modal-body">
+                <!-- محتوى المقارنة والمراجعة سيظهر هنا -->
+            </div>
+            <div class="modal-footer">
+                <h3 style="font-size: 16px; margin-bottom: 10px;">Decision</h3>
+                <div style="margin-bottom: 15px;">
+                    <label for="reviewerNotes" style="font-size: 14px; color: var(--text-muted); display: block; margin-bottom: 5px;">Review Notes (Required if rejecting)</label>
+                    <textarea id="reviewerNotes" style="width: 100%; min-height: 80px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-light); padding: 10px; border-radius: 8px;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button id="rejectBtn" class="action-btn danger"><i class="fas fa-times"></i> Reject with Notes</button>
+                    <button id="approveBtn" class="action-btn success"><i class="fas fa-check"></i> Approve Case</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- حاوية رسالة "الوصول مقيد" (نفس كود audit.html) -->
+    <div id="restricted-container" class="access-restricted-container">
+        <div class="access-restricted-card">
+            <div class="icon"><i class="fas fa-lock"></i></div>
+            <h2>Access Restricted</h2>
+            <p>You do not have the necessary permissions to view this page. This area is for administrators only.</p>
+            <a href="dashboard.html" class="action-btn primary" style="text-decoration: none;">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- 8. كود الجافاسكريبت الجديد بالكامل لهذه الصفحة -->
+    <script type="module">
+        import { supabase } from "./supabase.js";
+
+        // متغيرات لتخزين الحالة
+        let casesStore = [];
+        let currentStatusFilter = 'pending_approval';
+        let currentUser = null;
+
+        // --- الدوال الأساسية ---
+        async function checkAccess() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("User not logged in.");
+                currentUser = user;
+
+                const { data: userData, error } = await supabase.from("users").select("role").eq("id", user.id).single();
+                if (error || !userData || userData.role?.trim().toLowerCase() !== "admin") {
+                    throw new Error("Access denied. Admin role required.");
+                }
+                document.getElementById("dashboard-container").style.visibility = "visible";
+                await fetchData();
+            } catch (error) {
+                console.error("Access Check Failed:", error.message);
+                document.getElementById("restricted-container").style.display = "flex";
+            }
+        }
+
+        async function fetchData() {
+            const tableBody = document.getElementById("approvalQueueBody");
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem;">Loading...</td></tr>`;
+            try {
+                const { data, error } = await supabase
+                    .from('cases')
+                    .select(`
+                        id, title_en, status, version, created_at, content_en, description_en,
+                        submitter:submitted_by ( name )
+                    `)
+                    .eq('status', currentStatusFilter)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                casesStore = data || [];
+                renderTable();
+                updateKpiCards();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--danger)">Failed to load data. Check console for details.</td></tr>';
+            }
+        }
+
+        async function updateKpiCards() {
+            const { count: pendingCount, error } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
+            if (!error) {
+                document.getElementById("kpi-pending-review").textContent = pendingCount || 0;
+                document.getElementById("pending-count").textContent = pendingCount || 0;
+            }
+            // يمكن إضافة منطق لباقي الـ KPIs هنا في المستقبل
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById("approvalQueueBody");
+            tableBody.innerHTML = "";
+
+            if (casesStore.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem;">No cases found with status: ${currentStatusFilter.replace('_', ' ')}.</td></tr>`;
+                return;
+            }
+
+            casesStore.forEach(item => {
+                const tr = document.createElement("tr");
+                const statusBadge = `<span class="badge ${item.status}">${item.status.replace('_', ' ')}</span>`;
+                
+                tr.innerHTML = `
+                    <td>${new Date(item.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td>${item.submitter?.name || 'Unknown User'}</td>
+                    <td>${item.title_en || 'No Title'} (v${item.version})</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="action-btn primary view-review-btn" data-case-id="${item.id}">
+                            <i class="fas fa-search-plus"></i> Review
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        async function openReviewModal(caseId) {
+            const modal = document.getElementById("reviewModal");
+            const modalTitle = document.getElementById("reviewModalTitle");
+            const modalBody = document.getElementById("reviewModalBody");
+            
+            modal.classList.add("show");
+            modalBody.innerHTML = "Loading case details...";
+
+            const currentCase = casesStore.find(c => c.id === caseId);
+            if (!currentCase) {
+                modalBody.innerHTML = "Error: Case not found.";
+                return;
+            }
+            
+            modalTitle.textContent = `Reviewing: "${currentCase.title_en}" - v${currentCase.version}`;
+
+            // (مستقبلاً، هنا يمكنك إضافة منطق المقارنة بين الإصدار القديم والجديد)
+            modalBody.innerHTML = `
+                <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); max-height: 40vh; overflow-y: auto;">
+                    <h4 style="color: var(--primary-accent-light); margin-bottom: 5px;">${currentCase.title_en}</h4>
+                    <p style="font-style: italic; color: var(--text-muted); margin-bottom: 15px;">${currentCase.description_en}</p>
+                    <hr style="border-color: var(--border-color); margin: 15px 0;">
+                    <div>${currentCase.content_en}</div>
+                </div>
+            `;
+
+            document.getElementById("approveBtn").dataset.caseId = caseId;
+            document.getElementById("rejectBtn").dataset.caseId = caseId;
+            document.getElementById("reviewerNotes").value = ''; // مسح الملاحظات القديمة
+        }
+
+        async function handleApprove(caseId) {
+            const { error } = await supabase.rpc('approve_case', { case_id_to_approve: caseId });
+            if (error) {
+                alert(`Error approving case: ${error.message}`);
+            } else {
+                alert("Case approved successfully!");
+                document.getElementById("reviewModal").classList.remove("show");
+                fetchData();
+            }
+        }
+
+        async function handleReject(caseId) {
+            const notes = document.getElementById("reviewerNotes").value.trim();
+            if (!notes) {
+                alert("Review notes are required to reject a case.");
+                return;
+            }
+            const { error } = await supabase.rpc('reject_case', { case_id_to_reject: caseId, notes: notes });
+            if (error) {
+                alert(`Error rejecting case: ${error.message}`);
+            } else {
+                alert("Case rejected with feedback.");
+                document.getElementById("reviewModal").classList.remove("show");
+                fetchData();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            checkAccess();
+
+            document.querySelector(".tabs-container").addEventListener("click", (e) => {
+                const tab = e.target.closest(".action-btn");
+                if (!tab) return;
+                
+                document.querySelectorAll(".tabs-container .action-btn").forEach(btn => {
+                    btn.classList.remove("primary");
+                    btn.style.background = '';
+                });
+                tab.classList.add("primary");
+                
+                currentStatusFilter = tab.dataset.status;
+                fetchData();
+            });
+            
+            document.getElementById("approvalQueueBody").addEventListener("click", (e) => {
+                const reviewBtn = e.target.closest(".view-review-btn");
+                if (reviewBtn) openReviewModal(reviewBtn.dataset.caseId);
+            });
+
+            document.getElementById("approveBtn").addEventListener("click", (e) => handleApprove(e.target.dataset.caseId));
+            document.getElementById("rejectBtn").addEventListener("click", (e) => handleReject(e.target.dataset.caseId));
+            
+            document.addEventListener("click", (event) => {
+                if (event.target.closest("[data-close-modal]") || event.target.matches(".modal")) {
+                    document.querySelectorAll(".modal").forEach(modal => modal.classList.remove("show"));
+                }
+            });
+            
+            document.getElementById("refresh-btn").addEventListener("click", fetchData);
+        });
+    </script>
+</body>
+</html>
