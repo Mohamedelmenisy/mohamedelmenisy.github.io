@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- 1. تغيير العنوان ليعكس وظيفة الصفحة الجديدة -->
     <title>InfiniBase — Approval Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- 2. نسخ كل الأنماط (CSS) من ملف audit.html لضمان تطابق التصميم -->
     <style>
         :root {
             --bg-dark: #0F1015;
@@ -36,6 +33,7 @@
             --gradient-primary: linear-gradient(135deg, #6C5DD3 0%, #8374FF 100%);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        @keyframes fadeInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         html { scroll-behavior: smooth; }
         body {
             font-family: var(--font-family);
@@ -58,7 +56,7 @@
         .header-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
         .action-btn {
             background-color: var(--bg-card); color: var(--text-light); border: 1px solid var(--border-color);
-            padding: 12px 20px; border-radius: 12px; font-family: var(--font-family); cursor: pointer;
+            padding: 10px 18px; border-radius: 10px; font-family: var(--font-family); cursor: pointer;
             transition: var(--transition); display: inline-flex; align-items: center; gap: 8px; font-weight: 600;
             font-size: 14px; box-shadow: var(--shadow); text-decoration: none;
         }
@@ -71,12 +69,34 @@
         .kpi-card {
             background-color: var(--bg-card); padding: 28px 24px; border-radius: var(--border-radius);
             border: 1px solid var(--border-color); transition: var(--transition); box-shadow: var(--shadow); position: relative;
+            animation: fadeInUp 0.5s ease-out forwards; opacity: 0;
         }
         .kpi-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary-accent-light); }
         .kpi-card .card-title { color: var(--text-muted); font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .kpi-card .card-title i { color: var(--primary-accent); }
         .kpi-card .card-value { font-size: clamp(1.75rem, 3vw, 2.25rem); font-weight: 800; color: var(--text-light); line-height: 1.2; }
-        .tabs-container { display: flex; gap: 10px; background-color: var(--bg-card); padding: 10px; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
-        .tabs-container .action-btn { flex: 1; }
+        .kpi-card:nth-child(2) { animation-delay: .1s; } .kpi-card:nth-child(3) { animation-delay: .2s; } .kpi-card:nth-child(4) { animation-delay: .3s; }
+        
+        /* MODIFICATION START: New styles for improved tabs */
+        .tabs-container {
+            display: flex;
+            gap: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+        .tab-btn {
+            padding: 0.75rem 0.25rem;
+            background: none; border: none;
+            color: var(--text-muted); font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: var(--transition);
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn:hover { color: var(--text-light); }
+        .tab-btn.active { color: var(--primary-accent-light); border-bottom-color: var(--primary-accent-light); }
+        .tab-count-badge { background: var(--bg-header); color: var(--text-muted); padding: 3px 9px; border-radius: 20px; font-size: 12px; margin-left: 8px; transition: var(--transition); }
+        .tab-btn.active .tab-count-badge { background: var(--primary-accent); color: white; }
+        /* MODIFICATION END */
+        
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
         .badge.pending_approval { background: rgba(255, 196, 84, .2); color: var(--warning-light); }
         .badge.approved { background: rgba(0, 182, 155, .2); color: var(--success-light); }
@@ -85,27 +105,66 @@
         .activity-log-card h3 { font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-light); font-weight: 700; }
         .activity-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .activity-table th { background-color: var(--bg-header); color: var(--text-muted); font-weight: 600; font-size: 12px; text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; }
-        .activity-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-light); text-align: left; }
+        .activity-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--text-light); text-align: left; vertical-align: middle; }
         .activity-table tr:last-child td { border-bottom: none; }
         .activity-table tr:hover { background-color: rgba(255, 255, 255, .03); }
+        
+        /* MODIFICATION START: Styles for user avatar in table */
+        .user-info-cell { display: flex; align-items: center; gap: 12px; }
+        .user-avatar-cell {
+            width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-primary);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 600; font-size: 14px; flex-shrink: 0;
+        }
+        /* MODIFICATION END */
+
         .modal { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; background: rgba(15, 16, 21, .8); backdrop-filter: blur(10px); }
         .modal.show { display: flex; }
-        .modal-content { background: var(--bg-card); color: var(--text-light); border-radius: var(--border-radius); padding: 24px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); display: flex; flex-direction: column; }
+        .modal-content { background: var(--bg-card); color: var(--text-light); border-radius: var(--border-radius); padding: 24px; width: 90%; max-width: 900px; max-height: 90vh; border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); display: flex; flex-direction: column; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-shrink: 0; }
         .modal h2 { margin: 0; color: #fff; font-size: 20px; }
         .modal .close-btn { background: 0 0; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; }
-        .modal-body { overflow-y: auto; word-break: break-word; line-height: 1.8; }
+        .modal-body { overflow-y: auto; flex-grow: 1; }
         .modal-footer { padding-top: 20px; border-top: 1px solid var(--border-color); margin-top: 20px; }
         .access-restricted-container { display: none; position: fixed; inset: 0; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; background-color: var(--bg-dark); padding: 2rem; }
         .access-restricted-card { max-width: 450px; padding: 3rem; background: var(--bg-card); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-hover); }
         .access-restricted-card .icon { font-size: 4rem; color: var(--danger); margin-bottom: 1.5rem; }
         .access-restricted-card h2 { font-size: 1.75rem; margin-bottom: .75rem; color: var(--text-light); }
         .access-restricted-card p { color: var(--text-muted); margin-bottom: 2rem; }
+        
+        /* MODIFICATION START: New styles for the improved Review Modal */
+        #reviewModalBody {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+            overflow: hidden;
+            height: 100%;
+        }
+        .review-sidebar {
+            background: var(--bg-header);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+        .info-block h4 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+        .info-block p { font-size: 1rem; color: var(--text-light); font-weight: 500; }
+        .review-content-area {
+            background: var(--bg-dark);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+        .review-content-area h3 { color: var(--primary-accent-light); margin-bottom: 0.5rem; }
+        .review-content-area p { margin-bottom: 1rem; line-height: 1.7; }
+        /* MODIFICATION END */
     </style>
 </head>
 <body>
     <div id="dashboard-container" class="insights-dashboard">
-        <!-- 3. تعديل الهيدر ليعكس صفحة المراجعة -->
         <header class="dashboard-header">
             <div class="header-title">
                 <h1><i class="fas fa-check-double"></i> Approval Dashboard</h1>
@@ -121,7 +180,6 @@
             </div>
         </header>
 
-        <!-- 4. تعديل بطاقات KPIs -->
         <div class="kpi-container" id="kpi-section">
             <div class="kpi-card">
                 <div class="card-title"><i class="fas fa-hourglass-half"></i> Pending Review</div>
@@ -141,23 +199,19 @@
             </div>
         </div>
         
-        <!-- 5. استبدال الفلاتر بنظام التبويبات -->
-        <div class="tabs-container">
-            <button class="action-btn primary" id="tab-pending" data-status="pending_approval">
-                <i class="fas fa-hourglass-half"></i> Pending 
-                <span id="pending-count" style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px;">0</span>
-            </button>
-            <button class="action-btn" id="tab-approved" data-status="approved">
-                <i class="fas fa-check"></i> Approved
-            </button>
-            <button class="action-btn" id="tab-rejected" data-status="rejected">
-                <i class="fas fa-times"></i> Rejected
-            </button>
-        </div>
-
-        <!-- 6. تعديل الجدول الرئيسي لعرض قائمة المراجعة -->
         <div class="activity-log-card">
-            <h3><i class="fas fa-list-alt"></i> Cases Queue</h3>
+            <div class="tabs-container">
+                <button class="tab-btn active" id="tab-pending" data-status="pending_approval">
+                    Pending <span id="pending-count" class="tab-count-badge">0</span>
+                </button>
+                <button class="tab-btn" id="tab-approved" data-status="approved">
+                    Approved
+                </button>
+                <button class="tab-btn" id="tab-rejected" data-status="rejected">
+                    Rejected
+                </button>
+            </div>
+
             <div class="table-container">
                 <table class="activity-table">
                     <thead>
@@ -169,31 +223,28 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="approvalQueueBody">
-                        <!-- الصفوف سيتم ملؤها بواسطة JavaScript -->
-                    </tbody>
+                    <tbody id="approvalQueueBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- 7. إضافة نافذة المراجعة (Modal) الجديدة -->
     <div id="reviewModal" class="modal">
-        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+        <div class="modal-content">
             <div class="modal-header">
                 <h2 id="reviewModalTitle">Reviewing Case</h2>
                 <button class="close-btn" data-close-modal>&times;</button>
             </div>
             <div id="reviewModalBody" class="modal-body">
-                <!-- محتوى المقارنة والمراجعة سيظهر هنا -->
+                <!-- Content is now dynamically generated by JS -->
             </div>
             <div class="modal-footer">
                 <h3 style="font-size: 16px; margin-bottom: 10px;">Decision</h3>
-                <div style="margin-bottom: 15px;">
+                <div>
                     <label for="reviewerNotes" style="font-size: 14px; color: var(--text-muted); display: block; margin-bottom: 5px;">Review Notes (Required if rejecting)</label>
                     <textarea id="reviewerNotes" style="width: 100%; min-height: 80px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-light); padding: 10px; border-radius: 8px;"></textarea>
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 15px;">
                     <button id="rejectBtn" class="action-btn danger"><i class="fas fa-times"></i> Reject with Notes</button>
                     <button id="approveBtn" class="action-btn success"><i class="fas fa-check"></i> Approve Case</button>
                 </div>
@@ -201,7 +252,6 @@
         </div>
     </div>
     
-    <!-- حاوية رسالة "الوصول مقيد" (نفس كود audit.html) -->
     <div id="restricted-container" class="access-restricted-container">
         <div class="access-restricted-card">
             <div class="icon"><i class="fas fa-lock"></i></div>
@@ -211,16 +261,15 @@
         </div>
     </div>
 
-    <!-- 8. كود الجافاسكريبت الجديد بالكامل لهذه الصفحة -->
     <script type="module">
         import { supabase } from "./supabase.js";
 
-        // متغيرات لتخزين الحالة
         let casesStore = [];
         let currentStatusFilter = 'pending_approval';
         let currentUser = null;
 
-        // --- الدوال الأساسية ---
+        const escapeHtml = (unsafe) => String(unsafe || "").replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
+
         async function checkAccess() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -228,8 +277,8 @@
                 currentUser = user;
 
                 const { data: userData, error } = await supabase.from("users").select("role").eq("id", user.id).single();
-                if (error || !userData || userData.role?.trim().toLowerCase() !== "admin") {
-                    throw new Error("Access denied. Admin role required.");
+                if (error || !userData || !['admin', 'manager'].includes(userData.role?.trim().toLowerCase())) {
+                    throw new Error("Access denied. Admin or Manager role required.");
                 }
                 document.getElementById("dashboard-container").style.visibility = "visible";
                 await fetchData();
@@ -245,10 +294,7 @@
             try {
                 const { data, error } = await supabase
                     .from('cases')
-                    .select(`
-                        id, title_en, status, version, created_at, content_en, description_en,
-                        submitter:submitted_by ( name )
-                    `)
+                    .select(`*, submitter:submitted_by(name)`)
                     .eq('status', currentStatusFilter)
                     .order('created_at', { ascending: false });
 
@@ -263,12 +309,17 @@
         }
 
         async function updateKpiCards() {
-            const { count: pendingCount, error } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
-            if (!error) {
-                document.getElementById("kpi-pending-review").textContent = pendingCount || 0;
-                document.getElementById("pending-count").textContent = pendingCount || 0;
-            }
-            // يمكن إضافة منطق لباقي الـ KPIs هنا في المستقبل
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const { count: pendingCount } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
+            const { count: approvedTodayCount } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('approved_at', todayStart.toISOString());
+            const { count: rejectedTodayCount } = await supabase.from('case_reviews').select('*', { count: 'exact', head: true }).eq('action', 'rejected').gte('created_at', todayStart.toISOString());
+
+            document.getElementById("kpi-pending-review").textContent = pendingCount || 0;
+            document.getElementById("pending-count").textContent = pendingCount || 0;
+            document.getElementById("kpi-approved-today").textContent = approvedTodayCount || 0;
+            document.getElementById("kpi-rejected-today").textContent = rejectedTodayCount || 0;
         }
 
         function renderTable() {
@@ -282,13 +333,19 @@
 
             casesStore.forEach(item => {
                 const tr = document.createElement("tr");
-                const statusBadge = `<span class="badge ${item.status}">${item.status.replace('_', ' ')}</span>`;
-                
+                const submitterName = item.submitter?.name || 'Unknown User';
+                const avatarInitial = submitterName.charAt(0).toUpperCase();
+
                 tr.innerHTML = `
                     <td>${new Date(item.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                    <td>${item.submitter?.name || 'Unknown User'}</td>
-                    <td>${item.title_en || 'No Title'} (v${item.version})</td>
-                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="user-info-cell">
+                            <div class="user-avatar-cell">${avatarInitial}</div>
+                            <span>${escapeHtml(submitterName)}</span>
+                        </div>
+                    </td>
+                    <td>${escapeHtml(item.title_en || 'No Title')} (v${item.version})</td>
+                    <td><span class="badge ${item.status}">${item.status.replace('_', ' ')}</span></td>
                     <td>
                         <button class="action-btn primary view-review-btn" data-case-id="${item.id}">
                             <i class="fas fa-search-plus"></i> Review
@@ -313,13 +370,30 @@
                 return;
             }
             
-            modalTitle.textContent = `Reviewing: "${currentCase.title_en}" - v${currentCase.version}`;
+            modalTitle.textContent = `Reviewing: "${escapeHtml(currentCase.title_en)}" - v${currentCase.version}`;
 
-            // (مستقبلاً، هنا يمكنك إضافة منطق المقارنة بين الإصدار القديم والجديد)
             modalBody.innerHTML = `
-                <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); max-height: 40vh; overflow-y: auto;">
-                    <h4 style="color: var(--primary-accent-light); margin-bottom: 5px;">${currentCase.title_en}</h4>
-                    <p style="font-style: italic; color: var(--text-muted); margin-bottom: 15px;">${currentCase.description_en}</p>
+                <div class="review-sidebar">
+                    <div class="info-block">
+                        <h4>Submitter</h4>
+                        <p>${escapeHtml(currentCase.submitter?.name || 'N/A')}</p>
+                    </div>
+                    <div class="info-block">
+                        <h4>Submitted On</h4>
+                        <p>${new Date(currentCase.created_at).toLocaleString('en-GB')}</p>
+                    </div>
+                    <div class="info-block">
+                        <h4>Version</h4>
+                        <p>${currentCase.version}</p>
+                    </div>
+                    <div class="info-block">
+                        <h4>Status</h4>
+                        <p><span class="badge ${currentCase.status}">${currentCase.status.replace('_', ' ')}</span></p>
+                    </div>
+                </div>
+                <div class="review-content-area">
+                    <h3>${escapeHtml(currentCase.title_en)}</h3>
+                    <p><em>${escapeHtml(currentCase.description_en)}</em></p>
                     <hr style="border-color: var(--border-color); margin: 15px 0;">
                     <div>${currentCase.content_en}</div>
                 </div>
@@ -327,7 +401,7 @@
 
             document.getElementById("approveBtn").dataset.caseId = caseId;
             document.getElementById("rejectBtn").dataset.caseId = caseId;
-            document.getElementById("reviewerNotes").value = ''; // مسح الملاحظات القديمة
+            document.getElementById("reviewerNotes").value = '';
         }
 
         async function handleApprove(caseId) {
@@ -361,14 +435,11 @@
             checkAccess();
 
             document.querySelector(".tabs-container").addEventListener("click", (e) => {
-                const tab = e.target.closest(".action-btn");
+                const tab = e.target.closest(".tab-btn");
                 if (!tab) return;
                 
-                document.querySelectorAll(".tabs-container .action-btn").forEach(btn => {
-                    btn.classList.remove("primary");
-                    btn.style.background = '';
-                });
-                tab.classList.add("primary");
+                document.querySelectorAll(".tabs-container .tab-btn").forEach(btn => btn.classList.remove("active"));
+                tab.classList.add("active");
                 
                 currentStatusFilter = tab.dataset.status;
                 fetchData();
