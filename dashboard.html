@@ -945,10 +945,47 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             font-weight: 600;
             border: 1px solid rgba(108, 93, 211, 0.3);
         }
+
+        /* MODIFICATION START: Styles for the new Tabbed Interface */
+        .partner-care-tabs-container {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+        }
+        .pc-tab-btn {
+            padding: 0.75rem 0.25rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border-bottom: 3px solid transparent;
+            position: relative;
+            top: 1px;
+        }
+        .pc-tab-btn:hover {
+            color: var(--text-light);
+        }
+        .pc-tab-btn.active {
+            color: var(--primary-accent-light);
+            border-bottom-color: var(--primary-accent-light);
+        }
+        .pc-tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .pc-tab-content.active {
+            display: block;
+        }
+        /* MODIFICATION END: Styles for the new Tabbed Interface */
 </style>
 
 </head>
 <body id="pageBody">
+<!-- This part is the old header, preserved for compatibility -->
 <header class="app-header">
   <div class="brand">Knowledge Base</div>
   <nav>
@@ -1195,12 +1232,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 </div>
 </div>
 <div class="header-right-content">
+
+<!-- MODIFICATION START: Added link to approvals.html -->
 <div class="admin-toolbar hidden" id="adminToolbar">
     <a href="#home" id="admin-link-dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
     <a href="/insights.html" id="admin-link-insights"><i class="fas fa-chart-pie"></i> Insights</a>
     <a href="/employees.html" id="admin-link-employees" class="nav-link"><i class="fas fa-users"></i>Employees</a>
     <a href="/audit.html" id="admin-link-audit"><i class="fas fa-history"></i> Audit Log</a>
+    <a href="/approvals.html" id="admin-link-approvals" data-role-required="admin,manager"><i class="fas fa-check-double"></i> Approvals</a>
 </div>
+<!-- MODIFICATION END: Added link to approvals.html -->
+
 <div class="search-container">
 <span class="search-icon"><i class="fas fa-search"></i></span>
 <input id="globalSearchInput" placeholder="Search the knowledge base..." type="search"/>
@@ -1273,7 +1315,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         const { data, error } = await supabase
             .from('cases')
             .select('id, sub_category_id, title_en, description_en, content_en, title_ar, description_ar, content_ar, tags, type, url, parent_id, created_at, last_modified, is_published, slug')
-            .eq('is_published', true)
+            .eq('is_published', true) // MODIFICATION NOTE: This will later be changed to .eq('status', 'approved')
             .order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching articles:', error);
@@ -2223,6 +2265,35 @@ function renderDashboardCharts(data) {
         }
     }
     
+    // MODIFICATION START: New function to handle tab switching for Partner Care
+    function initializePartnerCareTabs() {
+        const tabContainer = document.querySelector('.partner-care-tabs-container');
+        if (!tabContainer) return;
+
+        const tabButtons = tabContainer.querySelectorAll('.pc-tab-btn');
+        const tabContents = document.querySelectorAll('.pc-tab-content');
+
+        tabContainer.addEventListener('click', (e) => {
+            const clickedTab = e.target.closest('.pc-tab-btn');
+            if (!clickedTab) return;
+
+            // Update active state for buttons
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            clickedTab.classList.add('active');
+
+            // Show the corresponding content
+            const targetContentId = clickedTab.dataset.target;
+            tabContents.forEach(content => {
+                if (content.id === targetContentId) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        });
+    }
+    // MODIFICATION END
+
     function displaySectionContent(sectionSlug) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
@@ -2257,42 +2328,41 @@ function renderDashboardCharts(data) {
             </div>`;
         }
 
-        // ================== MODIFICATION START ==================
-        const partnerCareId = 'd5a06b07-48e0-412e-99f5-67c0a43b26b0';
-        const storeRequestsId = 'e7a2a3c4-1234-4bcd-9876-55f0b3fa0001';
+        // ================== MODIFICATION START: Replaced with Tabbed Interface for Partner Care ==================
+        const partnerCareId = 'd5a06b07-48e0-412e-99f5-67c0a43b26b0'; // NOTE: Please confirm this ID from your DB
+        const storeRequestsId = 'e7a2a3c4-1234-4bcd-9876-55f0b3fa0001'; // NOTE: Please create and confirm this ID
 
         if (sectionData.id === partnerCareId) {
             const partnerCareCases = (sectionData.items || []).filter(item => !item.parent_id);
             const storeRequestsSection = kbSystemData.sections.find(s => s.id === storeRequestsId);
             const storeRequestsCases = storeRequestsSection ? (storeRequestsSection.items || []).filter(item => !item.parent_id) : [];
 
-            // --- Partner Care Cases Section ---
-            contentHTML += `<div class="card" style="padding-bottom: 2rem; border-left-color: var(--primary-accent);">`;
-            contentHTML += `<h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--text-light); padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">Partner Care Cases</h3>`;
+            contentHTML += `
+                <div class="partner-care-tabs-container">
+                    <button class="pc-tab-btn active" data-target="partner-care-content">Partner Care Cases</button>
+                    <button class="pc-tab-btn" data-target="store-requests-content">Store Requests Cases</button>
+                </div>
 
+                <div id="partner-care-content" class="pc-tab-content active">
+            `;
             if (partnerCareCases.length > 0) {
-                contentHTML += `<div class="cards-grid" style="--gap: 1.5rem;">`;
+                contentHTML += `<div class="cards-grid">`;
                 partnerCareCases.forEach(item => contentHTML += renderItemCard(item, sectionData));
                 contentHTML += `</div>`;
             } else {
-                contentHTML += `<div style="text-align: center; padding: 20px; color: var(--text-color-muted);">No content in this section yet.</div>`;
+                contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p>No content in this section yet.</p></div>`;
             }
-            contentHTML += `</div>`;
+            contentHTML += `</div>`; // End partner-care-content
 
-            // --- Store Requests Cases Section ---
-            if (storeRequestsSection) {
-                 contentHTML += `<div class="card" style="padding-bottom: 2rem; border-left-color: var(--secondary-accent);">`;
-                contentHTML += `<h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--text-light); padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">Store Requests Cases</h3>`;
-                
-                if (storeRequestsCases.length > 0) {
-                    contentHTML += `<div class="cards-grid" style="--gap: 1.5rem;">`;
-                    storeRequestsCases.forEach(item => contentHTML += renderItemCard(item, storeRequestsSection));
-                    contentHTML += `</div>`;
-                } else {
-                    contentHTML += `<div style="text-align: center; padding: 20px; color: var(--text-color-muted);">No content in this section yet.</div>`;
-                }
+            contentHTML += `<div id="store-requests-content" class="pc-tab-content">`;
+            if (storeRequestsSection && storeRequestsCases.length > 0) {
+                contentHTML += `<div class="cards-grid">`;
+                storeRequestsCases.forEach(item => contentHTML += renderItemCard(item, storeRequestsSection));
                 contentHTML += `</div>`;
+            } else {
+                 contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p>No content in this section yet.</p></div>`;
             }
+            contentHTML += `</div>`; // End store-requests-content
 
         } else {
             // Original rendering logic for all other sections
@@ -2310,6 +2380,11 @@ function renderDashboardCharts(data) {
 
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
+
+        // Initialize tabs if they exist on the page
+        if (sectionData.id === partnerCareId) {
+            initializePartnerCareTabs();
+        }
 
         document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
             openAddContentModal(e.currentTarget.dataset.sectionId);
@@ -2614,6 +2689,7 @@ function renderDashboardCharts(data) {
         addContentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // This will later be changed to set the status to 'pending_approval'
             await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id, is_local: true });
             await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
@@ -2653,7 +2729,6 @@ function renderDashboardCharts(data) {
                 return;
             }
             
-            // [CORE FIX] Log create/update activity with the correct section name.
             const sectionForLog = kbSystemData.sections.find(s => s.id === savedItem.sub_category_id);
             await logActivity(
                 currentUser, 
