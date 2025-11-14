@@ -626,204 +626,112 @@
     </div>
 
     <script type="module">
-        // محاكاة لـ supabase للعرض التوضيحي
-        const mockSupabase = {
-            auth: {
-                getUser: () => Promise.resolve({
-                    data: { user: { id: '1', email: 'admin@example.com' } },
-                    error: null
-                })
-            },
-            from: () => ({
-                select: () => ({
-                    eq: () => ({
-                        single: () => Promise.resolve({
-                            data: { role: 'admin' },
-                            error: null
-                        })
-                    })
-                })
-            }),
-            rpc: (method, params) => {
-                console.log(`RPC Call: ${method}`, params);
-                return Promise.resolve({ error: null });
-            }
-        };
+        // =================================================================
+        // Live Data Script for Approval Dashboard
+        // =================================================================
 
-        // استخدام supabase الحقيقي أو المحاكاة
-        const supabase = window.supabase || mockSupabase;
+        // Make sure the paths to these files are correct for your project structure
+        import { supabase } from './supabase.js'; 
+        import { getCurrentUserRole } from './role-check.js'; 
 
-        // متغيرات لتخزين الحالة
+        // Global variables to hold our data and state
         let casesStore = [];
         let currentStatusFilter = 'pending_approval';
         let currentUser = null;
 
-        // بيانات تجريبية
-        const mockCases = [
-            {
-                id: '1',
-                title_en: 'How to reset password',
-                status: 'pending_approval',
-                version: 1.2,
-                created_at: new Date().toISOString(),
-                content_en: 'Step by step guide to reset your password...',
-                description_en: 'Guide for password reset process',
-                reviewer_notes: null,
-                reviewed_at: null,
-                submitter: { name: 'John Doe' },
-                reviewer: null
-            },
-            {
-                id: '2',
-                title_en: 'Troubleshooting network issues',
-                status: 'approved',
-                version: 2.0,
-                created_at: new Date(Date.now() - 86400000).toISOString(),
-                content_en: 'Network troubleshooting steps...',
-                description_en: 'Guide for network issues',
-                reviewer_notes: 'Good content, approved after minor edits',
-                reviewed_at: new Date().toISOString(),
-                submitter: { name: 'Jane Smith' },
-                reviewer: { name: 'Admin User' }
-            },
-            {
-                id: '3',
-                title_en: 'Software installation guide',
-                status: 'rejected',
-                version: 1.5,
-                created_at: new Date(Date.now() - 172800000).toISOString(),
-                content_en: 'How to install the software...',
-                description_en: 'Installation instructions',
-                reviewer_notes: 'Missing important security steps. Please add security precautions section.',
-                reviewed_at: new Date().toISOString(),
-                submitter: { name: 'Mike Johnson' },
-                reviewer: { name: 'Admin User' }
-            }
-        ];
+        // --- Core Functions ---
 
-        // --- الدوال الأساسية ---
-        async function checkAccess() {
+        /**
+         * Checks if the user has the 'admin' or 'manager' role.
+         * If yes, it initializes the page. If not, it shows an access denied message.
+         */
+        async function checkAccessAndInitialize() {
             try {
+                const role = await getCurrentUserRole();
+                if (role !== 'admin' && role !== 'manager') {
+                    document.getElementById("dashboard-container").style.display = 'none';
+                    document.getElementById("restricted-container").style.display = "flex";
+                    return;
+                }
+
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) throw new Error("User not logged in.");
                 currentUser = user;
 
-                const { data: userData, error } = await supabase.from("users").select("role").eq("id", user.id).single();
-                if (error || !userData || userData.role?.trim().toLowerCase() !== "admin") {
-                    throw new Error("Access denied. Admin role required.");
-                }
                 document.getElementById("dashboard-container").style.visibility = "visible";
-                await fetchData();
+                await fetchData(); // Fetch data for the default "Pending" tab
+                await updateKpiCards(); // Update the summary cards at the top
+
             } catch (error) {
-                console.error("Access Check Failed:", error.message);
+                console.error("Access Check or Initialization Failed:", error.message);
+                document.getElementById("dashboard-container").style.display = 'none';
                 document.getElementById("restricted-container").style.display = "flex";
             }
         }
 
+        /**
+         * Fetches cases from the Supabase database based on the current status filter.
+         */
         async function fetchData() {
             const tableBody = document.getElementById("approvalQueueBody");
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        <div class="loading-state">
-                            <div class="loading-spinner"></div>
-                            <span>Loading cases...</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            tableBody.innerHTML = `<tr><td colspan="6"><div class="loading-state"><div class="loading-spinner"></div><span>Loading cases...</span></div></td></tr>`;
             
             try {
-                // في البيئة الحقيقية، استخدم هذا الكود:
-                // const { data, error } = await supabase
-                //     .from('cases')
-                //     .select(`
-                //         id, title_en, status, version, created_at, content_en, description_en,
-                //         reviewer_notes, reviewed_at,
-                //         submitter:submitted_by ( name ),
-                //         reviewer:reviewed_by ( name )
-                //     `)
-                //     .eq('status', currentStatusFilter)
-                //     .order('created_at', { ascending: false });
-                //
-                // if (error) throw error;
-                // casesStore = data || [];
+                // Fetch REAL data from the 'cases' table in Supabase
+                const { data, error } = await supabase
+                    .from('cases')
+                    .select('*') // Select all columns for now
+                    .eq('status', currentStatusFilter)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error; // If Supabase returns an error, stop and log it
                 
-                // للعرض التوضيحي، استخدم البيانات التجريبية:
-                await new Promise(resolve => setTimeout(resolve, 800));
-                casesStore = mockCases.filter(caseItem => caseItem.status === currentStatusFilter);
-                
-                renderTable();
-                updateKpiCards();
+                casesStore = data || []; // Store the fetched data in our global variable
+                renderTable(); // Call the function to display the data in the HTML table
+
             } catch (error) {
                 console.error("Error fetching data:", error);
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <p>Failed to load data. Please try again.</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load data. Please try again.</p></div></td></tr>`;
             }
         }
 
+        /**
+         * Fetches and updates the summary numbers in the KPI cards at the top.
+         */
         async function updateKpiCards() {
             try {
-                // في البيئة الحقيقية، استخدم هذا الكود:
-                // const { count: pendingCount } = await supabase
-                //     .from('cases')
-                //     .select('*', { count: 'exact', head: true })
-                //     .eq('status', 'pending_approval');
-                //
-                // const today = new Date();
-                // today.setHours(0, 0, 0, 0);
-                // 
-                // const { count: approvedToday } = await supabase
-                //     .from('cases')
-                //     .select('*', { count: 'exact', head: true })
-                //     .eq('status', 'approved')
-                //     .gte('created_at', today.toISOString());
-                // 
-                // const { count: rejectedToday } = await supabase
-                //     .from('cases')
-                //     .select('*', { count: 'exact', head: true })
-                //     .eq('status', 'rejected')
-                //     .gte('created_at', today.toISOString());
+                // Get count of all pending cases
+                const { count: pendingCount } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
                 
-                // للعرض التوضيحي:
-                const pendingCount = mockCases.filter(c => c.status === 'pending_approval').length;
-                const approvedToday = mockCases.filter(c => c.status === 'approved').length;
-                const rejectedToday = mockCases.filter(c => c.status === 'rejected').length;
+                // Get today's date in YYYY-MM-DD format for filtering
+                const today = new Date().toISOString().slice(0, 10);
                 
-                document.getElementById("kpi-pending-review").textContent = pendingCount;
-                document.getElementById("pending-count").textContent = pendingCount;
-                document.getElementById("kpi-approved-today").textContent = approvedToday;
-                document.getElementById("kpi-rejected-today").textContent = rejectedToday;
-                document.getElementById("kpi-avg-review-time").textContent = "2.5h";
+                // Get count of cases approved today
+                const { count: approvedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('last_modified', today);
                 
-            } catch (error) {
+                // Get count of cases rejected today
+                const { count: rejectedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'rejected').gte('last_modified', today);
+
+                // Update the HTML elements with the new counts
+                document.getElementById("kpi-pending-review").textContent = pendingCount || 0;
+                document.getElementById("pending-count").textContent = pendingCount || 0;
+                document.getElementById("kpi-approved-today").textContent = approvedToday || 0;
+                document.getElementById("kpi-rejected-today").textContent = rejectedToday || 0;
+                
+            } catch (error)
+                {
                 console.error("Error updating KPI cards:", error);
             }
         }
 
+        /**
+         * Renders the fetched data from `casesStore` into the HTML table.
+         */
         function renderTable() {
             const tableBody = document.getElementById("approvalQueueBody");
-            tableBody.innerHTML = "";
+            tableBody.innerHTML = ""; // Clear any old data
 
             if (casesStore.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>No cases found with status: ${currentStatusFilter.replace('_', ' ')}.</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i><p>No cases found with status: ${currentStatusFilter.replace('_', ' ')}.</p></div></td></tr>`;
                 return;
             }
 
@@ -831,295 +739,42 @@
                 const tr = document.createElement("tr");
                 const statusBadge = `<span class="badge ${item.status}">${item.status.replace('_', ' ')}</span>`;
                 
-                // عرض النوتس إذا كانت موجودة
-                let notesDisplay = '-';
-                if (item.reviewer_notes) {
-                    const shortNotes = item.reviewer_notes.length > 40 
-                        ? item.reviewer_notes.substring(0, 40) + '...' 
-                        : item.reviewer_notes;
-                    notesDisplay = `<div class="notes-preview" title="${item.reviewer_notes}">${shortNotes}</div>`;
-                }
-                
-                const actionText = currentStatusFilter === 'pending_approval' ? 'Review' : 'View';
-                const actionIcon = currentStatusFilter === 'pending_approval' ? 'search-plus' : 'eye';
-                
+                const submitterName = item.created_by || 'Unknown'; // Use the 'created_by' column
+
                 tr.innerHTML = `
                     <td>${new Date(item.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                    <td>${item.submitter?.name || 'Unknown User'}</td>
-                    <td class="case-title" title="${item.title_en || 'No Title'}">${item.title_en || 'No Title'} (v${item.version})</td>
+                    <td>${submitterName}</td>
+                    <td class="case-title" title="${item.title_en || 'No Title'}">${item.title_en || 'No Title'} (v${item.version || 1})</td>
                     <td>${statusBadge}</td>
-                    <td>${notesDisplay}</td>
-                    <td>
-                        <button class="action-btn primary review-btn" data-case-id="${item.id}">
-                            <i class="fas fa-${actionIcon}"></i> ${actionText}
-                        </button>
-                    </td>
+                    <td>${item.reviewer_notes || '-'}</td>
+                    <td><button class="action-btn primary review-btn" data-case-id="${item.id}"><i class="fas fa-search-plus"></i> Review</button></td>
                 `;
                 tableBody.appendChild(tr);
             });
         }
 
-        async function openReviewModal(caseId) {
-            const modal = document.getElementById("reviewModal");
-            const modalTitle = document.getElementById("reviewModalTitle");
-            const modalBody = document.getElementById("reviewModalBody");
-            const statusSection = document.getElementById("currentCaseStatus");
-            const statusBadge = document.getElementById("statusBadgeInModal");
-            const rejectionSection = document.getElementById("rejectionNotesSection");
-            const rejectionText = document.getElementById("rejectionNotesText");
-            const approveBtn = document.getElementById("approveBtn");
-            const rejectBtn = document.getElementById("rejectBtn");
-            const notesTextarea = document.getElementById("reviewerNotes");
-            
-            modal.classList.add("show");
-            modalBody.innerHTML = `
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <span>Loading case details...</span>
-                </div>
-            `;
+        // --- Event Listeners ---
 
-            const currentCase = casesStore.find(c => c.id === caseId);
-            if (!currentCase) {
-                modalBody.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <p>Error: Case not found.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            modalTitle.textContent = `Reviewing: "${currentCase.title_en}" - v${currentCase.version}`;
-            
-            // تحديث حالة الحالة الحالية
-            statusBadge.textContent = currentCase.status.replace('_', ' ');
-            statusBadge.className = `badge ${currentCase.status}`;
-            
-            // إظهار أو إخفاء قسم الرفض
-            if (currentCase.status === 'rejected' && currentCase.reviewer_notes) {
-                rejectionSection.style.display = 'block';
-                rejectionText.textContent = currentCase.reviewer_notes;
-            } else {
-                rejectionSection.style.display = 'none';
-            }
-            
-            // إظهار أو إخفاء أزرار القرار بناءً على الحالة
-            if (currentCase.status === 'pending_approval') {
-                approveBtn.style.display = 'inline-flex';
-                rejectBtn.style.display = 'inline-flex';
-                notesTextarea.disabled = false;
-                notesTextarea.placeholder = "Please provide detailed feedback for the submitter...";
-            } else {
-                approveBtn.style.display = 'none';
-                rejectBtn.style.display = 'none';
-                notesTextarea.disabled = true;
-                notesTextarea.placeholder = "Notes can only be added when reviewing pending cases";
-                
-                if (currentCase.reviewer_notes) {
-                    notesTextarea.value = currentCase.reviewer_notes;
-                }
-            }
-
-            // محتوى الحالة
-            modalBody.innerHTML = `
-                <div style="background: var(--bg-dark); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); max-height: 50vh; overflow-y: auto;">
-                    <h4 style="color: var(--primary-accent-light); margin-bottom: 5px; font-size: 16px;">${currentCase.title_en}</h4>
-                    <p style="font-style: italic; color: var(--text-muted); margin-bottom: 12px; font-size: 13px;">${currentCase.description_en}</p>
-                    <hr style="border-color: var(--border-color); margin: 12px 0;">
-                    <div style="font-size: 14px;">${currentCase.content_en}</div>
-                </div>
-                
-                ${currentCase.status !== 'pending_approval' ? `
-                <div style="margin-top: 15px; padding: 10px; background: var(--bg-header); border-radius: 6px;">
-                    <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--text-light);">
-                        <i class="fas fa-info-circle"></i> Review Information
-                    </h4>
-                    <p style="font-size: 13px; margin: 5px 0;">
-                        <strong>Reviewed by:</strong> ${currentCase.reviewer?.name || 'Unknown'}
-                    </p>
-                    <p style="font-size: 13px; margin: 5px 0;">
-                        <strong>Reviewed at:</strong> ${currentCase.reviewed_at ? new Date(currentCase.reviewed_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
-                    </p>
-                </div>
-                ` : ''}
-            `;
-
-            approveBtn.dataset.caseId = caseId;
-            rejectBtn.dataset.caseId = caseId;
-            notesTextarea.value = currentCase.reviewer_notes || '';
-        }
-
-        async function handleApprove(caseId) {
-            const approveBtn = document.getElementById("approveBtn");
-            const originalText = approveBtn.innerHTML;
-            
-            try {
-                approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-                approveBtn.disabled = true;
-                
-                const { error } = await supabase.rpc('approve_case', { case_id_to_approve: caseId });
-                if (error) {
-                    throw error;
-                }
-                
-                showNotification("Case approved successfully!", "success");
-                document.getElementById("reviewModal").classList.remove("show");
-                await fetchData();
-                
-            } catch (error) {
-                showNotification(`Error approving case: ${error.message}`, "error");
-            } finally {
-                approveBtn.innerHTML = originalText;
-                approveBtn.disabled = false;
-            }
-        }
-
-        async function handleReject(caseId) {
-            const notes = document.getElementById("reviewerNotes").value.trim();
-            if (!notes) {
-                showNotification("Review notes are required to reject a case.", "warning");
-                document.getElementById("reviewerNotes").focus();
-                return;
-            }
-            
-            const rejectBtn = document.getElementById("rejectBtn");
-            const originalText = rejectBtn.innerHTML;
-            
-            try {
-                rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
-                rejectBtn.disabled = true;
-                
-                const { error } = await supabase.rpc('reject_case', { case_id_to_reject: caseId, notes: notes });
-                if (error) {
-                    throw error;
-                }
-                
-                showNotification("Case rejected with feedback.", "success");
-                document.getElementById("reviewModal").classList.remove("show");
-                await fetchData();
-                
-            } catch (error) {
-                showNotification(`Error rejecting case: ${error.message}`, "error");
-            } finally {
-                rejectBtn.innerHTML = originalText;
-                rejectBtn.disabled = false;
-            }
-        }
-
-        function showNotification(message, type = "info") {
-            // إنشاء عنصر الإشعار
-            const notification = document.createElement("div");
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                color: white;
-                font-weight: 600;
-                z-index: 10000;
-                max-width: 350px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                font-size: 13px;
-            `;
-            
-            // تحديد لون الإشعار بناءً على النوع
-            if (type === "success") {
-                notification.style.background = "var(--success)";
-            } else if (type === "error") {
-                notification.style.background = "var(--danger)";
-            } else if (type === "warning") {
-                notification.style.background = "var(--warning)";
-                notification.style.color = "var(--bg-dark)";
-            } else {
-                notification.style.background = "var(--primary-accent)";
-            }
-            
-            // إضافة الأيقونة المناسبة
-            let icon = "info-circle";
-            if (type === "success") icon = "check-circle";
-            if (type === "error") icon = "exclamation-circle";
-            if (type === "warning") icon = "exclamation-triangle";
-            
-            notification.innerHTML = `
-                <i class="fas fa-${icon}"></i>
-                <span>${message}</span>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // إظهار الإشعار
-            setTimeout(() => {
-                notification.style.transform = "translateX(0)";
-            }, 10);
-            
-            // إخفاء الإشعار بعد 5 ثوانٍ
-            setTimeout(() => {
-                notification.style.transform = "translateX(100%)";
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 300);
-            }, 5000);
-        }
-
+        // This runs once the entire page is loaded
         document.addEventListener("DOMContentLoaded", () => {
-            checkAccess();
+            checkAccessAndInitialize();
 
-            // إدارة التبويبات
+            // Add click listener for the tabs (Pending, Approved, Rejected)
             document.querySelector(".tabs-container").addEventListener("click", (e) => {
                 const tab = e.target.closest(".action-btn");
                 if (!tab) return;
                 
-                document.querySelectorAll(".tabs-container .action-btn").forEach(btn => {
-                    btn.classList.remove("primary");
-                });
+                document.querySelectorAll(".tabs-container .action-btn").forEach(btn => btn.classList.remove("primary"));
                 tab.classList.add("primary");
                 
                 currentStatusFilter = tab.dataset.status;
-                fetchData();
+                fetchData(); // Refetch data for the newly selected tab
             });
             
-            // فتح نافذة المراجعة
-            document.getElementById("approvalQueueBody").addEventListener("click", (e) => {
-                const reviewBtn = e.target.closest(".review-btn");
-                if (reviewBtn) openReviewModal(reviewBtn.dataset.caseId);
-            });
-
-            // معالجة الموافقة والرفض
-            document.getElementById("approveBtn").addEventListener("click", (e) => handleApprove(e.target.dataset.caseId));
-            document.getElementById("rejectBtn").addEventListener("click", (e) => handleReject(e.target.dataset.caseId));
-            
-            // إغلاق النوافذ المنبثقة
-            document.addEventListener("click", (event) => {
-                if (event.target.closest("[data-close-modal]") || event.target.matches(".modal")) {
-                    document.querySelectorAll(".modal").forEach(modal => modal.classList.remove("show"));
-                }
-            });
-            
-            // تحديث البيانات
-            document.getElementById("refresh-btn").addEventListener("click", fetchData);
-            
-            // إضافة تأثير للزر عند الضغط
-            document.addEventListener('mousedown', (e) => {
-                if (e.target.classList.contains('action-btn')) {
-                    e.target.style.transform = 'translateY(0)';
-                }
-            });
-            
-            document.addEventListener('mouseup', (e) => {
-                if (e.target.classList.contains('action-btn')) {
-                    setTimeout(() => {
-                        e.target.style.transform = '';
-                    }, 150);
-                }
+            // Add click listener for the refresh button
+            document.getElementById("refresh-btn").addEventListener("click", () => {
+              fetchData();
+              updateKpiCards();
             });
         });
     </script>
