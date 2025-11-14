@@ -169,8 +169,16 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .sidebar, .content-wrapper, #recentActivity {
             -ms-overflow-style: none; scrollbar-width: none;
         }
-        .sidebar::-webkit-scrollbar, .content-wrapper::-webkit-scrollbar, #recentActivity::-webkit-scrollbar {
-            display: none;
+        .sidebar, .content-wrapper, #recentActivity, .search-results-sidebar, .search-preview-content {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-card);
+        }
+        .sidebar::-webkit-scrollbar, .content-wrapper::-webkit-scrollbar, #recentActivity::-webkit-scrollbar, .search-results-sidebar::-webkit-scrollbar, .search-preview-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-thumb, .content-wrapper::-webkit-scrollbar-thumb, #recentActivity::-webkit-scrollbar-thumb, .search-results-sidebar::-webkit-scrollbar-thumb, .search-preview-content::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 3px;
         }
 
 
@@ -643,28 +651,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             cursor: not-allowed;
         }
 
-        .top-users-list::-webkit-scrollbar,
-        .activity-log-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .top-users-list::-webkit-scrollbar-track,
-        .activity-log-list::-webkit-scrollbar-track {
-            background: var(--bg-card);
-            border-radius: 3px;
-        }
-
-        .top-users-list::-webkit-scrollbar-thumb,
-        .activity-log-list::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 3px;
-        }
-
-        .top-users-list::-webkit-scrollbar-thumb:hover,
-        .activity-log-list::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-accent);
-        }
-
         .chart-container h3::before,
         #topUsersContainer h3::before,
         #recentActivityContainer h3::before {
@@ -1004,6 +990,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .cards-grid.compact .card-title-group p {
             font-size: 0.85rem;
             line-height: 1.4;
+            max-height: 4.2em; /* Limit to 3 lines */
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .cards-grid.compact .card-tags {
             margin-top: 0.75rem;
@@ -1012,6 +1001,12 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .cards-grid.compact .tag {
             font-size: 0.7rem;
             padding: 0.2rem 0.6rem;
+        }
+        .cards-grid.compact .card-icon-container {
+            margin-right: 0.75rem;
+        }
+        .cards-grid.compact .card-actions {
+            gap: 0.3rem;
         }
         /* MODIFICATION END: Styles for Compact Cards */
         
@@ -1051,8 +1046,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             color: var(--primary-accent-light);
             background: var(--gradient-primary);
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            -webkit-text-fill-color: transparent;
             text-fill-color: transparent;
             width: fit-content;
         }
@@ -1084,35 +1079,107 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
         /* MODIFICATION END */
 
-        /* MODIFICATION START: Styles for Deep Linking and Highlighting */
+        /* MODIFICATION START: Styles for Deep Linking, Highlighting & Sharing */
         .kb-content > * {
             position: relative;
         }
         .copy-link-icon {
             position: absolute;
             top: 50%;
-            left: -25px;
+            left: -35px;
             transform: translateY(-50%);
             font-size: 0.9em;
             color: var(--text-muted);
             cursor: pointer;
             opacity: 0;
-            transition: opacity 0.2s ease-in-out;
+            transition: all 0.2s ease-in-out;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
         .kb-content > *:hover .copy-link-icon {
             opacity: 1;
         }
+        .copy-link-icon:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-light);
+        }
         .highlighted-paragraph {
-            background-color: rgba(108, 93, 211, 0.2);
-            box-shadow: 0 0 15px rgba(108, 93, 211, 0.3);
+            background-color: rgba(108, 93, 211, 0.15) !important;
+            box-shadow: 0 0 15px rgba(108, 93, 211, 0.2);
             border-radius: 8px;
-            transition: background-color 2s ease-out;
+            transition: background-color 0.3s ease-in-out;
+            scroll-margin-top: 20px;
         }
         mark {
             background-color: var(--warning);
             color: var(--bg-dark);
-            padding: 0.1em 0.2em;
+            padding: 0.1em 0.3em;
             border-radius: 4px;
+        }
+
+        .share-popover {
+            position: absolute;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background-color: #2c2f3b; /* A bit lighter for contrast */
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-hover);
+            z-index: 1010;
+            width: 280px;
+            animation: scale-in 0.2s ease-out;
+        }
+        .share-link-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .share-link-container input {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+        .share-link-container button {
+            background: var(--primary-accent);
+            border: none;
+            color: white;
+            padding: 0 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .share-options {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.5rem;
+        }
+        .share-options a {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            text-decoration: none;
+            color: var(--text-muted);
+            border-radius: 8px;
+            background-color: transparent;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+        }
+        .share-options a:hover {
+            background-color: var(--bg-color-hover);
+            color: var(--text-light);
         }
         /* MODIFICATION END */
 
@@ -1143,52 +1210,149 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         /* MODIFICATION END */
 
         /* MODIFICATION START: Styles for Advanced Search Results */
-        .search-results-list h3 {
-            margin-bottom: 1.5rem;
+        .advanced-search-layout {
+            display: flex;
+            gap: 1.5rem;
+            height: calc(100vh - var(--header-height) - 4rem); /* Full height minus header and padding */
+        }
+        .search-results-sidebar {
+            width: 380px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            padding-right: 1.5rem;
+        }
+        .search-results-header {
+            font-size: 1.2rem;
             font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            position: sticky; top: -1.5rem; /* Stick to top inside scroll container */
+            background: var(--bg-dark);
+            padding: 1rem 0;
+            z-index: 10;
         }
-        .search-result-item {
-            margin-bottom: 1.5rem;
-            padding: 1.5rem;
-            cursor: default;
+        .search-results-header mark { padding: 0.1rem 0.2rem; }
+        .search-result-entry {
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-bottom: 0.75rem;
+            border: 1px solid transparent;
         }
-        .search-result-item:hover {
-            transform: none;
-            box-shadow: var(--card-shadow);
-            border-color: var(--border-color);
-            border-left-color: var(--primary-accent);
+        .search-result-entry:hover {
+            background-color: var(--bg-color-hover);
         }
-        a.search-result-title {
-            text-decoration: none;
+        .search-result-entry.active {
+            background-color: rgba(108, 93, 211, 0.1);
+            border-color: var(--primary-accent);
         }
-        a.search-result-title:hover h4 {
-            color: var(--primary-accent-light);
-        }
-        .search-result-item h4 {
-            font-size: 1.25rem;
+        .search-result-entry h4 {
+            font-size: 1rem;
+            font-weight: 600;
             color: var(--text-light);
             margin: 0 0 0.25rem 0;
-            transition: color 0.2s ease;
         }
-        .search-result-path {
+        .search-result-entry p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .search-preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .search-preview-content {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem 2rem;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .search-preview-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .search-preview-placeholder i { font-size: 3rem; margin-bottom: 1rem; }
+        /* MODIFICATION END */
+
+        /* MODIFICATION START: New Styles for Approval Workflow Toggle */
+        .approval-workflow-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-header);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+        }
+        .approval-workflow-container .info h4 {
+            margin: 0 0 0.25rem 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        .approval-workflow-container .info p {
+            margin: 0;
             font-size: 0.8rem;
             color: var(--text-muted);
-            margin: 0 0 1rem 0;
-            font-weight: 500;
-            text-transform: uppercase;
         }
-        .search-result-snippets .snippet {
-            font-size: 0.9rem;
+        .approval-switch {
+            position: relative;
+        }
+        .approval-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .approval-switch .slider {
+            display: block;
+            cursor: pointer;
+            width: 90px;
+            height: 34px;
+            background-color: #374151;
+            transition: .4s;
+            border-radius: 34px;
+            position: relative;
+        }
+        .approval-switch .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        .approval-switch .slider:after {
+            position: absolute;
+            content: "DISABLED";
             color: var(--text-muted);
-            line-height: 1.6;
-            padding-left: 1rem;
-            border-left: 3px solid var(--border-color);
-            margin-bottom: 0.75rem;
-        }
-        .search-result-snippets .snippet mark {
             font-weight: 600;
+            font-size: 0.7rem;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: .4s;
+        }
+        .approval-switch input:checked + .slider {
+            background-color: var(--success);
+        }
+        .approval-switch input:checked + .slider:before {
+            transform: translateX(56px);
+        }
+        .approval-switch input:checked + .slider:after {
+            content: "ENABLED";
+            color: white;
+            left: 12px;
+            right: auto;
         }
         /* MODIFICATION END */
 
@@ -1495,6 +1659,20 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     <button class="lightbox-close">&times;</button>
     <img class="lightbox-content" id="lightboxImage" src="" alt="Enlarged view">
 </div>
+
+<!-- ======== NEW: Share Popover HTML ======== -->
+<div id="sharePopover" class="share-popover" style="display: none;">
+    <div class="share-link-container">
+        <input type="text" id="shareLinkInput" readonly>
+        <button id="copyShareLinkBtn" title="Copy link"><i class="fas fa-copy"></i></button>
+    </div>
+    <div class="share-options">
+        <a id="shareEmailBtn" href="#" target="_blank"><i class="fas fa-envelope"></i> Email</a>
+        <a id="shareSlackBtn" href="#" target="_blank"><i class="fab fa-slack"></i> Slack</a>
+        <a id="shareWhatsAppBtn" href="#" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+    </div>
+</div>
+
 
 <script type="module">
     // =================================================================================
@@ -2542,60 +2720,45 @@ function renderDashboardCharts(data) {
 
         let contentHTML = `<div>`;
 
-        // MODIFICATION: Add View Switcher and Admin Tools in a container
-        contentHTML += `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                <div>`;
-        
-        if (isCurrentUserAdmin() && sectionSlug !== 'home') {
-            // Start: Approval Workflow Toggle Switch
-            contentHTML += `
-            <div id="approvalToggleContainer" style="background: var(--bg-card); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: none; align-items: center; justify-content: space-between; max-width: 600px;">
-                <div>
-                    <h4 style="margin: 0 0 0.25rem 0; color: var(--text-light);">Approval Workflow</h4>
-                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">When enabled, new/updated content will require approval.</p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span id="approvalStatusLabel" style="font-weight: 600; width: 80px; text-align: center;">...</span>
-                    <label class="switch">
-                        <input type="checkbox" id="approvalToggleSwitch">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <style>
-                .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
-                .switch input { opacity: 0; width: 0; height: 0; }
-                .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #374151; transition: .4s; }
-                .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
-                input:checked + .slider { background-color: var(--success); }
-                input:checked + .slider:before { transform: translateX(26px); }
-                .slider.round { border-radius: 34px; }
-                .slider.round:before { border-radius: 50%; }
-            </style>
-            `;
-            // End: Approval Workflow Toggle Switch
+        contentHTML += `<div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1.5rem;">`;
 
-            contentHTML += `
-                <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
-                    <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
-                </button>`;
+        let adminControlsHTML = '';
+        if (isCurrentUserAdmin() && sectionSlug !== 'home') {
+            adminControlsHTML = `
+                <div style="display: flex; flex-direction: column; gap: 1rem; align-items: flex-start;">
+                    <!-- Start: Approval Workflow Toggle Switch -->
+                    <div class="approval-workflow-container" id="approvalToggleContainer" style="display: none;">
+                        <div class="info">
+                            <h4>Approval Workflow</h4>
+                            <p>When enabled, content changes require approval.</p>
+                        </div>
+                        <div class="approval-switch">
+                            <label>
+                                <input type="checkbox" id="approvalToggleSwitch">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <!-- End: Approval Workflow Toggle Switch -->
+                    <button id="openAddContentBtnInSection" class="button" data-section-id="${sectionData.id}">
+                        <i class="fas fa-plus-circle"></i> Add Content to ${escapeHTML(sectionData.name)}
+                    </button>
+                </div>`;
         }
         
-        contentHTML += `</div>`; // End left side container
-        
-        let viewMode = localStorage.getItem('kbViewMode') || 'default';
+        contentHTML += adminControlsHTML;
+
+        let viewMode = localStorage.getItem('kbViewMode') || 'compact'; // Default to compact
         contentHTML += `
-                <div class="view-switcher" id="viewSwitcher">
-                    <button class="switch-btn ${viewMode === 'default' ? 'active' : ''}" data-view="default" title="Default Grid View"><i class="fas fa-th-large"></i></button>
-                    <button class="switch-btn ${viewMode === 'compact' ? 'active' : ''}" data-view="compact" title="Compact Grid View"><i class="fas fa-th"></i></button>
-                </div>
+            <div class="view-switcher" id="viewSwitcher" style="${adminControlsHTML ? '' : 'margin-left: auto;'}">
+                <button class="switch-btn ${viewMode === 'default' ? 'active' : ''}" data-view="default" title="Default Grid View"><i class="fas fa-th-large"></i></button>
+                <button class="switch-btn ${viewMode === 'compact' ? 'active' : ''}" data-view="compact" title="Compact Grid View"><i class="fas fa-th"></i></button>
             </div>
-        `;
+        </div>`;
+
         
-        // ================== MODIFICATION START: Replaced with Tabbed Interface for Partner Care ==================
-        const partnerCareId = 'd5a06b07-48e0-412e-99f5-67c0a43b26b0'; // NOTE: Please confirm this ID from your DB
-        const storeRequestsId = 'e7a2a3c4-1234-4bcd-9876-55f0b3fa0001'; // NOTE: Please create and confirm this ID
+        const partnerCareId = 'd5a06b07-48e0-412e-99f5-67c0a43b26b0';
+        const storeRequestsId = 'e7a2a3c4-1234-4bcd-9876-55f0b3fa0001';
 
         if (sectionData.id === partnerCareId) {
             const partnerCareCases = (sectionData.items || []).filter(item => !item.parent_id);
@@ -2607,9 +2770,7 @@ function renderDashboardCharts(data) {
                     <button class="pc-tab-btn active" data-target="partner-care-content">Partner Care Cases</button>
                     <button class="pc-tab-btn" data-target="store-requests-content">Store Requests Cases</button>
                 </div>
-
-                <div id="partner-care-content" class="pc-tab-content active">
-            `;
+                <div id="partner-care-content" class="pc-tab-content active">`;
             if (partnerCareCases.length > 0) {
                 contentHTML += `<div class="cards-grid ${viewMode === 'compact' ? 'compact' : ''}">`;
                 partnerCareCases.forEach(item => contentHTML += renderItemCard(item, sectionData));
@@ -2617,9 +2778,8 @@ function renderDashboardCharts(data) {
             } else {
                 contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p>No content in this section yet.</p></div>`;
             }
-            contentHTML += `</div>`; // End partner-care-content
-
-            contentHTML += `<div id="store-requests-content" class="pc-tab-content">`;
+            contentHTML += `</div>
+                <div id="store-requests-content" class="pc-tab-content">`;
             if (storeRequestsSection && storeRequestsCases.length > 0) {
                 contentHTML += `<div class="cards-grid ${viewMode === 'compact' ? 'compact' : ''}">`;
                 storeRequestsCases.forEach(item => contentHTML += renderItemCard(item, storeRequestsSection));
@@ -2627,12 +2787,10 @@ function renderDashboardCharts(data) {
             } else {
                  contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px;"><p>No content in this section yet.</p></div>`;
             }
-            contentHTML += `</div>`; // End store-requests-content
+            contentHTML += `</div>`;
 
         } else {
-            // Original rendering logic for all other sections
             const itemsToDisplay = (sectionData.items || []).filter(item => !item.parent_id);
-        
             if (itemsToDisplay.length > 0) {
                 contentHTML += `<div class="cards-grid ${viewMode === 'compact' ? 'compact' : ''}">`;
                 itemsToDisplay.forEach(item => contentHTML += renderItemCard(item, sectionData));
@@ -2641,20 +2799,18 @@ function renderDashboardCharts(data) {
                  contentHTML += `<div class="card" style="text-align: center; padding: 40px 20px; min-height: auto;"><p style="font-size: 1.2rem; color: var(--text-color-muted);">No content in this section yet.</p></div>`;
             }
         }
-        // =================== MODIFICATION END ===================
 
         contentHTML += `</div>`;
         standardSectionContentPlaceholder.innerHTML = contentHTML;
 
-        // Initialize tabs if they exist on the page
         if (sectionData.id === partnerCareId) {
             initializePartnerCareTabs();
         }
         
-        // Add event listeners for new elements
         document.getElementById('openAddContentBtnInSection')?.addEventListener('click', (e) => {
             openAddContentModal(e.currentTarget.dataset.sectionId);
         });
+
         document.getElementById('viewSwitcher')?.addEventListener('click', (e) => {
             const button = e.target.closest('.switch-btn');
             if (!button) return;
@@ -2664,14 +2820,11 @@ function renderDashboardCharts(data) {
             button.classList.add('active');
             
             document.querySelectorAll('.cards-grid').forEach(grid => {
-                grid.classList.remove('compact');
-                if (view === 'compact') {
-                    grid.classList.add('compact');
-                }
+                grid.classList.remove('compact', 'default');
+                grid.classList.add(view);
             });
         });
 
-        // ===<< BUG FIX & MODIFICATION: Call the approval toggle setup here >>===
         await setupApprovalToggle(); 
     }
     
@@ -2706,8 +2859,7 @@ function renderDashboardCharts(data) {
         let textNode;
         const nodesToReplace = [];
 
-        while (textNode = walker.nextNode()) {
-            // Ignore text inside script/style tags
+        while ((textNode = walker.nextNode())) {
             if (textNode.parentNode.tagName === 'SCRIPT' || textNode.parentNode.tagName === 'STYLE') {
                 continue;
             }
@@ -2724,18 +2876,15 @@ function renderDashboardCharts(data) {
             const fragment = document.createDocumentFragment();
             let lastIndex = 0;
             text.replace(regex, (match, p1, offset) => {
-                // Add the text before the match
                 if (offset > lastIndex) {
                     fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
                 }
-                // Add the highlighted match
                 const mark = document.createElement('mark');
                 mark.textContent = match;
                 fragment.appendChild(mark);
                 lastIndex = offset + match.length;
             });
 
-            // Add any remaining text
             if (lastIndex < text.length) {
                 fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
             }
@@ -2753,7 +2902,7 @@ function renderDashboardCharts(data) {
         const elements = container.querySelectorAll('.kb-content p, .kb-content li, .kb-content h1, .kb-content h2, .kb-content h3, .kb-content h4, .kb-content h5, .kb-content h6, .kb-content blockquote, .kb-content tr');
         let counter = 0;
         elements.forEach(el => {
-            if (stripHtml(el.innerHTML).trim().length === 0) return; // Skip empty elements
+            if (stripHtml(el.innerHTML).trim().length < 5) return; // Skip very short/empty elements
 
             counter++;
             const paragraphId = `line-${counter}`;
@@ -2761,10 +2910,10 @@ function renderDashboardCharts(data) {
             
             const icon = document.createElement('i');
             icon.className = 'fas fa-link copy-link-icon';
-            icon.title = 'Copy link to this line';
+            icon.title = 'Copy or share link to this line';
             icon.dataset.caseId = caseId;
             icon.dataset.paragraphId = paragraphId;
-            el.appendChild(icon);
+            el.prepend(icon);
         });
     }
 
@@ -2882,7 +3031,7 @@ function renderDashboardCharts(data) {
                     targetElement.classList.add('highlighted-paragraph');
                     setTimeout(() => {
                         targetElement.classList.remove('highlighted-paragraph');
-                    }, 2000); // Highlight fades after 2 seconds
+                    }, 2500); // Highlight fades after 2.5 seconds
                 }
             }, 200);
         }
@@ -3053,120 +3202,125 @@ function renderDashboardCharts(data) {
     // MODIFICATION START: New function to handle the Approval Toggle
     async function setupApprovalToggle() {
         const container = document.getElementById('approvalToggleContainer');
-        if (!container) {
-            // The container doesn't exist on this view (e.g., dashboard, item detail), so just exit.
-            return;
-        }
+        if (!container) return; // Exit if the element is not on the current page
+        
         const toggle = document.getElementById('approvalToggleSwitch');
-        const label = document.getElementById('approvalStatusLabel');
-
-        // This function is called from displaySectionContent, so the container will exist.
-        // But we still only show it to admins.
+        
         if (!isCurrentUserAdmin()) {
             container.style.display = 'none';
             return;
         }
         container.style.display = 'flex';
 
-        // 1. Fetch the current setting from the database
         const { data: setting, error } = await supabase
             .from('app_settings')
             .select('value')
             .eq('key', 'approval_workflow_enabled')
             .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // Ignore 'no rows found' error
             console.error("Could not load approval setting:", error);
-            label.textContent = 'ERROR';
-            label.style.color = 'var(--danger)';
             return;
         }
 
-        const isEnabled = setting.value === 'true';
+        const isEnabled = setting?.value === 'true';
         toggle.checked = isEnabled;
-        label.textContent = isEnabled ? 'ENABLED' : 'DISABLED';
-        label.style.color = isEnabled ? 'var(--success)' : 'var(--text-muted)';
 
-        // 2. Add a listener to update the database when the toggle is clicked
-        toggle.addEventListener('change', async () => {
-            const newValue = toggle.checked;
-            label.textContent = 'UPDATING...';
+        toggle.removeEventListener('change', handleApprovalToggleChange); // Remove old listener to prevent duplicates
+        toggle.addEventListener('change', handleApprovalToggleChange);
+    }
 
-            const { error: updateError } = await supabase
-                .from('app_settings')
-                .update({ value: newValue.toString() })
-                .eq('key', 'approval_workflow_enabled');
+    async function handleApprovalToggleChange(event) {
+        const toggle = event.target;
+        const newValue = toggle.checked;
+        
+        const { error: updateError } = await supabase
+            .from('app_settings')
+            .update({ value: newValue.toString() })
+            .eq('key', 'approval_workflow_enabled');
 
-            if (updateError) {
-                showToast(`Failed to update setting: ${updateError.message}`, 'error');
-                toggle.checked = !newValue; // Revert the toggle on failure
-                const revertedIsEnabled = !newValue;
-                label.textContent = revertedIsEnabled ? 'ENABLED' : 'DISABLED';
-                label.style.color = revertedIsEnabled ? 'var(--success)' : 'var(--text-muted)';
-            } else {
-                showToast(`Approval workflow is now ${newValue ? 'ENABLED' : 'DISABLED'}.`, 'success');
-                label.textContent = newValue ? 'ENABLED' : 'DISABLED';
-                label.style.color = newValue ? 'var(--success)' : 'var(--text-muted)';
-            }
-        });
+        if (updateError) {
+            showToast(`Failed to update setting: ${updateError.message}`, 'error');
+            toggle.checked = !newValue; // Revert UI on failure
+        } else {
+            showToast(`Approval workflow is now ${newValue ? 'ENABLED' : 'DISABLED'}.`, 'success');
+        }
     }
     // MODIFICATION END
 
     // MODIFICATION START: New functions for advanced search
     function renderSearchResults(results, query) {
-        let resultsHTML = '<div class="search-results-list">';
-
-        if (results.length > 0) {
-            resultsHTML += `<h3>Found ${results.length} result(s) for "${escapeHTML(query)}"</h3>`;
-            results.forEach(item => {
-                const snippets = extractContextSnippets(item, query);
-                resultsHTML += `
-                    <div class="search-result-item card">
-                        <a href="#${item.sectionSlug}/${item.slug}" class="search-result-title"><h4>${highlightText(item.title_en, query)}</h4></a>
-                        <p class="search-result-path">${escapeHTML(item.sectionName)}</p>
-                        <div class="search-result-snippets">
-                            ${snippets.map(snippet => `<p class="snippet">...${snippet}...</p>`).join('')}
+        const layoutHTML = `
+            <div class="advanced-search-layout">
+                <div class="search-results-sidebar">
+                    <h3 class="search-results-header">Found ${results.length} result(s) for "<mark>${escapeHTML(query)}</mark>"</h3>
+                    <div id="searchResultsListContainer">
+                        ${results.map(item => `
+                            <div class="search-result-entry" data-item-id="${item.id}">
+                                <h4>${highlightText(item.title_en, query)}</h4>
+                                <p>${escapeHTML(item.sectionName)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="search-preview-container">
+                    <div class="search-preview-content" id="searchPreviewContent">
+                         <div class="search-preview-placeholder">
+                            <i class="fas fa-hand-pointer"></i>
+                            <p>Select a result from the left to preview it here.</p>
                         </div>
                     </div>
-                `;
-            });
-        } else {
-            resultsHTML += `<div class="card" style="text-align: center;"><p>No results found for "${escapeHTML(query)}".</p></div>`;
-        }
-        resultsHTML += '</div>';
-
-        standardSectionContentPlaceholder.innerHTML = resultsHTML;
-        standardSectionContentPlaceholder.classList.remove('hidden');
-        dashboardOverviewContainer.classList.add('hidden');
+                </div>
+            </div>`;
+        
+        standardSectionContentPlaceholder.innerHTML = layoutHTML;
         itemDetailViewPlaceholder.classList.add('hidden');
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.remove('hidden');
+
+        document.getElementById('searchResultsListContainer').addEventListener('click', (e) => {
+            const entry = e.target.closest('.search-result-entry');
+            if (entry) {
+                document.querySelectorAll('.search-result-entry').forEach(el => el.classList.remove('active'));
+                entry.classList.add('active');
+                loadSearchResultPreview(entry.dataset.itemId, query);
+            }
+        });
+    }
+
+    function loadSearchResultPreview(itemId, query) {
+        const itemData = findItem(itemId);
+        const previewContainer = document.getElementById('searchPreviewContent');
+        if (!itemData || !previewContainer) return;
+
+        let content = highlightKeywordsInHtml(itemData.content_en, query);
+        
+        const previewHTML = `
+            <h2 style="margin-top:0;">${highlightText(itemData.title_en, query)}</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 1.5rem;">In section: <strong>${escapeHTML(itemData.sectionName)}</strong></p>
+            <div class="kb-content">${content}</div>
+        `;
+        previewContainer.innerHTML = previewHTML;
     }
 
     function extractContextSnippets(item, query, contextLength = 80) {
-        const snippets = new Set(); // Use a Set to avoid duplicate snippets
+        const snippets = new Set();
         const fullText = stripHtml(item.title_en + ' ' + item.description_en + ' ' + item.content_en);
         
         try {
             const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
             let match;
-
-            while ((match = regex.exec(fullText)) !== null) {
-                if (snippets.size >= 3) break; // Limit to 3 snippets
+            while ((match = regex.exec(fullText)) !== null && snippets.size < 3) {
                 const startIndex = Math.max(0, match.index - contextLength);
                 const endIndex = Math.min(fullText.length, match.index + match[0].length + contextLength);
-                let snippet = fullText.substring(startIndex, endIndex);
-                snippet = highlightText(snippet, query); 
-                snippets.add(snippet);
+                snippets.add(highlightText(fullText.substring(startIndex, endIndex), query));
             }
         } catch(e) { console.error("Regex error in search:", e); }
         
-        // Fallback to description if no content snippets found
         if (snippets.size === 0 && item.description_en) {
             const highlightedDesc = highlightText(truncateText(stripHtml(item.description_en), 200), query);
-            if (highlightedDesc.includes('<mark>')) {
-                 snippets.add(highlightedDesc);
-            }
+            if (highlightedDesc.includes('<mark>')) snippets.add(highlightedDesc);
         }
-
         return Array.from(snippets);
     }
     // MODIFICATION END
@@ -3221,31 +3375,27 @@ function renderDashboardCharts(data) {
         addContentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // This will later be changed to set the status to 'pending_approval'
             await supabase.rpc('set_config', { key: 'app.current_user_id', value: currentUser.id, is_local: true });
             await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
             const title = document.getElementById('contentTitle').value.trim();
-          // This is the final, correct object for saving data.
-const itemData = {
-    id: editingItemIdInput.value || undefined,
-    title_en: title,
-    slug: createSlug(title),
-    description_en: document.getElementById('contentSummary').value.trim(),
-    content_en: mainQuillEditor.root.innerHTML,
-    tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-    type: contentTypeSelect.value,
-    url: document.getElementById('contentUrl').value.trim() || null,
-    sub_category_id: addContentForm.dataset.sectionId,
-    parent_id: document.getElementById('parentItem').value || null,
-    last_modified: new Date().toISOString(),
-    
-    // ===<< التعديلات النهائية والصحيحة >>===
-    // We removed 'author_id' and 'submitted_by' to use the single, correct column 'created_by'
-    created_by: currentUser.id, // Use the existing 'created_by' column
-    status: 'pending_approval'  // Set the status to be reviewed
-};
-            if (itemData.id) { // Preserve AR content on edit
+          
+            const itemData = {
+                id: editingItemIdInput.value || undefined,
+                title_en: title,
+                slug: createSlug(title),
+                description_en: document.getElementById('contentSummary').value.trim(),
+                content_en: mainQuillEditor.root.innerHTML,
+                tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
+                type: contentTypeSelect.value,
+                url: document.getElementById('contentUrl').value.trim() || null,
+                sub_category_id: addContentForm.dataset.sectionId,
+                parent_id: document.getElementById('parentItem').value || null,
+                last_modified: new Date().toISOString(),
+                created_by: currentUser.id,
+                status: 'pending_approval'
+            };
+            if (itemData.id) {
                 const originalItem = findItem(itemData.id);
                 if(originalItem) {
                     itemData.title_ar = originalItem.title_ar;
@@ -3279,8 +3429,8 @@ const itemData = {
             await loadAndStructureData();
             
             const section = kbSystemData.sections.find(s => s.id === savedItem.sub_category_id);
-            window.location.hash = section ? `#${section.slug}/${savedItem.slug}` : '#home';
-            handleNavigation(); // Force re-render
+            window.location.hash = section ? `#${section.slug}` : '#home';
+            handleNavigation();
         });
         
         confirmDeleteItemBtn.addEventListener('click', async () => {
@@ -3308,20 +3458,10 @@ const itemData = {
         });
 
         pageContentArea.addEventListener('click', async (e) => {
-            // MODIFICATION: Handle clicks for deep-linking
-            const copyIcon = e.target.closest('.copy-link-icon');
-            if (copyIcon) {
-                const caseId = copyIcon.dataset.caseId;
-                const paragraphId = copyIcon.dataset.paragraphId;
-                const link = `${window.location.origin}${window.location.pathname}#case=${caseId}&section=${paragraphId}`;
-                
-                try {
-                    await navigator.clipboard.writeText(link);
-                    showToast('Link copied to clipboard!', 'success');
-                } catch (err) {
-                    showToast('Failed to copy link.', 'error');
-                }
-                return; // Stop further processing
+            const shareIcon = e.target.closest('.copy-link-icon');
+            if (shareIcon) {
+                showSharePopover(shareIcon);
+                return;
             }
             
             if (!currentOpenItem) return;
@@ -3332,11 +3472,9 @@ const itemData = {
             const deleteBtn = e.target.closest('#deleteItemBtn');
             const pdfBtn = e.target.closest('#downloadPdfItemBtn');
 
-            if (editBtn) {
-                openAddContentModal(itemData.sub_category_id, itemData);
-            } else if (deleteBtn) {
-                openDeleteModal(itemData.sub_category_id, itemData.id, itemData.title_en);
-            } else if (pdfBtn) {
+            if (editBtn) openAddContentModal(itemData.sub_category_id, itemData);
+            else if (deleteBtn) openDeleteModal(itemData.sub_category_id, itemData.id, itemData.title_en);
+            else if (pdfBtn) {
                 const contentCard = document.querySelector('#itemDetailViewPlaceholder .card');
                 if (contentCard) {
                     showToast('Generating PDF...', 'info');
@@ -3347,39 +3485,33 @@ const itemData = {
             }
         });
         
-        // MODIFICATION START: Rewritten search event listener
         globalSearchInput.addEventListener('input', () => {
             const query = globalSearchInput.value.trim();
-            
-            if (query.length >= 2) {
-                localStorage.setItem('lastSearchKeyword', query);
-            } else {
-                localStorage.removeItem('lastSearchKeyword');
-            }
+            localStorage.setItem('lastSearchKeyword', query.length >= 2 ? query : '');
 
             if (query.length < 2) {
-                if (document.querySelector('.search-results-list')) {
-                    // If we are in search view, go back to the previous hash or home on clear
+                if (document.querySelector('.advanced-search-layout')) {
                     handleNavigation();
                 }
                 return;
             }
 
             const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
-            
             const results = allItems.filter(i => {
                 try {
                     const searchableText = `${i.title_en} ${stripHtml(i.description_en)} ${stripHtml(i.content_en)}`.toLowerCase();
                     return searchableText.includes(query.toLowerCase());
                 } catch(e) { return false; }
             });
-            
             renderSearchResults(results, query);
         });
-        // MODIFICATION END
 
         document.addEventListener('click', e => {
             if (!globalSearchInput.contains(e.target)) searchResultsContainer.classList.add('hidden');
+            const popover = document.getElementById('sharePopover');
+            if (popover.style.display === 'block' && !popover.contains(e.target) && !e.target.closest('.copy-link-icon')) {
+                hideSharePopover();
+            }
         });
     }
 
@@ -3393,6 +3525,46 @@ const itemData = {
         supabase.channel('public:app_settings').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_settings' }, setupApprovalToggle).subscribe();
     }
     
+    // MODIFICATION START: Share Popover Logic
+    function showSharePopover(targetIcon) {
+        const popover = document.getElementById('sharePopover');
+        const { caseId, paragraphId } = targetIcon.dataset;
+        const targetElement = document.getElementById(paragraphId);
+        
+        // Highlight
+        document.querySelectorAll('.highlighted-paragraph').forEach(el => el.classList.remove('highlighted-paragraph'));
+        if (targetElement) targetElement.classList.add('highlighted-paragraph');
+
+        // Position popover
+        const iconRect = targetIcon.getBoundingClientRect();
+        popover.style.display = 'flex';
+        popover.style.top = `${window.scrollY + iconRect.bottom + 8}px`;
+        popover.style.left = `${window.scrollX + iconRect.left}px`;
+        
+        // Populate links
+        const link = `${window.location.origin}${window.location.pathname}#case=${caseId}&section=${paragraphId}`;
+        const encodedLink = encodeURIComponent(link);
+        const text = encodeURIComponent(`Check out this section: ${stripHtml(targetElement.textContent).trim().substring(0, 100)}...`);
+
+        document.getElementById('shareLinkInput').value = link;
+        document.getElementById('shareEmailBtn').href = `mailto:?subject=Knowledge Base Link&body=${text}%0A%0A${encodedLink}`;
+        document.getElementById('shareSlackBtn').href = `https://slack.com/share/url?url=${encodedLink}`;
+        document.getElementById('shareWhatsAppBtn').href = `https://api.whatsapp.com/send?text=${text}%0A${encodedLink}`;
+        
+        document.getElementById('copyShareLinkBtn').onclick = () => {
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('Link copied to clipboard!', 'success');
+                hideSharePopover();
+            });
+        };
+    }
+
+    function hideSharePopover() {
+        document.getElementById('sharePopover').style.display = 'none';
+        document.querySelectorAll('.highlighted-paragraph').forEach(el => el.classList.remove('highlighted-paragraph'));
+    }
+    // MODIFICATION END
+
     async function initializeApp() {
         try {
             currentUser = await getCurrentUserProfile();
@@ -3409,7 +3581,6 @@ const itemData = {
             await loadAndStructureData();
             populateSidebar();
             setupEventListeners();
-            
             initImageLightbox();
             
             handleNavigation();
