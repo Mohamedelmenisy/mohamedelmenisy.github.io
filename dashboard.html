@@ -1052,6 +1052,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
             width: fit-content;
         }
         .template-button h4 {
@@ -2514,7 +2516,7 @@ function renderDashboardCharts(data) {
     }
     // MODIFICATION END
 
-    function displaySectionContent(sectionSlug) {
+    async function displaySectionContent(sectionSlug) {
         currentOpenItem = null;
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
@@ -2668,6 +2670,9 @@ function renderDashboardCharts(data) {
                 }
             });
         });
+
+        // ===<< BUG FIX & MODIFICATION: Call the approval toggle setup here >>===
+        await setupApprovalToggle(); 
     }
     
     function findItem(itemId) {
@@ -3048,6 +3053,10 @@ function renderDashboardCharts(data) {
     // MODIFICATION START: New function to handle the Approval Toggle
     async function setupApprovalToggle() {
         const container = document.getElementById('approvalToggleContainer');
+        if (!container) {
+            // The container doesn't exist on this view (e.g., dashboard, item detail), so just exit.
+            return;
+        }
         const toggle = document.getElementById('approvalToggleSwitch');
         const label = document.getElementById('approvalStatusLabel');
 
@@ -3401,12 +3410,8 @@ const itemData = {
             populateSidebar();
             setupEventListeners();
             
-            // Initialize new features
             initImageLightbox();
             
-            // ===<< MODIFICATION: Call the approval toggle setup >>===
-            await setupApprovalToggle(); 
-
             handleNavigation();
             setupRealtimeSubscriptions();
 
@@ -3415,8 +3420,13 @@ const itemData = {
         } catch (error) {
             console.error("A critical error occurred during app initialization:", error);
             showToast('Failed to initialize the application.', 'error');
-            pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
-            document.getElementById('sidebarLoader').innerHTML = 'Failed to load.';
+            if (pageContentArea) {
+                pageContentArea.innerHTML = `<div class="card" style="text-align:center; padding: 2rem;"><h2>Application Error</h2><p>Could not load necessary data. Please try refreshing the page.</p></div>`;
+            }
+            const sidebarLoader = document.getElementById('sidebarLoader');
+            if (sidebarLoader) {
+                sidebarLoader.innerHTML = 'Failed to load.';
+            }
         }
     }
 
