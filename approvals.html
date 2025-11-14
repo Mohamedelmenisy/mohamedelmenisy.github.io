@@ -297,6 +297,36 @@
         .access-restricted-card .icon { font-size: 3rem; color: var(--danger); margin-bottom: 1rem; }
         .access-restricted-card h2 { font-size: 1.5rem; margin-bottom: .5rem; color: var(--text-light); }
         .access-restricted-card p { color: var(--text-muted); margin-bottom: 1.5rem; }
+        
+        /* New styles for approval history */
+        .approval-history {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        .approval-history h4 {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .approval-history-list {
+            list-style: none;
+            padding: 0;
+        }
+        .approval-history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 6px;
+            background-color: var(--bg-dark);
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .approval-history-item .icon {
+            color: var(--success);
+        }
+
     </style>
 </head>
 <body>
@@ -360,6 +390,7 @@
             </div>
             <div class="modal-body">
                 <div id="reviewModalBody" class="kb-content-view"></div>
+                <div id="approvalHistoryContainer" class="approval-history"></div>
             </div>
             <div id="decisionFooter" class="modal-footer">
                 <textarea id="reviewerNotes" placeholder="Please provide detailed feedback... (Required if rejecting)"></textarea>
@@ -386,14 +417,23 @@
     </div>
 
     <script type="module">
+        // =================================================================
+        // FINAL SCRIPT for KB Approvals (with Multi-Step Logic)
+        // =================================================================
+
         import { supabase } from './supabase.js'; 
         import { getCurrentUserRole } from './role-check.js'; 
 
         let casesStore = [];
         let currentStatusFilter = 'pending_approval';
+        let currentUser = null;
 
         async function checkAccessAndInitialize() {
             try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("User not found.");
+                currentUser = user;
+
                 const role = await getCurrentUserRole();
                 if (role !== 'admin' && role !== 'manager') {
                     document.getElementById("dashboard-container").style.display = 'none';
@@ -466,7 +506,7 @@
             });
         }
 
-        function openReviewModal(caseId) {
+        async function openReviewModal(caseId) {
             const currentCase = casesStore.find(c => c.id === caseId);
             if (!currentCase) {
                 showNotification("Error finding case data.", "error");
@@ -477,22 +517,48 @@
             const modalTitle = document.getElementById("reviewModalTitle");
             const modalBody = document.getElementById("reviewModalBody");
             const decisionFooter = document.getElementById("decisionFooter");
+            const approvalHistoryContainer = document.getElementById("approvalHistoryContainer");
 
             modalTitle.textContent = `Reviewing: "${currentCase.title_en}"`;
-
+            
             let finalHtml = '';
-            // It's better to assume the content is already mixed and let the browser handle it with dir="auto".
             if (currentCase.content_en) {
-                // Make all links open in a new tab for convenience
                 const processedContent = currentCase.content_en.replaceAll('<a href', '<a target="_blank" href');
                 finalHtml = `<div dir="auto">${processedContent}</div>`;
             }
-            
             modalBody.innerHTML = finalHtml || "<p><i>No content available.</i></p>";
+
+            // Fetch and display approval history
+            approvalHistoryContainer.innerHTML = '<h4><i class="fas fa-history"></i> Approval History</h4>';
+            const { data: approvals, error } = await supabase
+                .from('case_approvals')
+                .select('*, approver:profiles(full_name)')
+                .eq('case_id', caseId);
+            
+            if (error) {
+                console.error('Error fetching approval history:', error);
+                approvalHistoryContainer.innerHTML += '<p>Could not load approval history.</p>';
+            } else if (approvals.length > 0) {
+                const list = document.createElement('ul');
+                list.className = 'approval-history-list';
+                approvals.forEach(appr => {
+                    const item = document.createElement('li');
+                    item.className = 'approval-history-item';
+                    item.innerHTML = `
+                        <span class="icon"><i class="fas fa-check-circle"></i></span>
+                        <span>Approved by <strong>${appr.approver ? appr.approver.full_name : 'A manager'}</strong></span>
+                        <span style="margin-left:auto; color: var(--text-muted);">${new Date(appr.created_at).toLocaleString('en-GB')}</span>
+                    `;
+                    list.appendChild(item);
+                });
+                approvalHistoryContainer.appendChild(list);
+            } else {
+                approvalHistoryContainer.innerHTML += '<p>No approvals recorded yet.</p>';
+            }
 
             decisionFooter.classList.toggle('hidden', currentCase.status !== 'pending_approval');
             
-            document.getElementById("reviewerNotes").value = currentCase.reviewer_notes || "";
+            document.getElementById("reviewerNotes").value = "";
             document.getElementById("approveBtn").dataset.caseId = caseId;
             document.getElementById("rejectBtn").dataset.caseId = caseId;
 
@@ -501,15 +567,48 @@
         }
 
         async function handleApprove(caseId) {
+            const approveBtn = document.getElementById("approveBtn");
+            approveBtn.disabled = true;
+            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            
             try {
-                const { error } = await supabase.from('cases').update({ status: 'approved', last_modified: new Date().toISOString(), reviewer_notes: document.getElementById("reviewerNotes").value.trim() || 'Approved.' }).eq('id', caseId);
-                if (error) throw error;
-                showNotification("Case approved successfully!", "success");
+                // Step 1: Record this manager's approval in the 'case_approvals' table.
+                const { error: insertError } = await supabase
+                    .from('case_approvals')
+                    .insert({
+                        case_id: caseId,
+                        approver_id: currentUser.id,
+                        status: 'approved',
+                        notes: document.getElementById("reviewerNotes").value.trim() || 'Approved.'
+                    });
+
+                if (insertError) {
+                    // Handle cases where the manager has already voted.
+                    if (insertError.code === '23505') { // Unique constraint violation
+                        showNotification("You have already submitted your approval for this case.", "warning");
+                    } else {
+                        throw insertError;
+                    }
+                    return; // Stop execution if there was a handled error
+                }
+
+                // Step 2: Call the "brain" function to check if the approval cycle is complete.
+                const { error: rpcError } = await supabase.rpc('check_and_finalize_approval', { p_case_id: caseId });
+
+                if (rpcError) {
+                    throw new Error(`Failed to finalize approval: ${rpcError.message}`);
+                }
+
+                showNotification("Your approval has been recorded successfully!", "success");
                 document.getElementById("reviewModal").classList.remove("show");
-                await fetchData(); 
+                await fetchData();
                 await updateKpiCards();
-            } catch (error) { 
-                showNotification(`Error: ${error.message}`, "error"); 
+
+            } catch (error) {
+                showNotification(`An error occurred: ${error.message}`, "error");
+            } finally {
+                approveBtn.disabled = false;
+                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
             }
         }
 
@@ -519,6 +618,10 @@
                 showNotification("Rejection notes are required.", "warning");
                 return;
             }
+            const rejectBtn = document.getElementById("rejectBtn");
+            rejectBtn.disabled = true;
+            rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
+
             try {
                 const { error } = await supabase.from('cases').update({ status: 'rejected', last_modified: new Date().toISOString(), reviewer_notes: notes }).eq('id', caseId);
                 if (error) throw error;
@@ -528,6 +631,9 @@
                 await updateKpiCards();
             } catch (error) { 
                 showNotification(`Error: ${error.message}`, "error"); 
+            } finally {
+                rejectBtn.disabled = false;
+                rejectBtn.innerHTML = '<i class="fas fa-times"></i> Reject';
             }
         }
         
