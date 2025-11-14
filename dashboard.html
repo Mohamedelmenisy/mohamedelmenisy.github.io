@@ -3015,24 +3015,25 @@ function renderDashboardCharts(data) {
             await supabase.rpc('set_config', { key: 'app.current_user_name', value: currentUser.name, is_local: true });
 
             const title = document.getElementById('contentTitle').value.trim();
-           const itemData = {
-                id: editingItemIdInput.value || undefined,
-                title_en: title,
-                slug: createSlug(title),
-                description_en: document.getElementById('contentSummary').value.trim(),
-                content_en: mainQuillEditor.root.innerHTML,
-                tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
-                type: contentTypeSelect.value,
-                url: document.getElementById('contentUrl').value.trim() || null,
-                sub_category_id: addContentForm.dataset.sectionId,
-                parent_id: document.getElementById('parentItem').value || null,
-                last_modified: new Date().toISOString(),
-                author_id: currentUser.id,
-
-                // === الإضافة الجديدة والمهمة ===
-                status: 'pending_approval', // 👈 حدد الحالة لتكون "بانتظار الموافقة"
-                submitted_by: currentUser.id  // 👈 سجل من هو المستخدم الذي قام بالإرسال
-            };
+          // This is the final, correct object for saving data.
+const itemData = {
+    id: editingItemIdInput.value || undefined,
+    title_en: title,
+    slug: createSlug(title),
+    description_en: document.getElementById('contentSummary').value.trim(),
+    content_en: mainQuillEditor.root.innerHTML,
+    tags: contentTagsInput.value.split(',').map(t => t.trim()).filter(Boolean),
+    type: contentTypeSelect.value,
+    url: document.getElementById('contentUrl').value.trim() || null,
+    sub_category_id: addContentForm.dataset.sectionId,
+    parent_id: document.getElementById('parentItem').value || null,
+    last_modified: new Date().toISOString(),
+    
+    // ===<< التعديلات النهائية والصحيحة >>===
+    // We removed 'author_id' and 'submitted_by' to use the single, correct column 'created_by'
+    created_by: currentUser.id, // Use the existing 'created_by' column
+    status: 'pending_approval'  // Set the status to be reviewed
+};
             if (itemData.id) { // Preserve AR content on edit
                 const originalItem = findItem(itemData.id);
                 if(originalItem) {
