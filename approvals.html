@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
@@ -116,11 +117,6 @@
             transform: translateY(-2px); 
             box-shadow: var(--shadow-hover); 
             border-color: var(--primary-accent); 
-        }
-        .action-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
         }
         .action-btn.primary:hover, .action-btn.success:hover, .action-btn.danger:hover { 
             filter: brightness(1.1); 
@@ -348,16 +344,55 @@
             color: var(--text-muted); 
             margin-bottom: 1.5rem; 
         }
-        .table-container { overflow-x: auto; width: 100%; }
-        .case-title { max-width: 200px; }
-        .review-btn { padding: 6px 10px; font-size: 12px; height: 32px; }
-        .count-badge { background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 8px; font-size: 11px; margin-left: 6px; min-width: 20px; text-align: center; }
-        .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
-        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5; }
-        .loading-state { display: flex; justify-content: center; align-items: center; padding: 1.5rem; gap: 8px; }
-        .loading-spinner { width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: var(--primary-accent); animation: spin 1s ease-in-out infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
+        .table-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+        .case-title {
+            max-width: 200px;
+        }
+        .review-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+            height: 32px;
+        }
+        .count-badge {
+            background: rgba(255,255,255,0.2); 
+            padding: 2px 6px; 
+            border-radius: 8px; 
+            font-size: 11px; 
+            margin-left: 6px;
+            min-width: 20px;
+            text-align: center;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        .loading-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            gap: 8px;
+        }
+        .loading-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         @media (max-width: 768px) {
             .insights-dashboard { padding: 15px; gap: 15px; }
             .dashboard-header { padding: 15px; flex-direction: column; align-items: flex-start; }
@@ -372,8 +407,7 @@
             .kpi-container { grid-template-columns: 1fr; }
             .activity-table { font-size: 12px; }
             .action-btn { padding: 6px 10px; font-size: 12px; }
-            .activity-table th:nth-child(2),
-            .activity-table td:nth-child(2) { display: none; }
+            .activity-table th:nth-child(2), .activity-table td:nth-child(2) { display: none; }
         }
         .col-submitted { width: 140px; }
         .col-submitter { width: 120px; }
@@ -447,7 +481,7 @@
                         </tr>
                     </thead>
                     <tbody id="approvalQueueBody">
-                        <!-- Content will be populated by JavaScript -->
+                        <!-- Live data from Supabase will be rendered here -->
                     </tbody>
                 </table>
             </div>
@@ -460,15 +494,14 @@
                 <h2 id="reviewModalTitle">Reviewing Case</h2>
                 <button class="close-btn" data-close-modal>&times;</button>
             </div>
-            <div id="reviewModalBody" class="modal-body">
-                <!-- Case content will appear here -->
+            <div id="reviewModalBody" class="modal-body" style="background: var(--bg-dark); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                <!-- Case content will be loaded here -->
             </div>
             <div class="modal-footer">
-                <div id="rejectionNotesSection" style="display: none; margin-bottom: 12px; padding: 10px; border-radius: 6px; background: rgba(255,106,85,0.1); border-left: 3px solid var(--danger);">
-                    <strong style="color: var(--danger-light);">Rejection Reason:</strong>
-                    <p id="rejectionNotesText" style="margin: 6px 0 0 0; color: var(--text-light); font-size: 13px;"></p>
+                <div id="currentCaseStatus" style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: var(--bg-dark);">
+                    <strong>Current Status:</strong> 
+                    <span id="statusBadgeInModal" class="badge pending_approval">Pending Approval</span>
                 </div>
-                
                 <h3 style="font-size: 14px; margin-bottom: 8px;">Decision</h3>
                 <div style="margin-bottom: 12px;">
                     <label for="reviewerNotes" style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 5px;">
@@ -495,10 +528,10 @@
 
     <script type="module">
         // =================================================================
-        // Live Data Script for Approval Dashboard - FULLY FUNCTIONAL
+        // Live Data & Interactive Script for Approval Dashboard
         // =================================================================
 
-        // Make sure the paths to these files are correct for your project structure
+        // Make sure the paths to these helper files are correct for your project structure.
         import { supabase } from './supabase.js'; 
         import { getCurrentUserRole } from './role-check.js'; 
 
@@ -509,10 +542,6 @@
 
         // --- Core Functions ---
 
-        /**
-         * @description Checks if the user has the 'admin' or 'manager' role.
-         * If yes, it initializes the page. If not, it shows an access denied message.
-         */
         async function checkAccessAndInitialize() {
             try {
                 const role = await getCurrentUserRole();
@@ -521,11 +550,14 @@
                     document.getElementById("restricted-container").style.display = "flex";
                     return;
                 }
+
                 const { data: { user } } = await supabase.auth.getUser();
                 currentUser = user;
+
                 document.getElementById("dashboard-container").style.visibility = "visible";
                 await fetchData();
                 await updateKpiCards();
+
             } catch (error) {
                 console.error("Access Check or Initialization Failed:", error.message);
                 document.getElementById("dashboard-container").style.display = 'none';
@@ -533,16 +565,11 @@
             }
         }
 
-        /**
-         * @description Fetches cases from the Supabase database based on the current status filter.
-         */
         async function fetchData() {
             const tableBody = document.getElementById("approvalQueueBody");
             tableBody.innerHTML = `<tr><td colspan="6"><div class="loading-state"><div class="loading-spinner"></div><span>Loading cases...</span></div></td></tr>`;
             
             try {
-                // Fetching all columns ('*') is more robust against minor schema changes.
-                // If your table has many columns, specify only the needed ones for performance.
                 const { data, error } = await supabase
                     .from('cases')
                     .select('*')
@@ -553,21 +580,17 @@
                 
                 casesStore = data || [];
                 renderTable();
+
             } catch (error) {
                 console.error("Error fetching data:", error);
                 tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load data. Please try again.</p></div></td></tr>`;
             }
         }
 
-        /**
-         * @description Fetches and updates the summary numbers in the KPI cards at the top.
-         */
         async function updateKpiCards() {
             try {
                 const { count: pendingCount } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
-                
                 const today = new Date().toISOString().slice(0, 10);
-                
                 const { count: approvedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('last_modified', today);
                 const { count: rejectedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'rejected').gte('last_modified', today);
 
@@ -575,16 +598,12 @@
                 document.getElementById("pending-count").textContent = pendingCount || 0;
                 document.getElementById("kpi-approved-today").textContent = approvedToday || 0;
                 document.getElementById("kpi-rejected-today").textContent = rejectedToday || 0;
+                
             } catch (error) {
                 console.error("Error updating KPI cards:", error);
             }
         }
-        
-        // --- UI and Modal Functions ---
 
-        /**
-         * @description Renders the fetched data from `casesStore` into the HTML table.
-         */
         function renderTable() {
             const tableBody = document.getElementById("approvalQueueBody");
             tableBody.innerHTML = "";
@@ -597,169 +616,135 @@
             casesStore.forEach(item => {
                 const tr = document.createElement("tr");
                 const statusBadge = `<span class="badge ${item.status}">${item.status.replace('_', ' ')}</span>`;
-                const submitterName = item.created_by || 'Unknown User';
-                const actionText = currentStatusFilter === 'pending_approval' ? 'Review' : 'View';
-                
+                const submitterName = item.created_by || 'Unknown';
+
                 tr.innerHTML = `
                     <td>${new Date(item.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td>${submitterName}</td>
                     <td class="case-title" title="${item.title_en || 'No Title'}">${item.title_en || 'No Title'} (v${item.version || 1})</td>
                     <td>${statusBadge}</td>
                     <td>${item.reviewer_notes || '-'}</td>
-                    <td><button class="action-btn primary review-btn" data-case-id="${item.id}"><i class="fas fa-search-plus"></i> ${actionText}</button></td>
+                    <td><button class="action-btn primary review-btn" data-case-id="${item.id}"><i class="fas fa-search-plus"></i> Review</button></td>
                 `;
                 tableBody.appendChild(tr);
             });
         }
 
-        /**
-         * @description Opens the modal to review a specific case.
-         * @param {string} caseId - The ID of the case to review.
-         */
         function openReviewModal(caseId) {
+            const currentCase = casesStore.find(c => c.id === caseId);
+            if (!currentCase) {
+                console.error("Case not found!");
+                showNotification("Error: Could not find the selected case.", "error");
+                return;
+            }
+
             const modal = document.getElementById("reviewModal");
             const modalTitle = document.getElementById("reviewModalTitle");
             const modalBody = document.getElementById("reviewModalBody");
+            const notesTextarea = document.getElementById("reviewerNotes");
             const approveBtn = document.getElementById("approveBtn");
             const rejectBtn = document.getElementById("rejectBtn");
-            const notesTextarea = document.getElementById("reviewerNotes");
-            const rejectionSection = document.getElementById("rejectionNotesSection");
-            const rejectionText = document.getElementById("rejectionNotesText");
 
-            const currentCase = casesStore.find(c => c.id === caseId);
-            if (!currentCase) {
-                showNotification("Error: Case not found.", "error");
-                return;
-            }
-            
-            modal.classList.add("show");
-            
-            modalTitle.textContent = `Reviewing: "${currentCase.title_en}" - v${currentCase.version}`;
-            
-            modalBody.innerHTML = `
-                <div style="background: var(--bg-dark); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); max-height: 50vh; overflow-y: auto;">
-                    <h4 style="color: var(--primary-accent-light); margin-bottom: 5px; font-size: 16px;">${currentCase.title_en}</h4>
-                    <p style="font-style: italic; color: var(--text-muted); margin-bottom: 12px; font-size: 13px;">${currentCase.description_en || 'No description provided.'}</p>
-                    <hr style="border-color: var(--border-color); margin: 12px 0;">
-                    <div style="font-size: 14px;">${currentCase.content_en || 'No content.'}</div>
-                </div>`;
-            
-            notesTextarea.value = currentCase.reviewer_notes || '';
+            modalTitle.textContent = `Reviewing: "${currentCase.title_en}"`;
+            modalBody.innerHTML = currentCase.content_en || "<p><i>No content available.</i></p>";
+            notesTextarea.value = "";
 
-            if (currentCase.status === 'pending_approval') {
-                approveBtn.style.display = 'inline-flex';
-                rejectBtn.style.display = 'inline-flex';
-                notesTextarea.disabled = false;
-                rejectionSection.style.display = 'none';
-            } else {
-                approveBtn.style.display = 'none';
-                rejectBtn.style.display = 'none';
-                notesTextarea.disabled = true;
-                if (currentCase.status === 'rejected') {
-                    rejectionSection.style.display = 'block';
-                    rejectionText.textContent = currentCase.reviewer_notes || 'No notes provided.';
-                } else {
-                    rejectionSection.style.display = 'none';
-                }
-            }
-
+            // Pass the case ID to the buttons
             approveBtn.dataset.caseId = caseId;
             rejectBtn.dataset.caseId = caseId;
-        }
 
-        /**
-         * @description Handles the approval of a case.
-         * @param {string} caseId - The ID of the case.
-         */
+            modal.classList.add("show");
+        }
+        
         async function handleApprove(caseId) {
             const approveBtn = document.getElementById("approveBtn");
-            const originalText = approveBtn.innerHTML;
-            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
             approveBtn.disabled = true;
-            document.getElementById("rejectBtn").disabled = true;
-
+            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+            
             try {
-                const { error } = await supabase.rpc('approve_case', { case_id_to_approve: caseId, approver_id: currentUser.id });
+                const { error } = await supabase
+                    .from('cases')
+                    .update({
+                        status: 'approved',
+                        last_modified: new Date().toISOString(),
+                        reviewer_notes: document.getElementById("reviewerNotes").value.trim() || 'Approved.'
+                    })
+                    .eq('id', caseId);
+
                 if (error) throw error;
-                
+
                 showNotification("Case approved successfully!", "success");
                 document.getElementById("reviewModal").classList.remove("show");
                 await fetchData();
                 await updateKpiCards();
+
             } catch (error) {
-                showNotification(`Approval Error: ${error.message}`, "error");
+                showNotification(`Error approving case: ${error.message}`, "error");
             } finally {
-                approveBtn.innerHTML = originalText;
                 approveBtn.disabled = false;
-                document.getElementById("rejectBtn").disabled = false;
+                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve Case';
             }
         }
 
-        /**
-         * @description Handles the rejection of a case.
-         * @param {string} caseId - The ID of the case.
-         */
         async function handleReject(caseId) {
             const notes = document.getElementById("reviewerNotes").value.trim();
             if (!notes) {
-                showNotification("Review notes are required to reject a case.", "warning");
+                showNotification("Rejection notes are required.", "warning");
                 return;
             }
 
             const rejectBtn = document.getElementById("rejectBtn");
-            const originalText = rejectBtn.innerHTML;
-            rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
             rejectBtn.disabled = true;
-            document.getElementById("approveBtn").disabled = true;
+            rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
 
             try {
-                const { error } = await supabase.rpc('reject_case', { case_id_to_reject: caseId, notes: notes, rejector_id: currentUser.id });
+                const { error } = await supabase
+                    .from('cases')
+                    .update({
+                        status: 'rejected',
+                        last_modified: new Date().toISOString(),
+                        reviewer_notes: notes
+                    })
+                    .eq('id', caseId);
+
                 if (error) throw error;
-                
-                showNotification("Case rejected with feedback.", "success");
+
+                showNotification("Case has been rejected with feedback.", "success");
                 document.getElementById("reviewModal").classList.remove("show");
                 await fetchData();
                 await updateKpiCards();
+
             } catch (error) {
-                showNotification(`Rejection Error: ${error.message}`, "error");
+                showNotification(`Error rejecting case: ${error.message}`, "error");
             } finally {
-                rejectBtn.innerHTML = originalText;
                 rejectBtn.disabled = false;
-                document.getElementById("approveBtn").disabled = false;
+                rejectBtn.innerHTML = '<i class="fas fa-times"></i> Reject with Notes';
             }
         }
         
-        /**
-         * @description Displays a temporary notification to the user.
-         * @param {string} message - The message to display.
-         * @param {string} type - The type of notification ('success', 'error', 'warning', 'info').
-         */
         function showNotification(message, type = "info") {
+            const container = document.body;
             const notification = document.createElement("div");
-            notification.style.cssText = `position: fixed; top: 20px; right: 20px; padding: 12px 16px; border-radius: 8px; color: white; font-weight: 600; z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.4s ease; display: flex; align-items: center; gap: 8px; font-size: 14px;`;
+            notification.className = `notification toast-${type}`;
+            notification.innerHTML = `<span>${message}</span>`;
             
-            if (type === "success") notification.style.background = "var(--success)";
-            else if (type === "error") notification.style.background = "var(--danger)";
-            else if (type === "warning") { notification.style.background = "var(--warning)"; notification.style.color = "var(--bg-dark)"; }
-            else notification.style.background = "var(--primary-accent)";
+            // Simple styling, can be improved with a proper CSS class
+            Object.assign(notification.style, {
+                position: 'fixed', top: '20px', right: '20px', padding: '15px', 
+                borderRadius: '8px', color: 'white', zIndex: '10001',
+                background: type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--warning)',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+            });
             
-            let icon = {"success": "check-circle", "error": "exclamation-circle", "warning": "exclamation-triangle"}[type] || "info-circle";
-            notification.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
-            
-            document.body.appendChild(notification);
-            setTimeout(() => { notification.style.transform = "translateX(0)"; }, 10);
-            setTimeout(() => {
-                notification.style.transform = "translateX(120%)";
-                setTimeout(() => notification.remove(), 400);
-            }, 5000);
+            container.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
         }
-
+        
         // --- Event Listeners ---
 
         document.addEventListener("DOMContentLoaded", () => {
             checkAccessAndInitialize();
 
-            // Handle tab clicks (Pending, Approved, Rejected)
             document.querySelector(".tabs-container").addEventListener("click", (e) => {
                 const tab = e.target.closest(".action-btn");
                 if (!tab) return;
@@ -771,27 +756,27 @@
                 fetchData();
             });
             
-            // Handle refresh button click
             document.getElementById("refresh-btn").addEventListener("click", () => {
               fetchData();
               updateKpiCards();
-              showNotification("Data refreshed successfully.", "info");
             });
 
-            // Open review modal from table
+            // Event delegation for review buttons
             document.getElementById("approvalQueueBody").addEventListener("click", (e) => {
                 const reviewBtn = e.target.closest(".review-btn");
-                if (reviewBtn) openReviewModal(reviewBtn.dataset.caseId);
+                if (reviewBtn) {
+                    openReviewModal(reviewBtn.dataset.caseId);
+                }
             });
 
-            // Handle approve/reject buttons in modal
+            // Modal action buttons
             document.getElementById("approveBtn").addEventListener("click", (e) => handleApprove(e.target.dataset.caseId));
             document.getElementById("rejectBtn").addEventListener("click", (e) => handleReject(e.target.dataset.caseId));
             
-            // Handle closing the modal
+            // Close modal events
             document.addEventListener("click", (event) => {
                 if (event.target.closest("[data-close-modal]") || event.target.matches(".modal")) {
-                    document.querySelectorAll(".modal").forEach(modal => modal.classList.remove("show"));
+                    document.getElementById("reviewModal").classList.remove("show");
                 }
             });
         });
