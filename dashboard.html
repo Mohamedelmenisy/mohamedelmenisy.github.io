@@ -993,13 +993,13 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             font-size: 1.05rem;
             margin-bottom: 0.35rem;
         }
+        /* MODIFICATION: Removed height and line-clamp to allow text to wrap */
         .cards-grid.compact .card-title-group p {
             font-size: 0.85rem;
             line-height: 1.5;
-            height: 3.9em; /* 3 lines with 1.5 line-height */
-            overflow: hidden;
+            overflow: hidden; /* This can be removed if you want full text visible always */
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 3; /* Kept for initial truncation, but title attribute will show full text */
             -webkit-box-orient: vertical;
         }
         .cards-grid.compact .card-tags {
@@ -1042,33 +1042,56 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            position: relative; /* Needed for pseudo-element */
+            overflow: hidden;
         }
+         /* MODIFICATION: Added ghost icon effect */
+        .template-button::after {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            font-size: 4rem;
+            color: rgba(108, 93, 211, 0.05);
+            transition: all 0.3s ease;
+            transform: rotate(-15deg);
+        }
+        .template-button[data-template="standard_article"]::after { content: '\f1ea'; } /* newspaper */
+        .template-button[data-template="troubleshooting_guide"]::after { content: '\f7d9'; } /* tools */
+        .template-button[data-template="policy_document"]::after { content: '\f0e3'; } /* gavel */
+        .template-button[data-template="blank"]::after { content: '\f15b'; } /* file */
+
         .template-button:hover {
             transform: translateY(-5px);
             border-color: var(--primary-accent);
             box-shadow: var(--shadow-hover);
             background-color: var(--bg-header);
         }
+        .template-button:hover::after {
+            transform: rotate(-5deg) scale(1.1);
+            color: rgba(108, 93, 211, 0.1);
+        }
         .template-button i {
             font-size: 1.75rem;
             color: var(--primary-accent-light);
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-fill-color: transparent;
             width: fit-content;
+            /* MODIFICATION: Removed gradient for better visibility */
         }
         .template-button h4 {
             font-size: 1.1rem;
             font-weight: 600;
             margin: 0;
+            z-index: 1; /* Keep text above ghost icon */
         }
+        /* MODIFICATION: Improved text color for better contrast */
         .template-button p {
             font-size: 0.875rem;
-            color: var(--text-muted);
+            color: #b0b7c6; /* Lighter muted color */
             line-height: 1.5;
             margin: 0;
+            z-index: 1; /* Keep text above ghost icon */
         }
         /* MODIFICATION END: Styles for new "Add Content" Modal */
         
@@ -1277,6 +1300,67 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .approval-switch input:checked + .slider:before { transform: translateX(22px); }
         /* MODIFICATION END */
 
+        /* MODIFICATION START: Refined Share Snippet Modal Styles */
+        #shareSnippetModalOverlay .modal-content {
+            max-width: 36rem;
+        }
+        #shareSnippetModalOverlay .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        #shareSnippetModalOverlay h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #snippetPreview {
+            background-color: var(--bg-dark);
+            border-left: 4px solid var(--primary-accent);
+            padding: 1rem;
+            margin: 0;
+            font-style: italic;
+            color: var(--text-light);
+            border-radius: 0 8px 8px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .share-options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .share-option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .share-link-input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+        }
+        #shareSnippetLinkInput {
+            flex-grow: 1;
+            background-color: var(--bg-dark);
+            border-color: var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+        .share-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .share-actions-grid .button-secondary,
+        .share-actions-grid a.button-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+        /* MODIFICATION END */
+
 </style>
 
 </head>
@@ -1418,28 +1502,32 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
 <!-- MODIFICATION START: New Share Snippet Modal -->
 <div class="modal-overlay hidden" id="shareSnippetModalOverlay">
-    <div class="modal-content" style="max-width: 40rem;">
+    <div class="modal-content">
         <div class="modal-header">
             <h2>Share Snippet</h2>
             <button aria-label="Close" class="close-button" id="closeShareSnippetModalBtn">×</button>
         </div>
         <div class="modal-body">
-            <h4>Selected Snippet</h4>
-            <blockquote id="snippetPreview" style="border-left: 4px solid var(--primary-accent); padding-left: 1rem; margin: 0 0 1.5rem 0; font-style: italic; color: var(--text-muted);"></blockquote>
+            <div class="share-option-group">
+                <h4>Selected Snippet</h4>
+                <blockquote id="snippetPreview"></blockquote>
+            </div>
             
-            <h4>Sharing Options</h4>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div class="form-group" style="margin-bottom:0;">
-                    <label>Copy Link to this Snippet</label>
-                    <div style="display:flex; gap: 0.5rem;">
-                        <input type="text" id="shareSnippetLinkInput" readonly style="flex-grow:1;">
+            <div class="share-options-container">
+                <div class="share-option-group">
+                    <h4>Share Link</h4>
+                     <div class="share-link-input-wrapper">
+                        <input type="text" id="shareSnippetLinkInput" readonly>
                         <button class="button" id="copySnippetLinkBtn"><i class="fas fa-copy"></i> Copy Link</button>
                     </div>
                 </div>
-                <div style="display:flex; gap: 1rem;">
-                    <button class="button-secondary" id="copySnippetTextBtn" style="flex:1;"><i class="fas fa-quote-left"></i> Copy Snippet Text</button>
-                    <a id="shareSnippetEmailBtn" class="button-secondary" style="flex:1;" target="_blank"><i class="fas fa-envelope"></i> Share via Email</a>
-                    <a id="shareSnippetWhatsAppBtn" class="button-secondary" style="flex:1;" target="_blank"><i class="fab fa-whatsapp"></i> Share on WhatsApp</a>
+                 <div class="share-option-group">
+                    <h4>Other Actions</h4>
+                    <div class="share-actions-grid">
+                        <button class="button-secondary" id="copySnippetTextBtn"><i class="fas fa-quote-left"></i> Copy Text Only</button>
+                        <a id="shareSnippetEmailBtn" class="button-secondary" target="_blank"><i class="fas fa-envelope"></i> Share via Email</a>
+                        <a id="shareSnippetWhatsAppBtn" class="button-secondary" target="_blank" style="background-color: #25D366; border-color: #25D366; color: white;"><i class="fab fa-whatsapp"></i> Share on WhatsApp</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2123,6 +2211,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <button class="button" onclick="event.stopPropagation(); window.openEditModal('${sectionData.id}', '${item.id}')" title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="button button-danger" onclick="event.stopPropagation(); window.openDeleteModal('${sectionData.id}', '${item.id}', '${escapeHTML(item.title_en)}')" title="Delete"><i class="fas fa-trash-alt"></i></button>
             </div>` : '';
+        
+        // MODIFICATION: Add title attribute to paragraph for full description on hover
+        const fullDescription = stripHtml(item.description_en);
 
         return `
             <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}" onclick="window.location.hash='#${sectionData.slug}/${item.slug}'" style="cursor: pointer;">
@@ -2131,7 +2222,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                         <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
                         <div class="card-title-group" style="flex: 1; min-width: 0;">
                             <h3>${escapeHTML(item.title_en)}</h3>
-                            <p>${escapeHTML(truncateText(stripHtml(item.description_en), 120))}</p>
+                            <p title="${escapeHTML(fullDescription)}">${escapeHTML(truncateText(fullDescription, 120))}</p>
                         </div>
                     </div>
                     ${actionsHTML}
@@ -3396,15 +3487,24 @@ function renderDashboardCharts(data) {
             selectionTimeout = setTimeout(() => {
                 const selection = window.getSelection();
                 const shareBtn = document.getElementById('selection-share-btn');
+                
+                // Check if selection is not collapsed and has meaningful length
                 if (selection && !selection.isCollapsed && selection.toString().trim().length > 10) {
-                    const range = selection.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    shareBtn.style.display = 'block';
-                    shareBtn.style.top = `${rect.top + window.scrollY - shareBtn.offsetHeight - 8}px`;
-                    shareBtn.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (shareBtn.offsetWidth / 2)}px`;
-                } else {
-                    shareBtn.style.display = 'none';
+                    const parentElement = selection.anchorNode.parentElement;
+                    // MODIFICATION: Check if selection is within the item detail content
+                    if (parentElement && parentElement.closest('#itemDetailViewPlaceholder .kb-content')) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        shareBtn.style.display = 'block';
+                        shareBtn.style.top = `${rect.top + window.scrollY - shareBtn.offsetHeight - 8}px`;
+                        shareBtn.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (shareBtn.offsetWidth / 2)}px`;
+                        return; // Exit if button is shown
+                    }
                 }
+                
+                // Hide button if conditions are not met
+                shareBtn.style.display = 'none';
+
             }, 250);
         });
 
@@ -3448,8 +3548,27 @@ function renderDashboardCharts(data) {
             link = `${window.location.origin}${window.location.pathname}#case=${itemData.id}&section=${startElement.id}`;
         }
 
-        const encodedLink = encodeURIComponent(link);
-        const encodedText = encodeURIComponent(`"${snippetText}"`);
+        // MODIFICATION: Create a more user-friendly email body
+        const emailSubject = `Knowledge Base Information: ${currentOpenItem.title}`;
+        const emailBody = `
+Hello,
+
+Please review the following information from our knowledge base regarding a recent case:
+
+---
+"${snippetText}"
+---
+
+You can view the full context at this link:
+${link}
+
+Thank you.
+        `;
+        
+        const encodedSubject = encodeURIComponent(emailSubject);
+        const encodedBody = encodeURIComponent(emailBody);
+        const encodedWhatsAppText = encodeURIComponent(`"**${snippetText}**"\n\n*Full context:* ${link}`);
+
 
         document.getElementById('shareSnippetLinkInput').value = link;
         document.getElementById('copySnippetLinkBtn').onclick = () => {
@@ -3458,8 +3577,8 @@ function renderDashboardCharts(data) {
         document.getElementById('copySnippetTextBtn').onclick = () => {
             navigator.clipboard.writeText(snippetText).then(() => showToast('Snippet text copied!', 'success'));
         };
-        document.getElementById('shareSnippetEmailBtn').href = `mailto:?subject=KB Snippet&body=${encodedText}%0A%0A${encodedLink}`;
-        document.getElementById('shareSnippetWhatsAppBtn').href = `https://api.whatsapp.com/send?text=${encodedText}%0A${encodedLink}`;
+        document.getElementById('shareSnippetEmailBtn').href = `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
+        document.getElementById('shareSnippetWhatsAppBtn').href = `https://api.whatsapp.com/send?text=${encodedWhatsAppText}`;
 
         document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
     }
