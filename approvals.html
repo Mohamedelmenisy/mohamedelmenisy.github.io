@@ -634,12 +634,14 @@
             modal.querySelector('.modal-body').scrollTop = 0;
         }
 
+        // This is the new handleApprove function for the KB system
         async function handleApprove(caseId) {
             const approveBtn = document.getElementById("approveBtn");
             approveBtn.disabled = true;
             approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             
             try {
+                // Step 1: Record this manager's approval in the 'case_approvals' table.
                 const { error: insertError } = await supabase
                     .from('case_approvals')
                     .insert({
@@ -649,18 +651,22 @@
                         notes: document.getElementById("reviewerNotes").value.trim() || 'Approved.'
                     });
 
-                if (insertError) {
-                    if (insertError.code === '23505') {
-                        showNotification("You have already submitted your approval for this case.", "warning");
-                    } else { throw insertError; }
-                    return; 
+                if (insertError && insertError.code !== '23505') { // Ignore "already voted" errors
+                    throw insertError;
                 }
 
-                const { error: rpcError } = await supabase.rpc('check_and_finalize_approval', { p_case_id: caseId });
-                if (rpcError) throw new Error(`Failed to finalize approval: ${rpcError.message}`);
+                // Step 2: Call the NEW "Mastermind" function.
+                const { data, error: rpcError } = await supabase.rpc('process_case_approval', {
+                    p_case_id: caseId,
+                    p_approver_id: currentUser.id
+                });
 
-                showNotification("Your approval has been recorded successfully!", "success");
+                if (rpcError) throw rpcError;
+
+                showNotification("Your approval has been recorded and chat updated!", "success");
                 document.getElementById("reviewModal").classList.remove("show");
+                
+                // Refresh the view
                 await fetchData();
                 await updateKpiCards();
 
@@ -668,7 +674,7 @@
                 showNotification(`An error occurred: ${error.message}`, "error");
             } finally {
                 approveBtn.disabled = false;
-                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
+                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve Case';
             }
         }
 
