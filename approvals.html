@@ -515,27 +515,37 @@
             }
         }
 
-        function renderTable() {
-            const tableBody = document.getElementById("approvalQueueBody");
-            tableBody.innerHTML = "";
-            if (casesStore.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;">No cases found for this status.</td></tr>`;
-                return;
-            }
-            casesStore.forEach(item => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${new Date(item.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
-                    <td>${item.created_by || 'N/A'}</td>
-                    <td>${item.title_en} (v${item.version})</td>
-                    <td><span class="badge ${item.status}">${item.status.replace(/_/g, ' ')}</span></td>
-                    <td>${item.reviewer_notes || '-'}</td>
-                    <td><button class="action-btn primary review-btn" data-case-id="${item.id}">Review</button></td>
-                `;
-                tableBody.appendChild(tr);
-            });
+       function renderTable() {
+    const tableBody = document.getElementById("approvalQueueBody");
+    tableBody.innerHTML = ""; 
+
+    if (casesStore.length === 0) { /* ... empty state handling ... */ return; }
+
+    casesStore.forEach(item => {
+        const tr = document.createElement("tr");
+        const statusBadge = `<span class="badge ${item.status}">${item.status.replace('_', ' ')}</span>`;
+        const submitterName = item.created_by || 'Unknown';
+
+        let actionContent = '';
+        // === NEW LOGIC: Show "Review" button only for pending cases ===
+        if (item.status === 'pending_approval') {
+            actionContent = `<button class="action-btn primary review-btn" data-case-id="${item.id}"><i class="fas fa-search-plus"></i> Review</button>`;
+        } else {
+            // For other statuses, we can show a disabled view button or nothing
+            actionContent = `<button class="action-btn review-btn" data-case-id="${item.id}" style="background: var(--bg-header); cursor: default;"><i class="fas fa-eye"></i> View</button>`;
         }
 
+        tr.innerHTML = `
+            <td>${new Date(item.created_at).toLocaleString('en-US', { /* ... date formatting ... */ })}</td>
+            <td>${submitterName}</td>
+            <td class="case-title">${item.title_en || 'No Title'} (v${item.version || 1})</td>
+            <td>${statusBadge}</td>
+            <td>${item.reviewer_notes || '-'}</td>
+            <td>${actionContent}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
         /**
          * === THE FINAL, CORRECTED openReviewModal FUNCTION ===
          */
