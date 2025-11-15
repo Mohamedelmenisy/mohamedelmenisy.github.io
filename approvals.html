@@ -419,7 +419,7 @@
                 <div id="reviewModalBody" class="kb-content-view"></div>
             </div>
 
-            <!-- === NEW: Timeline will be injected here === -->
+            <!-- === Timeline will be injected here === -->
             <div id="approvalTimelineContainer" class="approval-timeline"></div>
 
             <div id="decisionFooter" class="modal-footer">
@@ -448,7 +448,7 @@
 
     <script type="module">
         // =================================================================
-        // FINAL SCRIPT for KB Approvals (with Multi-Step Logic)
+        // FINAL SCRIPT for KB Approvals (V.FINAL - Correct Table Reference)
         // =================================================================
 
         import { supabase } from './supabase.js'; 
@@ -484,8 +484,6 @@
             const tableBody = document.getElementById("approvalQueueBody");
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading cases...</td></tr>`;
             try {
-                // To show relevant cases in all tabs, we need to fetch based on approval group
-                // For this example, let's keep it simple and just filter by status
                 const { data, error } = await supabase
                     .from('cases')
                     .select('*')
@@ -539,7 +537,7 @@
         }
 
         /**
-         * === THE UPDATED, FINAL openReviewModal FUNCTION ===
+         * === THE FINAL, CORRECTED openReviewModal FUNCTION ===
          */
         async function openReviewModal(caseId) {
             const currentCase = casesStore.find(c => c.id === caseId);
@@ -562,7 +560,6 @@
             }
             modalBody.innerHTML = finalHtml || "<p><i>No content available.</i></p>";
             
-            // Show/hide decision footer based on status
             if (currentCase.status === 'pending_approval') {
                 decisionFooter.classList.remove('hidden');
                 document.getElementById('reviewerNotes').value = '';
@@ -572,43 +569,42 @@
                 decisionFooter.classList.add('hidden');
             }
 
-            // === NEW LOGIC: Fetch and render the approval timeline ===
             timelineContainer.innerHTML = '<h4><i class="fas fa-spinner fa-spin"></i> Loading Approval Status...</h4>';
             
             try {
-                // 1. Fetch the list of required approvers for this case's group.
+                // === THE FIRST FIX IS HERE ===
+                // Explicitly tell Supabase to look in the 'users' table.
                 const { data: requiredApprovers, error: groupError } = await supabase
                     .from('approval_group_members')
-                    .select(`user:profiles ( id, full_name )`)
+                    .select(`users ( id, name )`) // Instead of 'user:user_id(...)', we directly name the table.
                     .eq('group_id', currentCase.approval_group_id);
 
                 if (groupError) throw groupError;
 
-                // 2. Fetch the list of managers who have already voted on this case.
+                // === THE SECOND FIX IS HERE ===
                 const { data: actualApprovals, error: approvalError } = await supabase
                     .from('case_approvals')
-                    .select(`*, approver:profiles ( full_name )`)
+                    .select(`*, approver:users!inner( name )`) // Explicitly join with the 'users' table.
                     .eq('case_id', caseId);
                 
                 if (approvalError) throw approvalError;
 
-                // 3. Build and render the timeline HTML
+                // Build and render the timeline HTML
                 let timelineHTML = '<h4>Approval Status</h4>';
                 if (!requiredApprovers || requiredApprovers.length === 0) {
-                     timelineHTML += '<p>No approval group assigned to this case.</p>';
+                     timelineHTML += '<p>No approvers assigned to this group.</p>';
                 } else {
                     requiredApprovers.forEach(member => {
-                        const approval = actualApprovals.find(a => a.approver_id === member.user.id);
+                        const approval = actualApprovals.find(a => a.approver_id === member.users.id);
                         if (approval) {
-                            // This member has voted
                             const icon = approval.status === 'approved' ? 'fa-check-circle' : 'fa-times-circle';
-                            const iconClass = approval.status; // 'approved' or 'rejected'
+                            const iconClass = approval.status;
                             timelineHTML += `
                                 <div class="timeline-item">
                                     <div class="timeline-icon ${iconClass}"><i class="fas ${icon}"></i></div>
                                     <div class="timeline-content">
                                         <div>
-                                            <span class="approver-name">${member.user.full_name}</span>
+                                            <span class="approver-name">${approval.approver.name}</span>
                                             <span class="timestamp">${new Date(approval.created_at).toLocaleString('en-GB')}</span>
                                         </div>
                                         ${approval.notes ? `<div class="notes">${approval.notes}</div>` : ''}
@@ -620,7 +616,7 @@
                                 <div class="timeline-item">
                                     <div class="timeline-icon pending"><i class="fas fa-hourglass-half"></i></div>
                                     <div class="timeline-content">
-                                        <span class="approver-name">${member.user.full_name}</span>
+                                        <span class="approver-name">${member.users.name}</span>
                                         <div class="waiting-text">Waiting for review...</div>
                                     </div>
                                 </div>`;
@@ -629,9 +625,9 @@
                 }
                 timelineContainer.innerHTML = timelineHTML;
 
-            } catch(error) {
+            } catch (error) {
                 console.error("Error building timeline:", error);
-                timelineContainer.innerHTML = '<h4>Approval Status</h4><p style="color: var(--danger-light);">Could not load approval status.</p>';
+                timelineContainer.innerHTML = `<h4 style="color: var(--danger);">Could not load approval status. Error: ${error.message}</h4>`;
             }
             
             modal.classList.add("show");
@@ -644,7 +640,6 @@
             approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             
             try {
-                // Step 1: Record this manager's approval in the 'case_approvals' table.
                 const { error: insertError } = await supabase
                     .from('case_approvals')
                     .insert({
@@ -655,15 +650,13 @@
                     });
 
                 if (insertError) {
-                    if (insertError.code === '23505') { // Unique constraint violation
+                    if (insertError.code === '23505') {
                         showNotification("You have already submitted your approval for this case.", "warning");
                     } else { throw insertError; }
                     return; 
                 }
 
-                // Step 2: Call the function to check if the approval cycle is complete.
                 const { error: rpcError } = await supabase.rpc('check_and_finalize_approval', { p_case_id: caseId });
-
                 if (rpcError) throw new Error(`Failed to finalize approval: ${rpcError.message}`);
 
                 showNotification("Your approval has been recorded successfully!", "success");
@@ -693,7 +686,6 @@
                 const { error } = await supabase.from('cases').update({ status: 'rejected', last_modified: new Date().toISOString(), reviewer_notes: notes }).eq('id', caseId);
                 if (error) throw error;
                 
-                // Also log this rejection in the approvals table for a complete history
                  await supabase.from('case_approvals').insert({
                     case_id: caseId,
                     approver_id: currentUser.id,
