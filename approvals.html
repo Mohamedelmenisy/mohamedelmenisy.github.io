@@ -298,35 +298,61 @@
         .access-restricted-card h2 { font-size: 1.5rem; margin-bottom: .5rem; color: var(--text-light); }
         .access-restricted-card p { color: var(--text-muted); margin-bottom: 1.5rem; }
         
-        /* New styles for approval history */
-        .approval-history {
-            margin-top: 20px;
-            padding-top: 15px;
+        /* === NEW: Styles for the Approval Timeline === */
+        .approval-timeline {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
             border-top: 1px solid var(--border-color);
         }
-        .approval-history h4 {
+        .approval-timeline h4 {
+            font-size: 1rem;
+            font-weight: 600;
             color: var(--text-muted);
-            font-size: 14px;
-            margin-bottom: 10px;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .approval-history-list {
-            list-style: none;
-            padding: 0;
-        }
-        .approval-history-item {
+        .timeline-item {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .timeline-icon {
+            font-size: 1.25rem;
+            width: 30px;
+            flex-shrink: 0;
+            text-align: center;
+            padding-top: 3px;
+        }
+        .timeline-icon.approved { color: var(--success); }
+        .timeline-icon.pending { color: var(--warning); }
+        .timeline-icon.rejected { color: var(--danger); }
+        .timeline-content {
+             width: 100%;
+        }
+        .timeline-content .approver-name {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        .timeline-content .timestamp {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+        .timeline-content .notes {
+            font-size: 0.9rem;
+            background: var(--bg-dark);
+            padding: 0.5rem 0.75rem;
             border-radius: 6px;
-            background-color: var(--bg-dark);
-            margin-bottom: 5px;
-            font-size: 13px;
+            margin-top: 0.25rem;
+            border-left: 3px solid var(--border-color);
+            color: var(--text-light);
+            white-space: pre-wrap;
         }
-        .approval-history-item .icon {
-            color: var(--success);
+        .timeline-content .waiting-text {
+            color: var(--text-muted);
+            font-style: italic;
         }
-
     </style>
 </head>
 <body>
@@ -388,10 +414,14 @@
                 <h2 id="reviewModalTitle">Reviewing Case</h2>
                 <button class="close-btn" data-close-modal>&times;</button>
             </div>
-            <div class="modal-body">
+            
+            <div class="modal-body" style="background: var(--bg-dark); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div id="reviewModalBody" class="kb-content-view"></div>
-                <div id="approvalHistoryContainer" class="approval-history"></div>
             </div>
+
+            <!-- === NEW: Timeline will be injected here === -->
+            <div id="approvalTimelineContainer" class="approval-timeline"></div>
+
             <div id="decisionFooter" class="modal-footer">
                 <textarea id="reviewerNotes" placeholder="Please provide detailed feedback... (Required if rejecting)"></textarea>
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top:10px;">
@@ -454,6 +484,8 @@
             const tableBody = document.getElementById("approvalQueueBody");
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading cases...</td></tr>`;
             try {
+                // To show relevant cases in all tabs, we need to fetch based on approval group
+                // For this example, let's keep it simple and just filter by status
                 const { data, error } = await supabase
                     .from('cases')
                     .select('*')
@@ -473,8 +505,8 @@
              try {
                 const { count: pendingCount } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'pending_approval');
                 const today = new Date().toISOString().slice(0, 10);
-                const { count: approvedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('last_modified', today);
-                const { count: rejectedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'rejected').gte('last_modified', today);
+                const { count: approvedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('last_modified', `${today}T00:00:00.000Z`);
+                const { count: rejectedToday } = await supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'rejected').gte('last_modified', `${today}T00:00:00.000Z`);
 
                 document.getElementById("kpi-pending-review").textContent = pendingCount || 0;
                 document.getElementById("kpi-approved-today").textContent = approvedToday || 0;
@@ -498,7 +530,7 @@
                     <td>${new Date(item.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
                     <td>${item.created_by || 'N/A'}</td>
                     <td>${item.title_en} (v${item.version})</td>
-                    <td><span class="badge ${item.status}">${item.status.replace('_', ' ')}</span></td>
+                    <td><span class="badge ${item.status}">${item.status.replace(/_/g, ' ')}</span></td>
                     <td>${item.reviewer_notes || '-'}</td>
                     <td><button class="action-btn primary review-btn" data-case-id="${item.id}">Review</button></td>
                 `;
@@ -506,62 +538,102 @@
             });
         }
 
+        /**
+         * === THE UPDATED, FINAL openReviewModal FUNCTION ===
+         */
         async function openReviewModal(caseId) {
             const currentCase = casesStore.find(c => c.id === caseId);
             if (!currentCase) {
-                showNotification("Error finding case data.", "error");
+                showNotification("Could not find the case details.", "error");
                 return;
             }
 
             const modal = document.getElementById("reviewModal");
             const modalTitle = document.getElementById("reviewModalTitle");
             const modalBody = document.getElementById("reviewModalBody");
+            const timelineContainer = document.getElementById("approvalTimelineContainer");
             const decisionFooter = document.getElementById("decisionFooter");
-            const approvalHistoryContainer = document.getElementById("approvalHistoryContainer");
 
             modalTitle.textContent = `Reviewing: "${currentCase.title_en}"`;
-            
             let finalHtml = '';
             if (currentCase.content_en) {
                 const processedContent = currentCase.content_en.replaceAll('<a href', '<a target="_blank" href');
                 finalHtml = `<div dir="auto">${processedContent}</div>`;
             }
             modalBody.innerHTML = finalHtml || "<p><i>No content available.</i></p>";
-
-            // Fetch and display approval history
-            approvalHistoryContainer.innerHTML = '<h4><i class="fas fa-history"></i> Approval History</h4>';
-            const { data: approvals, error } = await supabase
-                .from('case_approvals')
-                .select('*, approver:profiles(full_name)')
-                .eq('case_id', caseId);
             
-            if (error) {
-                console.error('Error fetching approval history:', error);
-                approvalHistoryContainer.innerHTML += '<p>Could not load approval history.</p>';
-            } else if (approvals.length > 0) {
-                const list = document.createElement('ul');
-                list.className = 'approval-history-list';
-                approvals.forEach(appr => {
-                    const item = document.createElement('li');
-                    item.className = 'approval-history-item';
-                    item.innerHTML = `
-                        <span class="icon"><i class="fas fa-check-circle"></i></span>
-                        <span>Approved by <strong>${appr.approver ? appr.approver.full_name : 'A manager'}</strong></span>
-                        <span style="margin-left:auto; color: var(--text-muted);">${new Date(appr.created_at).toLocaleString('en-GB')}</span>
-                    `;
-                    list.appendChild(item);
-                });
-                approvalHistoryContainer.appendChild(list);
+            // Show/hide decision footer based on status
+            if (currentCase.status === 'pending_approval') {
+                decisionFooter.classList.remove('hidden');
+                document.getElementById('reviewerNotes').value = '';
+                document.getElementById('approveBtn').dataset.caseId = caseId;
+                document.getElementById('rejectBtn').dataset.caseId = caseId;
             } else {
-                approvalHistoryContainer.innerHTML += '<p>No approvals recorded yet.</p>';
+                decisionFooter.classList.add('hidden');
             }
 
-            decisionFooter.classList.toggle('hidden', currentCase.status !== 'pending_approval');
+            // === NEW LOGIC: Fetch and render the approval timeline ===
+            timelineContainer.innerHTML = '<h4><i class="fas fa-spinner fa-spin"></i> Loading Approval Status...</h4>';
             
-            document.getElementById("reviewerNotes").value = "";
-            document.getElementById("approveBtn").dataset.caseId = caseId;
-            document.getElementById("rejectBtn").dataset.caseId = caseId;
+            try {
+                // 1. Fetch the list of required approvers for this case's group.
+                const { data: requiredApprovers, error: groupError } = await supabase
+                    .from('approval_group_members')
+                    .select(`user:profiles ( id, full_name )`)
+                    .eq('group_id', currentCase.approval_group_id);
 
+                if (groupError) throw groupError;
+
+                // 2. Fetch the list of managers who have already voted on this case.
+                const { data: actualApprovals, error: approvalError } = await supabase
+                    .from('case_approvals')
+                    .select(`*, approver:profiles ( full_name )`)
+                    .eq('case_id', caseId);
+                
+                if (approvalError) throw approvalError;
+
+                // 3. Build and render the timeline HTML
+                let timelineHTML = '<h4>Approval Status</h4>';
+                if (!requiredApprovers || requiredApprovers.length === 0) {
+                     timelineHTML += '<p>No approval group assigned to this case.</p>';
+                } else {
+                    requiredApprovers.forEach(member => {
+                        const approval = actualApprovals.find(a => a.approver_id === member.user.id);
+                        if (approval) {
+                            // This member has voted
+                            const icon = approval.status === 'approved' ? 'fa-check-circle' : 'fa-times-circle';
+                            const iconClass = approval.status; // 'approved' or 'rejected'
+                            timelineHTML += `
+                                <div class="timeline-item">
+                                    <div class="timeline-icon ${iconClass}"><i class="fas ${icon}"></i></div>
+                                    <div class="timeline-content">
+                                        <div>
+                                            <span class="approver-name">${member.user.full_name}</span>
+                                            <span class="timestamp">${new Date(approval.created_at).toLocaleString('en-GB')}</span>
+                                        </div>
+                                        ${approval.notes ? `<div class="notes">${approval.notes}</div>` : ''}
+                                    </div>
+                                </div>`;
+                        } else {
+                            // This member has not voted yet
+                            timelineHTML += `
+                                <div class="timeline-item">
+                                    <div class="timeline-icon pending"><i class="fas fa-hourglass-half"></i></div>
+                                    <div class="timeline-content">
+                                        <span class="approver-name">${member.user.full_name}</span>
+                                        <div class="waiting-text">Waiting for review...</div>
+                                    </div>
+                                </div>`;
+                        }
+                    });
+                }
+                timelineContainer.innerHTML = timelineHTML;
+
+            } catch(error) {
+                console.error("Error building timeline:", error);
+                timelineContainer.innerHTML = '<h4>Approval Status</h4><p style="color: var(--danger-light);">Could not load approval status.</p>';
+            }
+            
             modal.classList.add("show");
             modal.querySelector('.modal-body').scrollTop = 0;
         }
@@ -583,21 +655,16 @@
                     });
 
                 if (insertError) {
-                    // Handle cases where the manager has already voted.
                     if (insertError.code === '23505') { // Unique constraint violation
                         showNotification("You have already submitted your approval for this case.", "warning");
-                    } else {
-                        throw insertError;
-                    }
-                    return; // Stop execution if there was a handled error
+                    } else { throw insertError; }
+                    return; 
                 }
 
-                // Step 2: Call the "brain" function to check if the approval cycle is complete.
+                // Step 2: Call the function to check if the approval cycle is complete.
                 const { error: rpcError } = await supabase.rpc('check_and_finalize_approval', { p_case_id: caseId });
 
-                if (rpcError) {
-                    throw new Error(`Failed to finalize approval: ${rpcError.message}`);
-                }
+                if (rpcError) throw new Error(`Failed to finalize approval: ${rpcError.message}`);
 
                 showNotification("Your approval has been recorded successfully!", "success");
                 document.getElementById("reviewModal").classList.remove("show");
@@ -625,6 +692,15 @@
             try {
                 const { error } = await supabase.from('cases').update({ status: 'rejected', last_modified: new Date().toISOString(), reviewer_notes: notes }).eq('id', caseId);
                 if (error) throw error;
+                
+                // Also log this rejection in the approvals table for a complete history
+                 await supabase.from('case_approvals').insert({
+                    case_id: caseId,
+                    approver_id: currentUser.id,
+                    status: 'rejected',
+                    notes: notes
+                 });
+
                 showNotification("Case rejected with feedback.", "success");
                 document.getElementById("reviewModal").classList.remove("show");
                 await fetchData(); 
@@ -642,7 +718,7 @@
             Object.assign(notification.style, { 
                 position: 'fixed', bottom: '20px', right: '20px', padding: '15px', 
                 borderRadius: '8px', color: 'white', zIndex: '10001', 
-                background: type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--warning)',
+                background: type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--warning-light)',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
             });
             notification.innerText = message;
@@ -666,7 +742,9 @@
 
             document.getElementById("approvalQueueBody").addEventListener("click", (e) => {
                 const reviewBtn = e.target.closest(".review-btn");
-                if (reviewBtn) openReviewModal(reviewBtn.dataset.caseId);
+                if (reviewBtn) {
+                     openReviewModal(reviewBtn.dataset.caseId);
+                }
             });
 
             document.getElementById("approveBtn").addEventListener("click", (e) => handleApprove(e.target.dataset.caseId));
