@@ -1,17 +1,66 @@
 /*
-  Unified script for InfiniBase Cases - Enhanced Version
-  - Handles language toggling with persistence
-  - Manages lightboxes for images with improved performance
-  - Loads media efficiently using Intersection Observer
+  Unified script for InfiniBase Cases - Final Corrected Version
+  - Handles language toggling correctly by showing/hiding content divs.
+  - Manages lightboxes for images and videos with improved performance.
+  - Efficiently loads media using Intersection Observer.
 */
 
 (function () {
     'use strict';
     
-    const APP_SELECTOR = '.kb-app';
+    // متغير عام لتتبع الـ lightbox المفتوح حاليًا
     let currentLightbox = null;
+    const APP_SELECTOR = '.kb-app';
 
-    // ===== Lightbox Functions =====
+    // =======================================================
+    // ================ LANGUAGE TOGGLE LOGIC (Corrected) ====
+    // =======================================================
+    
+    /**
+     * هذه هي الدالة الجديدة والصحيحة لتبديل اللغة.
+     * تبحث عن زر اللغة وقسمي المحتوى وتقوم بتبديل الظهور بينهما.
+     */
+    function setupLanguageToggle() {
+        const langToggleButton = document.getElementById('lang-toggle-button');
+        const arContent = document.getElementById('ar-content');
+        const enContent = document.getElementById('en-content');
+
+        // نتوقف إذا كانت أي من العناصر المطلوبة غير موجودة لتجنب الأخطاء
+        if (!langToggleButton || !arContent || !enContent) {
+            console.warn('Language toggle elements not found. Make sure #lang-toggle-button, #ar-content, and #en-content exist.');
+            return;
+        }
+
+        // هذه هي الدالة التي سيتم تنفيذها عند الضغط على الزر
+        const handleLanguageSwitch = () => {
+            // نتحقق مما إذا كان المحتوى الإنجليزي ظاهرًا حاليًا
+            const isEnglishVisible = enContent.style.display !== 'none';
+
+            if (isEnglishVisible) {
+                // إذا كان الإنجليزي ظاهرًا، نقوم بالتحويل إلى العربية
+                enContent.style.display = 'none';
+                arContent.style.display = 'block';
+                langToggleButton.innerHTML = '<i class="fas fa-language"></i> Switch to English';
+            } else {
+                // إذا كان العربي ظاهرًا، نقوم بالتحويل إلى الإنجليزية
+                arContent.style.display = 'none';
+                enContent.style.display = 'block';
+                langToggleButton.innerHTML = '<i class="fas fa-language"></i> التحويل للعربية';
+            }
+            // الانتقال لأعلى الصفحة بسلاسة بعد تغيير اللغة
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        
+        // لمنع إضافة المستمع أكثر من مرة (في حال تم استدعاء الدالة عدة مرات)
+        // نقوم بإزالة المستمع القديم أولاً ثم نضيفه من جديد
+        langToggleButton.removeEventListener('click', handleLanguageSwitch);
+        langToggleButton.addEventListener('click', handleLanguageSwitch);
+    }
+
+    // =======================================================
+    // ================= LIGHTBOX FUNCTIONS ==================
+    // =======================================================
+    
     window.openLightbox = function (targetId) {
         const lb = document.getElementById(targetId);
         if (!lb) return;
@@ -20,13 +69,14 @@
         lb.classList.add('active');
         document.body.style.overflow = 'hidden';
         
+        // تشغيل الفيديو (إذا وجد) عند فتح الـ lightbox
         const video = lb.querySelector('video');
         if (video && typeof video.play === 'function') {
             video.currentTime = 0;
             video.play().catch(() => {});
         }
         
-        // إضافة focus trapping للوصول
+        // إضافة focus trapping لتحسين الوصول
         const focusableElements = lb.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length > 0) {
             focusableElements[0].focus();
@@ -40,6 +90,7 @@
         lb.classList.remove('active');
         document.body.style.overflow = '';
         
+        // إيقاف الفيديو (إذا وجد) عند إغلاق الـ lightbox
         const video = lb.querySelector('video');
         if (video && typeof video.pause === 'function') {
             video.pause();
@@ -47,8 +98,11 @@
         
         currentLightbox = null;
     };
+
+    // =======================================================
+    // ================= MEDIA LOADING =======================
+    // =======================================================
     
-    // ===== تحسين تحميل الوسائط =====
     function loadAllMedia() {
         const allMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
         
@@ -60,20 +114,10 @@
                 if (dataSrc) {
                     media.src = dataSrc;
                     media.removeAttribute('data-src');
-                    
-                    if (media.tagName === 'VIDEO') {
-                        media.load();
-                    }
                 }
             });
             return;
         }
-        
-        const observerOptions = {
-            root: null,
-            rootMargin: '50px 0px',
-            threshold: 0.1
-        };
         
         const mediaObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -84,114 +128,46 @@
                     if (dataSrc) {
                         media.src = dataSrc;
                         media.removeAttribute('data-src');
-                        
-                        if (media.tagName === 'VIDEO') {
-                            media.load();
-                        }
-                        
                         mediaObserver.unobserve(media);
                     }
                 }
             });
-        }, observerOptions);
+        }, { rootMargin: '50px 0px', threshold: 0.1 });
         
         allMedia.forEach(media => {
             if (media.src) return;
             mediaObserver.observe(media);
         });
     }
-    
-    // ===== Language Toggle Function =====
-    function toggleLanguage() {
-      const button = document.getElementById("lang-toggle-button");
-      const appWrapper = document.querySelector(APP_SELECTOR);
-      if (!button || !appWrapper) return;
 
-      const isArabicActive = appWrapper.getAttribute('dir') === 'rtl';
+    // =======================================================
+    // ================ MAIN INITIALIZATION ==================
+    // =======================================================
 
-      if (isArabicActive) {
-        appWrapper.setAttribute('dir', 'ltr');
-        button.textContent = "التحويل للعربية";
-        button.setAttribute('aria-label', 'Switch to Arabic');
-      } else {
-        appWrapper.setAttribute('dir', 'rtl');
-        button.textContent = "Switch to English";
-        button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
-      }
-      
-      // حفظ التفضيل
-      try {
-        localStorage.setItem('preferred-language', isArabicActive ? 'en' : 'ar');
-      } catch (e) {
-        console.warn('Could not save language preference:', e);
-      }
-      
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    /**
+     * هذه هي الدالة الرئيسية التي يتم استدعاؤها من ملف HTML الرئيسي.
+     * تقوم بتشغيل كل الوظائف اللازمة عند عرض Case جديد.
+     */
+    function initBusyNew() {
+        // 1. تفعيل زر تبديل اللغة
+        setupLanguageToggle();
 
-    // ===== استعادة تفضيل اللغة =====
-    function restoreLanguagePreference() {
-        try {
-            const preferredLang = localStorage.getItem('preferred-language');
-            const appWrapper = document.querySelector(APP_SELECTOR);
-            const button = document.getElementById("lang-toggle-button");
-            
-            if (preferredLang && appWrapper && button) {
-                if (preferredLang === 'ar' && appWrapper.getAttribute('dir') !== 'rtl') {
-                    appWrapper.setAttribute('dir', 'rtl');
-                    button.textContent = "Switch to English";
-                    button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
-                } else if (preferredLang === 'en' && appWrapper.getAttribute('dir') !== 'ltr') {
-                    appWrapper.setAttribute('dir', 'ltr');
-                    button.textContent = "التحويل للعربية";
-                    button.setAttribute('aria-label', 'Switch to Arabic');
-                }
-            }
-        } catch (e) {
-            console.warn('Could not restore language preference:', e);
-        }
-    }
-
-    // ===== Initialization Function =====
-    function init() {
-        restoreLanguagePreference();
+        // 2. تحميل الصور والفيديوهات بأسلوب lazy-load
         loadAllMedia();
-        
-        // تحسين تجربة المستخدم للوسائط
-        enhanceMediaExperience();
     }
 
-    // ===== تحسين تجربة الوسائط =====
-    function enhanceMediaExperience() {
-        // إضافة عناصر تحميل للفيديوهات
-        document.querySelectorAll('video').forEach(video => {
-            video.addEventListener('loadstart', function() {
-                this.style.opacity = '0.7';
-            });
-            
-            video.addEventListener('canplay', function() {
-                this.style.opacity = '1';
-            });
-            
-            video.addEventListener('error', function() {
-                console.error('Error loading video:', this.src);
-            });
-        });
-    }
+    // نجعل الدالة الرئيسية متاحة بشكل عام ليتمكن ملف HTML من الوصول إليها
+    // هذا هو السطر الذي يربط بين الملفين
+    window.initBusyNew = initBusyNew;
 
-    // ====== EVENT LISTENERS ======
-
-    // Listener للـ clicks العادية (بدون passive)
+    // =======================================================
+    // ================== GLOBAL EVENT LISTENERS =============
+    // =======================================================
+    
     document.addEventListener('click', function (e) {
         const target = e.target;
         
-        // --- Language Toggle Button ---
-        if (target.closest('#lang-toggle-button')) {
-            toggleLanguage();
-            return;
-        }
-
-        // --- Lightbox closing ---
+        // --- إغلاق الـ Lightbox ---
         const overlay = target.closest('.lightbox-overlay');
         const closeBtn = target.closest('.lightbox-close');
         if(overlay || closeBtn) {
@@ -203,7 +179,7 @@
             return;
         }
 
-        // --- Improved Smooth scroll for internal anchor links ---
+        // --- التمرير الناعم للروابط الداخلية وفتح الـ lightbox ---
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
@@ -212,29 +188,13 @@
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
-                    // إذا كان العنصر من نوع lightbox، نفتحه
+                    e.preventDefault();
+                    // إذا كان العنصر المستهدف هو lightbox، نفتحه
                     if (targetElement.classList.contains('css-lightbox')) {
                         openLightbox(targetElement.id);
                     } else {
-                        // إذا كان عنصر عادي، ننتقل إليه
-                        e.preventDefault();
-                        targetElement.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                        });
-                    }
-                } else {
-                    // إذا العنصر مش موجود، نحاول البحث عن أي عنصر بنفس الـ ID
-                    const elementId = href.substring(1);
-                    const fallbackElement = document.getElementById(elementId);
-                    if (fallbackElement) {
-                        e.preventDefault();
-                        fallbackElement.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                        });
-                    } else {
-                        console.warn('Element not found:', href);
+                        // إذا كان عنصر عادي، ننتقل إليه بسلاسة
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 }
             } catch (err) {
@@ -243,25 +203,12 @@
             return;
         }
     });
-
-    // Listener منفصل للـ touch events (بـ passive) إذا احتجت
-    document.addEventListener('touchstart', function (e) {
-        // Touch events هنا ممكن تضيف أي handling لـ
-        // لكن مش هنحتاج preventDefault هنا
-    }, { passive: true });
     
-    // --- Close lightbox on ESC key ---
+    // --- إغلاق الـ lightbox عند الضغط على مفتاح ESC ---
     document.addEventListener('keydown', (e) => {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" && currentLightbox) {
             closeLightbox();
         }
     });
-
-    // Run init on load
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(init, 0);
-    } else {
-        document.addEventListener('DOMContentLoaded', init);
-    }
 
 })();
