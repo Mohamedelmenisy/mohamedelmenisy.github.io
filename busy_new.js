@@ -3,6 +3,7 @@
   - Handles language toggling with persistence
   - Manages lightboxes for images with improved performance
   - Loads media efficiently using Intersection Observer
+  - **FIX:** Ensures script only runs on item detail pages.
 */
 
 (function () {
@@ -26,7 +27,6 @@
             video.play().catch(() => {});
         }
         
-        // إضافة focus trapping للوصول
         const focusableElements = lb.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length > 0) {
             focusableElements[0].focus();
@@ -52,7 +52,6 @@
     function loadAllMedia() {
         const allMedia = document.querySelectorAll(`${APP_SELECTOR} img[data-src], ${APP_SELECTOR} video[data-src]`);
         
-        // إذا لم يدعم المتصفح Intersection Observer، نستخدم الطريقة التقليدية
         if (!('IntersectionObserver' in window)) {
             allMedia.forEach(media => {
                 if (media.src) return;
@@ -119,7 +118,6 @@
         button.setAttribute('aria-label', 'التحويل للغة الإنجليزية');
       }
       
-      // حفظ التفضيل
       try {
         localStorage.setItem('preferred-language', isArabicActive ? 'en' : 'ar');
       } catch (e) {
@@ -154,16 +152,21 @@
 
     // ===== Initialization Function =====
     function init() {
+        // === THE FIX: If this element doesn't exist, we are not on the right page. Exit. ===
+        const mainContent = document.getElementById('itemDetailViewPlaceholder');
+        if (!mainContent || mainContent.classList.contains('hidden')) {
+            // console.log('Not on an item detail page, skipping script initialization.');
+            return; 
+        }
+
+        // --- The rest of the original initialization code ---
         restoreLanguagePreference();
         loadAllMedia();
-        
-        // تحسين تجربة المستخدم للوسائط
         enhanceMediaExperience();
     }
 
     // ===== تحسين تجربة الوسائط =====
     function enhanceMediaExperience() {
-        // إضافة عناصر تحميل للفيديوهات
         document.querySelectorAll('video').forEach(video => {
             video.addEventListener('loadstart', function() {
                 this.style.opacity = '0.7';
@@ -181,17 +184,14 @@
 
     // ====== EVENT LISTENERS ======
 
-    // Listener للـ clicks العادية (بدون passive)
     document.addEventListener('click', function (e) {
         const target = e.target;
         
-        // --- Language Toggle Button ---
         if (target.closest('#lang-toggle-button')) {
             toggleLanguage();
             return;
         }
 
-        // --- Lightbox closing ---
         const overlay = target.closest('.lightbox-overlay');
         const closeBtn = target.closest('.lightbox-close');
         if(overlay || closeBtn) {
@@ -203,7 +203,6 @@
             return;
         }
 
-        // --- Improved Smooth scroll for internal anchor links ---
         const anchor = target.closest('a[href^="#"]');
         if (anchor) {
             const href = anchor.getAttribute('href');
@@ -212,11 +211,9 @@
             try {
                 const targetElement = document.querySelector(href);
                 if (targetElement) {
-                    // إذا كان العنصر من نوع lightbox، نفتحه
                     if (targetElement.classList.contains('css-lightbox')) {
                         openLightbox(targetElement.id);
                     } else {
-                        // إذا كان عنصر عادي، ننتقل إليه
                         e.preventDefault();
                         targetElement.scrollIntoView({ 
                             behavior: 'smooth', 
@@ -224,7 +221,6 @@
                         });
                     }
                 } else {
-                    // إذا العنصر مش موجود، نحاول البحث عن أي عنصر بنفس الـ ID
                     const elementId = href.substring(1);
                     const fallbackElement = document.getElementById(elementId);
                     if (fallbackElement) {
@@ -244,13 +240,10 @@
         }
     });
 
-    // Listener منفصل للـ touch events (بـ passive) إذا احتجت
     document.addEventListener('touchstart', function (e) {
-        // Touch events هنا ممكن تضيف أي handling لـ
-        // لكن مش هنحتاج preventDefault هنا
+        // Touch event handling can be added here if needed
     }, { passive: true });
     
-    // --- Close lightbox on ESC key ---
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") {
             closeLightbox();
