@@ -1771,9 +1771,10 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
 <script type="module">
     // =================================================================================
-    // SUPABASE & APP LOGIC
+    // SUPABASE & APP LOGIC (V78 - Stable Version)
     // =================================================================================
     import { supabase } from './supabase.js';
+    import { getCurrentUserRole, applyNavVisibility } from './role-check.js';
 
     // ✅ NEW: Global sharing handler object
     window.infiniShare = {
@@ -1783,217 +1784,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
       }
     };
 
-    // --- Supabase Logic Layer (Functions to interact with the database) ---
-    async function getCurrentUserProfile() {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            console.error('No logged-in user found:', authError);
-            return null;
-        }
-        const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-        if (error) {
-            console.error('Error fetching user profile:', error);
-            // Fallback for users who exist in auth but not in the 'users' table yet
-            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
-        }
-        return profile;
-    }
-
-    async function fetchSubCategories() {
-        const { data, error } = await supabase.from('sub_categories').select('*').order('position');
-        if (error) {
-            console.error('Error fetching sub-categories:', error);
-            showToast('Failed to load knowledge areas.', 'error');
-            return []; // Return empty array on failure
-        }
-        return data;
-    }
-
-   async function fetchArticles() {
-        const { data, error } = await supabase
-            .from('cases')
-            .select('id, sub_category_id, title_en, description_en, content_en, title_ar, description_ar, content_ar, tags, type, url, parent_id, created_at, last_modified, status, slug') // تأكد من إضافة status
-            .eq('status', 'approved') // 👈 === التعديل هنا: اعرض فقط ما تمت الموافقة عليه ===
-            .order('created_at', { ascending: false });
-        if (error) {
-            console.error('Error fetching articles:', error);
-            showToast('Failed to load articles from the database.', 'error');
-            return [];
-        }
-        return data;
-    }
-    
-    async function addComment(articleId, commentText, user) {
-        const { data, error } = await supabase.from('kb_comments').insert([{
-            item_id: articleId,
-            author_id: user.id,
-            author_name: user.name,
-            body: commentText,
-        }]).select().single();
-        if (error) {
-            console.error('Error posting comment:', error);
-        }
-        return { data, error };
-    }
-
-    async function submitFeedback(articleId, rating, reason, user) {
-        const { error } = await supabase.from('kb_feedback').insert([{
-            item_id: articleId,
-            user_id: user.id,
-            rating,
-            reason,
-        }]);
-        if (error) {
-            console.error('Error submitting feedback:', error);
-        }
-        return { error };
-    }
-
-    /**
-     * [CORE FIX] Logs user activity to the 'activity_log' table.
-     * This function now sends `case_id` and `section` as expected by the database triggers.
-     */
-    async function logActivity(user, itemId, sectionName, action, details = {}) {
-        if (!user || !user.id) {
-            console.warn("Attempted to log activity without a valid user.");
-            return;
-        }
-        const caseTitle = details.case_title || 'Unknown Case';
-
-        const logData = {
-            user_id: user.id,
-            user_name: user.name,
-            case_id: itemId, // Correct field name for the trigger
-            section: sectionName || 'Unknown Section', // Correct field name for the trigger
-            action: action,
-            case_title: caseTitle,
-            details: details,
-        };
-        
-        const { error } = await supabase.from('activity_log').insert([logData]);
-
-        if (error) {
-            console.error('Error logging activity:', error.message);
-        }
-    }
-    
-    // ✅ START: ==================  NEW, CORRECT fetchDashboardData FUNCTION ==================
-    async function fetchDashboardData() {
-    try {
-        console.log('Fetching dashboard data...');
-        
-        const { data: employeeActivity, error: activityError } = await supabase
-            .from('v_employee_activity_fixed')
-            .select('*');
-
-        if (activityError) {
-            console.error('Error fetching employee activity:', activityError);
-        }
-
-        const { data: activityLog, error: logError } = await supabase
-            .from('activity_log')
-            .select('*')
-            .limit(100)
-            .order('timestamp', { ascending: false });
-
-        if (logError) {
-            console.error('Error fetching activity log:', logError);
-        }
-
-        const results = await Promise.allSettled([
-            supabase.from('cases').select('*'),
-            supabase.from('kb_feedback').select('*'),
-            supabase.from('users').select('id, name, email, username, role'),
-            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-            supabase.from('v_engagement_stats').select('*'),
-            supabase.from('v_kb_feedback_summary').select('*'),
-            supabase.from('fastest_ticket').select('*').limit(1),
-            supabase.from('v_unseen_updates').select('*'),
-            supabase.from('v_employee_tracking').select('*'),
-            supabase.from('v_overall_insights').select('*')
-        ]);
-
-        const articles = results[0].value?.data || [];
-        const feedback = results[1].value?.data || [];
-        const users = results[2].value?.data || [];
-        const weeklyActivity = results[3].value?.data || [];
-        const engagementStats = results[4].value?.data || [];
-        const feedbackSummary = results[5].value?.data || [];
-        const fastestTicket = results[6].value?.data || [];
-        const unseenUpdates = results[7].value?.data || [];
-        const employeeStats = results[8].value?.data || [];
-        const overallInsights = results[9].value?.data || [];
-
-        const totalArticles = articles.length;
-        const totalViews = employeeActivity ? employeeActivity.length : 0;
-        const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
-        const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
-        const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-
-        const topUsers = (employeeStats || [])
-            .filter(u => u.total_views > 0)
-            .sort((a, b) => b.total_views - a.total_views)
-            .slice(0, 5);
-
-        return {
-            activityLog: activityLog || [],
-            overallInsights: {
-                total_articles: totalArticles,
-                total_views_all: totalViews,
-                total_edits: totalEdits,
-                active_users_this_week: activeUsers
-            },
-            feedbackKpis: { helpful_ratings: helpfulRatings },
-            topUsers: topUsers,
-            weeklyActivity: weeklyActivity,
-            analyticsData: {
-                activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
-                satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
-                avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
-                knowledgeGaps: unseenUpdates.length || 0,
-                performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
-                engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
-                contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
-                resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
-            }
-        };
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        return { activityLog: [], overallInsights: {}, feedbackKpis: {}, topUsers: [], analyticsData: {}, weeklyActivity: [] };
-    }
-}
-    // ✅ END: ==================  END OF NEW fetchDashboardData FUNCTION ==================
-    
-
-    mermaid.initialize({
-        startOnLoad: false,
-        theme: 'dark',
-        fontFamily: 'Inter, sans-serif',
-        flowchart: {
-            htmlLabels: true,
-            useMaxWidth: true,
-        },
-        themeVariables: {
-            fontSize: '14px',
-            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
-            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-        }
-    });
-    
+    // --- Global Variables ---
     let kbSystemData = { sections: [] };
     let mainQuillEditor;
     let currentUser = null;
     let currentOpenItem = null;
-    
     let activityChartInstance;
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [], analyticsData: {} };
     let activityLogPage = 1;
     const ACTIVITY_LOG_PAGE_SIZE = 7;
 
+    // --- DOM Element References ---
     const pageBody = document.getElementById('pageBody');
     const sidebar = document.getElementById('sidebar');
     const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
@@ -2039,6 +1840,194 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     const accessDeniedModalOverlay = document.getElementById('accessDeniedModalOverlay');
     const returnHomeFromAccessDeniedBtn = document.getElementById('returnHomeFromAccessDeniedBtn');
     const adminToolbar = document.getElementById('adminToolbar');
+
+    // --- Supabase Logic Layer (Functions to interact with the database) ---
+    async function getCurrentUserProfile() {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            console.error('No logged-in user found:', authError);
+            return null;
+        }
+        const { data: profile, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+        if (error) {
+            console.error('Error fetching user profile:', error);
+            return { id: user.id, email: user.email, role: 'viewer', name: user.email };
+        }
+        return profile;
+    }
+
+    async function fetchSubCategories() {
+        const { data, error } = await supabase.from('sub_categories').select('*').order('position');
+        if (error) {
+            console.error('Error fetching sub-categories:', error);
+            showToast('Failed to load knowledge areas.', 'error');
+            return [];
+        }
+        return data;
+    }
+
+   async function fetchArticles() {
+        const { data, error } = await supabase
+            .from('cases')
+            .select('id, sub_category_id, title_en, description_en, content_en, title_ar, description_ar, content_ar, tags, type, url, parent_id, created_at, last_modified, status, slug')
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Error fetching articles:', error);
+            showToast('Failed to load articles from the database.', 'error');
+            return [];
+        }
+        return data;
+    }
+    
+    async function addComment(articleId, commentText, user) {
+        const { data, error } = await supabase.from('kb_comments').insert([{
+            item_id: articleId,
+            author_id: user.id,
+            author_name: user.name,
+            body: commentText,
+        }]).select().single();
+        if (error) console.error('Error posting comment:', error);
+        return { data, error };
+    }
+
+    async function submitFeedback(articleId, rating, reason, user) {
+        const { error } = await supabase.from('kb_feedback').insert([{
+            item_id: articleId,
+            user_id: user.id,
+            rating,
+            reason,
+        }]);
+        if (error) console.error('Error submitting feedback:', error);
+        return { error };
+    }
+
+    async function logActivity(user, itemId, sectionName, action, details = {}) {
+        if (!user || !user.id) {
+            console.warn("Attempted to log activity without a valid user.");
+            return;
+        }
+        const caseTitle = details.case_title || 'Unknown Case';
+        const logData = {
+            user_id: user.id,
+            user_name: user.name,
+            case_id: itemId,
+            section: sectionName || 'Unknown Section',
+            action: action,
+            case_title: caseTitle,
+            details: details,
+        };
+        const { error } = await supabase.from('activity_log').insert([logData]);
+        if (error) console.error('Error logging activity:', error.message);
+    }
+    
+    // === THIS IS THE ORIGINAL, STABLE fetchDashboardData FUNCTION ===
+    // It is guaranteed to work with your HTML structure.
+    async function fetchDashboardData() {
+        try {
+            console.log('Fetching dashboard data...');
+            
+            const { data: employeeActivity, error: activityError } = await supabase
+                .from('v_employee_activity_fixed') // This now reads from the CLEAN view
+                .select('*');
+
+            if (activityError) console.error('Error fetching employee activity:', activityError);
+
+            const { data: activityLog, error: logError } = await supabase
+                .from('activity_log')
+                .select('*').limit(100).order('timestamp', { ascending: false });
+
+            if (logError) console.error('Error fetching activity log:', logError);
+
+            const [
+                articlesRes, feedbackRes, usersRes, weeklyActivityRes, 
+                engagementStatsRes, feedbackSummaryRes, fastestTicketRes, 
+                unseenUpdatesRes, employeeStatsRes, overallInsightsRes
+            ] = await Promise.all([
+                supabase.from('cases').select('*'),
+                supabase.from('kb_feedback').select('*'),
+                supabase.from('users').select('id, name, email, username, role'),
+                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
+                supabase.from('v_engagement_stats').select('*'),
+                supabase.from('v_kb_feedback_summary').select('*'),
+                supabase.from('fastest_ticket').select('*').limit(1),
+                supabase.from('v_unseen_updates').select('*'),
+                supabase.from('v_employee_tracking').select('*'),
+                supabase.from('v_overall_insights').select('*')
+            ]);
+
+            const articles = articlesRes.data || [];
+            const feedback = feedbackRes.data || [];
+            const weeklyActivity = weeklyActivityRes.data || [];
+            const engagementStats = engagementStatsRes.data || [];
+            const feedbackSummary = feedbackSummaryRes.data || [];
+            const fastestTicket = fastestTicketRes.data || [];
+            const unseenUpdates = unseenUpdatesRes.data || [];
+            const employeeStats = employeeStatsRes.data || [];
+            const overallInsights = overallInsightsRes.data || [];
+
+            const totalArticles = articles.length;
+            const totalViews = employeeActivity ? employeeActivity.length : 0; // This is now correct because the source is clean
+            const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
+            const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
+            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+
+            const topUsers = (employeeStats || [])
+                .filter(u => u.total_views > 0)
+                .sort((a, b) => b.total_views - a.total_views)
+                .slice(0, 5);
+            
+            const analyticsData = {
+                activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
+                satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
+                avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
+                knowledgeGaps: unseenUpdates.length || 0,
+                performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
+                engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
+                contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
+                resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
+            };
+
+            // This returns the original data structure that your HTML expects.
+            return {
+                activityLog: activityLog || [],
+                overallInsights: {
+                    total_articles: totalArticles,
+                    total_views_all: totalViews,
+                    total_edits: totalEdits,
+                    active_users_this_week: activeUsers
+                },
+                feedbackKpis: { helpful_ratings: helpfulRatings },
+                topUsers: topUsers,
+                weeklyActivity: weeklyActivity,
+                analyticsData: analyticsData,
+                growthTrends: [] // Keep this empty to prevent the 'reduce' error.
+            };
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            return { activityLog: [], overallInsights: {}, feedbackKpis: {}, topUsers: [], analyticsData: {}, weeklyActivity: [], growthTrends: [] };
+        }
+    }
+    
+
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        fontFamily: 'Inter, sans-serif',
+        flowchart: {
+            htmlLabels: true,
+            useMaxWidth: true,
+        },
+        themeVariables: {
+            fontSize: '14px',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--bg-color-alt').trim(),
+            primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            lineColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            textColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            nodeBorder: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+        }
+    });
     
     function isCurrentUserAdmin() {
         return currentUser?.role === 'admin' || currentUser?.is_admin === true;
@@ -2051,16 +2040,16 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         return el.innerHTML;
     }
 
-    // إضافة دالة escapeHtml المفقودة
-  function escapeHtml(unsafe) {
-    if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
-    return String(unsafe)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
+        return String(unsafe)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
     function formatReadableDate(isoString) {
         if (!isoString) return 'N/A';
         try {
@@ -2122,7 +2111,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }, duration);
     }
     
-    // ======== NEW: Image Lightbox Functionality ========
     function initImageLightbox() {
         const lightbox = document.getElementById('imageLightbox');
         if (!lightbox) return;
@@ -2153,7 +2141,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         });
     }
 
-    // ======== NEW: Analytics Hub Filters ========
     function initAnalyticsFilters() {
         const periodSelect = document.getElementById('analyticsPeriod');
         if (!periodSelect) return;
@@ -2387,48 +2374,46 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     window.renderActivityLog = renderActivityLog;
     
-function renderTopUsers() {
-    const container = document.getElementById('topUsersContainer');
-    if (!container) return;
-    
-    const topUsers = dashboardData.topUsers || [];
-    
-    let usersHTML = '<ul class="top-users-list">';
-    
-    if (topUsers.length > 0) {
-        usersHTML += topUsers.map((user, index) => `
-            <li class="top-user-item">
-                <div class="top-user-info">
-                    <span class="top-user-rank">${index + 1}</span>
-                    <span class="top-user-name">${escapeHtml(user.user_name)}</span>
-                </div>
-             <span class="top-user-views">${user.total_views || 0} views</span>
-            </li>
-        `).join('');
-    } else {
-        usersHTML += `
-            <li class="top-user-item" style="justify-content: center; color: var(--text-muted);">
-                <i class="fas fa-users" style="margin-right: 0.5rem;"></i>
-                No user activity data available
-            </li>
+    function renderTopUsers() {
+        const container = document.getElementById('topUsersContainer');
+        if (!container) return;
+        
+        const topUsers = dashboardData.topUsers || [];
+        
+        let usersHTML = '<ul class="top-users-list">';
+        
+        if (topUsers.length > 0) {
+            usersHTML += topUsers.map((user, index) => `
+                <li class="top-user-item">
+                    <div class="top-user-info">
+                        <span class="top-user-rank">${index + 1}</span>
+                        <span class="top-user-name">${escapeHtml(user.user_name)}</span>
+                    </div>
+                 <span class="top-user-views">${user.total_views || 0} views</span>
+                </li>
+            `).join('');
+        } else {
+            usersHTML += `
+                <li class="top-user-item" style="justify-content: center; color: var(--text-muted);">
+                    <i class="fas fa-users" style="margin-right: 0.5rem;"></i>
+                    No user activity data available
+                </li>
+            `;
+        }
+        
+        usersHTML += '</ul>';
+        
+        container.innerHTML = `
+            <h3><i class="fas fa-users" style="color: var(--warning);"></i> Most Active Users This Week</h3>
+            ${usersHTML}
         `;
     }
-    
-    usersHTML += '</ul>';
-    
-    // ✅ MODIFICATION: Added icon directly into the h3 tag and removed the ::before CSS pseudo-element
-    container.innerHTML = `
-        <h3><i class="fas fa-users" style="color: var(--warning);"></i> Most Active Users This Week</h3>
-        ${usersHTML}
-    `;
-}
 
-    // ✅ START: UPDATED renderDynamicDashboard function
     async function renderDynamicDashboard() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights || {};
         const analytics = dashboardData.analyticsData || {};
-        const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
+        const growthTrends = (dashboardData.growthTrends || []).reduce((acc, item) => ({...acc, [item.metric]: item }), {});
         
         const getGrowthHTML = (metric) => {
             const trend = growthTrends[metric];
@@ -2562,80 +2547,78 @@ function renderTopUsers() {
                 </div>
             </div>`;
         
-        // Use setTimeout to ensure the DOM is updated before rendering charts
         setTimeout(() => {
             renderDashboardCharts(dashboardData);
             renderTopUsers();
             initAnalyticsFilters();
         }, 100);
     }
-    // ✅ END: UPDATED renderDynamicDashboard function
     
-function renderDashboardCharts(data) {
-    if (activityChartInstance) {
-        activityChartInstance.destroy();
-    }
-    const activityCtx = document.getElementById('activityChart')?.getContext('2d');
-    if (!activityCtx) return;
-
-    const weeklyData = data.weeklyActivity || [];
-    if (weeklyData.length === 0) {
-        const placeholder = activityCtx.canvas.parentNode;
-        placeholder.innerHTML = `<div style="text-align:center; color: var(--text-muted);">No activity data for the last 7 days.</div>`;
-        return;
-    }
-
-    const rootStyles = getComputedStyle(document.documentElement);
-    const primaryColor = rootStyles.getPropertyValue('--primary-accent').trim();
-    const successColor = rootStyles.getPropertyValue('--success').trim();
-    const legendColor = rootStyles.getPropertyValue('--text-light').trim();
-    const ticksColor = rootStyles.getPropertyValue('--text-muted').trim();
-
-    const labels = weeklyData.map(d => new Date(d.activity_date_egypt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-    const viewsData = weeklyData.map(d => d.total_views || 0);
-    const usersData = weeklyData.map(d => d.active_users || 0);
-
-    activityChartInstance = new Chart(activityCtx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Total Views',
-                    data: viewsData,
-                    backgroundColor: "rgba(108, 93, 211, 0.7)",
-                    borderColor: primaryColor,
-                    borderWidth: 2,
-                    borderRadius: 6,
-                },
-                {
-                    label: 'Active Users',
-                    data: usersData,
-                    type: 'line',
-                    borderColor: successColor,
-                    backgroundColor: "rgba(0, 182, 155, 0.1)",
-                    borderWidth: 3,
-                    pointBackgroundColor: successColor,
-                    tension: 0.4,
-                    fill: true,
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'top', labels: { color: legendColor, usePointStyle: true } },
-                tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.95)', titleColor: '#f8fafc', bodyColor: '#e2e8f0', borderColor: primaryColor, borderWidth: 1 }
-            },
-            scales: {
-                x: { ticks: { color: ticksColor }, grid: { color: 'rgba(71, 85, 105, 0.3)' } },
-                y: { beginAtZero: true, ticks: { color: ticksColor, precision: 0 }, grid: { color: 'rgba(71, 85, 105, 0.3)' } }
-            }
+    function renderDashboardCharts(data) {
+        if (activityChartInstance) {
+            activityChartInstance.destroy();
         }
-    });
-}
+        const activityCtx = document.getElementById('activityChart')?.getContext('2d');
+        if (!activityCtx) return;
+
+        const weeklyData = data.weeklyActivity || [];
+        if (weeklyData.length === 0) {
+            const placeholder = activityCtx.canvas.parentNode;
+            placeholder.innerHTML = `<div style="text-align:center; color: var(--text-muted);">No activity data for the last 7 days.</div>`;
+            return;
+        }
+
+        const rootStyles = getComputedStyle(document.documentElement);
+        const primaryColor = rootStyles.getPropertyValue('--primary-accent').trim();
+        const successColor = rootStyles.getPropertyValue('--success').trim();
+        const legendColor = rootStyles.getPropertyValue('--text-light').trim();
+        const ticksColor = rootStyles.getPropertyValue('--text-muted').trim();
+
+        const labels = weeklyData.map(d => new Date(d.activity_date_egypt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        const viewsData = weeklyData.map(d => d.total_views || 0);
+        const usersData = weeklyData.map(d => d.active_users || 0);
+
+        activityChartInstance = new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Total Views',
+                        data: viewsData,
+                        backgroundColor: "rgba(108, 93, 211, 0.7)",
+                        borderColor: primaryColor,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                    },
+                    {
+                        label: 'Active Users',
+                        data: usersData,
+                        type: 'line',
+                        borderColor: successColor,
+                        backgroundColor: "rgba(0, 182, 155, 0.1)",
+                        borderWidth: 3,
+                        pointBackgroundColor: successColor,
+                        tension: 0.4,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { color: legendColor, usePointStyle: true } },
+                    tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.95)', titleColor: '#f8fafc', bodyColor: '#e2e8f0', borderColor: primaryColor, borderWidth: 1 }
+                },
+                scales: {
+                    x: { ticks: { color: ticksColor }, grid: { color: 'rgba(71, 85, 105, 0.3)' } },
+                    y: { beginAtZero: true, ticks: { color: ticksColor, precision: 0 }, grid: { color: 'rgba(71, 85, 105, 0.3)' } }
+                }
+            }
+        });
+    }
     
     async function displayDashboard() {
         dashboardOverviewContainer.classList.remove('hidden');
@@ -2665,7 +2648,6 @@ function renderDashboardCharts(data) {
         }
     }
     
-    // MODIFICATION START: New function to handle tab switching for Partner Care
     function initializePartnerCareTabs() {
         const tabContainer = document.querySelector('.partner-care-tabs-container');
         if (!tabContainer) return;
@@ -2677,11 +2659,9 @@ function renderDashboardCharts(data) {
             const clickedTab = e.target.closest('.pc-tab-btn');
             if (!clickedTab) return;
 
-            // Update active state for buttons
             tabButtons.forEach(btn => btn.classList.remove('active'));
             clickedTab.classList.add('active');
 
-            // Show the corresponding content
             const targetContentId = clickedTab.dataset.target;
             tabContents.forEach(content => {
                 if (content.id === targetContentId) {
@@ -2692,7 +2672,6 @@ function renderDashboardCharts(data) {
             });
         });
     }
-    // MODIFICATION END
 
     async function displaySectionContent(sectionSlug) {
         currentOpenItem = null;
@@ -2734,7 +2713,7 @@ function renderDashboardCharts(data) {
         
         contentHTML += adminControlsHTML;
 
-        let viewMode = localStorage.getItem('kbViewMode') || 'compact'; // Default to compact
+        let viewMode = localStorage.getItem('kbViewMode') || 'compact';
         contentHTML += `
             <div class="view-switcher" id="viewSwitcher" style="${adminControlsHTML ? '' : 'margin-left: auto;'}">
                 <button class="switch-btn ${viewMode === 'default' ? 'active' : ''}" data-view="default" title="Default Grid View"><i class="fas fa-th-large"></i></button>
@@ -2942,7 +2921,6 @@ function renderDashboardCharts(data) {
         
         let content_en = itemData.content_en || '<p>No detailed content available.</p>';
         
-        // ✅ MODIFICATION: Clear search keyword after using it to prevent sticky highlighting.
         const searchKeyword = localStorage.getItem('lastSearchKeyword');
         if (searchKeyword && searchKeyword.length > 0) {
             content_en = highlightKeywordsInHtml(content_en, searchKeyword);
@@ -3121,7 +3099,6 @@ function renderDashboardCharts(data) {
     }
     
     function handleNavigation() {
-        // ✅ MODIFICATION: Hide share snippet button on any navigation change.
         document.getElementById('selection-share-btn').style.display = 'none';
 
         if (!currentUser) return;
@@ -3217,11 +3194,10 @@ function renderDashboardCharts(data) {
         label.style.color = finalState ? 'var(--success)' : 'var(--text-muted)';
     }
 
-    // ✅ MODIFICATION START: New functions for Smart Accordion Search
     function findSnippetsInItem(item, query) {
         const snippets = new Set();
         const queryLower = query.toLowerCase();
-        const contextLength = 80; // Characters before and after the keyword
+        const contextLength = 80;
 
         const createSnippetsFromText = (text) => {
             if (!text) return;
@@ -3235,7 +3211,7 @@ function renderDashboardCharts(data) {
                 if (end < text.length) snippet = snippet + " ...";
                 
                 snippets.add(snippet);
-                startIndex += query.length; // Move past the current match
+                startIndex += query.length;
             }
         };
 
@@ -3257,7 +3233,7 @@ function renderDashboardCharts(data) {
             if (!acc[snippet.item.id]) {
                 acc[snippet.item.id] = {
                     item: snippet.item,
-                    snippets: new Set() // Use a Set to avoid duplicate snippets
+                    snippets: new Set()
                 };
             }
             acc[snippet.item.id].snippets.add(snippet.html);
@@ -3273,7 +3249,7 @@ function renderDashboardCharts(data) {
 
         if (resultValues.length > 0) {
             resultValues.forEach(({ item, snippets }) => {
-                const itemData = findItem(item.id); // Get full item data with slugs
+                const itemData = findItem(item.id);
                 resultsHTML += `
                     <div class="search-accordion-item">
                         <div class="search-accordion-header">
@@ -3313,11 +3289,9 @@ function renderDashboardCharts(data) {
     function setupEventListeners() {
         window.addEventListener('hashchange', handleNavigation);
         
-        // ✅ NEW: Delegated event listener for card clicks (in capture phase)
         document.addEventListener("click", e => {
             const card = e.target.closest(".card[data-item-slug]");
             
-            // If the click is on a button, link, or part of the actions area, do not navigate.
             if (e.target.closest("button, a, .card-actions")) {
                 return;
             }
@@ -3325,7 +3299,7 @@ function renderDashboardCharts(data) {
             if (card) {
                 window.location.hash = "#" + card.dataset.itemSlug;
             }
-        }, true); // Using capture phase ensures this runs first
+        }, true);
 
         mobileSidebarToggle.addEventListener('click', () => sidebar.classList.toggle('closed'));
         sidebar.addEventListener('click', (e) => {
@@ -3522,7 +3496,6 @@ function renderDashboardCharts(data) {
             }, 250);
         });
 
-        // ✅ MODIFICATION: Added scroll listener to hide the share button when the user scrolls.
         let isScrolling;
         window.addEventListener('scroll', () => {
             window.clearTimeout(isScrolling);
@@ -3568,12 +3541,10 @@ function renderDashboardCharts(data) {
         return html;
     }
 
-    // ✅ MODIFICATION: Revamped Share Snippet Modal Logic
     async function openShareSnippetModal() {
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed) return;
 
-        // Hide the floating button immediately and clear selection after modal opens
         document.getElementById('selection-share-btn').style.display = 'none';
 
         const snippetHtml = getSelectionHtml();
@@ -3585,7 +3556,6 @@ function renderDashboardCharts(data) {
         if (currentOpenItem) {
             const itemData = findItem(currentOpenItem.itemId);
             if (itemData) {
-                // Construct a cleaner link without extra parameters if not needed
                 link = `${window.location.origin}${window.location.pathname}#${itemData.sectionSlug}/${itemData.slug}`;
             }
         }
@@ -3630,7 +3600,6 @@ function renderDashboardCharts(data) {
         
         document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
 
-        // Clear the user's text selection after opening the modal
         if (window.getSelection) {
             window.getSelection().removeAllRanges();
         }
@@ -3643,6 +3612,9 @@ function renderDashboardCharts(data) {
                 window.location.href = "/login.html";
                 return;
             }
+
+            // Apply role-based visibility after fetching user
+            applyNavVisibility(currentUser.role);
 
             userNameDisplayHeader.textContent = currentUser.name || currentUser.email;
             const initials = (currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -3679,21 +3651,14 @@ function renderDashboardCharts(data) {
         deleteConfirmModalOverlay.classList.remove('hidden');
     };
 
+    // --- App Initialization ---
     initializeApp();
+
+    // The role-check is now handled inside initializeApp
 </script>
 
 <!-- ======== MODIFICATION: ADDED SCRIPT FOR NEW CASE ======== -->
 <script src="busy_new.js" defer></script>
-
-<script type="module">
-  import { getCurrentUserRole, applyNavVisibility } from './role-check.js';
-  (async function(){
-    const role = await getCurrentUserRole();
-    if(role) {
-        applyNavVisibility(role);
-    }
-  })();
-</script>
 
 </body>
 </html>
