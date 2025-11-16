@@ -1877,66 +1877,69 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-    // V72 - The Final, Correct fetchDashboardData function
-    async function fetchDashboardData() {
-        try {
-            console.log('Fetching dashboard data...');
-            
-            // Fetch all data in parallel
-            const [
-                analyticsRes,
-                topUsersRes,
-                weeklyActivityRes
-            ] = await Promise.all([
-                supabase.from('v_dashboard_analytics').select('*').single(),
-                supabase.from('v_employee_tracking').select('*').filter('total_views', 'gt', 0).order('total_views', { ascending: false }).limit(5),
-                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true })
-            ]);
+    // ✅ START: ==================  NEW, CORRECT fetchDashboardData FUNCTION ==================
+   // V72 - The Final, Correct fetchDashboardData function
 
-            // Check for critical error
-            if (analyticsRes.error) throw analyticsRes.error;
-            
-            const analytics = analyticsRes.data || {};
-            const topUsers = topUsersRes.data || [];
-            const weeklyActivity = weeklyActivityRes.data || [];
+async function fetchDashboardData() {
+    try {
+        console.log('Fetching dashboard data...');
+        
+        // Fetch all data in parallel
+        const [
+            analyticsRes,
+            topUsersRes,
+            weeklyActivityRes
+        ] = await Promise.all([
+            supabase.from('v_dashboard_analytics').select('*').single(),
+            supabase.from('v_employee_tracking').select('*').filter('total_views', 'gt', 0).order('total_views', { ascending: false }).limit(5),
+            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true })
+        ]);
 
-            // Directly populate the top-level KPIs from the new VIEW
-            document.getElementById('kpi-total-articles').textContent = analytics.total_articles || 0;
-            document.getElementById('kpi-total-views').textContent = analytics.total_views || 0;
-            document.getElementById('kpi-active-users').textContent = analytics.active_users || 0;
-            document.getElementById('kpi-helpful-ratings').textContent = analytics.helpful_ratings || 0;
-            document.getElementById('kpi-total-edits').textContent = analytics.total_edits || 0;
+        // Check for critical error
+        if (analyticsRes.error) throw analyticsRes.error;
+        
+        const analytics = analyticsRes.data || {};
+        const topUsers = topUsersRes.data || [];
+        const weeklyActivity = weeklyActivityRes.data || [];
 
-            // Populate the Analytics Hub
-            const analyticsData = {
-                performanceScore: 100, // Placeholder, needs better logic
-                engagementRate: Math.round(analytics.user_engagement || 0),
-                contentHealth: 80, // Placeholder
-                resolutionRate: Math.round(analytics.satisfaction_rate || 0), // Using satisfaction as proxy
-                satisfactionRate: Math.round(analytics.satisfaction_rate || 0),
-                activeSessions: analytics.active_users || 0,
-                avgResponseTime: 'N/A',
-                knowledgeGaps: 0 // Placeholder
-            };
-            
-            // This structure is needed for the rest of the code to work
-            return {
-                topUsers,
-                weeklyActivity,
-                analyticsData,
-                // These are no longer needed but kept for safety
-                activityLog: [], 
-                overallInsights: {}, 
-                feedbackKpis: {}, 
-                growthTrends: []
-            };
+        // Directly populate the top-level KPIs from the new VIEW
+        document.getElementById('kpi-total-articles').textContent = analytics.total_articles || 0;
+        document.getElementById('kpi-total-views').textContent = analytics.total_views || 0;
+        document.getElementById('kpi-active-users').textContent = analytics.active_users || 0;
+        document.getElementById('kpi-helpful-ratings').textContent = analytics.helpful_ratings || 0;
+        document.getElementById('kpi-total-edits').textContent = analytics.total_edits || 0;
 
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            // Return empty structure on failure
-            return { topUsers: [], weeklyActivity: [], analyticsData: {} };
-        }
+        // Populate the Analytics Hub
+        const analyticsData = {
+            performanceScore: 100, // Placeholder, needs better logic
+            engagementRate: Math.round(analytics.user_engagement || 0),
+            contentHealth: 80, // Placeholder
+            resolutionRate: Math.round(analytics.satisfaction_rate || 0), // Using satisfaction as proxy
+            satisfactionRate: Math.round(analytics.satisfaction_rate || 0),
+            activeSessions: analytics.active_users || 0,
+            avgResponseTime: 'N/A',
+            knowledgeGaps: 0 // Placeholder
+        };
+        
+        // This structure is needed for the rest of the code to work
+        return {
+            topUsers,
+            weeklyActivity,
+            analyticsData,
+            // These are no longer needed but kept for safety
+            activityLog: [], 
+            overallInsights: {}, 
+            feedbackKpis: {}, 
+            growthTrends: []
+        };
+
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Return empty structure on failure
+        return { topUsers: [], weeklyActivity: [], analyticsData: {} };
     }
+}
+    // ✅ END: ==================  END OF NEW fetchDashboardData FUNCTION ==================
     
 
     mermaid.initialize({
