@@ -1619,7 +1619,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <h3 class="share-section-title"><i class="fas fa-paper-plane"></i> Sharing Actions</h3>
                 <div class="share-actions-grid">
                     <button type="button" class="share-action-button" id="copySnippetTextBtn"><i class="fas fa-quote-left"></i> Copy as Text</button>
-                    <button type="button" class="share-action-button" id="shareSnippetEmailBtn"><i class="fas fa-envelope"></i> Share via Email</button>
+                    <button type="button" class="share-action-button" id="shareSnippetEmailBtn"><i class="fas fa-envelope"></i> Copy for Email</button>
                     <button type="button" class="share-action-button whatsapp" id="shareSnippetWhatsAppBtn"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
                 </div>
             </div>
@@ -1775,10 +1775,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
     // ✅ NEW: Global sharing handler object
     window.infiniShare = {
-      openMailTo(subject, body) {
-        const url = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-        window.location.href = url; // More reliable than window.open for mailto
-      },
       openWhatsApp(text) {
         const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
         window.open(url, "_blank", "noopener,noreferrer");
@@ -3440,21 +3436,19 @@ function renderDashboardCharts(data) {
     }
 
     // ✅ MODIFICATION: Revamped Share Snippet Modal Logic
-    function openShareSnippetModal() {
+    async function openShareSnippetModal() {
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed) return;
 
         const snippetHtml = getSelectionHtml();
         const snippetText = selection.toString();
         
-        const previewContainer = document.getElementById('snippetPreviewContainer');
-        previewContainer.innerHTML = snippetHtml || '<p>Could not load preview.</p>';
+        document.getElementById('snippetPreviewContainer').innerHTML = snippetHtml || '<p>Could not load preview.</p>';
 
-        let link = window.location.href; // Default to current full URL
+        let link = window.location.href;
         if (currentOpenItem) {
             const itemData = findItem(currentOpenItem.itemId);
             if (itemData) {
-                // Construct a cleaner link without extra parameters if not needed
                 link = `${window.location.origin}${window.location.pathname}#${itemData.sectionSlug}/${itemData.slug}`;
             }
         }
@@ -3468,11 +3462,9 @@ function renderDashboardCharts(data) {
             navigator.clipboard.writeText(snippetText).then(() => showToast('Snippet copied as plain text!', 'success'));
         };
         
-        // ✅ NEW: Professional Email Body
-        const emailSubject = `InfiniBase KB Snippet: ${currentOpenItem.title}`;
-        const emailBody = `
+        const emailBodyHtml = `
             <p>Hi team,</p>
-            <p>Here is a snippet from the "${currentOpenItem.title}" article that might be relevant:</p>
+            <p>Here is a snippet from the "<strong>${currentOpenItem.title}</strong>" article that might be relevant:</p>
             <hr>
             <div style="background-color:#f1f5f9; border-left: 4px solid #6C5DD3; padding: 15px; margin: 15px 0; font-family: sans-serif; color: #333;">
                 ${snippetHtml}
@@ -3482,11 +3474,18 @@ function renderDashboardCharts(data) {
             <a href="${link}">${link}</a></p>
             <p>Thank you,<br>InfiniBase System</p>
         `;
-        document.getElementById('shareSnippetEmailBtn').onclick = () => {
-            window.infiniShare.openMailTo(emailSubject, emailBody);
+        document.getElementById('shareSnippetEmailBtn').onclick = async () => {
+            try {
+                const blob = new Blob([emailBodyHtml], { type: 'text/html' });
+                const clipboardItem = new ClipboardItem({ 'text/html': blob });
+                await navigator.clipboard.write([clipboardItem]);
+                showToast('Email content copied to clipboard!', 'success');
+            } catch (err) {
+                console.error('Failed to copy HTML to clipboard:', err);
+                showToast('Could not copy email content.', 'error');
+            }
         };
         
-        // ✅ NEW: Professional WhatsApp message format (in English)
         const whatsAppText = `Hi there,\n\nHere's a snippet from the Knowledge Base that might be helpful:\n\n*Source:* ${currentOpenItem.title}\n-------------------------\n_"${snippetText.trim()}"_\n-------------------------\n\nFor the full context, you can visit the article here:\n${link}`;
         document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
             window.infiniShare.openWhatsApp(whatsAppText);
