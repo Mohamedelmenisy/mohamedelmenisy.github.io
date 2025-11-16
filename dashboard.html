@@ -3111,39 +3111,36 @@ function renderDashboardCharts(data) {
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
     
-    // ✅ MODIFICATION START: New functions for Smart Accordion Search
+    // ✅ NEW SMART SEARCH LOGIC
     function findSnippetsInItem(item, query) {
-        const snippets = [];
+        const snippets = new Set();
         const queryLower = query.toLowerCase();
+        const contextLength = 80; // Characters before and after the keyword
 
-        const searchInContent = (content) => {
-            if (!content) return [];
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = content;
-            const contentSnippets = [];
-            
-            // Search all block-level and table cell elements for more comprehensive results
-            const elements = tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, td, th, div');
-            
-            elements.forEach(el => {
-                if (el.textContent.toLowerCase().includes(queryLower)) {
-                    contentSnippets.push({
-                        item: item,
-                        html: highlightKeywordsInHtml(el.outerHTML, query)
-                    });
-                }
-            });
-            return contentSnippets;
+        const createSnippetsFromText = (text) => {
+            if (!text) return;
+            let startIndex = 0;
+            while ((startIndex = text.toLowerCase().indexOf(queryLower, startIndex)) !== -1) {
+                const start = Math.max(0, startIndex - contextLength);
+                const end = Math.min(text.length, startIndex + query.length + contextLength);
+                
+                let snippet = text.substring(start, end);
+                if (start > 0) snippet = "... " + snippet;
+                if (end < text.length) snippet = snippet + " ...";
+                
+                snippets.add(snippet);
+                startIndex += query.length; // Move past the current match
+            }
         };
-        
-        // Search in English content
-        snippets.push(...searchInContent(item.content_en));
-        // Search in Arabic content
-        snippets.push(...searchInContent(item.content_ar));
 
-        return snippets;
+        const fullText = stripHtml(item.content_en) + " " + stripHtml(item.content_ar);
+        createSnippetsFromText(fullText);
+
+        return Array.from(snippets).map(snippetText => ({
+            item,
+            html: highlightText(snippetText, query),
+        }));
     }
-
 
     function renderSearchResults(results, query) {
         dashboardOverviewContainer.classList.add('hidden');
@@ -3154,10 +3151,10 @@ function renderDashboardCharts(data) {
             if (!acc[snippet.item.id]) {
                 acc[snippet.item.id] = {
                     item: snippet.item,
-                    snippets: []
+                    snippets: new Set() // Use a Set to avoid duplicate snippets
                 };
             }
-            acc[snippet.item.id].snippets.push(snippet.html);
+            acc[snippet.item.id].snippets.add(snippet.html);
             return acc;
         }, {});
 
@@ -3170,24 +3167,25 @@ function renderDashboardCharts(data) {
 
         if (resultValues.length > 0) {
             resultValues.forEach(({ item, snippets }) => {
+                const itemData = findItem(item.id); // Get full item data with slugs
                 resultsHTML += `
                     <div class="search-accordion-item">
                         <div class="search-accordion-header">
                             <h4>${highlightText(item.title_en, query)}</h4>
-                            <span class="match-count">${snippets.length} ${snippets.length > 1 ? 'matches' : 'match'}</span>
+                            <span class="match-count">${snippets.size} ${snippets.size > 1 ? 'matches' : 'match'}</span>
                         </div>
                         <div class="search-accordion-content">
                             <div class="search-accordion-content-inner">
-                                ${snippets.map(snippet => `<div class="search-snippet">${snippet}</div>`).join('')}
+                                ${Array.from(snippets).map(snippet => `<div class="search-snippet">${snippet}</div>`).join('')}
                                 <div class="search-result-actions">
-                                    <a href="#${item.sectionSlug}/${item.slug}" class="button"><i class="fas fa-eye"></i> View Full Article</a>
+                                    <a href="#${itemData.sectionSlug}/${itemData.slug}" class="button"><i class="fas fa-eye"></i> View Full Article & Highlight</a>
                                 </div>
                             </div>
                         </div>
                     </div>`;
             });
         } else {
-            resultsHTML += `<div class="card" style="text-align: center;"><p>No results found for "${escapeHTML(query)}".</p></div>`;
+            resultsHTML += `<div class="card" style="text-align: center; padding: 2rem;"><p>No results found for "${escapeHTML(query)}".</p></div>`;
         }
         resultsHTML += '</div></div>';
 
@@ -3204,7 +3202,7 @@ function renderDashboardCharts(data) {
             });
         }
     }
-    // MODIFICATION END
+
 
     function setupEventListeners() {
         window.addEventListener('hashchange', handleNavigation);
