@@ -1775,14 +1775,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     // =================================================================================
     import { supabase } from './supabase.js';
 
-    // ✅ NEW: Global sharing handler object
-    window.infiniShare = {
-      openWhatsApp(text) {
-        const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
-    };
-
     // --- Supabase Logic Layer (Functions to interact with the database) ---
     async function getCurrentUserProfile() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -3110,8 +3102,67 @@ function renderDashboardCharts(data) {
         }
         document.getElementById('contentWrapper')?.scrollTo(0,0);
     }
-    
-    // ✅ NEW SMART SEARCH LOGIC
+
+    async function setupApprovalToggle() {
+        const container = document.getElementById('approvalToggleContainer');
+        if (!container) return;
+        
+        const toggle = document.getElementById('approvalToggleSwitch');
+        const label = document.getElementById('approvalStatusLabel');
+        
+        if (!isCurrentUserAdmin()) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+
+        const { data: setting, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'approval_workflow_enabled')
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.error("Could not load approval setting:", error);
+            label.textContent = 'ERROR';
+            label.style.color = 'var(--danger)';
+            return;
+        }
+
+        const isEnabled = setting?.value === 'true';
+        toggle.checked = isEnabled;
+        label.textContent = isEnabled ? 'ENABLED' : 'DISABLED';
+        label.style.color = isEnabled ? 'var(--success)' : 'var(--text-muted)';
+        
+        toggle.removeEventListener('change', handleApprovalToggleChange);
+        toggle.addEventListener('change', handleApprovalToggleChange);
+    }
+
+    async function handleApprovalToggleChange(event) {
+        const toggle = event.target;
+        const label = document.getElementById('approvalStatusLabel');
+        const newValue = toggle.checked;
+        
+        label.textContent = '...';
+        
+        const { error: updateError } = await supabase
+            .from('app_settings')
+            .update({ value: newValue.toString() })
+            .eq('key', 'approval_workflow_enabled');
+            
+        const finalState = updateError ? !newValue : newValue;
+        if (updateError) {
+            showToast(`Failed to update setting: ${updateError.message}`, 'error');
+            toggle.checked = finalState;
+        } else {
+            showToast(`Approval workflow is now ${finalState ? 'ENABLED' : 'DISABLED'}.`, 'success');
+        }
+        
+        label.textContent = finalState ? 'ENABLED' : 'DISABLED';
+        label.style.color = finalState ? 'var(--success)' : 'var(--text-muted)';
+    }
+
+    // ✅ MODIFICATION START: New functions for Smart Accordion Search
     function findSnippetsInItem(item, query) {
         const snippets = new Set();
         const queryLower = query.toLowerCase();
