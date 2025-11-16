@@ -8,6 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- V55 - Step 1: Link the main stylesheet to the approvals page -->
+    <link rel="stylesheet" href="busy_new.css">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
@@ -548,11 +552,7 @@
             });
         }
         
-        /**
-         * ============================================================
-         * === THE NEW, MORE ROBUST openReviewModal FUNCTION STARTS HERE ===
-         * ============================================================
-         */
+        // V55 - Step 2: Upgrade the modal to use the professional layout.
         async function openReviewModal(caseId) {
             const currentCase = casesStore.find(c => c.id === caseId);
             if (!currentCase) {
@@ -567,13 +567,28 @@
             const decisionFooter = document.getElementById("decisionFooter");
 
             modalTitle.textContent = `Reviewing: "${currentCase.title_en}"`;
-            let finalHtml = '';
-            if (currentCase.content_en) {
-                const processedContent = currentCase.content_en.replaceAll('<a href', '<a target="_blank" href');
-                finalHtml = `<div dir="auto">${processedContent}</div>`;
-            }
-            modalBody.innerHTML = finalHtml || "<p><i>No content available.</i></p>";
             
+            // === THE CRITICAL CHANGE IS HERE ===
+            // We wrap the content in the same container structure used by your main dashboard.
+            // This allows the 'busy_new.css' styles to apply correctly.
+            modalBody.innerHTML = `
+                <div class="kb-container">
+                    <div class="kb-article">
+                        ${currentCase.content_en || "<p><i>No content available.</i></p>"}
+                    </div>
+                </div>
+            `;
+            
+            // After injecting the HTML, re-initialize any scripts that rely on it, like your lightbox.
+            if (window.initBusyNew) {
+                // This assumes your lightbox script is in a function called initBusyNew.
+                // We need to call it again because we've added new images to the page.
+                setTimeout(() => {
+                    window.initBusyNew();
+                }, 100); 
+            }
+
+            // Show/hide decision footer logic...
             if (currentCase.status === 'pending_approval') {
                 decisionFooter.classList.remove('hidden');
                 document.getElementById('reviewerNotes').value = '';
@@ -583,19 +598,16 @@
                 decisionFooter.classList.add('hidden');
             }
             
-            // === THE CRITICAL FIX IS HERE ===
-            // First, check if there is an approval group assigned at all.
+            // Fetch and render timeline logic...
             if (!currentCase.approval_group_id) {
                 timelineContainer.innerHTML = '<h4>Approval Status</h4><p><i>(No approval cycle required for this item.)</i></p>';
                 modal.classList.add("show");
                 modal.querySelector('.modal-body').scrollTop = 0;
-                return; // Stop here if no group is assigned
+                return;
             }
             
-            // If a group IS assigned, proceed to fetch the timeline.
             timelineContainer.innerHTML = '<h4><i class="fas fa-spinner fa-spin"></i> Loading Approval Status...</h4>';
             try {
-                // ... (the rest of the timeline fetching logic remains the same)
                 const { data: requiredApprovers, error: groupError } = await supabase
                     .from('approval_group_members')
                     .select(`users ( id, name )`)
@@ -652,11 +664,6 @@
             modal.classList.add("show");
             modal.querySelector('.modal-body').scrollTop = 0;
         }
-        /**
-         * ==========================================================
-         * === END OF THE NEW, MORE ROBUST openReviewModal FUNCTION ===
-         * ==========================================================
-         */
 
         async function handleApprove(caseId) {
             const approveBtn = document.getElementById("approveBtn");
