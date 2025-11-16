@@ -1436,8 +1436,10 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             align-items: center;
             gap: 0.75rem; /* 12px space */
         }
+        /* This ::before is no longer needed as the icon is in the HTML now */
+        /*
         #topUsersContainer h3::before {
-            content: '\\f007'; /* Font Awesome User Icon */
+            content: '\\f007'; 
             font-family: 'Font Awesome 6 Free';
             font-weight: 900;
             font-size: 1em;
@@ -1448,6 +1450,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             border-radius: 0;
             margin-right: 0;
         }
+        */
         /* ✅ END: Styles for "Most Active Users" icon */
 
 
@@ -1874,117 +1877,76 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-    // ✅ START: UPDATED fetchDashboardData function
+    // ✅ START: ==================  NEW, CORRECT fetchDashboardData FUNCTION ==================
     async function fetchDashboardData() {
         try {
-            console.log('Fetching dashboard data...');
-            
-            // احصل على البيانات بنفس طريقة Insights
-            const { data: employeeActivity, error: activityError } = await supabase
-                .from('v_employee_activity_fixed')
-                .select('*');
-
-            if (activityError) {
-                console.error('Error fetching employee activity:', activityError);
-            }
-
-            // احصل على activity_log للـ Recent Activity فقط
-            const { data: activityLog, error: logError } = await supabase
-                .from('activity_log')
-                .select('*')
-                .limit(100)
-                .order('timestamp', { ascending: false });
-
-            if (logError) {
-                console.error('Error fetching activity log:', logError);
-            }
-
-            const results = await Promise.allSettled([
-                supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, role'),
+            // Fetch all data in parallel for speed
+            const [
+                activityLogRes,
+                topUsersRes,
+                weeklyActivityRes,
+                // === THE KEY CHANGE: Fetch from our new smart VIEW ===
+                analyticsRes 
+            ] = await Promise.all([
+                supabase.from('activity_log').select('*').limit(100).order('timestamp', { ascending: false }),
+                supabase.from('v_employee_tracking').select('*').filter('total_views', 'gt', 0).order('total_views', { ascending: false }).limit(5),
                 supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-                supabase.from('v_engagement_stats').select('*'),
-                supabase.from('v_kb_feedback_summary').select('*'),
-                supabase.from('fastest_ticket').select('*').limit(1),
-                supabase.from('v_unseen_updates').select('*'),
-                supabase.from('v_employee_tracking').select('*'),
-                supabase.from('v_overall_insights').select('*')
+                supabase.from('v_analytics_hub_metrics').select('*').single() // Fetch the single row of calculated metrics
             ]);
 
-            const articles = results[0].value?.data || [];
-            const feedback = results[1].value?.data || [];
-            const users = results[2].value?.data || [];
-            const weeklyActivity = results[3].value?.data || [];
-            const engagementStats = results[4].value?.data || [];
-            const feedbackSummary = results[5].value?.data || [];
-            const fastestTicket = results[6].value?.data || [];
-            const unseenUpdates = results[7].value?.data || [];
-            const employeeStats = results[8].value?.data || [];
-            const overallInsights = results[9].value?.data || [];
+            if (analyticsRes.error && analyticsRes.error.code !== 'PGRST116') { // PGRST116 means no rows found, which is ok
+                 throw analyticsRes.error;
+            }
 
-            // ✅ الحسابات الصحيحة - استخدام employeeActivity مثل Insights
-            const totalArticles = articles.length;
-            const totalViews = employeeActivity ? employeeActivity.length : 0; // عدد السجلات مثل Insights
-            const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
-            const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
-            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
+            const analytics = analyticsRes.data || {}; // Use empty object as fallback
 
-            console.log('Dashboard data calculated:', {
-                totalArticles,
-                totalViews, 
-                totalEdits,
-                activeUsers,
-                employeeActivityCount: employeeActivity?.length
-            });
-
-            // MOST ACTIVE USERS - استخدام employeeStats مباشرة
-            const topUsers = (employeeStats || [])
-                .filter(u => u.total_views > 0)
-                .sort((a, b) => b.total_views - a.total_views)
-                .slice(0, 5);
+            // Simple data mapping from other queries
+            const topUsers = topUsersRes.data || [];
+            const weeklyActivity = weeklyActivityRes.data || [];
+            const activityLog = activityLogRes.data || [];
 
             return {
-                activityLog: activityLog || [], // للـ Recent Activity
+                activityLog,
+                topUsers,
+                weeklyActivity,
+                analyticsData: {
+                    performanceScore: Math.round(analytics.system_performance || 0),
+                    engagementRate: Math.round(analytics.user_engagement || 0),
+                    contentHealth: Math.round(analytics.content_health || 0),
+                    resolutionRate: Math.round(analytics.case_resolution || 0),
+                    satisfactionRate: Math.round(analytics.satisfaction_rate || 0),
+                    activeSessions: analytics.active_sessions || 0,
+                    avgResponseTime: 'N/A', // This needs a separate calculation
+                    knowledgeGaps: analytics.unseen_updates || 0 // This needs a separate calculation
+                },
+                // Keep these for the top-level KPI cards, populated from the same analytics view
                 overallInsights: {
-                    total_articles: totalArticles,
-                    total_views_all: totalViews, // ✅ متوافق مع Insights الآن
-                    total_edits: totalEdits,
-                    active_users_this_week: activeUsers
+                    total_articles: analytics.total_articles || 0,
+                    total_views_all: analytics.total_views || 0,
+                    active_users_this_week: analytics.active_users_this_week || 0,
+                    total_edits: analytics.total_edits || 0
                 },
                 feedbackKpis: {
-                    helpful_ratings: helpfulRatings,
-                    not_helpful_ratings: notHelpfulRatings
+                     helpful_ratings: analytics.helpful_ratings || 0
                 },
-                topUsers: topUsers,
-                growthTrends: [],
-                weeklyActivity: weeklyActivity,
-                analyticsData: {
-                    activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
-                    satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
-                    avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
-                    knowledgeGaps: unseenUpdates.length || 0,
-                    performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
-                    engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
-                    contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
-                    resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
-                }
+                growthTrends: [], // Growth trends can be calculated later if needed
             };
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            return {
-                activityLog: [],
+            // Return empty data on error
+            return { 
+                activityLog: [], 
+                topUsers: [], 
+                weeklyActivity: [], 
+                analyticsData: {},
                 overallInsights: {},
                 feedbackKpis: {},
-                topUsers: [],
-                growthTrends: [],
-                analyticsData: {},
-                weeklyActivity: []
+                growthTrends: []
             };
         }
     }
-    // ✅ END: UPDATED fetchDashboardData function
+    // ✅ END: ==================  END OF NEW fetchDashboardData FUNCTION ==================
+    
 
     mermaid.initialize({
         startOnLoad: false,
@@ -2437,8 +2399,9 @@ function renderTopUsers() {
     
     usersHTML += '</ul>';
     
+    // ✅ MODIFICATION: Added icon directly into the h3 tag and removed the ::before CSS pseudo-element
     container.innerHTML = `
-        <h3>Most Active Users This Week</h3>
+        <h3><i class="fas fa-users" style="color: var(--warning);"></i> Most Active Users This Week</h3>
         ${usersHTML}
     `;
 }
@@ -2961,9 +2924,12 @@ function renderDashboardCharts(data) {
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
         
         let content_en = itemData.content_en || '<p>No detailed content available.</p>';
+        
+        // ✅ MODIFICATION: Clear search keyword after using it to prevent sticky highlighting.
         const searchKeyword = localStorage.getItem('lastSearchKeyword');
-        if (searchKeyword) {
+        if (searchKeyword && searchKeyword.length > 0) {
             content_en = highlightKeywordsInHtml(content_en, searchKeyword);
+            localStorage.removeItem('lastSearchKeyword');
         }
 
         const content_ar = itemData.content_ar || '<p style="text-align:right;">لا يتوفر محتوى مفصل.</p>';
@@ -3138,6 +3104,9 @@ function renderDashboardCharts(data) {
     }
     
     function handleNavigation() {
+        // ✅ MODIFICATION: Hide share snippet button on any navigation change.
+        document.getElementById('selection-share-btn').style.display = 'none';
+
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
         
@@ -3536,9 +3505,20 @@ function renderDashboardCharts(data) {
             }, 250);
         });
 
+        // ✅ MODIFICATION: Added scroll listener to hide the share button when the user scrolls.
+        let isScrolling;
+        window.addEventListener('scroll', () => {
+            window.clearTimeout(isScrolling);
+            const shareBtn = document.getElementById('selection-share-btn');
+            if (shareBtn.style.display === 'block') {
+                shareBtn.style.display = 'none';
+            }
+            isScrolling = setTimeout(() => {}, 150);
+        }, false);
+
+
         document.getElementById('selection-share-btn').addEventListener('click', () => {
             openShareSnippetModal();
-            document.getElementById('selection-share-btn').style.display = 'none';
         });
 
         document.getElementById('closeShareSnippetModalBtn').addEventListener('click', () => {
@@ -3575,6 +3555,9 @@ function renderDashboardCharts(data) {
     async function openShareSnippetModal() {
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed) return;
+
+        // Hide the floating button immediately and clear selection after modal opens
+        document.getElementById('selection-share-btn').style.display = 'none';
 
         const snippetHtml = getSelectionHtml();
         const snippetText = selection.toString();
@@ -3629,6 +3612,11 @@ function renderDashboardCharts(data) {
         };
         
         document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
+
+        // Clear the user's text selection after opening the modal
+        if (window.getSelection) {
+            window.getSelection().removeAllRanges();
+        }
     }
 
     async function initializeApp() {
