@@ -193,36 +193,51 @@
             border-bottom: 1px solid var(--border-color); 
             font-size: 13px; 
         }
+        
+        /* === MODAL STYLES UPDATED (WIDER & TALLER) === */
         .modal { 
             position: fixed; inset: 0; z-index: 2000; 
             display: none; align-items: center; justify-content: center; 
             background: rgba(15, 16, 21, .85); backdrop-filter: blur(10px); 
         }
         .modal.show { display: flex; }
+        
         .modal-content { 
             background: var(--bg-card); 
             border-radius: var(--border-radius); 
             padding: 24px; 
+            
+            /* UPDATED DIMENSIONS */
             width: 95%; 
-            max-width: 1100px;
-            max-height: 90vh; 
+            max-width: 1200px;  /* Was 1100px */
+            max-height: 95vh;   /* Was 90vh */
+            
             border: 1px solid var(--border-color); 
             box-shadow: var(--shadow-hover); 
             display: flex; flex-direction: column; 
         }
+        
         .modal-header { 
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--border-color); 
             padding-bottom: 16px; margin-bottom: 16px; 
         }
         .modal .close-btn { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; }
-        .modal-body { overflow-y: auto; padding-right: 10px; }
+        
+        .modal-body { 
+            overflow-y: auto; 
+            padding-right: 10px;
+            /* Ensure body takes up available space */
+            flex-grow: 1;
+        }
+        
         .modal-footer { padding-top: 16px; border-top: 1px solid var(--border-color); margin-top: 16px; }
         .modal-footer textarea {
             width: 100%; min-height: 80px; background: var(--bg-dark); border: 1px solid var(--border-color);
             color: var(--text-light); padding: 10px; border-radius: 6px; resize: vertical;
         }
         
+        /* Existing KB View Styles */
         .kb-content-view {
             font-size: 16px;
             line-height: 1.8;
@@ -302,7 +317,7 @@
         .access-restricted-card h2 { font-size: 1.5rem; margin-bottom: .5rem; color: var(--text-light); }
         .access-restricted-card p { color: var(--text-muted); margin-bottom: 1.5rem; }
         
-        /* === NEW: Styles for the Approval Timeline === */
+        /* === Styles for the Approval Timeline === */
         .approval-timeline {
             margin-top: 1.5rem;
             padding-top: 1.5rem;
@@ -419,7 +434,8 @@
                 <button class="close-btn" data-close-modal>&times;</button>
             </div>
             
-            <div class="modal-body" style="background: var(--bg-dark); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+            <!-- Note: Removed inline style to allow flex-grow from CSS class to work -->
+            <div class="modal-body">
                 <div id="reviewModalBody" class="kb-content-view"></div>
             </div>
 
@@ -436,6 +452,7 @@
         </div>
     </div>
     
+    <!-- Fallback custom lightbox (busy_new.js normally handles this) -->
     <div id="imageLightbox" class="lightbox">
         <button class="close-lightbox" id="closeLightboxBtn">&times;</button>
         <img src="" alt="Enlarged view" id="lightboxImg">
@@ -450,9 +467,12 @@
         </div>
     </div>
 
+    <!-- === CRITICAL ADDITION: Include busy_new.js for Lightbox/Interactivity === -->
+    <script src="busy_new.js" defer></script>
+
     <script type="module">
         // =================================================================
-        // FINAL SCRIPT for KB Approvals (V.FINAL - Correct Table Reference)
+        // FINAL SCRIPT for KB Approvals (V.FINAL - Fixed Layout & JS Init)
         // =================================================================
 
         import { supabase } from './supabase.js'; 
@@ -552,7 +572,7 @@
             });
         }
         
-        // V55 - Step 2: Upgrade the modal to use the professional layout.
+        // V55 - Step 2: Upgrade the modal to use the professional layout and Init JS
         async function openReviewModal(caseId) {
             const currentCase = casesStore.find(c => c.id === caseId);
             if (!currentCase) {
@@ -569,8 +589,7 @@
             modalTitle.textContent = `Reviewing: "${currentCase.title_en}"`;
             
             // === THE CRITICAL CHANGE IS HERE ===
-            // We wrap the content in the same container structure used by your main dashboard.
-            // This allows the 'busy_new.css' styles to apply correctly.
+            // 1. We wrap the content in the proper structure for busy_new.css
             modalBody.innerHTML = `
                 <div class="kb-container">
                     <div class="kb-article">
@@ -579,12 +598,12 @@
                 </div>
             `;
             
-            // After injecting the HTML, re-initialize any scripts that rely on it, like your lightbox.
-            if (window.initBusyNew) {
-                // This assumes your lightbox script is in a function called initBusyNew.
-                // We need to call it again because we've added new images to the page.
+            // 2. RE-INITIALIZE the busy_new.js logic for the lightbox
+            // This makes the images interactive inside the modal
+            if (typeof window.initBusyNew === 'function') {
                 setTimeout(() => {
                     window.initBusyNew();
+                    console.log("BusyNew initialized for modal content.");
                 }, 100); 
             }
 
@@ -602,7 +621,9 @@
             if (!currentCase.approval_group_id) {
                 timelineContainer.innerHTML = '<h4>Approval Status</h4><p><i>(No approval cycle required for this item.)</i></p>';
                 modal.classList.add("show");
-                modal.querySelector('.modal-body').scrollTop = 0;
+                // Scroll to top logic
+                const contentWrapper = modal.querySelector('.modal-body');
+                if(contentWrapper) contentWrapper.scrollTop = 0;
                 return;
             }
             
@@ -662,7 +683,8 @@
             }
             
             modal.classList.add("show");
-            modal.querySelector('.modal-body').scrollTop = 0;
+            const contentWrapper = modal.querySelector('.modal-body');
+            if(contentWrapper) contentWrapper.scrollTop = 0;
         }
 
         async function handleApprove(caseId) {
@@ -782,9 +804,10 @@
                 }
             });
 
+            // Fallback manual lightbox (in case busy_new.js fails or isn't loaded)
             const lightbox = document.getElementById('imageLightbox');
             document.getElementById('reviewModalBody').addEventListener('click', (e) => {
-                if (e.target.tagName === 'IMG') {
+                if (e.target.tagName === 'IMG' && !window.initBusyNew) { // Only run if busy_new IS NOT available
                     document.getElementById('lightboxImg').src = e.target.src;
                     lightbox.classList.add('show');
                 }
