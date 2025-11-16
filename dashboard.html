@@ -87,6 +87,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 <!-- Diff2HTML for Version History -->
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+<!-- Fuse.js for Smart Search -->
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.basic.min.js"></script>
 <!-- ======== MODIFICATION: ADDED LINK TO NEW CSS FILE ======== -->
 <link rel="stylesheet" href="busy_new.css">
 <style>
@@ -1172,69 +1174,379 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
         /* MODIFICATION END */
 
-        /* MODIFICATION START: New Styles for Accordion Search Results */
+        /* ======== IMPROVED SEARCH RESULTS STYLES ======== */
         .search-results-container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
+            animation: fadeIn 0.4s ease-out;
         }
+
         .search-results-header {
             margin-bottom: 2rem;
             font-size: 1.5rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
+
+        .search-results-header mark {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+        }
+
         .search-accordion-item {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             margin-bottom: 1rem;
             overflow: hidden;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
         }
+
+        .search-accordion-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-accent-light);
+        }
+
         .search-accordion-header {
-            padding: 1rem 1.5rem;
+            padding: 1.25rem 1.5rem;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
             transition: background-color 0.2s ease;
+            background: var(--bg-header);
         }
+
         .search-accordion-header:hover {
             background-color: var(--bg-color-hover);
         }
+
         .search-accordion-header h4 {
             margin: 0;
             font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            flex: 1;
         }
+
         .search-accordion-header .match-count {
             font-size: 0.8rem;
-            font-weight: 600;
-            background: var(--primary-accent);
+            font-weight: 700;
+            background: var(--gradient-primary);
             color: white;
-            padding: 0.2rem 0.6rem;
+            padding: 0.3rem 0.7rem;
             border-radius: 20px;
+            min-width: 60px;
+            text-align: center;
         }
+
         .search-accordion-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             background: var(--bg-dark);
         }
+
+        .search-accordion-item.active .search-accordion-content {
+            max-height: 500px;
+        }
+
         .search-accordion-content-inner {
-            padding: 0 1.5rem 1.5rem 1.5rem;
+            padding: 1.5rem;
             border-top: 1px solid var(--border-color);
         }
-        .search-accordion-item.active .search-accordion-content {
-            max-height: 1000px; /* Large enough for content */
-        }
+
         .search-snippet {
             font-size: 0.95rem;
             color: var(--text-muted);
             line-height: 1.7;
-            padding: 1rem;
+            padding: 1rem 0;
             border-bottom: 1px dashed var(--border-color);
+            position: relative;
         }
+
         .search-snippet:last-child {
             border-bottom: none;
         }
-        /* MODIFICATION END */
+
+        .search-snippet mark {
+            background: linear-gradient(120deg, var(--warning) 0%, #ffd666 100%);
+            color: var(--bg-dark);
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(255, 196, 84, 0.3);
+        }
+
+        .search-snippet-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .search-snippet-actions .button {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.9rem;
+        }
+
+        /* ======== IMPROVED SHARE MODAL STYLES ======== */
+        #shareSnippetModalOverlay .modal-content {
+            max-width: 48rem;
+            background: linear-gradient(160deg, var(--bg-card) 0%, #111319 100%);
+            border: 1px solid var(--primary-accent-light);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        #shareSnippetModalOverlay .modal-header {
+            background: linear-gradient(135deg, var(--bg-header) 0%, var(--bg-card) 100%);
+            border-bottom: 1px solid var(--primary-accent-light);
+        }
+
+        #shareSnippetModalOverlay .modal-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-light);
+            font-size: 1.5rem;
+        }
+
+        #shareSnippetModalOverlay .modal-header h2 i {
+            color: var(--primary-accent-light);
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #snippetPreviewContainer {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-height: 250px;
+            overflow-y: auto;
+            color: var(--text-light);
+            line-height: 1.7;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+            font-size: 0.95rem;
+        }
+
+        #snippetPreviewContainer::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #snippetPreviewContainer::-webkit-scrollbar-thumb {
+            background: var(--primary-accent);
+            border-radius: 3px;
+        }
+
+        .share-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .share-section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary-accent-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .share-link-input-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        #shareSnippetLinkInput {
+            flex-grow: 1;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            font-size: 0.875rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-family: monospace;
+        }
+
+        #shareSnippetLinkInput:focus {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.2);
+            outline: none;
+        }
+
+        .share-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+
+        .share-action-button {
+            background: var(--bg-header);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--shadow);
+            min-height: 80px;
+            justify-content: center;
+        }
+
+        .share-action-button:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary-accent);
+            background: rgba(108, 93, 211, 0.1);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .share-action-button i {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(108, 93, 211, 0.1);
+        }
+
+        .share-action-button.whatsapp {
+            background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
+            border-color: #128C7E;
+            color: white;
+        }
+
+        .share-action-button.whatsapp:hover {
+            background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
+            border-color: #075E54;
+        }
+
+        .share-action-button.email {
+            background: linear-gradient(135deg, #EA4335 0%, #D14836 100%);
+            border-color: #EA4335;
+            color: white;
+        }
+
+        .share-action-button.email:hover {
+            background: linear-gradient(135deg, #D14836 0%, #EA4335 100%);
+            border-color: #D14836;
+        }
+
+        /* ======== IMPROVED TOP USERS STYLES ======== */
+        #topUsersContainer h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1.5rem 0;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-light);
+        }
+
+        #topUsersContainer h3::before {
+            content: '\f005';
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: var(--warning);
+            background: rgba(255, 196, 84, 0.1);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* ======== CARD INTERACTION IMPROVEMENTS ======== */
+        .card {
+            position: relative;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .card:hover .card-actions {
+            opacity: 1;
+        }
+
+        /* منع فتح العنصر عند الضغط على الأزرار */
+        .card-actions button {
+            pointer-events: auto;
+        }
+
+        /* ======== KEYBOARD NAVIGATION FOR SEARCH ======== */
+        .search-result-focused {
+            background: rgba(108, 93, 211, 0.1) !important;
+            border-color: var(--primary-accent) !important;
+            transform: scale(1.02);
+        }
+
+        /* ======== MICRO-INTERACTIONS ======== */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(108, 93, 211, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(108, 93, 211, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(108, 93, 211, 0); }
+        }
+
+        .copy-success {
+            animation: pulse-glow 0.6s ease;
+        }
+
+        /* ======== LOADING STATES ======== */
+        .search-loading {
+            opacity: 0.7;
+            pointer-events: none;
+            position: relative;
+        }
+
+        .search-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-accent);
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
 
         /* MODIFICATION START: New Styles for Approval Workflow Toggle */
         .approval-workflow-container {
@@ -1298,128 +1610,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
         .approval-switch input:checked + .slider { background-color: var(--success); }
         .approval-switch input:checked + .slider:before { transform: translateX(22px); }
-        /* MODIFICATION END */
-
-        /* MODIFICATION START: Complete Redesign for Share Snippet Modal */
-        #shareSnippetModalOverlay .modal-content {
-            max-width: 42rem; /* A bit wider for better layout */
-            background: linear-gradient(160deg, var(--bg-card) 0%, #111319 100%);
-        }
-        #shareSnippetModalOverlay .modal-header h2 {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: var(--text-light);
-        }
-        #shareSnippetModalOverlay .modal-header h2 i {
-            color: var(--primary-accent-light);
-        }
-        #shareSnippetModalOverlay .modal-body {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem; /* Increased gap between sections */
-            padding-top: 1.5rem;
-        }
-        .share-section {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .share-section-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        #snippetPreviewContainer {
-            background-color: rgba(0,0,0,0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            max-height: 200px;
-            overflow-y: auto;
-            color: var(--text-light);
-            line-height: 1.7;
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
-        }
-        /* Style the content inside the preview */
-        #snippetPreviewContainer p, #snippetPreviewContainer li {
-            margin-bottom: 1em;
-        }
-        #snippetPreviewContainer img {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 0.5rem;
-            border: 1px solid var(--border-color);
-        }
-        .share-link-input-wrapper {
-            display: flex;
-            gap: 0.75rem;
-        }
-        #shareSnippetLinkInput {
-            flex-grow: 1;
-            background-color: var(--bg-dark);
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-        #shareSnippetLinkInput:focus {
-            color: var(--text-light);
-            border-color: var(--primary-accent);
-        }
-        .share-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 0.75rem;
-        }
-        .share-action-button {
-            background: var(--bg-header);
-            color: var(--text-light);
-            border: 1px solid var(--border-color);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: var(--transition);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            box-shadow: none;
-        }
-        .share-action-button:hover {
-            transform: translateY(-2px);
-            border-color: var(--primary-accent);
-            color: var(--primary-accent-light);
-            background: rgba(108, 93, 211, 0.1);
-        }
-        .share-action-button i {
-            font-size: 1.1em;
-            width: 20px;
-            text-align: center;
-        }
-        .share-action-button.whatsapp {
-            background: #128C7E; /* WhatsApp green */
-            border-color: #128C7E;
-            color: white;
-        }
-        .share-action-button.whatsapp:hover {
-            background: #075E54;
-            border-color: #075E54;
-            color: white;
-        }
         /* MODIFICATION END */
 
 </style>
@@ -1590,8 +1780,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <div class="share-actions-grid">
                     <button class="share-action-button" id="copySnippetTextBtn"><i class="fas fa-quote-left"></i> Copy as Text</button>
                     <button class="share-action-button" id="copySnippetHtmlBtn"><i class="fas fa-code"></i> Copy as HTML</button>
-                    <a id="shareSnippetEmailBtn" class="share-action-button"><i class="fas fa-envelope"></i> Share via Email</a>
-                    <a id="shareSnippetWhatsAppBtn" class="share-action-button whatsapp" target="_blank"><i class="fab fa-whatsapp"></i> Share on WhatsApp</a>
+                    <button class="share-action-button email" id="shareSnippetEmailBtn"><i class="fas fa-envelope"></i> Share via Email</button>
+                    <button class="share-action-button whatsapp" id="shareSnippetWhatsAppBtn"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
                 </div>
             </div>
 
@@ -1971,6 +2161,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     let mainQuillEditor;
     let currentUser = null;
     let currentOpenItem = null;
+    let fuse = null;
     
     let activityChartInstance;
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [], analyticsData: {} };
@@ -2156,6 +2347,296 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         });
     }
     
+    // ======== IMPROVED SEARCH SYSTEM ========
+    function initializeSearchEngine() {
+        const allItems = kbSystemData.sections.flatMap(s => 
+            s.items.map(i => ({
+                ...i,
+                sectionName: s.name,
+                sectionSlug: s.slug,
+                contentPlain: stripHtml(i.content_en || '')
+            }))
+        );
+
+        fuse = new Fuse(allItems, {
+            keys: [
+                { name: 'title_en', weight: 0.4 },
+                { name: 'contentPlain', weight: 0.4 },
+                { name: 'description_en', weight: 0.2 }
+            ],
+            threshold: 0.3,
+            includeMatches: true,
+            minMatchCharLength: 2,
+            ignoreLocation: true,
+            distance: 100
+        });
+    }
+
+    function extractSnippet(content, term, maxLength = 160) {
+        if (!content) return '';
+        
+        const lowerContent = content.toLowerCase();
+        const lowerTerm = term.toLowerCase();
+        const termIndex = lowerContent.indexOf(lowerTerm);
+        
+        if (termIndex === -1) {
+            return truncateText(content, maxLength);
+        }
+        
+        const start = Math.max(0, termIndex - 40);
+        const end = Math.min(content.length, termIndex + term.length + 120);
+        
+        let snippet = content.substring(start, end);
+        
+        // إضافة علامات القطع إذا لزم الأمر
+        if (start > 0) snippet = '... ' + snippet;
+        if (end < content.length) snippet = snippet + ' ...';
+        
+        // تمييز كلمات البحث
+        const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        snippet = snippet.replace(regex, '<mark>$1</mark>');
+        
+        return snippet;
+    }
+
+    function renderSearchResults(results, query) {
+        const resultsByItem = results.reduce((acc, result) => {
+            const item = result.item;
+            if (!acc[item.id]) {
+                acc[item.id] = {
+                    item: item,
+                    matches: [],
+                    bestSnippet: ''
+                };
+            }
+            
+            // إيجاد أفضل snippet بناءً على التطابقات
+            const contentMatches = result.matches?.filter(m => m.key === 'contentPlain') || [];
+            if (contentMatches.length > 0) {
+                const firstMatch = contentMatches[0];
+                const snippet = extractSnippet(item.contentPlain, query);
+                if (snippet.length > acc[item.id].bestSnippet.length) {
+                    acc[item.id].bestSnippet = snippet;
+                }
+            }
+            
+            acc[item.id].matches.push(result);
+            return acc;
+        }, {});
+
+        const resultValues = Object.values(resultsByItem);
+
+        let resultsHTML = `
+            <div class="search-results-container">
+                <h3 class="search-results-header">
+                    <i class="fas fa-search"></i>
+                    Found ${resultValues.length} result(s) for "<mark>${escapeHTML(query)}</mark>"
+                </h3>
+                <div id="searchAccordionContainer">
+        `;
+
+        if (resultValues.length > 0) {
+            resultValues.forEach(({ item, matches, bestSnippet }) => {
+                const matchCount = matches.reduce((total, match) => 
+                    total + (match.matches?.length || 0), 0
+                );
+                
+                resultsHTML += `
+                    <div class="search-accordion-item" data-item-id="${item.id}" data-section-slug="${item.sectionSlug}">
+                        <div class="search-accordion-header">
+                            <h4>${highlightText(item.title_en, query)}</h4>
+                            <span class="match-count">${matchCount} ${matchCount === 1 ? 'match' : 'matches'}</span>
+                        </div>
+                        <div class="search-accordion-content">
+                            <div class="search-accordion-content-inner">
+                                <div class="search-snippet">
+                                    ${bestSnippet || 'No preview available'}
+                                </div>
+                                <div class="search-snippet-actions">
+                                    <button class="button" onclick="viewFullItem('${item.sectionSlug}', '${item.slug}')">
+                                        <i class="fas fa-external-link-alt"></i> View Full Context
+                                    </button>
+                                    <button class="button button-secondary" onclick="shareSearchResult('${item.id}', '${escapeHTML(query)}')">
+                                        <i class="fas fa-share-alt"></i> Share This Result
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            resultsHTML += `
+                <div class="card" style="text-align: center; padding: 3rem;">
+                    <i class="fas fa-search" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-muted); margin-bottom: 1rem;">No results found</h3>
+                    <p style="color: var(--text-muted);">Try different keywords or check your spelling</p>
+                </div>
+            `;
+        }
+        
+        resultsHTML += '</div></div>';
+
+        standardSectionContentPlaceholder.innerHTML = resultsHTML;
+        itemDetailViewPlaceholder.classList.add('hidden');
+        dashboardOverviewContainer.classList.add('hidden');
+        standardSectionContentPlaceholder.classList.remove('hidden');
+
+        // إضافة event listeners للـ accordion
+        initializeSearchAccordion();
+    }
+
+    function initializeSearchAccordion() {
+        const accordionItems = document.querySelectorAll('.search-accordion-item');
+        
+        accordionItems.forEach(item => {
+            const header = item.querySelector('.search-accordion-header');
+            const content = item.querySelector('.search-accordion-content');
+            
+            header.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return; // تجاهل النقر على الأزرار
+                
+                const isActive = item.classList.contains('active');
+                
+                // إغلاق جميع العناصر الأخرى
+                accordionItems.forEach(otherItem => {
+                    if (otherItem !== item) {
+                        otherItem.classList.remove('active');
+                    }
+                });
+                
+                // تبديل الحالة الحالية
+                item.classList.toggle('active', !isActive);
+            });
+        });
+    }
+
+    // ======== IMPROVED SHARE FUNCTIONALITY ========
+    function getSelectionHtml() {
+        let html = "";
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+            const container = document.createElement("div");
+            for (let i = 0, len = sel.rangeCount; i < len; ++i) {
+                container.appendChild(sel.getRangeAt(i).cloneContents());
+            }
+            // Ensure image URLs are absolute for external use (like email)
+            container.querySelectorAll('img').forEach(img => {
+                img.src = new URL(img.getAttribute('src'), window.location.href).href;
+            });
+            html = container.innerHTML;
+        }
+        return html;
+    }
+
+    function openShareSnippetModal() {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed) {
+            showToast('Please select some text to share', 'info');
+            return;
+        }
+
+        const snippetHtml = getSelectionHtml();
+        const snippetText = selection.toString().trim();
+        
+        if (snippetText.length < 10) {
+            showToast('Please select more text to share', 'info');
+            return;
+        }
+
+        const previewContainer = document.getElementById('snippetPreviewContainer');
+        previewContainer.innerHTML = snippetHtml || '<p style="color: var(--text-muted);">Could not load preview.</p>';
+
+        const range = selection.getRangeAt(0);
+        let startNode = range.startContainer;
+        if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentNode;
+        
+        let anchorElement = startNode.closest('.shareable-content > *[id]');
+        if (!anchorElement) {
+             anchorElement = document.querySelector('.shareable-content > *');
+        }
+
+        let link = window.location.href.split('#')[0];
+        if (anchorElement && currentOpenItem) {
+            const itemData = findItem(currentOpenItem.itemId);
+            // Use the anchor's ID if it exists, otherwise, just link to the case
+            const sectionId = anchorElement.id ? `&section=${anchorElement.id}` : '';
+            link = `${window.location.origin}${window.location.pathname}#case=${itemData.id}${sectionId}`;
+        }
+        
+        // --- Setup Actions ---
+
+        document.getElementById('shareSnippetLinkInput').value = link;
+        document.getElementById('copySnippetLinkBtn').onclick = () => {
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('Direct link copied!', 'success');
+                document.getElementById('copySnippetLinkBtn').classList.add('copy-success');
+                setTimeout(() => document.getElementById('copySnippetLinkBtn').classList.remove('copy-success'), 600);
+            });
+        };
+
+        document.getElementById('copySnippetTextBtn').onclick = () => {
+            navigator.clipboard.writeText(snippetText).then(() => {
+                showToast('Snippet copied as plain text!', 'success');
+                document.getElementById('copySnippetTextBtn').classList.add('copy-success');
+                setTimeout(() => document.getElementById('copySnippetTextBtn').classList.remove('copy-success'), 600);
+            });
+        };
+        
+        document.getElementById('copySnippetHtmlBtn').onclick = () => {
+            navigator.clipboard.writeText(snippetHtml).then(() => {
+                showToast('Snippet copied as HTML!', 'success');
+                document.getElementById('copySnippetHtmlBtn').classList.add('copy-success');
+                setTimeout(() => document.getElementById('copySnippetHtmlBtn').classList.remove('copy-success'), 600);
+            });
+        };
+
+        document.getElementById('shareSnippetEmailBtn').onclick = () => {
+            const subject = `InfiniBase KB: ${currentOpenItem.title}`;
+            const body = `
+                <p>Hello,</p>
+                <p>Please find a snippet below:</p>
+                <div style="padding:10px;border-radius:8px;background:#f7f7f7">${snippetHtml}</div>
+                <p>View full context: <a href="${link}">${link}</a></p>
+            `;
+            const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.open(mailto, '_blank');
+        };
+
+        document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
+            const shortLink = link; // optionally replace with a short link
+            const whatsAppText = `*InfiniBase Knowledge Snippet*\n\n---\n_${snippetText.trim()}_\n---\n\nView full context: ${shortLink}`;
+            const wa = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsAppText)}`;
+            window.open(wa, '_blank');
+        };
+        
+        document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
+    }
+
+    window.viewFullItem = function(sectionSlug, itemSlug) {
+        window.location.hash = `#${sectionSlug}/${itemSlug}`;
+    };
+
+    window.shareSearchResult = function(itemId, query) {
+        const item = findItem(itemId);
+        if (item) {
+            const snippet = extractSnippet(stripHtml(item.content_en), query);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = snippet;
+            const selection = {
+                toString: () => tempDiv.textContent,
+                rangeCount: 1,
+                getRangeAt: () => ({})
+            };
+            
+            // Simulate selection for sharing
+            window.getSelection = () => selection;
+            currentOpenItem = { itemId: item.id, title: item.title_en };
+            
+            openShareSnippetModal();
+        }
+    };
+    
     async function loadAndStructureData() {
         const [categories, articles] = await Promise.all([
             fetchSubCategories(),
@@ -2177,6 +2658,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         });
         
         kbSystemData.sections = sections;
+        initializeSearchEngine();
     }
     
     function populateSidebar() {
@@ -2280,7 +2762,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         const fullDescription = stripHtml(item.description_en);
 
         return `
-            <div class="card" data-item-id="${item.id}" data-section-id="${sectionData.id}" onclick="window.location.hash='#${sectionData.slug}/${item.slug}'" style="cursor: pointer;">
+            <div class="card" data-item-id="${item.id}" data-section-slug="${sectionData.slug}" data-item-slug="${item.slug}" style="cursor: pointer;">
                 <div class="card-header-icon">
                     <div style="flex: 1; display: flex; align-items: center; min-width: 0;">
                         <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
@@ -3295,80 +3777,6 @@ function renderDashboardCharts(data) {
         label.style.color = finalState ? 'var(--success)' : 'var(--text-muted)';
     }
 
-    // MODIFICATION START: New functions for Accordion Search
-    function renderSearchResults(results, query) {
-        const resultsByItem = results.reduce((acc, snippet) => {
-            if (!acc[snippet.item.id]) {
-                acc[snippet.item.id] = {
-                    item: snippet.item,
-                    snippets: []
-                };
-            }
-            acc[snippet.item.id].snippets.push(snippet.html);
-            return acc;
-        }, {});
-
-        const resultValues = Object.values(resultsByItem);
-
-        let resultsHTML = `
-            <div class="search-results-container">
-                <h3 class="search-results-header">Found ${resultValues.length} article(s) matching "<mark>${escapeHTML(query)}</mark>"</h3>
-                <div id="searchAccordionContainer">
-        `;
-
-        if (resultValues.length > 0) {
-            resultValues.forEach(({ item, snippets }) => {
-                resultsHTML += `
-                    <div class="search-accordion-item">
-                        <div class="search-accordion-header">
-                            <h4>${highlightText(item.title_en, query)}</h4>
-                            <span class="match-count">${snippets.length} ${snippets.length > 1 ? 'matches' : 'match'}</span>
-                        </div>
-                        <div class="search-accordion-content">
-                            <div class="search-accordion-content-inner">
-                                ${snippets.map(snippet => `<div class="search-snippet">${snippet}</div>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            resultsHTML += `<div class="card" style="text-align: center;"><p>No results found for "${escapeHTML(query)}".</p></div>`;
-        }
-        resultsHTML += '</div></div>';
-
-        standardSectionContentPlaceholder.innerHTML = resultsHTML;
-        itemDetailViewPlaceholder.classList.add('hidden');
-        dashboardOverviewContainer.classList.add('hidden');
-        standardSectionContentPlaceholder.classList.remove('hidden');
-
-        document.getElementById('searchAccordionContainer').addEventListener('click', (e) => {
-            const header = e.target.closest('.search-accordion-header');
-            if (header) {
-                const item = header.parentElement;
-                item.classList.toggle('active');
-            }
-        });
-    }
-
-    function findSnippetsInItem(item, query) {
-        const snippets = [];
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = item.content_en;
-        const elements = tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, td');
-        
-        elements.forEach(el => {
-            if (el.textContent.toLowerCase().includes(query.toLowerCase())) {
-                snippets.push({
-                    item: item,
-                    html: highlightKeywordsInHtml(el.outerHTML, query)
-                });
-            }
-        });
-        return snippets;
-    }
-    // MODIFICATION END
-
     function setupEventListeners() {
         window.addEventListener('hashchange', handleNavigation);
         
@@ -3500,6 +3908,18 @@ function renderDashboardCharts(data) {
             }
         });
 
+        // Improved card click handling
+        document.addEventListener('click', (e) => {
+            const card = e.target.closest('.card');
+            if (card && !e.target.closest('.card-actions button')) {
+                const sectionSlug = card.dataset.sectionSlug;
+                const itemSlug = card.dataset.itemSlug;
+                if (sectionSlug && itemSlug) {
+                    window.location.hash = `#${sectionSlug}/${itemSlug}`;
+                }
+            }
+        });
+
         pageContentArea.addEventListener('click', async (e) => {
             if (!currentOpenItem) return;
             const itemData = findItem(currentOpenItem.itemId);
@@ -3533,12 +3953,13 @@ function renderDashboardCharts(data) {
                 return;
             }
 
-            const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
-            let allSnippets = [];
-            allItems.forEach(item => {
-                allSnippets = allSnippets.concat(findSnippetsInItem(item, query));
-            });
-            renderSearchResults(allSnippets, query);
+            if (!fuse) {
+                showToast('Search engine not ready yet', 'info');
+                return;
+            }
+
+            const results = fuse.search(query, { limit: 20 });
+            renderSearchResults(results, query);
         });
 
         document.addEventListener('click', e => {
@@ -3591,91 +4012,6 @@ function renderDashboardCharts(data) {
         supabase.channel('public:cases').on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, reloadAndRender).subscribe();
         supabase.channel('public:app_settings').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_settings' }, setupApprovalToggle).subscribe();
     }
-    
-    // MODIFICATION START: Function to get selected content as HTML
-    function getSelectionHtml() {
-        let html = "";
-        const sel = window.getSelection();
-        if (sel.rangeCount) {
-            const container = document.createElement("div");
-            for (let i = 0, len = sel.rangeCount; i < len; ++i) {
-                container.appendChild(sel.getRangeAt(i).cloneContents());
-            }
-            // Ensure image URLs are absolute for external use (like email)
-            container.querySelectorAll('img').forEach(img => {
-                img.src = new URL(img.getAttribute('src'), window.location.href).href;
-            });
-            html = container.innerHTML;
-        }
-        return html;
-    }
-    // MODIFICATION END
-
-    // MODIFICATION START: Revamped Share Snippet Modal Logic
-    function openShareSnippetModal() {
-        const selection = window.getSelection();
-        if (!selection || selection.isCollapsed) return;
-
-        const snippetHtml = getSelectionHtml();
-        const snippetText = selection.toString();
-        
-        const previewContainer = document.getElementById('snippetPreviewContainer');
-        previewContainer.innerHTML = snippetHtml || '<p>Could not load preview.</p>';
-
-        const range = selection.getRangeAt(0);
-        let startNode = range.startContainer;
-        if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentNode;
-        
-        let anchorElement = startNode.closest('.shareable-content > *[id]');
-        if (!anchorElement) {
-             anchorElement = document.querySelector('.shareable-content > *');
-        }
-
-        let link = window.location.href.split('#')[0];
-        if (anchorElement && currentOpenItem) {
-            const itemData = findItem(currentOpenItem.itemId);
-            // Use the anchor's ID if it exists, otherwise, just link to the case
-            const sectionId = anchorElement.id ? `&section=${anchorElement.id}` : '';
-            link = `${window.location.origin}${window.location.pathname}#case=${itemData.id}${sectionId}`;
-        }
-        
-        // --- Setup Actions ---
-
-        document.getElementById('shareSnippetLinkInput').value = link;
-        document.getElementById('copySnippetLinkBtn').onclick = () => {
-            navigator.clipboard.writeText(link).then(() => showToast('Direct link copied!', 'success'));
-        };
-
-        document.getElementById('copySnippetTextBtn').onclick = () => {
-            navigator.clipboard.writeText(snippetText).then(() => showToast('Snippet copied as plain text!', 'success'));
-        };
-        
-        document.getElementById('copySnippetHtmlBtn').onclick = () => {
-            navigator.clipboard.writeText(snippetHtml).then(() => showToast('Snippet copied as HTML!', 'success'));
-        };
-
-        const emailSubject = `InfiniBase KB: ${currentOpenItem.title}`;
-        const emailBody = `
-            <p>Hello,</p>
-            <p>Please find below a relevant snippet from our knowledge base:</p>
-            <hr>
-            <div style="background-color:#f0f2f5; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; color: #111;">
-                ${snippetHtml}
-            </div>
-            <hr>
-            <p>For full context, please visit the original article here:<br>
-            <a href="${link}">${link}</a></p>
-            <p>Thank you,<br>InfiniBase System</p>
-        `;
-        document.getElementById('shareSnippetEmailBtn').href = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-
-        const whatsAppText = `*InfiniBase Knowledge Snippet*\n\n---\n_${snippetText.trim()}_ \n---\n\n*View full context:*\n${link}`;
-        document.getElementById('shareSnippetWhatsAppBtn').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsAppText)}`;
-        
-        document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
-    }
-    // MODIFICATION END
-
 
     async function initializeApp() {
         try {
