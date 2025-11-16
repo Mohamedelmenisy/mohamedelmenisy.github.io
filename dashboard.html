@@ -490,6 +490,13 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         #topUsersContainer {
             padding: 1.5rem;
         }
+        /* MODIFICATION START: Improved styles for Most Active Users heading */
+        #topUsersContainer h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* Space between icon and text */
+        }
+        /* MODIFICATION END */
         .top-users-list {
             list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; max-height: 300px;
         }
@@ -1590,8 +1597,8 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <div class="share-actions-grid">
                     <button class="share-action-button" id="copySnippetTextBtn"><i class="fas fa-quote-left"></i> Copy as Text</button>
                     <button class="share-action-button" id="copySnippetHtmlBtn"><i class="fas fa-code"></i> Copy as HTML</button>
-                    <a id="shareSnippetEmailBtn" class="share-action-button"><i class="fas fa-envelope"></i> Share via Email</a>
-                    <a id="shareSnippetWhatsAppBtn" class="share-action-button whatsapp" target="_blank"><i class="fab fa-whatsapp"></i> Share on WhatsApp</a>
+                    <button class="share-action-button" id="shareSnippetEmailBtn"><i class="fas fa-envelope"></i> Share via Email</button>
+                    <button class="share-action-button whatsapp" id="shareSnippetWhatsAppBtn"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
                 </div>
             </div>
 
@@ -1738,6 +1745,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 <button id="selection-share-btn" style="display: none;"><i class="fas fa-share-alt"></i> Share Snippet</button>
 
 
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 <script type="module">
     // =================================================================================
     // SUPABASE & APP LOGIC
@@ -1971,6 +1979,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     let mainQuillEditor;
     let currentUser = null;
     let currentOpenItem = null;
+    let fuseSearch = null; // MODIFICATION: Added for Fuse.js instance
     
     let activityChartInstance;
     let dashboardData = { activityLog: [], overallInsights: {}, growthTrends: [], weeklyActivity: [], feedbackKpis: {}, topUsers: [], analyticsData: {} };
@@ -2162,13 +2171,19 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             fetchArticles()
         ]);
 
+        // MODIFICATION: Add plain text content for search indexing
+        const articlesWithPlainText = articles.map(article => ({
+            ...article,
+            content_en_plain: stripHtml(article.content_en)
+        }));
+
         const sections = categories.map(cat => ({
             ...cat,
             slug: createSlug(cat.name),
             items: []
         }));
 
-        articles.forEach(article => {
+        articlesWithPlainText.forEach(article => {
             const parentSection = sections.find(s => s.id === article.sub_category_id);
             if (parentSection) {
                 article.slug = article.slug || createSlug(article.title_en);
@@ -2177,6 +2192,23 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         });
         
         kbSystemData.sections = sections;
+
+        // MODIFICATION: Initialize Fuse.js search index
+        const allItemsForSearch = kbSystemData.sections.flatMap(s => s.items.map(i => ({
+            id: i.id,
+            title_en: i.title_en,
+            content_en_plain: i.content_en_plain,
+            slug: i.slug,
+            sectionSlug: s.slug
+        })));
+        
+        fuseSearch = new Fuse(allItemsForSearch, {
+            keys: ['title_en', 'content_en_plain'],
+            includeMatches: true,
+            minMatchCharLength: 2,
+            threshold: 0.4,
+            ignoreLocation: true,
+        });
     }
     
     function populateSidebar() {
@@ -2405,7 +2437,7 @@ function renderTopUsers() {
     container.innerHTML = `
         <h3>
             <i class="fas fa-fire" style="color: var(--warning);"></i>
-            Most Active Users This Week
+            <span>Most Active Users This Week</span>
         </h3>
         ${usersHTML}
     `;
@@ -3064,6 +3096,17 @@ function renderDashboardCharts(data) {
         
         itemDetailViewPlaceholder.innerHTML = detailHTML;
 
+        // MODIFICATION: Add unique IDs to content elements for deep linking
+        const contentContainer = itemDetailViewPlaceholder.querySelector('.shareable-content');
+        if (contentContainer) {
+            const elementsToId = contentContainer.querySelectorAll('p, li, h1, h2, h3, h4, tr, div:not([class])');
+            elementsToId.forEach((el, index) => {
+                if (!el.id) {
+                    el.id = `content-p-${index}`;
+                }
+            });
+        }
+
         if (deeplinkParams?.paragraphId) {
             setTimeout(() => {
                 const targetElement = document.getElementById(deeplinkParams.paragraphId);
@@ -3205,22 +3248,25 @@ function renderDashboardCharts(data) {
         if (!currentUser) return;
         const hash = window.location.hash.substring(1) || 'home';
         
-        const params = new URLSearchParams(hash);
+        // MODIFICATION: Improved hash parsing for deep linking
+        const [path, queryParams] = hash.split('?');
+        const params = new URLSearchParams(queryParams);
         const deeplinkCaseId = params.get('case');
         const deeplinkParagraphId = params.get('section');
         
-        if (deeplinkCaseId && deeplinkParagraphId) {
+        if (deeplinkCaseId) {
             const itemData = findItem(deeplinkCaseId);
             if (itemData) {
                 highlightSidebarLink(itemData.sectionSlug);
                 displayItemDetail(itemData.sectionSlug, itemData.slug, { caseId: deeplinkCaseId, paragraphId: deeplinkParagraphId });
             } else {
+                 // Fallback if item not found
                 displayDashboard();
             }
             return;
         }
         
-        const [sectionSlug, itemSlug] = hash.split('/');
+        const [sectionSlug, itemSlug] = path.split('/');
         
         highlightSidebarLink(sectionSlug);
 
@@ -3297,14 +3343,28 @@ function renderDashboardCharts(data) {
 
     // MODIFICATION START: New functions for Accordion Search
     function renderSearchResults(results, query) {
-        const resultsByItem = results.reduce((acc, snippet) => {
-            if (!acc[snippet.item.id]) {
-                acc[snippet.item.id] = {
-                    item: snippet.item,
+        const resultsByItem = results.reduce((acc, result) => {
+            const itemId = result.item.id;
+            if (!acc[itemId]) {
+                acc[itemId] = {
+                    item: result.item,
                     snippets: []
                 };
             }
-            acc[snippet.item.id].snippets.push(snippet.html);
+            // Extract snippet
+            const match = result.matches.find(m => m.key === 'content_en_plain');
+            if (match) {
+                match.indices.forEach(([start, end]) => {
+                    const text = result.item.content_en_plain;
+                    const snippetStart = Math.max(0, start - 50);
+                    const snippetEnd = Math.min(text.length, end + 80);
+                    let snippet = text.substring(snippetStart, snippetEnd);
+                    snippet = highlightText(snippet, query);
+                    acc[itemId].snippets.push(
+                        (snippetStart > 0 ? '... ' : '') + snippet + (snippetEnd < text.length ? ' ...' : '')
+                    );
+                });
+            }
             return acc;
         }, {});
 
@@ -3313,20 +3373,20 @@ function renderDashboardCharts(data) {
         let resultsHTML = `
             <div class="search-results-container">
                 <h3 class="search-results-header">Found ${resultValues.length} article(s) matching "<mark>${escapeHTML(query)}</mark>"</h3>
-                <div id="searchAccordionContainer">
-        `;
+                <div id="searchAccordionContainer">`;
 
         if (resultValues.length > 0) {
             resultValues.forEach(({ item, snippets }) => {
+                const uniqueSnippets = [...new Set(snippets)];
                 resultsHTML += `
                     <div class="search-accordion-item">
                         <div class="search-accordion-header">
-                            <h4>${highlightText(item.title_en, query)}</h4>
-                            <span class="match-count">${snippets.length} ${snippets.length > 1 ? 'matches' : 'match'}</span>
+                            <h4><a href="#${item.sectionSlug}/${item.slug}" style="color: inherit; text-decoration: none;">${highlightText(item.title_en, query)}</a></h4>
+                            <span class="match-count">${uniqueSnippets.length} ${uniqueSnippets.length > 1 ? 'matches' : 'match'}</span>
                         </div>
                         <div class="search-accordion-content">
                             <div class="search-accordion-content-inner">
-                                ${snippets.map(snippet => `<div class="search-snippet">${snippet}</div>`).join('')}
+                                ${uniqueSnippets.map(snippet => `<div class="search-snippet">${snippet}</div>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -3342,30 +3402,13 @@ function renderDashboardCharts(data) {
         dashboardOverviewContainer.classList.add('hidden');
         standardSectionContentPlaceholder.classList.remove('hidden');
 
-        document.getElementById('searchAccordionContainer').addEventListener('click', (e) => {
+        document.getElementById('searchAccordionContainer')?.addEventListener('click', (e) => {
             const header = e.target.closest('.search-accordion-header');
-            if (header) {
+            if (header && !e.target.closest('a')) { // Don't toggle if clicking the title link
                 const item = header.parentElement;
                 item.classList.toggle('active');
             }
         });
-    }
-
-    function findSnippetsInItem(item, query) {
-        const snippets = [];
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = item.content_en;
-        const elements = tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, td');
-        
-        elements.forEach(el => {
-            if (el.textContent.toLowerCase().includes(query.toLowerCase())) {
-                snippets.push({
-                    item: item,
-                    html: highlightKeywordsInHtml(el.outerHTML, query)
-                });
-            }
-        });
-        return snippets;
     }
     // MODIFICATION END
 
@@ -3522,23 +3565,23 @@ function renderDashboardCharts(data) {
             }
         });
         
+        let searchTimeout;
         globalSearchInput.addEventListener('input', () => {
-            const query = globalSearchInput.value.trim();
-            localStorage.setItem('lastSearchKeyword', query.length >= 2 ? query : '');
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const query = globalSearchInput.value.trim();
+                localStorage.setItem('lastSearchKeyword', query.length >= 2 ? query : '');
 
-            if (query.length < 2) {
-                if (document.querySelector('.search-results-container')) {
-                    handleNavigation();
+                if (query.length < 2) {
+                    if (document.querySelector('.search-results-container')) {
+                        handleNavigation();
+                    }
+                    return;
                 }
-                return;
-            }
+                const results = fuseSearch.search(query);
+                renderSearchResults(results, query);
 
-            const allItems = kbSystemData.sections.flatMap(s => s.items.map(i => ({...i, sectionName: s.name, sectionSlug: s.slug })));
-            let allSnippets = [];
-            allItems.forEach(item => {
-                allSnippets = allSnippets.concat(findSnippetsInItem(item, query));
-            });
-            renderSearchResults(allSnippets, query);
+            }, 250); // Debounce search input
         });
 
         document.addEventListener('click', e => {
@@ -3627,21 +3670,19 @@ function renderDashboardCharts(data) {
         if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentNode;
         
         let anchorElement = startNode.closest('.shareable-content > *[id]');
-        if (!anchorElement) {
-             anchorElement = document.querySelector('.shareable-content > *');
-        }
-
-        let link = window.location.href.split('#')[0];
-        if (anchorElement && currentOpenItem) {
+        
+        let link = window.location.href.split('?')[0].split('#')[0]; // Base URL
+        if (currentOpenItem) {
             const itemData = findItem(currentOpenItem.itemId);
-            // Use the anchor's ID if it exists, otherwise, just link to the case
-            const sectionId = anchorElement.id ? `&section=${anchorElement.id}` : '';
-            link = `${window.location.origin}${window.location.pathname}#case=${itemData.id}${sectionId}`;
+            const sectionId = anchorElement?.id ? `&section=${anchorElement.id}` : '';
+            link = `${window.location.origin}${window.location.pathname}#?case=${itemData.id}${sectionId}`;
         }
         
         // --- Setup Actions ---
+        const shareLinkInput = document.getElementById('shareSnippetLinkInput');
+        shareLinkInput.value = link;
 
-        document.getElementById('shareSnippetLinkInput').value = link;
+        // Use onclick to avoid attaching multiple listeners
         document.getElementById('copySnippetLinkBtn').onclick = () => {
             navigator.clipboard.writeText(link).then(() => showToast('Direct link copied!', 'success'));
         };
@@ -3654,23 +3695,29 @@ function renderDashboardCharts(data) {
             navigator.clipboard.writeText(snippetHtml).then(() => showToast('Snippet copied as HTML!', 'success'));
         };
 
-        const emailSubject = `InfiniBase KB: ${currentOpenItem.title}`;
-        const emailBody = `
-            <p>Hello,</p>
-            <p>Please find below a relevant snippet from our knowledge base:</p>
-            <hr>
-            <div style="background-color:#f0f2f5; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; color: #111;">
-                ${snippetHtml}
-            </div>
-            <hr>
-            <p>For full context, please visit the original article here:<br>
-            <a href="${link}">${link}</a></p>
-            <p>Thank you,<br>InfiniBase System</p>
-        `;
-        document.getElementById('shareSnippetEmailBtn').href = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-
-        const whatsAppText = `*InfiniBase Knowledge Snippet*\n\n---\n_${snippetText.trim()}_ \n---\n\n*View full context:*\n${link}`;
-        document.getElementById('shareSnippetWhatsAppBtn').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsAppText)}`;
+        document.getElementById('shareSnippetEmailBtn').onclick = () => {
+            const emailSubject = `InfiniBase KB: ${currentOpenItem.title}`;
+            const emailBody = `
+                <p>Hello,</p>
+                <p>Please find below a relevant snippet from our knowledge base:</p>
+                <hr>
+                <div style="background-color:#f0f2f5; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; color: #111;">
+                    ${snippetHtml}
+                </div>
+                <hr>
+                <p>For full context, please visit the original article here:<br>
+                <a href="${link}">${link}</a></p>
+                <p>Thank you,<br>InfiniBase System</p>
+            `;
+            const mailtoLink = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            window.open(mailtoLink, '_blank');
+        };
+        
+        document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
+            const whatsAppText = `*InfiniBase Knowledge Snippet*\n\n---\n_${snippetText.trim()}_ \n---\n\n*View full context:*\n${link}`;
+            const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsAppText)}`;
+            window.open(whatsappLink, '_blank');
+        };
         
         document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
     }
