@@ -1429,24 +1429,28 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
         /* MODIFICATION END */
         
-        /* ✅ NEW: Styles for "Most Active Users" icon update */
+        /* ✅ FINAL FIX: Styles for "Most Active Users" icon */
         #topUsersContainer h3 {
             display: flex;
             align-items: center;
-            gap: 0.75rem; /* 12px */
         }
         #topUsersContainer h3::before {
-            content: '\\f007' !important; /* User icon from Font Awesome */
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900; /* Required for solid icons */
+            content: '\f007' !important; /* User icon unicode */
+            font-family: "Font Awesome 6 Free" !important; /* Ensure correct font family */
+            font-weight: 900 !important; /* Use 900 for solid icons */
+            font-style: normal;
+            font-variant: normal;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            display: inline-block;
             width: auto;
             height: auto;
             background: none;
-            border-radius: 0;
-            margin-right: 0;
-            color: var(--warning) !important; /* Use inherit to take color from h3 or specify */
-            font-size: 1em;
+            color: var(--warning) !important;
+            margin-right: 0.75rem !important; /* Added spacing */
+            font-size: 1em; /* Match text size */
         }
+
 
 </style>
 
@@ -1615,6 +1619,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 <h3 class="share-section-title"><i class="fas fa-paper-plane"></i> Sharing Actions</h3>
                 <div class="share-actions-grid">
                     <button type="button" class="share-action-button" id="copySnippetTextBtn"><i class="fas fa-quote-left"></i> Copy as Text</button>
+                    <button type="button" class="share-action-button" id="shareSnippetEmailBtn"><i class="fas fa-envelope"></i> Share via Email</button>
                     <button type="button" class="share-action-button whatsapp" id="shareSnippetWhatsAppBtn"><i class="fab fa-whatsapp"></i> Share on WhatsApp</button>
                 </div>
             </div>
@@ -3090,38 +3095,36 @@ function renderDashboardCharts(data) {
     // ✅ MODIFICATION START: New functions for Smart Accordion Search
     function findSnippetsInItem(item, query) {
         const snippets = [];
-        if (!item.content_en) return snippets;
+        const queryLower = query.toLowerCase();
 
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = item.content_en;
-        
-        // Search in title and description first
-        if (item.title_en.toLowerCase().includes(query.toLowerCase())) {
-             snippets.push({
-                item: item,
-                html: `<h4>${highlightKeywordsInHtml(item.title_en, query)}</h4>`
+        const searchInContent = (content) => {
+            if (!content) return [];
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            const contentSnippets = [];
+            
+            // Search all block-level and table cell elements for more comprehensive results
+            const elements = tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, td, th, div');
+            
+            elements.forEach(el => {
+                if (el.textContent.toLowerCase().includes(queryLower)) {
+                    contentSnippets.push({
+                        item: item,
+                        html: highlightKeywordsInHtml(el.outerHTML, query)
+                    });
+                }
             });
-        }
-        if (item.description_en.toLowerCase().includes(query.toLowerCase())) {
-             snippets.push({
-                item: item,
-                html: `<p>${highlightKeywordsInHtml(item.description_en, query)}</p>`
-            });
-        }
+            return contentSnippets;
+        };
         
-        // Now search in all content elements, including table cells
-        const elements = tempDiv.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, td, th');
-        
-        elements.forEach(el => {
-            if (el.textContent.toLowerCase().includes(query.toLowerCase())) {
-                snippets.push({
-                    item: item,
-                    html: highlightKeywordsInHtml(el.outerHTML, query)
-                });
-            }
-        });
+        // Search in English content
+        snippets.push(...searchInContent(item.content_en));
+        // Search in Arabic content
+        snippets.push(...searchInContent(item.content_ar));
+
         return snippets;
     }
+
 
     function renderSearchResults(results, query) {
         dashboardOverviewContainer.classList.add('hidden');
@@ -3465,8 +3468,26 @@ function renderDashboardCharts(data) {
             navigator.clipboard.writeText(snippetText).then(() => showToast('Snippet copied as plain text!', 'success'));
         };
         
-        // ✅ NEW: WhatsApp message format
-        const whatsAppText = `مرحباً،\nإليك معلومة قد تكون مفيدة من قاعدة المعرفة:\n\n💬 *"${snippetText.trim()}"*\n\nلمزيد من التفاصيل، يمكنك مراجعة المقال الأصلي عبر الرابط.\n${link}\n\nشكراً لك.`;
+        // ✅ NEW: Professional Email Body
+        const emailSubject = `InfiniBase KB Snippet: ${currentOpenItem.title}`;
+        const emailBody = `
+            <p>Hi team,</p>
+            <p>Here is a snippet from the "${currentOpenItem.title}" article that might be relevant:</p>
+            <hr>
+            <div style="background-color:#f1f5f9; border-left: 4px solid #6C5DD3; padding: 15px; margin: 15px 0; font-family: sans-serif; color: #333;">
+                ${snippetHtml}
+            </div>
+            <hr>
+            <p>For the full context, please visit the original article here:<br>
+            <a href="${link}">${link}</a></p>
+            <p>Thank you,<br>InfiniBase System</p>
+        `;
+        document.getElementById('shareSnippetEmailBtn').onclick = () => {
+            window.infiniShare.openMailTo(emailSubject, emailBody);
+        };
+        
+        // ✅ NEW: Professional WhatsApp message format (in English)
+        const whatsAppText = `Hi there,\n\nHere's a snippet from the Knowledge Base that might be helpful:\n\n*Source:* ${currentOpenItem.title}\n-------------------------\n_"${snippetText.trim()}"_\n-------------------------\n\nFor the full context, you can visit the article here:\n${link}`;
         document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
             window.infiniShare.openWhatsApp(whatsAppText);
         };
