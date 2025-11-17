@@ -2877,38 +2877,38 @@ async function fetchDashboardData() {
              detailHTML += `<button id="deleteItemBtn" class="button button-danger"><i class="fas fa-trash-alt"></i> Delete Item</button>`;
         }
         
+        const hasArabicContent = itemData.content_ar && itemData.title_ar;
+        if (hasArabicContent) {
+            detailHTML += `<button id="languageToggleBtn" class="button-secondary" data-current-lang="en"><i class="fas fa-language"></i> عرض بالعربية</button>`;
+        }
+        
         detailHTML += `<button id="downloadPdfItemBtn" class="button-secondary"><i class="fas fa-file-pdf"></i> Export as PDF</button></div>`;
         
         const lastModified = new Date(itemData.last_modified || itemData.created_at);
         const lastUpdatedHTML = `<div class="last-updated-info">Updated on: ${lastModified.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
         
-        let content_en = itemData.content_en || '<p>No detailed content available.</p>';
-        
         const searchKeyword = localStorage.getItem('lastSearchKeyword');
-        if (searchKeyword && searchKeyword.length > 0) {
-            content_en = highlightKeywordsInHtml(content_en, searchKeyword);
-            localStorage.removeItem('lastSearchKeyword');
-        }
-
-        const content_ar = itemData.content_ar || '<p style="text-align:right;">لا يتوفر محتوى مفصل.</p>';
-        const hasCustomContainer_en = content_en.includes('class="kb-container"');
+        const content_en = highlightKeywordsInHtml(itemData.content_en || '<p>No detailed content available.</p>', searchKeyword);
+        const content_ar = highlightKeywordsInHtml(itemData.content_ar || '<p style="text-align:right;">لا يتوفر محتوى مفصل.</p>', searchKeyword);
+        if (searchKeyword) localStorage.removeItem('lastSearchKeyword');
         
-        let contentDisplayHTML = `
-            <div id="en-content" lang="en">${content_en}</div>
-            <div id="ar-content" class="hidden" lang="ar">${content_ar}</div>
-        `;
-
-        if (hasCustomContainer_en) {
-             detailHTML += `<div class="kb-content shareable-content">${contentDisplayHTML}</div>`;
-        } else {
-            detailHTML += `<div class="card">
+        detailHTML += `<div class="card">
+            <div id="item-header-en" lang="en">
                 <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_en)}</h2></div>
                 <p class="item-summary">${escapeHTML(stripHtml(itemData.description_en))}</p>
-                ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
-                <hr class="title-content-divider">${lastUpdatedHTML}
-                <div class="kb-content shareable-content">${contentDisplayHTML}</div>
-            </div>`;
-        }
+            </div>
+            <div id="item-header-ar" lang="ar" class="hidden" dir="rtl">
+                <div class="item-title-area"><i class="${itemIconClass} fa-title-icon"></i><h2>${escapeHTML(itemData.title_ar)}</h2></div>
+                <p class="item-summary">${escapeHTML(stripHtml(itemData.description_ar))}</p>
+            </div>
+
+            ${itemData.tags?.length ? `<div class="card-tags" style="margin-bottom: 1rem;">${itemData.tags.map(tag => `<span class="tag">${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+            <hr class="title-content-divider">
+            ${lastUpdatedHTML}
+
+            <div id="item-content-en" lang="en" class="kb-content shareable-content">${content_en}</div>
+            <div id="item-content-ar" lang="ar" class="kb-content shareable-content hidden" dir="rtl">${content_ar}</div>
+        </div>`;
         
         const childItems = kbSystemData.sections.flatMap(s => s.items || []).filter(child => child.parent_id === itemData.id);
         if (childItems.length > 0) {
@@ -2922,6 +2922,26 @@ async function fetchDashboardData() {
         }
         
         itemDetailViewPlaceholder.innerHTML = detailHTML;
+
+        if (hasArabicContent) {
+            const langToggleBtn = document.getElementById('languageToggleBtn');
+            langToggleBtn.addEventListener('click', () => {
+                const currentLang = langToggleBtn.dataset.currentLang;
+                const isEn = currentLang === 'en';
+
+                document.getElementById('item-header-en').classList.toggle('hidden', isEn);
+                document.getElementById('item-content-en').classList.toggle('hidden', isEn);
+                document.getElementById('item-header-ar').classList.toggle('hidden', !isEn);
+                document.getElementById('item-content-ar').classList.toggle('hidden', !isEn);
+                
+                langToggleBtn.dataset.currentLang = isEn ? 'ar' : 'en';
+                langToggleBtn.innerHTML = isEn 
+                    ? '<i class="fas fa-language"></i> View in English' 
+                    : '<i class="fas fa-language"></i> عرض بالعربية';
+                
+                currentSectionTitleEl.textContent = isEn ? itemData.title_ar : itemData.title_en;
+            });
+        }
 
         if (deeplinkParams?.paragraphId) {
             setTimeout(() => {
