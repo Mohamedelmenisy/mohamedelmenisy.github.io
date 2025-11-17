@@ -1869,101 +1869,146 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
-   
-
-            async function fetchDashboardData() {
+    /**
+     * [FINAL FIX & REWRITE] Fetches dashboard data from the primary `activity_log` table.
+     * This approach is robust and does not depend on potentially missing database views.
+     */
+    async function fetchDashboardData() {
         try {
-            console.log('Fetching dashboard data with corrected logic...');
-            
-            // ✅ FIX: Fetching the primary activity view, same as insights page
-            const { data: employeeActivity, error: activityError } = await supabase
-                .from('v_employee_activity_fixed')
-                .select('*');
+            console.log('Fetching dashboard data from the primary activity_log table...');
 
-            if (activityError) {
-                console.error('Error fetching employee activity:', activityError);
-            }
-            
-            const { data: activityLog, error: logError } = await supabase
-                .from('activity_log')
-                .select('*')
-                .limit(100)
-                .order('timestamp', { ascending: false });
+            // Step 1: Fetch all necessary raw data in parallel.
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-            if (logError) {
-                console.error('Error fetching activity log:', logError);
-            }
-
-            // Fetch other supplementary views
-            const results = await Promise.allSettled([
-                supabase.from('cases').select('id', { count: 'exact', head: true }),
-                supabase.from('kb_feedback').select('*', { count: 'exact' }),
-                supabase.from('users').select('id', { count: 'exact', head: true }),
-                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-                supabase.from('v_employee_tracking').select('user_name, total_views').order('total_views', { ascending: false }).limit(5),
-                supabase.from('v_overall_insights').select('*').single() // Use .single() to expect one row
+            const [
+                articlesResponse,
+                feedbackResponse,
+                activityLogResponse,
+                usersResponse
+            ] = await Promise.all([
+                supabase.from('cases').select('id', { count: 'exact' }),
+                supabase.from('kb_feedback').select('rating'),
+                // Fetch recent activity log for all calculations
+                supabase.from('activity_log')
+                  .select('user_name, action, timestamp, case_title, section')
+                  .order('timestamp', { ascending: false }),
+                supabase.from('users').select('id', { count: 'exact' })
             ]);
 
-            const totalArticles = results[0].value?.count || 0;
-            const feedback = results[1].value?.data || [];
-            const weeklyActivity = results[3].value?.data || [];
-            const topUsers = results[4].value?.data || [];
-            const overallInsightsData = results[5].value?.data || {}; // Default to empty object
+            if (activityLogResponse.error) {
+                // This is the critical error check
+                console.error("DATABASE ERROR:", activityLogResponse.error.message);
+                throw new Error(`Failed to fetch from activity_log: ${activityLogResponse.error.message}`);
+            }
 
-            // ✅ CORE FIX: Correctly calculate KPIs from the detailed activity log
-            const activity = employeeActivity || [];
-            const totalViews = activity.reduce((sum, item) => sum + (item["View Count"] || 0), 0);
-            const totalEdits = activity.filter(item => item.Action === 'updated').length;
-            
-            // Active users are unique users who performed any action
-            const activeUsers = new Set(activity.map(item => item["User Email"])).size; 
+            // Step 2: Extract data
+            const totalArticles = articlesResponse.count || 0;
+            const feedback = feedbackResponse.data || [];
+            const activityLog = activityLogResponse.data || [];
+            const totalUsers = usersResponse.count || 0;
 
-            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+            // Step 3: Calculate metrics from the activityLog
+            const viewsLog = activityLog.filter(log => log.action === 'viewed');
+            const editsLog = activityLog.filter(log => log.action === 'updated');
+            const totalViews = viewsLog.length;
+            const totalEdits = editsLog.length;
+
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const activeUsersToday = new Set(
+                activityLog
+                .filter(log => new Date(log.timestamp) >= todayStart)
+                .map(log => log.user_name)
+            ).size;
             
-            console.log('Dashboard data calculated correctly:', {
-                totalArticles,
-                totalViews,
-                totalEdits,
-                activeUsers
+            // Calculate Top Users correctly by counting views
+            const userViewCounts = viewsLog.reduce((acc, log) => {
+                acc[log.user_name] = (acc[log.user_name] || 0) + 1;
+                return acc;
+            }, {});
+            const topUsers = Object.entries(userViewCounts)
+                .map(([userName, totalViews]) => ({ user_name: userName, total_views: totalViews }))
+                .sort((a, b) => b.total_views - a.total_views)
+                .slice(0, 5);
+                
+            // Recreate data for the weekly activity chart manually
+            const dailyActivityMap = new Map();
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(0,0,0,0);
+                const key = d.toISOString().split('T')[0];
+                dailyActivityMap.set(key, { total_views: 0, active_users: new Set() });
+            }
+            
+            activityLog.forEach(log => {
+                const logDate = new Date(log.timestamp);
+                logDate.setHours(0,0,0,0);
+                const key = logDate.toISOString().split('T')[0];
+                
+                if (dailyActivityMap.has(key)) {
+                    const dayData = dailyActivityMap.get(key);
+                    if(log.action === 'viewed') {
+                        dayData.total_views++;
+                    }
+                    dayData.active_users.add(log.user_name);
+                    dailyActivityMap.set(key, dayData);
+                }
             });
+            
+            const weeklyActivity = Array.from(dailyActivityMap.entries())
+                .map(([date, data]) => ({
+                    activity_date: date,
+                    total_views: data.total_views,
+                    active_users: data.active_users.size
+                }));
 
-            // ✅ FIX: Provide default values (0) for analytics hub to prevent 'undefined'
-            const analyticsData = {
-                activeSessions: overallInsightsData.active_users_this_week || 0,
-                satisfactionRate: Math.round(((overallInsightsData.avg_feedback_rating || 0) / 5) * 100),
-                avgResponseTime: overallInsightsData.avg_response_time || 'N/A',
-                knowledgeGaps: overallInsightsData.unseen_updates_count || 0,
-                // These are example calculations, they should be derived from proper views in the DB
-                performanceScore: Math.min(100, 50 + Math.round((totalViews / (totalArticles || 1)) / 2)),
-                engagementRate: Math.min(100, 20 + (activeUsers * 10)),
-                contentHealth: Math.min(100, 40 + (totalArticles * 5) + (totalEdits * 2)),
-                resolutionRate: Math.round(((overallInsightsData.avg_feedback_rating || 0) / 5) * 100)
-            };
+
+            // Step 4: Calculate derived metrics and Analytics Hub
+            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
+            const avgRating = feedback.length > 0 ? (feedback.reduce((sum, fb) => sum + fb.rating, 0) / feedback.length) : 0;
+            const satisfactionRate = Math.round((avgRating / 5) * 100);
+            const engagementRate = totalUsers > 0 ? Math.round((activeUsersToday / totalUsers) * 100) : 0;
+            const contentHealth = totalArticles > 0 ? Math.min(100, 50 + Math.round((totalViews / totalArticles))) : 50;
+
+            console.log('Dashboard data calculated from activity_log:', { totalArticles, totalViews, activeUsersToday, topUsers });
 
             return {
-                activityLog: activityLog || [],
+                activityLog: activityLog,
                 overallInsights: {
                     total_articles: totalArticles,
                     total_views_all: totalViews,
                     total_edits: totalEdits,
-                    active_users_this_week: activeUsers
+                    active_users_this_week: activeUsersToday
                 },
                 feedbackKpis: {
                     helpful_ratings: helpfulRatings,
                 },
                 topUsers: topUsers,
                 weeklyActivity: weeklyActivity,
-                analyticsData: analyticsData
+                analyticsData: {
+                    performanceScore: Math.min(100, 60 + Math.round(engagementRate / 5) + Math.round(satisfactionRate / 5)),
+                    engagementRate: engagementRate,
+                    contentHealth: contentHealth,
+                    resolutionRate: satisfactionRate,
+                    satisfactionRate: satisfactionRate,
+                    activeSessions: activeUsersToday,
+                    avgResponseTime: 'N/A',
+                    knowledgeGaps: 'N/A' 
+                }
             };
+
         } catch (error) {
-            console.error('A critical error occurred while fetching dashboard data:', error);
-            // Return a safe structure on error
+            console.error('CRITICAL ERROR fetching dashboard data:', error);
+            showToast(error.message, 'error');
             return {
                 activityLog: [], overallInsights: {}, feedbackKpis: {}, topUsers: [],
-                growthTrends: [], analyticsData: {}, weeklyActivity: []
+                weeklyActivity: [], analyticsData: {}
             };
         }
     }
+
 
     mermaid.initialize({
         startOnLoad: false,
@@ -2355,7 +2400,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                             <span class="activity-user">${escapeHTML(log.user_name)}</span> 
                             ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
                         </div>
-                        <div class="activity-time">${formatReadableDate(log.timestamp || log.activity_time_egypt)}</div>
+                        <div class="activity-time">${formatReadableDate(log.timestamp)}</div>
                     </div>
                 `;
             }).join('');
@@ -2395,7 +2440,6 @@ function renderTopUsers() {
     const container = document.getElementById('topUsersContainer');
     if (!container) return;
     
-    // ✅ FIX: Use dashboardData.topUsers fetched with the corrected logic
     const topUsers = dashboardData.topUsers || [];
     
     let usersHTML = '<ul class="top-users-list">';
@@ -2412,15 +2456,16 @@ function renderTopUsers() {
         `).join('');
     } else {
         usersHTML += `
-            <li class="top-user-item" style="justify-content: center; color: var(--text-muted); padding: 2rem 0;">
+            <li class="top-user-item" style="justify-content: center; color: var(--text-muted);">
                 <i class="fas fa-users" style="margin-right: 0.5rem;"></i>
-                No user activity data available for this period.
+                No user activity data available
             </li>
         `;
     }
     
     usersHTML += '</ul>';
     
+    // ✅ MODIFICATION: Removed icon from H3, will be handled by CSS
     container.innerHTML = `
         <h3>Most Active Users This Week</h3>
         ${usersHTML}
@@ -2431,16 +2476,6 @@ function renderTopUsers() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
         const analytics = dashboardData.analyticsData || {};
-        const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
-        
-        const getGrowthHTML = (metric) => {
-            const trend = growthTrends[metric];
-            if (!trend || trend.percentage_change === null || isNaN(trend.percentage_change)) return '';
-            const isPositive = trend.percentage_change >= 0;
-            const arrow = isPositive ? '↗' : '↘';
-            const colorClass = isPositive ? 'positive' : 'negative';
-            return `<span class="stat-growth ${colorClass}">${arrow} ${Math.abs(trend.percentage_change)}%</span>`;
-        };
         
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-stats-grid">
@@ -2449,7 +2484,6 @@ function renderTopUsers() {
                     <div class="stat-info">
                         <span class="stat-value">${insights.total_articles || 0}</span>
                         <span class="stat-label">Total Articles</span>
-                        ${getGrowthHTML('articles')}
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
@@ -2457,14 +2491,13 @@ function renderTopUsers() {
                     <div class="stat-info">
                         <span class="stat-value">${insights.total_views_all || 0}</span>
                         <span class="stat-label">Total Views</span>
-                        ${getGrowthHTML('views')}
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-users"></i></div>
                     <div class="stat-info">
                         <span class="stat-value">${insights.active_users_this_week || 0}</span>
-                        <span class="stat-label">Active Users</span>
+                        <span class="stat-label">Active Users Today</span>
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
@@ -2537,8 +2570,7 @@ function renderTopUsers() {
                             <div class="metric-icon"><i class="fas fa-check-double"></i></div>
                             <div class="metric-data">
                                 <div class="metric-value" id="resolutionRate">${analytics.resolutionRate}%</div>
-                                <div class="metric-label">Case Resolution</div>
-                                <div class="metric-trend up">+8%</div>
+                                <div class="metric-label">Satisfaction Rate</div>
                             </div>
                         </div>
                     </div>
@@ -2563,6 +2595,9 @@ function renderTopUsers() {
                         </div>
                     </div>
                 </div>
+                <div id="recentActivityContainer" class="card">
+                     <!-- Recent Activity Log will be rendered here -->
+                </div>
             </div>`;
         
         setTimeout(() => {
@@ -2583,72 +2618,92 @@ function renderDashboardCharts(data) {
     if (activityChartInstance) activityChartInstance.destroy();
     
     const activityCtx = document.getElementById('activityChart')?.getContext('2d');
-    if (!activityCtx) return;
-    
-    const weeklyData = data.weeklyActivity || [];
+    if (activityCtx) {
+        const weeklyData = data.weeklyActivity || [];
         
-    if (weeklyData.length === 0) {
-        activityCtx.fillStyle = 'var(--text-muted)';
-        activityCtx.font = '16px Inter';
-        activityCtx.textAlign = 'center';
-        activityCtx.fillText('No activity data available for the chart.', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
-        return;
-    }
-        
-    const labels = weeklyData.map(d => {
-        const date = new Date(d.activity_date_egypt);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-        
-    // ✅ FIX: Logic for chart data is now cleaner and safer
-    const viewsData = weeklyData.map(d => d.total_views || 0);
-    const usersData = weeklyData.map(d => d.active_users || 0);
-        
-    activityChartInstance = new Chart(activityCtx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Total Views',
-                    data: viewsData,
-                    backgroundColor: "rgba(108, 93, 211, 0.7)",
-                    borderColor: primaryColor,
-                    borderWidth: 2,
-                    borderRadius: 6,
-                    borderSkipped: false,
-                },
-                {
-                    label: 'Active Users',
-                    data: usersData,
-                    type: 'line',
-                    borderColor: successColor,
-                    backgroundColor: "rgba(0, 182, 155, 0.1)",
-                    borderWidth: 3,
-                    pointBackgroundColor: successColor,
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    tension: 0.4,
-                    fill: true,
-                }
-            ]
-        },
-        options: { // Options remain the same, no changes needed here
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'top', labels: { color: legendColor, font: { size: 12, weight: '600' }, padding: 20, usePointStyle: true } },
-                tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.95)', titleColor: '#f8fafc', bodyColor: '#e2e8f0', borderColor: primaryColor, borderWidth: 1, padding: 12, cornerRadius: 8, displayColors: true }
-            },
-            scales: {
-                x: { grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false }, ticks: { color: ticksColor, font: { size: 11 } } },
-                y: { beginAtZero: true, grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false }, ticks: { color: ticksColor, font: { size: 11 }, precision: 0 } }
-            }
+        if (weeklyData.length === 0) {
+            const canvas = activityCtx.canvas;
+            activityCtx.clearRect(0, 0, canvas.width, canvas.height);
+            activityCtx.fillStyle = 'var(--text-muted)';
+            activityCtx.font = '16px Inter';
+            activityCtx.textAlign = 'center';
+            activityCtx.fillText('No activity data available for the chart', canvas.width / 2, canvas.height / 2);
+            return;
         }
-    });
+        
+        const labels = weeklyData.map(d => {
+            const date = new Date(d.activity_date);
+            // Adjust for timezone to show correct date
+            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        
+        const viewsData = weeklyData.map(d => d.total_views || 0);
+        const usersData = weeklyData.map(d => d.active_users || 0);
+        
+        activityChartInstance = new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Total Views',
+                        data: viewsData,
+                        backgroundColor: "rgba(108, 93, 211, 0.7)",
+                        borderColor: primaryColor,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Active Users',
+                        data: usersData,
+                        type: 'line',
+                        borderColor: successColor,
+                        backgroundColor: "rgba(0, 182, 155, 0.1)",
+                        borderWidth: 3,
+                        pointBackgroundColor: successColor,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.4,
+                        fill: true,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: legendColor, font: { size: 12, weight: '600' }, padding: 20, usePointStyle: true }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#e2e8f0',
+                        borderColor: primaryColor,
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false },
+                        ticks: { color: ticksColor, font: { size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false },
+                        ticks: { color: ticksColor, font: { size: 11 }, precision: 0 }
+                    }
+                }
+            }
+        });
+    }
 }
     
     async function displayDashboard() {
