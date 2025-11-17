@@ -1771,7 +1771,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
 <script type="module">
     // =================================================================================
-    // SUPABASE & APP LOGIC (V78 - Stable Version)
+    // SUPABASE & APP LOGIC (V79 - Stable Version with new VIEW)
     // =================================================================================
     import { supabase } from './supabase.js';
     import { getCurrentUserRole, applyNavVisibility } from './role-check.js';
@@ -1921,91 +1921,59 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         if (error) console.error('Error logging activity:', error.message);
     }
     
-    // === THIS IS THE ORIGINAL, STABLE fetchDashboardData FUNCTION ===
-    // It is guaranteed to work with your HTML structure.
+    // V79 - Step 3: The final, stable fetchDashboardData function
     async function fetchDashboardData() {
         try {
-            console.log('Fetching dashboard data...');
-            
-            const { data: employeeActivity, error: activityError } = await supabase
-                .from('v_employee_activity_fixed') // This now reads from the CLEAN view
-                .select('*');
-
-            if (activityError) console.error('Error fetching employee activity:', activityError);
-
-            const { data: activityLog, error: logError } = await supabase
-                .from('activity_log')
-                .select('*').limit(100).order('timestamp', { ascending: false });
-
-            if (logError) console.error('Error fetching activity log:', logError);
-
             const [
-                articlesRes, feedbackRes, usersRes, weeklyActivityRes, 
-                engagementStatsRes, feedbackSummaryRes, fastestTicketRes, 
-                unseenUpdatesRes, employeeStatsRes, overallInsightsRes
+                analyticsRes,
+                topUsersRes,
+                weeklyActivityRes,
+                insightsRes 
             ] = await Promise.all([
-                supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, role'),
+                supabase.from('v_analytics_hub_metrics').select('*').single(),
+                supabase.from('v_employee_tracking').select('*').order('total_views', { ascending: false }).limit(5),
                 supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-                supabase.from('v_engagement_stats').select('*'),
-                supabase.from('v_kb_feedback_summary').select('*'),
-                supabase.from('fastest_ticket').select('*').limit(1),
-                supabase.from('v_unseen_updates').select('*'),
-                supabase.from('v_employee_tracking').select('*'),
-                supabase.from('v_overall_insights').select('*')
+                supabase.from('v_employee_activity_fixed').select('*') // For top-level KPIs
             ]);
 
-            const articles = articlesRes.data || [];
-            const feedback = feedbackRes.data || [];
-            const weeklyActivity = weeklyActivityRes.data || [];
-            const engagementStats = engagementStatsRes.data || [];
-            const feedbackSummary = feedbackSummaryRes.data || [];
-            const fastestTicket = fastestTicketRes.data || [];
-            const unseenUpdates = unseenUpdatesRes.data || [];
-            const employeeStats = employeeStatsRes.data || [];
-            const overallInsights = overallInsightsRes.data || [];
-
-            const totalArticles = articles.length;
-            const totalViews = employeeActivity ? employeeActivity.length : 0; // This is now correct because the source is clean
-            const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
-            const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
-            const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-
-            const topUsers = (employeeStats || [])
-                .filter(u => u.total_views > 0)
-                .sort((a, b) => b.total_views - a.total_views)
-                .slice(0, 5);
+            if (analyticsRes.error) throw analyticsRes.error;
             
-            const analyticsData = {
-                activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
-                satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
-                avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
-                knowledgeGaps: unseenUpdates.length || 0,
-                performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
-                engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
-                contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
-                resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
+            const analytics = analyticsRes.data || {};
+            const topUsers = topUsersRes.data || [];
+            const weeklyActivity = weeklyActivityRes.data || [];
+            const insights = insightsRes.data || [];
+
+            // This structure returns all data needed by the original render function
+            return {
+                topUsers,
+                weeklyActivity,
+                analyticsData: {
+                    performanceScore: Math.round(analytics.system_performance || 0),
+                    engagementRate: Math.round(analytics.user_engagement || 0),
+                    contentHealth: Math.round(analytics.content_health || 0),
+                    resolutionRate: Math.round(analytics.case_resolution || 0),
+                    satisfactionRate: Math.round(analytics.satisfaction_rate || 0),
+                    activeSessions: analytics.active_sessions || 0,
+                    avgResponseTime: 'N/A',
+                    knowledgeGaps: 0
+                },
+                overallInsights: {
+                    total_articles: (await supabase.from('cases').select('id', { count: 'exact', head: true })).count,
+                    total_views_all: insights.length,
+                    active_users_this_week: [...new Set(insights.map(item => item["User Email"]))].length,
+                    total_edits: insights.filter(item => item.Action === 'updated').length
+                },
+                feedbackKpis: {
+                    helpful_ratings: (await supabase.from('kb_feedback').select('id', { count: 'exact', head: true }).gte('rating', 4)).count
+                },
+                activityLog: [],
+                growthTrends: []
             };
 
-            // This returns the original data structure that your HTML expects.
-            return {
-                activityLog: activityLog || [],
-                overallInsights: {
-                    total_articles: totalArticles,
-                    total_views_all: totalViews,
-                    total_edits: totalEdits,
-                    active_users_this_week: activeUsers
-                },
-                feedbackKpis: { helpful_ratings: helpfulRatings },
-                topUsers: topUsers,
-                weeklyActivity: weeklyActivity,
-                analyticsData: analyticsData,
-                growthTrends: [] // Keep this empty to prevent the 'reduce' error.
-            };
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            return { activityLog: [], overallInsights: {}, feedbackKpis: {}, topUsers: [], analyticsData: {}, weeklyActivity: [], growthTrends: [] };
+            // Return empty structure to prevent crashes
+            return { topUsers: [], weeklyActivity: [], analyticsData: {}, overallInsights: {}, feedbackKpis: {}, activityLog: [], growthTrends: [] };
         }
     }
     
@@ -3653,8 +3621,6 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
 
     // --- App Initialization ---
     initializeApp();
-
-    // The role-check is now handled inside initializeApp
 </script>
 
 <!-- ======== MODIFICATION: ADDED SCRIPT FOR NEW CASE ======== -->
