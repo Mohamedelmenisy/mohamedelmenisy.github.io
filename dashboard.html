@@ -1922,60 +1922,61 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     
     // V79 - Step 3: The final, stable fetchDashboardData function
-    async function fetchDashboardData() {
-        try {
-            const [
-                analyticsRes,
-                topUsersRes,
-                weeklyActivityRes,
-                insightsRes 
-            ] = await Promise.all([
-                supabase.from('v_analytics_hub_metrics').select('*').single(),
-                supabase.from('v_employee_tracking').select('*').order('total_views', { ascending: false }).limit(5),
-                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-                supabase.from('v_employee_activity_fixed').select('*') // For top-level KPIs
-            ]);
+   async function fetchDashboardData() {
+    try {
+        console.log('Fetching dashboard data...');
+        
+        const { data: employeeActivity, error: activityError } = await supabase
+            .from('v_employee_activity_fixed')
+            .select('*');
 
-            if (analyticsRes.error) throw analyticsRes.error;
-            
-            const analytics = analyticsRes.data || {};
-            const topUsers = topUsersRes.data || [];
-            const weeklyActivity = weeklyActivityRes.data || [];
-            const insights = insightsRes.data || [];
+        if (activityError) console.error('Error fetching employee activity:', activityError);
 
-            // This structure returns all data needed by the original render function
-            return {
-                topUsers,
-                weeklyActivity,
-                analyticsData: {
-                    performanceScore: Math.round(analytics.system_performance || 0),
-                    engagementRate: Math.round(analytics.user_engagement || 0),
-                    contentHealth: Math.round(analytics.content_health || 0),
-                    resolutionRate: Math.round(analytics.case_resolution || 0),
-                    satisfactionRate: Math.round(analytics.satisfaction_rate || 0),
-                    activeSessions: analytics.active_sessions || 0,
-                    avgResponseTime: 'N/A',
-                    knowledgeGaps: 0
-                },
-                overallInsights: {
-                    total_articles: (await supabase.from('cases').select('id', { count: 'exact', head: true })).count,
-                    total_views_all: insights.length,
-                    active_users_this_week: [...new Set(insights.map(item => item["User Email"]))].length,
-                    total_edits: insights.filter(item => item.Action === 'updated').length
-                },
-                feedbackKpis: {
-                    helpful_ratings: (await supabase.from('kb_feedback').select('id', { count: 'exact', head: true }).gte('rating', 4)).count
-                },
-                activityLog: [],
-                growthTrends: []
-            };
+        const [
+            articlesRes, feedbackRes, usersRes, weeklyActivityRes, 
+            employeeStatsRes
+        ] = await Promise.all([
+            supabase.from('cases').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+            supabase.from('kb_feedback').select('id', { count: 'exact', head: true }).gte('rating', 4),
+            supabase.from('users').select('id', { count: 'exact', head: true }),
+            supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
+            supabase.from('v_employee_tracking').select('*').order('total_views', { ascending: false }).limit(5)
+        ]);
 
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            // Return empty structure to prevent crashes
-            return { topUsers: [], weeklyActivity: [], analyticsData: {}, overallInsights: {}, feedbackKpis: {}, activityLog: [], growthTrends: [] };
-        }
+        const articles = articlesRes.data || [];
+        const feedback = feedbackRes.data || [];
+        const weeklyActivity = weeklyActivityRes.data || [];
+        const employeeStats = employeeStatsRes.data || [];
+        
+        const totalArticles = articlesRes.count;
+        const totalViews = (employeeActivity || []).length;
+        const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
+        const helpfulRatings = feedbackRes.count;
+        const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
+
+        const topUsers = employeeStats.filter(u => u.total_views > 0);
+
+        // This returns the original data structure that your HTML expects.
+        return {
+            topUsers: topUsers,
+            weeklyActivity: weeklyActivity,
+            overallInsights: {
+                total_articles: totalArticles,
+                total_views_all: totalViews,
+                total_edits: totalEdits,
+                active_users_this_week: activeUsers
+            },
+            feedbackKpis: { helpful_ratings: helpfulRatings },
+            // We return empty analyticsData to prevent crashes
+            analyticsData: {}, 
+            activityLog: [],
+            growthTrends: []
+        };
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        return { topUsers: [], weeklyActivity: [], analyticsData: {}, overallInsights: {}, feedbackKpis: {}, activityLog: [], growthTrends: [] };
     }
+}
     
 
     mermaid.initialize({
