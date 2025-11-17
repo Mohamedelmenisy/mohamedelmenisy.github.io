@@ -1422,22 +1422,23 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
         /* MODIFICATION END */
         
-        /* ✅ NEW: Styles for "Most Active Users" icon update */
+        /* ✅ ICON FIX: Correctly apply Font Awesome for the icon */
         #topUsersContainer h3 {
             display: flex;
             align-items: center;
-            gap: 0.5rem; /* 8px */
+            gap: 0.75rem; /* 12px */
         }
         #topUsersContainer h3::before {
-            content: '\\f007' !important; /* User icon */
+            content: '\f06d' !important; /* fa-fire icon */
             font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
+            font-weight: 900; /* Important for solid icons */
             width: auto;
             height: auto;
             background: none;
             border-radius: 0;
             margin-right: 0;
             color: var(--warning);
+            font-size: 1em; /* Match the h3 font size */
         }
 
 </style>
@@ -1886,7 +1887,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 supabase.from('cases').select('id', { count: 'exact' }),
                 supabase.from('kb_feedback').select('rating'),
                 supabase.from('activity_log').select('user_id, user_name, action, case_id, timestamp').order('timestamp', { ascending: false }),
-                supabase.from('users').select('id')
+                supabase.from('users').select('id', { count: 'exact' })
             ]);
 
             if (activityLogResponse.error) throw activityLogResponse.error;
@@ -1894,7 +1895,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             const totalArticles = articlesResponse.count || 0;
             const feedback = feedbackResponse.data || [];
             const activityLog = activityLogResponse.data || [];
-            const totalUsers = (usersResponse.data || []).length;
+            const totalUsers = usersResponse.count || 0;
             
             // Step 2: Aggregate the raw log data to get unique interactions and correct counts
             const viewsLog = activityLog.filter(log => log.action === 'viewed');
@@ -1921,9 +1922,9 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                 activityLog.filter(log => new Date(log.timestamp) >= todayStart).map(log => log.user_name)
             ).size;
             
-            // Calculate Top Users by summing up total views from all their interactions
-            const userViewCounts = Object.values(aggregatedViews).reduce((acc, view) => {
-                 acc[view.user_name] = (acc[view.user_name] || 0) + view.view_count;
+            // ✅ CORRECTED LOGIC: Calculate Top Users by summing up total views from all their interactions
+            const userViewCounts = viewsLog.reduce((acc, log) => {
+                 acc[log.user_name] = (acc[log.user_name] || 0) + 1;
                  return acc;
             }, {});
             const topUsers = Object.entries(userViewCounts)
@@ -1948,7 +1949,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             });
             const weeklyActivity = Array.from(dailyActivityMap.entries()).map(([date, data]) => ({
                 activity_date: date,
-                total_views: data.total_events, // Renamed to reflect it's all events, not just views
+                total_views: data.total_events, // This represents total "events" for the chart
                 active_users: data.active_users.size
             }));
 
@@ -2442,9 +2443,8 @@ function renderTopUsers() {
     
     usersHTML += '</ul>';
     
-    // ✅ MODIFICATION: Removed icon from H3, will be handled by CSS
     container.innerHTML = `
-        <h3>Most Active Users This Week</h3>
+        <h3><i class="fas fa-fire" style="color: var(--warning); margin-right: 0.5rem;"></i>Most Active Users This Week</h3>
         ${usersHTML}
     `;
 }
