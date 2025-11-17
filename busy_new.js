@@ -152,14 +152,20 @@
 
     // ===== Initialization Function =====
     function init() {
-        // === THE FIX: If this element doesn't exist, we are not on the right page. Exit. ===
+        // ======================= الحل المطلوب =======================
+        // السطور التالية هي التي تقوم بحل المشكلة.
+        // يتم التحقق من وجود العنصر الرئيسي الذي يميز صفحة المحتوى.
+        // إذا لم يكن موجوداً (مثلما في الداش بورد)، تتوقف الدالة عن العمل.
         const mainContent = document.getElementById('itemDetailViewPlaceholder');
         if (!mainContent || mainContent.classList.contains('hidden')) {
+            // This console.log can be uncommented for testing
             // console.log('Not on an item detail page, skipping script initialization.');
-            return; 
+            return; // هنا يتم إيقاف تنفيذ بقية الأوامر
         }
+        // ==================== نهاية منطقة الحل ====================
 
-        // --- The rest of the original initialization code ---
+
+        // --- بقية أوامر التهيئة لا تعمل إلا في الصفحة الصحيحة ---
         restoreLanguagePreference();
         loadAllMedia();
         enhanceMediaExperience();
