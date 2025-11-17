@@ -1878,79 +1878,71 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
     }
     
     /**
-     * [FINAL FIX & REWRITE] Fetches dashboard data from the primary `activity_log` table.
-     * This approach is robust and does not depend on potentially missing database views.
+     * [REWRITTEN & FIXED] Fetches and correctly aggregates dashboard data.
+     * This version fixes the view counting logic to only consider unique cases.
      */
     async function fetchDashboardData() {
         try {
-            console.log('Fetching dashboard data from the primary activity_log table...');
+            console.log('Fetching and aggregating dashboard data with corrected logic...');
 
-            // Step 1: Fetch all necessary raw data in parallel.
-            const [
-                articlesResponse,
-                feedbackResponse,
-                activityLogResponse,
-                usersResponse
-            ] = await Promise.all([
+            const [articlesResponse, feedbackResponse, activityLogResponse, usersResponse] = await Promise.all([
                 supabase.from('cases').select('id', { count: 'exact' }),
                 supabase.from('kb_feedback').select('rating'),
-                supabase.from('activity_log').select('user_name, action, timestamp, case_title, section').order('timestamp', { ascending: false }),
+                supabase.from('activity_log').select('user_name, action, timestamp, case_title, section, case_id').order('timestamp', { ascending: false }),
                 supabase.from('users').select('id', { count: 'exact' })
             ]);
 
-            if (activityLogResponse.error) {
-                console.error("DATABASE ERROR:", activityLogResponse.error.message);
-                throw new Error(`Failed to fetch from activity_log: ${activityLogResponse.error.message}`);
-            }
+            if (activityLogResponse.error) throw new Error(`Failed to fetch from activity_log: ${activityLogResponse.error.message}`);
 
-            // Step 2: Extract data
             const totalArticles = articlesResponse.count || 0;
             const feedback = feedbackResponse.data || [];
             const activityLog = activityLogResponse.data || [];
             const totalUsers = usersResponse.count || 0;
 
-            // Step 3: Calculate metrics from the activityLog
-            const viewsLog = activityLog.filter(log => log.action === 'viewed');
+            // Filter for 'viewed' actions and only logs with a valid case_id
+            const viewsLog = activityLog.filter(log => log.action === 'viewed' && log.case_id);
             const editsLog = activityLog.filter(log => log.action === 'updated');
-            const totalViews = viewsLog.length;
+            
+            // ✅ FIX: Calculate total views based on unique cases viewed
+            const totalUniqueCasesViewed = new Set(viewsLog.map(log => log.case_id)).size;
             const totalEdits = editsLog.length;
 
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const activeUsersToday = new Set(
-                activityLog
-                .filter(log => new Date(log.timestamp) >= todayStart)
-                .map(log => log.user_name)
+                activityLog.filter(log => new Date(log.timestamp) >= todayStart).map(log => log.user_name)
             ).size;
             
-            // Calculate Top Users correctly by counting views
-            const userViewCounts = viewsLog.reduce((acc, log) => {
-                acc[log.user_name] = (acc[log.user_name] || 0) + 1;
+            // ✅ FIX: Calculate Top Users based on the number of unique cases they viewed.
+            const userUniqueCaseViews = viewsLog.reduce((acc, log) => {
+                if (!acc[log.user_name]) {
+                    acc[log.user_name] = new Set();
+                }
+                acc[log.user_name].add(log.case_id);
                 return acc;
             }, {});
-            const topUsers = Object.entries(userViewCounts)
-                .map(([userName, totalViews]) => ({ user_name: userName, total_views: totalViews }))
+
+            const topUsers = Object.entries(userUniqueCaseViews)
+                .map(([userName, casesSet]) => ({ user_name: userName, total_views: casesSet.size }))
                 .sort((a, b) => b.total_views - a.total_views)
                 .slice(0, 5);
                 
-            // Recreate data for the weekly activity chart manually
+            // ✅ FIX: Recreate data for the weekly activity chart based on unique cases viewed per day.
             const dailyActivityMap = new Map();
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
                 const key = d.toISOString().split('T')[0];
-                dailyActivityMap.set(key, { total_views: 0, active_users: new Set() });
+                dailyActivityMap.set(key, { unique_cases: new Set(), active_users: new Set() });
             }
             
-            activityLog.forEach(log => {
+            viewsLog.forEach(log => {
                 const logDate = new Date(log.timestamp);
                 const key = logDate.toISOString().split('T')[0];
                 
                 if (dailyActivityMap.has(key)) {
                     const dayData = dailyActivityMap.get(key);
-                    if(log.action === 'viewed') {
-                        dayData.total_views++;
-                    }
+                    dayData.unique_cases.add(log.case_id);
                     dayData.active_users.add(log.user_name);
                 }
             });
@@ -1958,25 +1950,24 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             const weeklyActivity = Array.from(dailyActivityMap.entries())
                 .map(([date, data]) => ({
                     activity_date: date,
-                    total_views: data.total_views,
+                    total_views: data.unique_cases.size, // Use the size of the unique cases set
                     active_users: data.active_users.size
                 }));
 
-
-            // Step 4: Calculate derived metrics and Analytics Hub
             const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
             const avgRating = feedback.length > 0 ? (feedback.reduce((sum, fb) => sum + fb.rating, 0) / feedback.length) : 0;
             const satisfactionRate = Math.round((avgRating / 5) * 100);
             const engagementRate = totalUsers > 0 ? Math.round((activeUsersToday / totalUsers) * 100) : 0;
-            const contentHealth = totalArticles > 0 ? Math.min(100, 50 + Math.round((totalViews / totalArticles))) : 50;
+            // ✅ FIX: Content health now uses the corrected unique view count.
+            const contentHealth = totalArticles > 0 ? Math.min(100, 50 + Math.round((totalUniqueCasesViewed / totalArticles))) : 50;
 
-            console.log('Dashboard data calculated from activity_log:', { totalArticles, totalViews, activeUsersToday, topUsers });
+            console.log('✅ Corrected Dashboard data:', { totalArticles, totalUniqueCasesViewed, activeUsersToday, topUsers });
 
             return {
                 activityLog,
                 overallInsights: {
                     total_articles: totalArticles,
-                    total_views_all: totalViews,
+                    total_views_all: totalUniqueCasesViewed, // Use corrected value
                     total_edits: totalEdits,
                     active_users_this_week: activeUsersToday
                 },
@@ -1991,9 +1982,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                     contentHealth: contentHealth,
                     resolutionRate: satisfactionRate,
                     satisfactionRate: satisfactionRate,
-                    activeSessions: activeUsersToday,
-                    avgResponseTime: 'N/A', // Requires dedicated ticketing data
-                    knowledgeGaps: 'N/A' // Requires data on failed searches
+                    activeSessions: activeUsersToday
                 }
             };
 
@@ -2444,7 +2433,7 @@ function renderTopUsers() {
                     <span class="top-user-rank">${index + 1}</span>
                     <span class="top-user-name">${escapeHtml(user.user_name)}</span>
                 </div>
-             <span class="top-user-views">${user.total_views || 0} views</span>
+             <span class="top-user-views">${user.total_views || 0} cases viewed</span>
             </li>
         `).join('');
     } else {
@@ -2482,7 +2471,7 @@ function renderTopUsers() {
                     <div class="icon-container"><i class="fas fa-eye"></i></div>
                     <div class="stat-info">
                         <span class="stat-value">${insights.total_views_all || 0}</span>
-                        <span class="stat-label">Total Views</span>
+                        <span class="stat-label">Unique Cases Viewed</span>
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
@@ -2570,20 +2559,12 @@ function renderTopUsers() {
                     <!-- Quick Stats -->
                     <div class="quick-stats-grid">
                         <div class="quick-stat">
-                            <span class="stat-label">Avg. Response Time</span>
-                            <span class="stat-value">${analytics.avgResponseTime}</span>
-                        </div>
-                        <div class="quick-stat">
                             <span class="stat-label">Satisfaction Rate</span>
                             <span class="stat-value">${analytics.satisfactionRate}%</span>
                         </div>
                         <div class="quick-stat">
                             <span class="stat-label">Active Sessions</span>
                             <span class="stat-value">${analytics.activeSessions}</span>
-                        </div>
-                        <div class="quick-stat">
-                            <span class="stat-label">Knowledge Gaps</span>
-                            <span class="stat-value">${analytics.knowledgeGaps}</span>
                         </div>
                     </div>
                 </div>
@@ -2631,7 +2612,7 @@ function renderDashboardCharts(data) {
             labels,
             datasets: [
                 {
-                    label: 'Total Views',
+                    label: 'Unique Cases Viewed',
                     data: viewsData,
                     backgroundColor: "rgba(108, 93, 211, 0.7)",
                     borderColor: primaryColor,
