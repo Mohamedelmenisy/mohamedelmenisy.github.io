@@ -1869,115 +1869,109 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         }
     }
     
+    /**
+     * [REFACTORED & FIXED] Fetches and calculates all necessary data for the dashboard.
+     * This function is now the single source of truth for dashboard metrics, relying on stable data sources.
+     */
     async function fetchDashboardData() {
         try {
-            console.log('Fetching dashboard data...');
-            
-            // احصل على البيانات بنفس طريقة Insights
-            const { data: employeeActivity, error: activityError } = await supabase
-                .from('v_employee_activity_fixed')
-                .select('*');
-
-            if (activityError) {
-                console.error('Error fetching employee activity:', activityError);
-            }
-
-            // احصل على activity_log للـ Recent Activity فقط
-            const { data: activityLog, error: logError } = await supabase
-                .from('activity_log')
-                .select('*')
-                .limit(100)
-                .order('timestamp', { ascending: false });
-
-            if (logError) {
-                console.error('Error fetching activity log:', logError);
-            }
-
-            const results = await Promise.allSettled([
-                supabase.from('cases').select('*'),
-                supabase.from('kb_feedback').select('*'),
-                supabase.from('users').select('id, name, email, username, role'),
-                supabase.from('v_activity_combined_7days').select('*').order('activity_date_egypt', { ascending: true }),
-                supabase.from('v_engagement_stats').select('*'),
-                supabase.from('v_kb_feedback_summary').select('*'),
-                supabase.from('fastest_ticket').select('*').limit(1),
-                supabase.from('v_unseen_updates').select('*'),
-                supabase.from('v_employee_tracking').select('*'),
-                supabase.from('v_overall_insights').select('*')
+            console.log('Fetching dashboard data with new simplified logic...');
+    
+            // Step 1: Fetch the core, reliable data sources
+            const [
+                articlesResponse,
+                feedbackResponse,
+                usersResponse,
+                employeeActivityResponse,
+                dailyActivityResponse
+            ] = await Promise.all([
+                supabase.from('cases').select('id', { count: 'exact' }),
+                supabase.from('kb_feedback').select('rating'),
+                supabase.from('users').select('id', { count: 'exact' }),
+                supabase.from('v_employee_activity_fixed').select('*'), // This is our source of truth, like in insights.html
+                supabase.from('v_daily_activity').select('*').order('activity_date', { ascending: true }) // For the chart
             ]);
-
-            const articles = results[0].value?.data || [];
-            const feedback = results[1].value?.data || [];
-            const users = results[2].value?.data || [];
-            const weeklyActivity = results[3].value?.data || [];
-            const engagementStats = results[4].value?.data || [];
-            const feedbackSummary = results[5].value?.data || [];
-            const fastestTicket = results[6].value?.data || [];
-            const unseenUpdates = results[7].value?.data || [];
-            const employeeStats = results[8].value?.data || [];
-            const overallInsights = results[9].value?.data || [];
-
-            // ✅ الحسابات الصحيحة - استخدام employeeActivity مثل Insights
-            const totalArticles = articles.length;
-            const totalViews = employeeActivity ? employeeActivity.length : 0; // عدد السجلات مثل Insights
-            const totalEdits = (employeeActivity || []).filter(item => item.Action === 'updated').length;
-            const activeUsers = [...new Set((employeeActivity || []).map(item => item["User Email"]))].length;
+    
+            // Step 2: Extract data and handle potential errors
+            const articles = articlesResponse.data || [];
+            const totalArticles = articlesResponse.count || 0;
+            const feedback = feedbackResponse.data || [];
+            const totalUsers = usersResponse.count || 0;
+            const employeeActivity = employeeActivityResponse.data || [];
+            const dailyActivity = dailyActivityResponse.data || [];
+    
+            if (employeeActivityResponse.error) throw employeeActivityResponse.error;
+    
+            // Step 3: Perform calculations directly from the reliable data
+            const totalViews = employeeActivity.reduce((sum, item) => sum + (item["View Count"] || 0), 0);
+            const totalEdits = employeeActivity.filter(item => item.Action === 'updated').length;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const activeUsersToday = new Set(employeeActivity
+                .filter(item => new Date(item["Last View"]) >= today)
+                .map(item => item["User Email"])
+            ).size;
+    
             const helpfulRatings = feedback.filter(fb => fb.rating >= 4).length;
-            const notHelpfulRatings = feedback.filter(fb => fb.rating < 3).length;
-
-            console.log('Dashboard data calculated:', {
-                totalArticles,
-                totalViews, 
-                totalEdits,
-                activeUsers,
-                employeeActivityCount: employeeActivity?.length
-            });
-
-            // MOST ACTIVE USERS - استخدام employeeStats مباشرة
-            const topUsers = (employeeStats || [])
-                .filter(u => u.total_views > 0)
+            const avgRating = feedback.length > 0 ? (feedback.reduce((sum, fb) => sum + fb.rating, 0) / feedback.length) : 0;
+            const satisfactionRate = Math.round((avgRating / 5) * 100);
+    
+            // Calculate Top Users correctly
+            const userViewCounts = employeeActivity.reduce((acc, activity) => {
+                const userName = activity.User || 'Unknown';
+                acc[userName] = (acc[userName] || 0) + (activity["View Count"] || 0);
+                return acc;
+            }, {});
+    
+            const topUsers = Object.entries(userViewCounts)
+                .map(([userName, totalViews]) => ({ user_name: userName, total_views: totalViews }))
                 .sort((a, b) => b.total_views - a.total_views)
                 .slice(0, 5);
-
+    
+            // Step 4: [FIXED] Calculate Analytics Hub metrics with robust fallbacks
+            const engagementRate = totalUsers > 0 ? Math.round((activeUsersToday / totalUsers) * 100) : 0;
+            const contentHealth = totalArticles > 0 ? Math.min(100, 50 + Math.round((totalViews / totalArticles) / 2)) : 50;
+    
+            console.log('Dashboard data calculated successfully:', { totalArticles, totalViews, activeUsersToday, topUsers });
+    
             return {
-                activityLog: activityLog || [], // للـ Recent Activity
+                activityLog: employeeActivity.slice(0, 100), // Use the same activity data for the log
                 overallInsights: {
                     total_articles: totalArticles,
-                    total_views_all: totalViews, // ✅ متوافق مع Insights الآن
+                    total_views_all: totalViews,
                     total_edits: totalEdits,
-                    active_users_this_week: activeUsers
+                    active_users_this_week: activeUsersToday // Renamed for clarity, represents today's active users
                 },
                 feedbackKpis: {
                     helpful_ratings: helpfulRatings,
-                    not_helpful_ratings: notHelpfulRatings
+                    not_helpful_ratings: feedback.filter(fb => fb.rating < 3).length
                 },
                 topUsers: topUsers,
-                growthTrends: [],
-                weeklyActivity: weeklyActivity,
+                weeklyActivity: dailyActivity, // Use v_daily_activity for chart
                 analyticsData: {
-                    activeSessions: engagementStats[0]?.active_sessions || (overallInsights[0]?.active_users_this_week || 0),
-                    satisfactionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100),
-                    avgResponseTime: fastestTicket[0]?.avg_response_time || 'No data yet',
-                    knowledgeGaps: unseenUpdates.length || 0,
-                    performanceScore: Math.min(100, Math.round(((totalViews || 0) / Math.max((totalArticles || 1), 1)) * 100)),
-                    engagementRate: Math.min(100, Math.round(((activeUsers || 0) / 3) * 100)),
-                    contentHealth: Math.min(100, 30 + ((totalArticles || 0) * 10) + ((totalEdits || 0) * 5)),
-                    resolutionRate: Math.round(((overallInsights[0]?.avg_feedback_rating || 0) / 5) * 100)
+                    performanceScore: Math.min(100, 75 + Math.round(engagementRate / 10) + Math.round(satisfactionRate / 10)),
+                    engagementRate: engagementRate,
+                    contentHealth: contentHealth,
+                    resolutionRate: satisfactionRate, // Using satisfaction as a proxy for resolution
+                    avgResponseTime: 'N/A', // This metric requires a dedicated source
+                    satisfactionRate: satisfactionRate,
+                    activeSessions: activeUsersToday,
+                    knowledgeGaps: 0 // This metric requires a dedicated source
                 }
             };
+    
         } catch (error) {
-            console.error('Error fetching dashboard data:', error);
+            console.error('CRITICAL ERROR fetching dashboard data:', error);
+            showToast('Failed to load dashboard statistics.', 'error');
+            // Return a safe, empty structure to prevent the UI from crashing
             return {
-                activityLog: [],
-                overallInsights: {},
-                feedbackKpis: {},
-                topUsers: [],
-                growthTrends: [],
-                analyticsData: {},
-                weeklyActivity: []
+                activityLog: [], overallInsights: {}, feedbackKpis: {}, topUsers: [],
+                weeklyActivity: [], analyticsData: {}
             };
         }
     }
+
 
     mermaid.initialize({
         startOnLoad: false,
@@ -2359,17 +2353,17 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             `;
         } else {
             itemsHTML = pageItems.map(log => {
-                const itemTitle = log.case_title ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.case_title, 40))}</strong>` : '';
-                const sectionInfo = log.section ? ` in ${escapeHTML(log.section)}` : '';
+                const itemTitle = log.Case ? ` on <strong class="activity-item-title">${escapeHTML(truncateText(log.Case, 40))}</strong>` : '';
+                const sectionInfo = log.Section ? ` in ${escapeHTML(log.Section)}` : '';
                 
                 return `
                     <div class="activity-log-item">
-                        <div class="activity-icon">${getIconForAction(log.action)}</div>
+                        <div class="activity-icon">${getIconForAction(log.Action)}</div>
                         <div class="activity-details">
-                            <span class="activity-user">${escapeHTML(log.user_name)}</span> 
-                            ${escapeHTML(log.action)}${itemTitle}${sectionInfo}.
+                            <span class="activity-user">${escapeHTML(log.User)}</span> 
+                            ${escapeHTML(log.Action)}${itemTitle}${sectionInfo}.
                         </div>
-                        <div class="activity-time">${formatReadableDate(log.timestamp || log.activity_time_egypt)}</div>
+                        <div class="activity-time">${formatReadableDate(log["Last View"])}</div>
                     </div>
                 `;
             }).join('');
@@ -2445,16 +2439,6 @@ function renderTopUsers() {
         dashboardData = await fetchDashboardData();
         const insights = dashboardData.overallInsights;
         const analytics = dashboardData.analyticsData || {};
-        const growthTrends = dashboardData.growthTrends.reduce((acc, item) => ({...acc, [item.metric]: item }), {});
-        
-        const getGrowthHTML = (metric) => {
-            const trend = growthTrends[metric];
-            if (!trend || trend.percentage_change === null || isNaN(trend.percentage_change)) return '';
-            const isPositive = trend.percentage_change >= 0;
-            const arrow = isPositive ? '↗' : '↘';
-            const colorClass = isPositive ? 'positive' : 'negative';
-            return `<span class="stat-growth ${colorClass}">${arrow} ${Math.abs(trend.percentage_change)}%</span>`;
-        };
         
         dashboardOverviewContainer.innerHTML = `
             <div class="dashboard-stats-grid">
@@ -2463,7 +2447,6 @@ function renderTopUsers() {
                     <div class="stat-info">
                         <span class="stat-value">${insights.total_articles || 0}</span>
                         <span class="stat-label">Total Articles</span>
-                        ${getGrowthHTML('articles')}
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
@@ -2471,14 +2454,13 @@ function renderTopUsers() {
                     <div class="stat-info">
                         <span class="stat-value">${insights.total_views_all || 0}</span>
                         <span class="stat-label">Total Views</span>
-                        ${getGrowthHTML('views')}
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
                     <div class="icon-container"><i class="fas fa-users"></i></div>
                     <div class="stat-info">
                         <span class="stat-value">${insights.active_users_this_week || 0}</span>
-                        <span class="stat-label">Active Users</span>
+                        <span class="stat-label">Active Users Today</span>
                     </div>
                 </div>
                 <div class="dashboard-stat-card">
@@ -2551,8 +2533,7 @@ function renderTopUsers() {
                             <div class="metric-icon"><i class="fas fa-check-double"></i></div>
                             <div class="metric-data">
                                 <div class="metric-value" id="resolutionRate">${analytics.resolutionRate}%</div>
-                                <div class="metric-label">Case Resolution</div>
-                                <div class="metric-trend up">+8%</div>
+                                <div class="metric-label">Satisfaction Rate</div>
                             </div>
                         </div>
                     </div>
@@ -2577,6 +2558,9 @@ function renderTopUsers() {
                         </div>
                     </div>
                 </div>
+                <div id="recentActivityContainer" class="card">
+                     <!-- Recent Activity Log will be rendered here -->
+                </div>
             </div>`;
         
         setTimeout(() => {
@@ -2591,7 +2575,6 @@ function renderDashboardCharts(data) {
     const rootStyles = getComputedStyle(document.documentElement);
     const legendColor = rootStyles.getPropertyValue('--text-light').trim();
     const ticksColor = rootStyles.getPropertyValue('--text-muted').trim();
-    const gridColor = rootStyles.getPropertyValue('--border-color').trim();
     const primaryColor = rootStyles.getPropertyValue('--primary-accent').trim();
     const successColor = rootStyles.getPropertyValue('--success').trim();
     
@@ -2601,42 +2584,23 @@ function renderDashboardCharts(data) {
     if (activityCtx) {
         const weeklyData = data.weeklyActivity || [];
         
-        console.log('Chart Data for debugging:', weeklyData);
-        
-        // إذا مفيش بيانات كافية، نعرض رسالة
         if (weeklyData.length === 0) {
+            const canvas = activityCtx.canvas;
+            activityCtx.clearRect(0, 0, canvas.width, canvas.height);
             activityCtx.fillStyle = 'var(--text-muted)';
             activityCtx.font = '16px Inter';
             activityCtx.textAlign = 'center';
-            activityCtx.fillText('No activity data available for the chart', activityCtx.canvas.width / 2, activityCtx.canvas.height / 2);
+            activityCtx.fillText('No activity data available for the chart', canvas.width / 2, canvas.height / 2);
             return;
         }
         
         const labels = weeklyData.map(d => {
-            const date = new Date(d.activity_date_egypt);
+            const date = new Date(d.activity_date);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
         
-        // ✅ إصلاح نهائي: إذا total_views = 0 لكن في active_users، استخدم active_users كـ total_views
-        const viewsData = weeklyData.map(d => {
-            const today = new Date().toISOString().split('T')[0];
-            const isToday = d.activity_date_egypt === today;
-            
-            // إذا اليوم الحالي وtotal_views = 0 لكن في active_users
-            if (isToday && (d.total_views === 0 || d.total_views === null) && d.active_users > 0) {
-                return d.active_users; // استخدم active_users كـ total_views
-            }
-            // إذا مش اليوم الحالي، استخدم total_views العادية
-            return d.total_views || 0;
-        });
-        
+        const viewsData = weeklyData.map(d => d.total_views || 0);
         const usersData = weeklyData.map(d => d.active_users || 0);
-        
-        console.log('Corrected Chart Data:', {
-            labels,
-            viewsData,
-            usersData
-        });
         
         activityChartInstance = new Chart(activityCtx, {
             type: 'bar',
@@ -2662,8 +2626,7 @@ function renderDashboardCharts(data) {
                         pointBackgroundColor: successColor,
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
+                        pointRadius: 4,
                         tension: 0.4,
                         fill: true,
                     }
@@ -2672,22 +2635,11 @@ function renderDashboardCharts(data) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: {
-                            color: legendColor,
-                            font: {
-                                size: 12,
-                                weight: '600'
-                            },
-                            padding: 20,
-                            usePointStyle: true,
-                        }
+                        labels: { color: legendColor, font: { size: 12, weight: '600' }, padding: 20, usePointStyle: true }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(30, 41, 59, 0.95)',
@@ -2696,36 +2648,18 @@ function renderDashboardCharts(data) {
                         borderColor: primaryColor,
                         borderWidth: 1,
                         padding: 12,
-                        cornerRadius: 8,
-                        displayColors: true,
+                        cornerRadius: 8
                     }
                 },
                 scales: {
                     x: {
-                        grid: {
-                            color: 'rgba(71, 85, 105, 0.3)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: ticksColor,
-                            font: {
-                                size: 11
-                            }
-                        }
+                        grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false },
+                        ticks: { color: ticksColor, font: { size: 11 } }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: {
-                            color: 'rgba(71, 85, 105, 0.3)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: ticksColor,
-                            font: {
-                                size: 11
-                            },
-                            precision: 0
-                        }
+                        grid: { color: 'rgba(71, 85, 105, 0.3)', drawBorder: false },
+                        ticks: { color: ticksColor, font: { size: 11 }, precision: 0 }
                     }
                 }
             }
