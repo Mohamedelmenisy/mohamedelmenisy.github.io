@@ -357,13 +357,8 @@
         };
 
         const escapeHtml = (unsafe) => {
-            if (unsafe === null || unsafe === undefined || unsafe === 'null' || unsafe === 'undefined') return '';
-            return String(unsafe)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         };
 
         const showToast = (message, type = 'info') => {
@@ -375,44 +370,73 @@
             setTimeout(() => toast.classList.remove('show'), 4000);
         };
 
+        /**
+         * [REWRITTEN & FIXED] Fetches and reconstructs activity data from primary tables.
+         */
         async function fetchData() {
             showSkeleton(true);
             try {
-                const { data, error } = await supabase
-                    .from('v_employee_activity_fixed')
-                    .select('*')
-                    .order('Last View', { ascending: false });
+                // Fetch raw data from primary sources
+                const [activityLogRes, usersRes] = await Promise.all([
+                    supabase.from('activity_log').select('user_id, user_name, action, case_id, case_title, section, timestamp').order('timestamp', { ascending: false }),
+                    supabase.from('users').select('id, name, email, role, department')
+                ]);
 
-                if (error) throw error;
+                if (activityLogRes.error) throw activityLogRes.error;
                 
-                // تحويل البيانات لتتناسب مع النظام الجديد
-                allActivity = (data || []).map(item => ({
-                    "User": item.User || 'Unknown User',
-                    "Role": item.Role || 'user',
-                    "Action": item.Action || 'viewed',
-                    "Department": item.Department || 'N/A',
-                    "Section": item.Section || 'N/A',
-                    "Case": item.Case || 'Unknown Case',
-                    "First View": item["First View"] || new Date(),
-                    "Last View": item["Last View"] || new Date(),
-                    "View Count": item["View Count"] || 1,
-                    "User Email": item["User Email"] || '',
-                    "Time": item["Last View"] || new Date() // للتوافق مع الكود القديم
-                }));
+                const activityLog = activityLogRes.data || [];
+                const users = usersRes.data || [];
+                const usersMap = new Map(users.map(u => [u.id, u]));
+
+                // Group activity logs by user and case to calculate view counts
+                const groupedActivity = activityLog
+                    .filter(log => log.action === 'viewed' && log.user_id && log.case_id)
+                    .reduce((acc, log) => {
+                        const key = `${log.user_id}-${log.case_id}`;
+                        if (!acc[key]) {
+                            acc[key] = {
+                                user_id: log.user_id,
+                                case_id: log.case_id,
+                                views: [],
+                            };
+                        }
+                        acc[key].views.push(new Date(log.timestamp));
+                        return acc;
+                    }, {});
+
+                // Reconstruct the `allActivity` array to match the expected format
+                allActivity = Object.values(groupedActivity).map(group => {
+                    const user = usersMap.get(group.user_id) || { name: 'Unknown', email: '', role: 'user', department: 'N/A' };
+                    const firstLog = activityLog.find(log => log.user_id === group.user_id && log.case_id === group.case_id);
+                    group.views.sort((a, b) => a - b); // Sort dates chronologically
+
+                    return {
+                        "User": user.name,
+                        "Role": user.role || 'user',
+                        "Action": 'viewed',
+                        "Department": user.department || 'N/A',
+                        "Section": firstLog?.section || 'N/A',
+                        "Case": firstLog?.case_title || 'Unknown Case',
+                        "First View": group.views[0],
+                        "Last View": group.views[group.views.length - 1],
+                        "View Count": group.views.length,
+                        "User Email": user.email || '',
+                    };
+                }).sort((a, b) => b["Last View"] - a["Last View"]); // Sort final result by last view
                 
-                console.log("✅ البيانات المحملة:", allActivity.length, "سجل");
+                console.log("✅ Data reconstructed from activity_log:", allActivity.length, "records");
                 
                 populateFilters();
                 applyFiltersAndRender();
             } catch (error) {
                 console.error("Error fetching data:", error);
-                showToast("Failed to load activity data.", "danger");
+                showToast(`Failed to load activity data: ${error.message}`, "danger");
                 UIElements.activityTableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem;">Error loading data.</td></tr>`;
             } finally {
                 showSkeleton(false);
             }
         }
-
+        
         function populateFilters() {
             const departments = [...new Set(allActivity.map(item => item.Department).filter(Boolean))];
             const deptFilter = UIElements.departmentFilter;
@@ -424,11 +448,14 @@
         }
         
         function applyFiltersAndRender() {
-            const fromDate = document.getElementById('from-date').valueAsDate;
-            const toDate = document.getElementById('to-date').valueAsDate;
+            const fromDateVal = document.getElementById('from-date').value;
+            const toDateVal = document.getElementById('to-date').value;
             const department = UIElements.departmentFilter.value;
             const searchTerm = document.getElementById('search-user').value.toLowerCase().trim();
 
+            let fromDate = fromDateVal ? new Date(fromDateVal) : null;
+            let toDate = toDateVal ? new Date(toDateVal) : null;
+            if (fromDate) fromDate.setHours(0,0,0,0);
             if (toDate) toDate.setHours(23, 59, 59, 999);
 
             filteredActivity = allActivity.filter(item => {
@@ -457,8 +484,10 @@
         }
 
         function updateKpiCards() {
-            UIElements.kpiTotalActions.textContent = filteredActivity.length.toLocaleString();
+            const totalActions = filteredActivity.reduce((sum, item) => sum + item["View Count"], 0);
+            UIElements.kpiTotalActions.textContent = totalActions.toLocaleString();
             UIElements.kpiTotalDocs.textContent = [...new Set(filteredActivity.map(i => i.Case))].length.toLocaleString();
+            
             const deptCounts = filteredActivity.reduce((acc, item) => {
                 if(item.Department) acc[item.Department] = (acc[item.Department] || 0) + (item["View Count"] || 1);
                 return acc;
@@ -507,7 +536,7 @@
                     <td>${escapeHtml(item.Department)}</td>
                     <td>${escapeHtml(item.Section)}</td>
                     <td>${escapeHtml(item.Case)}</td>
-                     <td>${new Date(item["First View"]).toLocaleString()}</td>
+                    <td>${new Date(item["First View"]).toLocaleString()}</td>
                     <td>${new Date(item["Last View"]).toLocaleString()}</td>
                     <td><span class="view-count-badge">${item["View Count"] || 1}</span></td>
                 `;
@@ -518,7 +547,7 @@
         function renderTimeline() {
             const container = UIElements.timelineContainer;
             container.innerHTML = '';
-            const recentItems = filteredActivity.slice(0, 5);
+            const recentItems = filteredActivity.slice(0, 5); // Based on filtered data
             if (recentItems.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No recent activity to display.</p>';
                 return;
@@ -527,21 +556,14 @@
                 const timelineItem = document.createElement('div');
                 timelineItem.className = 'timeline-item';
                 
-                const user = item.User || 'Unknown User';
-                const action = item.Action || 'viewed';
-                const caseName = item.Case || 'Unknown Case';
-                const section = item.Section || 'Unknown Section';
-                const viewCount = item["View Count"] || 1;
-                
                 timelineItem.innerHTML = `
                     <div class="timeline-dot"></div>
                     <div class="timeline-content">
                         <div class="timeline-time">${new Date(item["Last View"]).toLocaleString()}</div>
                         <div class="timeline-text">
-                            <span class="timeline-user">${escapeHtml(user)}</span> 
-                            ${escapeHtml(action)} the case "${escapeHtml(caseName)}"
-                            in ${escapeHtml(section)} section.
-                            ${viewCount > 1 ? `<span style="color: var(--primary-accent-light); font-weight: 600;">(${viewCount} views)</span>` : ''}
+                            <span class="timeline-user">${escapeHtml(item.User)}</span> 
+                            viewed "${escapeHtml(item.Case)}"
+                            ${item["View Count"] > 1 ? `<span style="color: var(--primary-accent-light); font-weight: 600;">(${item["View Count"]} total views)</span>` : ''}
                         </div>
                     </div>
                 `;
@@ -555,147 +577,68 @@
             UIElements.prevBtn.disabled = currentPage === 1;
             UIElements.nextBtn.disabled = currentPage >= totalPages;
         }
-// باقي الدوال (renderCharts, exportToCsv, checkAccess) تبقى كما هي...
-function createChart(id, type, data, options) {
-    // إذا الشارت موجود من قبل، نحذفه
-    if (charts[id]) {
-        charts[id].destroy();
-    }
-    
-    const ctx = document.getElementById(id).getContext('2d');
-    charts[id] = new Chart(ctx, {
-        type: type,
-        data: data,
-        options: options
-    });
-}
 
-// ثم تبقى الدالة renderCharts كما هي...
-async function renderCharts() {
-    const chartColors = {
-        primary: 'rgba(108, 93, 211, 0.8)', 
-        primaryLight: 'rgba(108, 93, 211, 0.4)',
-        secondary: 'rgba(63, 140, 255, 0.8)', 
-        success: 'rgba(0, 182, 155, 0.8)',
-        warning: 'rgba(255, 196, 84, 0.8)', 
-        textMuted: '#9CA3B3', 
-        bgCard: '#1A1C23'
-    };
-    
-    Chart.defaults.font.family = "'Inter', sans-serif";
-    Chart.defaults.color = chartColors.textMuted;
-    const baseOptions = { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                labels: {
-                    color: chartColors.textMuted,
-                    font: {
-                        family: "'Inter', sans-serif"
-                    }
-                }
-            }
-        }
-    };
+        async function renderCharts() {
+            // This function now uses the filtered data in memory, no need for new DB calls
+            const chartColors = {
+                primary: 'rgba(108, 93, 211, 0.8)', primaryLight: 'rgba(108, 93, 211, 0.4)',
+                secondary: 'rgba(63, 140, 255, 0.8)', success: 'rgba(0, 182, 155, 0.8)',
+                warning: 'rgba(255, 196, 84, 0.8)', textMuted: '#9CA3B3', bgCard: '#1A1C23'
+            };
+            Chart.defaults.color = chartColors.textMuted;
+            const baseOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartColors.textMuted } } } };
 
-    // Chart 1: Activity by Department (Doughnut)
-    try {
-        const { data: deptData } = await supabase
-            .from('v_department_activity')
-            .select('*');
-        
-        if (deptData && deptData.length > 0) {
+            // Chart 1: Activity by Department
+            const deptData = filteredActivity.reduce((acc, item) => {
+                const dept = item.Department || 'N/A';
+                acc[dept] = (acc[dept] || 0) + item["View Count"];
+                return acc;
+            }, {});
             createChart('activityByCategoryChart', 'doughnut', {
-                labels: deptData.map(d => d.department),
-                datasets: [{ 
-                    data: deptData.map(d => d.total_views), 
-                    backgroundColor: [chartColors.primary, chartColors.secondary, chartColors.success, chartColors.warning], 
-                    borderColor: chartColors.bgCard, 
-                    borderWidth: 4 
-                }]
-            }, { 
-                ...baseOptions, 
-                cutout: '70%',
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            });
-        } else {
-            console.log("No department data available");
-        }
-    } catch (error) {
-        console.error("Error loading department chart:", error);
-    }
+                labels: Object.keys(deptData),
+                datasets: [{ data: Object.values(deptData), backgroundColor: [chartColors.primary, chartColors.secondary, chartColors.success, chartColors.warning], borderColor: chartColors.bgCard, borderWidth: 4 }]
+            }, { ...baseOptions, cutout: '70%', plugins: { legend: { position: 'bottom' } } });
 
-    // Chart 2: Top Viewed Cases (Bar)
-    try {
-        const { data: topCases } = await supabase
-            .from('v_top_viewed_cases_fixed')
-            .select('*')
-            .limit(5);
-        
-        if (topCases && topCases.length > 0) {
+            // Chart 2: Top Viewed Cases
+            const topCasesData = filteredActivity.reduce((acc, item) => {
+                const caseTitle = item.Case;
+                acc[caseTitle] = (acc[caseTitle] || 0) + item["View Count"];
+                return acc;
+            }, {});
+            const sortedTopCases = Object.entries(topCasesData).sort((a,b) => b[1] - a[1]).slice(0, 5);
             createChart('topViewedArticlesChart', 'bar', {
-                labels: topCases.map(d => d.Case),
-                datasets: [{ 
-                    label: 'Views', 
-                    data: topCases.map(d => d["View Count"]), 
-                    backgroundColor: chartColors.primaryLight, 
-                    borderColor: chartColors.primary, 
-                    borderWidth: 2, 
-                    borderRadius: 8 
-                }]
-            }, { 
-                ...baseOptions, 
-                indexAxis: 'y', 
-                plugins: { legend: { display: false } } 
-            });
-        } else {
-            console.log("No top cases data available");
-        }
-    } catch (error) {
-        console.error("Error loading top cases chart:", error);
-    }
-    
-    // Chart 3: Daily Activity (Line)
-    try {
-        const { data: dailyData } = await supabase
-            .from('v_daily_activity')
-            .select('*')
-            .order('activity_date', { ascending: true });
-        
-        if (dailyData && dailyData.length > 0) {
+                labels: sortedTopCases.map(d => d[0]),
+                datasets: [{ label: 'Views', data: sortedTopCases.map(d => d[1]), backgroundColor: chartColors.primaryLight, borderColor: chartColors.primary, borderWidth: 2, borderRadius: 8 }]
+            }, { ...baseOptions, indexAxis: 'y', plugins: { legend: { display: false } } });
+            
+            // Chart 3: Daily Activity
+            const dailyData = filteredActivity.reduce((acc, item) => {
+                const date = new Date(item["Last View"]).toLocaleDateString();
+                acc[date] = (acc[date] || 0) + 1; // Count one action per record in the filtered list
+                return acc;
+            }, {});
             createChart('dailyActivityChart', 'line', {
-                labels: dailyData.map(d => new Date(d.activity_date).toLocaleDateString()),
-                datasets: [{ 
-                    label: 'Actions', 
-                    data: dailyData.map(d => d.total_views), 
-                    borderColor: chartColors.primary, 
-                    backgroundColor: chartColors.primaryLight, 
-                    tension: 0.4, 
-                    fill: true 
-                }]
+                labels: Object.keys(dailyData).reverse(),
+                datasets: [{ label: 'Actions', data: Object.values(dailyData).reverse(), borderColor: chartColors.primary, backgroundColor: chartColors.primaryLight, tension: 0.4, fill: true }]
             }, baseOptions);
-        } else {
-            console.log("No daily activity data available");
         }
-    } catch (error) {
-        console.error("Error loading daily activity chart:", error);
-    }
-}
+
+        function createChart(id, type, data, options) {
+            if (charts[id]) charts[id].destroy();
+            const ctx = document.getElementById(id)?.getContext('2d');
+            if (ctx) charts[id] = new Chart(ctx, { type, data, options });
+        }
+        
         function exportToCsv() {
             if (filteredActivity.length === 0) return showToast("No data to export.", "warning");
             const headers = ["User", "Role", "Action", "Department", "Section", "Case", "First View", "Last View", "View Count"];
             const rows = filteredActivity.map(i => [ 
-                i.User, i.Role, i.Action, i.Department, i.Section, i.Case, 
-                new Date(i["First View"]).toISOString(), 
-                new Date(i["Last View"]).toISOString(), 
+                `"${i.User}"`, `"${i.Role}"`, `"${i.Action}"`, `"${i.Department}"`, `"${i.Section}"`, `"${i.Case}"`, 
+                `"${new Date(i["First View"]).toISOString()}"`, 
+                `"${new Date(i["Last View"]).toISOString()}"`, 
                 i["View Count"] 
             ]);
-            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(r => r.map(field => `"${field}"`).join(",")).join("\n");
+            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -718,13 +661,6 @@ async function renderCharts() {
                 
                 UIElements.dashboardContainer.style.visibility = "visible";
                 await fetchData();
-
-                supabase.channel('public:v_employee_activity_fixed')
-                    .on('postgres_changes', { event: '*', schema: 'public' }, payload => {
-                        showToast('New activity detected. Refreshing data...', 'info');
-                        fetchData();
-                    })
-                    .subscribe();
 
             } catch (err) {
                 console.error(err.message);
