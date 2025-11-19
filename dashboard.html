@@ -986,15 +986,21 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             font-size: 1.05rem;
             margin-bottom: 0.35rem;
         }
+        
+        /* 1. FIX: Compact Cards Description Clipping - INCREASED HEIGHT */
         .cards-grid.compact .card-title-group p {
             font-size: 0.85rem;
-            line-height: 1.5;
-            height: 3.9em; /* 3 lines with 1.5 line-height */
+            line-height: 1.6;
+            /* زيادة الطول للسماح بمزيد من النص */
+            max-height: 6.5em; 
             overflow: hidden;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 4 !important; /* 4 lines instead of 3 */
             -webkit-box-orient: vertical;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
         }
+        
         .cards-grid.compact .card-tags {
             margin-top: 1rem;
             gap: 0.4rem;
@@ -1115,10 +1121,11 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             scroll-margin-top: 80px; /* Offset for sticky header */
         }
         mark {
-            background-color: var(--warning);
-            color: var(--bg-dark);
-            padding: 0.1em 0.3em;
+            background-color: rgba(255, 196, 84, 0.3); /* Soft yellow highlight */
+            color: #FFC454;
+            padding: 0 4px;
             border-radius: 4px;
+            border: 1px solid rgba(255, 196, 84, 0.5);
         }
         #selection-share-btn {
             position: absolute;
@@ -1176,6 +1183,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             text-align: center;
             color: var(--text-light);
         }
+        /* 2. IMPROVEMENT: Smart Search Results Styling */
         .search-accordion-item {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -1183,26 +1191,28 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
             margin-bottom: 1rem;
             overflow: hidden;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .search-accordion-item:hover {
             border-color: var(--primary-accent);
         }
         .search-accordion-header {
-            padding: 1rem 1.5rem;
+            padding: 1.25rem 1.5rem;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: linear-gradient(to right, var(--bg-card), rgba(108, 93, 211, 0.05));
             transition: background-color 0.2s ease;
         }
         .search-accordion-header:hover {
-            background-color: var(--bg-color-hover);
+            background: rgba(108, 93, 211, 0.1);
         }
         .search-accordion-header h4 {
             margin: 0;
             font-size: 1.1rem;
-            color: var(--text-light);
-            font-weight: 600;
+            color: var(--primary-accent-light);
+            font-weight: 700;
         }
         .search-accordion-header .match-count {
             font-size: 0.8rem;
@@ -1885,10 +1895,15 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         try {
             console.log('Fetching and aggregating dashboard data with corrected logic...');
 
+            // 5. Recent Activity Filter: Removed 'started' from query
             const [articlesResponse, feedbackResponse, activityLogResponse, usersResponse] = await Promise.all([
                 supabase.from('cases').select('id', { count: 'exact' }),
                 supabase.from('kb_feedback').select('rating'),
-                supabase.from('activity_log').select('user_name, action, timestamp, case_title, section, case_id').order('timestamp', { ascending: false }),
+                supabase.from('activity_log')
+                    .select('user_name, action, timestamp, case_title, section, case_id')
+                    .neq('action', 'started') // 🔥 FIX: Exclude 'started' actions
+                    .order('timestamp', { ascending: false })
+                    .limit(50),
                 supabase.from('users').select('id', { count: 'exact' })
             ]);
 
@@ -2120,11 +2135,18 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         return text.substring(0, len) + '...';
     }
 
-    function stripHtml(html){
+    // 3. Search Improvement: Smart strip to handle table cells
+    function smartStripHtml(html) {
        if (!html) return "";
        let tmp = document.createElement("DIV");
-       tmp.innerHTML = html;
-       return tmp.textContent || tmp.innerText || "";
+       // Add spaces to table cells before stripping to prevent merged words
+       let safeHtml = html.replace(/<\/td>/gi, ' </td>').replace(/<\/th>/gi, ' </th>');
+       tmp.innerHTML = safeHtml;
+       return tmp.innerText.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+    }
+
+    function stripHtml(html){
+       return smartStripHtml(html);
     }
     
     function createSlug(text) {
@@ -2331,7 +2353,7 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
                         <div class="card-icon-container"><i class="${itemIconClass}"></i></div>
                         <div class="card-title-group" style="flex: 1; min-width: 0;">
                             <h3>${escapeHTML(item.title_en)}</h3>
-                            <p title="${escapeHTML(fullDescription)}">${escapeHTML(truncateText(fullDescription, 120))}</p>
+                            <p title="${escapeHTML(fullDescription)}">${escapeHTML(fullDescription)}</p>
                         </div>
                     </div>
                     ${actionsHTML}
@@ -2889,6 +2911,43 @@ function renderDashboardCharts(data) {
         return tempDiv.innerHTML;
     }
 
+    // 2. Search Logic: Better snippets for table data
+    function findSnippetsInItem(item, query) {
+        const snippets = new Set();
+        const queryLower = query.toLowerCase();
+        const contextLength = 60; 
+
+        // Smart strip to include table cells as separate words
+        const rawTextEn = smartStripHtml(item.content_en);
+        const rawTextAr = smartStripHtml(item.content_ar);
+        const fullText = `${item.title_en} . ${rawTextEn} . ${item.title_ar} . ${rawTextAr}`;
+
+        if (!fullText) return [];
+
+        let startIndex = 0;
+        while ((startIndex = fullText.toLowerCase().indexOf(queryLower, startIndex)) !== -1) {
+            const start = Math.max(0, startIndex - contextLength);
+            const end = Math.min(fullText.length, startIndex + query.length + contextLength);
+            
+            let snippet = fullText.substring(start, end);
+            
+            // Trim incomplete words
+            if (start > 0) snippet = "..." + snippet.substring(snippet.indexOf(' ') + 1);
+            if (end < fullText.length) snippet = snippet.substring(0, snippet.lastIndexOf(' ')) + "...";
+            
+            snippets.add(snippet);
+            startIndex += query.length; 
+        }
+
+        if (snippets.size === 0 && (item.tags || []).some(t => t.toLowerCase().includes(queryLower))) {
+             snippets.add(`Match found in Tags: ${item.tags.join(', ')}`);
+        }
+
+        return Array.from(snippets).map(snippetText => ({
+            item,
+            html: highlightText(snippetText, query),
+        }));
+    }
     
     async function displayItemDetail(sectionSlug, itemSlug, deeplinkParams) {
         let itemData = findItemBySlug(sectionSlug, itemSlug);
@@ -3222,37 +3281,6 @@ function renderDashboardCharts(data) {
         label.style.color = finalState ? 'var(--success)' : 'var(--text-muted)';
     }
 
-    // ✅ MODIFICATION START: New functions for Smart Accordion Search
-    function findSnippetsInItem(item, query) {
-        const snippets = new Set();
-        const queryLower = query.toLowerCase();
-        const contextLength = 80; // Characters before and after the keyword
-
-        const createSnippetsFromText = (text) => {
-            if (!text) return;
-            let startIndex = 0;
-            while ((startIndex = text.toLowerCase().indexOf(queryLower, startIndex)) !== -1) {
-                const start = Math.max(0, startIndex - contextLength);
-                const end = Math.min(text.length, startIndex + query.length + contextLength);
-                
-                let snippet = text.substring(start, end);
-                if (start > 0) snippet = "... " + snippet;
-                if (end < text.length) snippet = snippet + " ...";
-                
-                snippets.add(snippet);
-                startIndex += query.length; // Move past the current match
-            }
-        };
-
-        const fullText = stripHtml(item.content_en) + " " + stripHtml(item.content_ar);
-        createSnippetsFromText(fullText);
-
-        return Array.from(snippets).map(snippetText => ({
-            item,
-            html: highlightText(snippetText, query),
-        }));
-    }
-
     function renderSearchResults(results, query) {
         dashboardOverviewContainer.classList.add('hidden');
         itemDetailViewPlaceholder.classList.add('hidden');
@@ -3507,33 +3535,63 @@ function renderDashboardCharts(data) {
 
         // MODIFICATION START: Event listeners for new text selection and sharing logic
         let selectionTimeout;
+
+        // 1. Click-Away Logic to prevent ghosting
+        const hideShareButton = () => {
+             const shareBtn = document.getElementById('selection-share-btn');
+             if(shareBtn) shareBtn.style.display = 'none';
+        };
+        
+        document.addEventListener('mousedown', (e) => {
+             if (e.target.id !== 'selection-share-btn') {
+                 hideShareButton();
+             }
+        });
+
         document.addEventListener('selectionchange', () => {
             clearTimeout(selectionTimeout);
+            
+            // 2. Role Check: Only Admins/Managers see this
+            if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
+                hideShareButton();
+                return;
+            }
+
             selectionTimeout = setTimeout(() => {
                 const selection = window.getSelection();
                 const shareBtn = document.getElementById('selection-share-btn');
                 
-                if (selection && !selection.isCollapsed && selection.toString().trim().length > 10) {
-                    const parentElement = selection.anchorNode.parentElement;
-                    // MODIFICATION: Check if selection is within the designated shareable content area
-                    if (parentElement && parentElement.closest('.shareable-content')) {
+                if (selection && !selection.isCollapsed && selection.toString().trim().length > 5) {
+                    const anchorNode = selection.anchorNode;
+                    const focusNode = selection.focusNode;
+
+                    // Check if inside shareable content
+                    const isInsideContent = (node) => {
+                        return node && node.parentElement && node.parentElement.closest('.shareable-content');
+                    };
+
+                    if (isInsideContent(anchorNode) && isInsideContent(focusNode)) {
                         const range = selection.getRangeAt(0);
                         const rect = range.getBoundingClientRect();
-                        shareBtn.style.display = 'block';
-                        shareBtn.style.top = `${rect.top + window.scrollY - shareBtn.offsetHeight - 8}px`;
-                        shareBtn.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (shareBtn.offsetWidth / 2)}px`;
-                        return;
+                        
+                        // Validate positioning
+                        if (rect.width > 0 && rect.height > 0) {
+                            shareBtn.style.display = 'block';
+                            shareBtn.style.top = `${rect.top + window.scrollY - shareBtn.offsetHeight - 10}px`;
+                            shareBtn.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (shareBtn.offsetWidth / 2)}px`;
+                            return;
+                        }
                     }
                 }
                 
-                shareBtn.style.display = 'none';
+                hideShareButton();
 
-            }, 250);
+            }, 200);
         });
 
         document.getElementById('selection-share-btn').addEventListener('click', () => {
             openShareSnippetModal();
-            document.getElementById('selection-share-btn').style.display = 'none';
+            hideShareButton();
         });
 
         document.getElementById('closeShareSnippetModalBtn').addEventListener('click', () => {
@@ -3619,9 +3677,17 @@ function renderDashboardCharts(data) {
             }
         };
         
-        const whatsAppText = `Hi there,\n\nHere's a snippet from the Knowledge Base that might be helpful:\n\n*Source:* ${currentOpenItem.title}\n-------------------------\n_"${snippetText.trim()}"_\n-------------------------\n\nFor the full context, you can visit the article here:\n${link}`;
+        // 4. WhatsApp Message Formatting
+        const cleanSnippet = snippetText.trim().replace(/\s+/g, ' '); 
+        const whatsAppMessage = 
+            `*Correction / Note Request* 📝%0A%0A` +
+            `Hi team, regarding the case: *${currentOpenItem.title}*%0A%0A` +
+            `Please review this section:%0A` +
+            `> _"${cleanSnippet}"_%0A%0A` +
+            `📌 *Full Context & Guide:*%0A${link}`;
+
         document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
-            window.infiniShare.openWhatsApp(whatsAppText);
+            window.infiniShare.openWhatsApp(whatsAppMessage);
         };
         
         document.getElementById('shareSnippetModalOverlay').classList.remove('hidden');
