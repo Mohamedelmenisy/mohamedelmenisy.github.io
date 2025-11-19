@@ -1235,18 +1235,19 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         .search-accordion-item.active .search-accordion-content {
             max-height: 1500px; /* Increased max-height */
         }
+        /* UPDATED SNIPPET STYLE FOR BETTER READABILITY */
         .search-snippet {
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            line-height: 1.7;
-            padding: 1rem;
-            border-bottom: 1px dashed var(--border-color);
-            background: rgba(0,0,0,0.1);
-            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--text-light);
+            line-height: 1.8;
+            padding: 1.2rem;
+            border-left: 4px solid var(--primary-accent);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 0 8px 8px 0;
             margin-bottom: 1rem;
+            white-space: pre-line; /* To respect new lines if any */
         }
         .search-snippet:last-child {
-            border-bottom: none;
             margin-bottom: 0;
         }
         .search-result-actions {
@@ -1792,6 +1793,11 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         window.open(url, "_blank", "noopener,noreferrer");
       }
     };
+    
+    // Quill Register at top scope
+    if (window.ImageResize) {
+        Quill.register('modules/imageResize', window.ImageResize.default);
+    }
 
     // --- Supabase Logic Layer (Functions to interact with the database) ---
     async function getCurrentUserProfile() {
@@ -2135,12 +2141,19 @@ body { font-family: var(--mono); margin:0; background: linear-gradient(180deg,#0
         return text.substring(0, len) + '...';
     }
 
-    // 3. Search Improvement: Smart strip to handle table cells
+    // 3. Search Improvement: Smart strip to handle table cells & extract full sentence
     function smartStripHtml(html) {
        if (!html) return "";
        let tmp = document.createElement("DIV");
-       // Add spaces to table cells before stripping to prevent merged words
-       let safeHtml = html.replace(/<\/td>/gi, ' </td>').replace(/<\/th>/gi, ' </th>');
+       // Add spaces/separators to prevent concatenated words
+       let safeHtml = html
+           .replace(/<\/td>/gi, ' | ') 
+           .replace(/<\/th>/gi, ' | ')
+           .replace(/<\/tr>/gi, ' . ')
+           .replace(/<\/p>/gi, ' . ')
+           .replace(/<br\s*\/?>/gi, ' . ')
+           .replace(/<\/div>/gi, ' . ');
+           
        tmp.innerHTML = safeHtml;
        return tmp.innerText.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
     }
@@ -2911,34 +2924,38 @@ function renderDashboardCharts(data) {
         return tempDiv.innerHTML;
     }
 
-    // 2. Search Logic: Better snippets for table data
+    // 2. Search Logic: Enhanced to find full sentences and handle tables correctly
     function findSnippetsInItem(item, query) {
         const snippets = new Set();
         const queryLower = query.toLowerCase();
-        const contextLength = 60; 
 
-        // Smart strip to include table cells as separate words
+        // Combine En/Ar with smart separator
         const rawTextEn = smartStripHtml(item.content_en);
         const rawTextAr = smartStripHtml(item.content_ar);
-        const fullText = `${item.title_en} . ${rawTextEn} . ${item.title_ar} . ${rawTextAr}`;
+        const fullText = `${item.title_en}. ${rawTextEn}. ${item.title_ar}. ${rawTextAr}`;
 
         if (!fullText) return [];
 
-        let startIndex = 0;
-        while ((startIndex = fullText.toLowerCase().indexOf(queryLower, startIndex)) !== -1) {
-            const start = Math.max(0, startIndex - contextLength);
-            const end = Math.min(fullText.length, startIndex + query.length + contextLength);
-            
-            let snippet = fullText.substring(start, end);
-            
-            // Trim incomplete words
-            if (start > 0) snippet = "..." + snippet.substring(snippet.indexOf(' ') + 1);
-            if (end < fullText.length) snippet = snippet.substring(0, snippet.lastIndexOf(' ')) + "...";
-            
-            snippets.add(snippet);
-            startIndex += query.length; 
-        }
+        // Split by common sentence delimiters (., !, ?, newline)
+        // This regex keeps the delimiter in the result
+        const sentences = fullText.match(/[^.!?\n]+[.!?\n]+/g) || [fullText];
 
+        sentences.forEach(sentence => {
+            if (sentence.toLowerCase().includes(queryLower)) {
+                 // Clean up the snippet: remove extra spaces
+                 let cleanSentence = sentence.trim();
+                 // If it's extremely long (e.g. a huge paragraph without dots), truncate gently
+                 if (cleanSentence.length > 300) {
+                     const index = cleanSentence.toLowerCase().indexOf(queryLower);
+                     const start = Math.max(0, index - 100);
+                     const end = Math.min(cleanSentence.length, index + 150);
+                     cleanSentence = "..." + cleanSentence.substring(start, end) + "...";
+                 }
+                 snippets.add(cleanSentence);
+            }
+        });
+
+        // Fallback: check tags if nothing found in text
         if (snippets.size === 0 && (item.tags || []).some(t => t.toLowerCase().includes(queryLower))) {
              snippets.add(`Match found in Tags: ${item.tags.join(', ')}`);
         }
@@ -3115,7 +3132,6 @@ function renderDashboardCharts(data) {
         editingItemIdInput.value = "";
         
         if (!mainQuillEditor) {
-            Quill.register('modules/imageResize', window.ImageResize.default);
             mainQuillEditor = new Quill('#quillEditor', {
                 theme: 'snow',
                 modules: {
@@ -3677,14 +3693,16 @@ function renderDashboardCharts(data) {
             }
         };
         
-        // 4. WhatsApp Message Formatting
+        // 4. Revised WhatsApp Message (Polite & Structured)
         const cleanSnippet = snippetText.trim().replace(/\s+/g, ' '); 
         const whatsAppMessage = 
-            `*Correction / Note Request* 📝%0A%0A` +
-            `Hi team, regarding the case: *${currentOpenItem.title}*%0A%0A` +
-            `Please review this section:%0A` +
-            `> _"${cleanSnippet}"_%0A%0A` +
-            `📌 *Full Context & Guide:*%0A${link}`;
+            `*Reference Update* 📌\n\n` +
+            `Hello,\n\n` +
+            `Regarding: *${currentOpenItem.title}*\n\n` +
+            `Please check this specific part:\n` +
+            `> _"${cleanSnippet}"_\n\n` +
+            `🔗 *Link:* ${link}\n\n` +
+            `Thank you.`;
 
         document.getElementById('shareSnippetWhatsAppBtn').onclick = () => {
             window.infiniShare.openWhatsApp(whatsAppMessage);
